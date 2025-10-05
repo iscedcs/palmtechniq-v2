@@ -12,11 +12,12 @@ declare global {
 }
 
 export function initIO(server: HttpServer) {
+  const ORIGIN = process.env.NEXT_PUBLIC_URL || undefined;
   if (!global._io) {
     const io = new IOServer(server, {
       path: "/api/socket",
       cors: {
-        origin: process.env.NEXT_PUBLIC_URL || "*",
+        origin: ORIGIN,
         credentials: true,
       },
     });

@@ -24,7 +24,7 @@ export const WebSocketProvider = ({
     if (!socketSingleton) {
       socketSingleton = io({
         path: "/api/socket",
-        transports: ["websocket"],
+        transports: ["websocket", "polling"],
         withCredentials: true,
       });
     }
