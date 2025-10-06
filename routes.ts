@@ -119,7 +119,7 @@ export const DEFAULT_LOGIN_REDIRECTS: Record<UserRole, string> & {
   STUDENT: "/student",
   TUTOR: "/tutor",
   ADMIN: "/admin",
-  USER: "/courses", // fallback
+  USER: "/courses",
 };
 
 /**

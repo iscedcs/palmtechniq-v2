@@ -24,7 +24,6 @@ import {
 } from "lucide-react";
 
 export default function StudentDashboard() {
-
   // Types
   type StudentData = {
     level: number;
@@ -164,7 +163,6 @@ export default function StudentDashboard() {
     }
   }, [session]);
 
-
   // const [userRole] = useState<UserRole>("STUDENT");
   // const [userAvatar] = useState(generateRandomAvatar());
 
@@ -179,17 +177,22 @@ export default function StudentDashboard() {
 
   const learningProgress = studentData.totalHours;
 
-  const achievementProgress = recentAchievements.filter((a) => a.earned.includes("daay") || a.earned.includes("week") );
+  const achievementProgress = recentAchievements.filter(
+    (a) => a.earned.includes("daay") || a.earned.includes("week")
+  );
 
-  const completionRate = (studentData.coursesCompleted ?? 0) + (studentData.coursesInProgress ?? 0) > 0
-  ? Math.round(
-      ((studentData.coursesCompleted ?? 0) /
-        ((studentData.coursesCompleted ?? 0) + (studentData.coursesInProgress ?? 0))) * 100
-    )
-  : 0;
-  
+  const completionRate =
+    (studentData.coursesCompleted ?? 0) + (studentData.coursesInProgress ?? 0) >
+    0
+      ? Math.round(
+          ((studentData.coursesCompleted ?? 0) /
+            ((studentData.coursesCompleted ?? 0) +
+              (studentData.coursesInProgress ?? 0))) *
+            100
+        )
+      : 0;
+
   // Mock student data
-
 
   // const studentData = {
   //   level: 12,
@@ -286,8 +289,6 @@ export default function StudentDashboard() {
   //     earned: "1 week ago",
   //   },
   // ];
-
-
 
   const StatCard = ({ icon: Icon, title, value, subtitle, color }: any) => (
     <motion.div whileHover={{ scale: 1.05, rotateY: 5 }} className="group">

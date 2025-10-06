@@ -1,10 +1,9 @@
-export const runtime = "nodejs";
+import "server-only";
+import { Resend } from "resend";
 
 export async function onBoardingMail(email: string, fullName: string) {
   try {
-    const { Resend } = await import("resend");
     const { default: SignIn } = await import("./email-templates/signin");
-
     const resend = new Resend(process.env.RESEND_API_KEY!);
 
     await resend.emails.send({
@@ -13,7 +12,6 @@ export async function onBoardingMail(email: string, fullName: string) {
       subject: "Welcome to PalmTechnIQ",
       react: SignIn({ fullName }),
     });
-
     return { success: "Signed-Up successfully!" };
   } catch (error) {
     console.error("Error creating account!", error);
@@ -22,7 +20,6 @@ export async function onBoardingMail(email: string, fullName: string) {
 }
 
 export async function sendPasswordResetToken(email: string, token: string) {
-  const { Resend } = await import("resend");
   const { default: ResetTemplate } = await import(
     "./email-templates/test-email-password-reset"
   );
@@ -38,7 +35,6 @@ export async function sendPasswordResetToken(email: string, token: string) {
 }
 
 export async function sendVerificationEmail(email: string, token: string) {
-  const { Resend } = await import("resend");
   const { default: TestEmail } = await import("./email-templates/test-email");
 
   const resend = new Resend(process.env.RESEND_API_KEY!);
