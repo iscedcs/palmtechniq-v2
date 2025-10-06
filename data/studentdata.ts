@@ -104,6 +104,7 @@ export async function getStudentDashboardData() {
       instructor: enrollment.course.tutor.user.name,
       progress: Math.round(progress),
       nextLesson: nextLesson?.title || "Course Complete",
+      nextLessonId: nextLesson?.id || null,
       timeLeft: `${hours}h ${minutes}m`,
       thumbnail: enrollment.course.thumbnail,
       difficulty: enrollment.course.level,
