@@ -1,12 +1,11 @@
 "use client";
 import { io, Socket } from "socket.io-client";
-import { createContext, useContext, useEffect, useRef } from "react";
+import { createContext, useContext, useEffect, useRef, useState } from "react";
 import { useNotificationsStore } from "@/lib/store/notifications-store";
 
 const WebSocketContext = createContext<{ socket: Socket | null }>({
   socket: null,
 });
-
 let socketSingleton: Socket | null = null;
 
 export const useWebSocket = () => useContext(WebSocketContext);
@@ -16,26 +15,27 @@ export const WebSocketProvider = ({
 }: {
   children: React.ReactNode;
 }) => {
-  const socketRef = useRef<Socket | null>(null);
+  const [socket, setSocket] = useState<Socket | null>(null);
   const addNotification = useNotificationsStore((s) => s.addNotification);
 
   useEffect(() => {
-    fetch("/api/socket");
+    fetch("/api/socket").catch(() => {});
 
     if (!socketSingleton) {
       socketSingleton = io({
         path: "/api/socket",
-        transports: ["websocket"], // you can allow ["websocket", "polling"] if desired
+        transports: ["polling"],
+        upgrade: false,
         withCredentials: true,
       });
     }
-    const socket = socketSingleton;
+    const s = socketSingleton;
+    setSocket(s);
 
-    socket.on("connect", () => {
-      console.log("✅ Socket.IO connected:", socket.id);
-    });
+    const onConnect = () => console.log("✅ Socket.IO connected:", s.id);
+    const onDisconnect = () => console.log("❌ Socket.IO disconnected");
 
-    socket.on("notification", (data) => {
+    const onNotify = (data: any) => {
       console.log("📩 Incoming notification:", data);
       addNotification({
         type: data.type,
@@ -45,19 +45,21 @@ export const WebSocketProvider = ({
         actionLabel: data.actionLabel,
         metadata: data.metadata,
       });
-    });
+    };
 
-    socket.on("disconnect", () => {
-      console.log("❌ Socket.IO disconnected");
-    });
+    s.on("connect", onConnect);
+    s.on("notification", onNotify);
+    s.on("disconnect", onDisconnect);
 
-    socketRef.current = socket;
-
-    return () => {};
+    return () => {
+      s.off("notification", onNotify);
+      s.off("connect");
+      s.off("disconnect");
+    };
   }, [addNotification]);
 
   return (
-    <WebSocketContext.Provider value={{ socket: socketRef.current }}>
+    <WebSocketContext.Provider value={{ socket }}>
       {children}
     </WebSocketContext.Provider>
   );

@@ -17,6 +17,14 @@ import { useForm } from "react-hook-form";
 import { toast } from "sonner";
 import { z } from "zod";
 import { v4 as uuidv4 } from "uuid";
+import {
+  addLessonToModule,
+  addModuleToCourse,
+  removeLessonFromModule,
+  removeModuleFromCourse,
+} from "@/actions/tutor-actions";
+import { useNotificationsStore } from "@/lib/store/notifications-store";
+import { showUndoToast } from "@/lib/utils/tosst-util";
 
 const categories: { id: string; name: string }[] = [
   { id: "cmfar9u390000fd1gw9f75qga", name: "Web Development" },
@@ -60,6 +68,7 @@ export function CourseEditClient({
     thumbnail: false,
     video: false,
   });
+
   const [lessonUploading, setLessonUploading] = useState(false);
 
   const form = useForm<z.infer<typeof courseSchema>>({
@@ -140,24 +149,140 @@ export function CourseEditClient({
     );
   };
 
-  const addModule = () => {
-    const newModule = {
-      id: uuidv4(),
-      title: `Module ${modules.length + 1}`,
-      description: "",
-      content: "",
-      duration: 0,
-      lessons: [],
-      sortOrder: modules.length,
-      isPublished: false,
-    };
-    setModules([...modules, newModule]);
+  const addModule = async () => {
+    try {
+      const sortOrder = (modules.at(-1)?.sortOrder ?? 0) + 1;
+      const res = await addModuleToCourse(course.id, {
+        title: `Module ${modules.length + 1}`,
+
+        duration: 1,
+        sortOrder,
+        isPublished: false,
+      });
+
+      if (!res?.success) {
+        toast.error(res?.error ?? "Failed to add module");
+        return;
+      }
+
+      setModules((prev: any) => [
+        ...prev,
+        {
+          id: res.moduleId,
+          title: `Module ${prev.length + 1}`,
+          description: "",
+          content: "",
+          duration: 1,
+          sortOrder,
+          isPublished: false,
+          lessons: [],
+        },
+      ]);
+    } catch (e) {
+      console.error(e);
+      toast.error("Failed to add module");
+    }
   };
 
-  const removeModule = (e: React.MouseEvent, moduleId: string) => {
+  const removeModule = async (e: React.MouseEvent, moduleId: string) => {
     e.preventDefault();
-    setModules(modules.filter((m: any) => m.id !== moduleId));
+
+    const modIndex = modules.findIndex((m: any) => m.id === moduleId);
+    if (modIndex < 0) return;
+
+    const removedModule = modules[modIndex];
+    const prevModules = structuredClone(modules);
+
+    // ✅ Optimistic UI: remove immediately
+    setModules((cur: any) => cur.filter((m: any) => m.id !== moduleId));
+
+    try {
+      const res = await removeModuleFromCourse(course.id, moduleId);
+      if (!res?.success)
+        throw new Error(res?.error ?? "Failed to remove module");
+    } catch (err) {
+      // Rollback UI on error
+      setModules(prevModules);
+      toast.error("Failed to remove module");
+      return;
+    }
+
+    showUndoToast({
+      message: `Module “${removedModule.title}” removed successfully`,
+      undoLabel: "Restore module",
+      onUndo: async () => {
+        // 1) Recreate module
+        const created = await addModuleToCourse(course.id, {
+          title: removedModule.title,
+          description: removedModule.description ?? "",
+          content: removedModule.content ?? "",
+          duration: removedModule.duration ?? 0,
+          sortOrder: removedModule.sortOrder ?? modIndex,
+          isPublished: removedModule.isPublished ?? false,
+        });
+        if (!created?.success)
+          throw new Error(created?.error ?? "Failed to restore module");
+
+        const newModuleId = created.moduleId;
+
+        // 2) Recreate lessons (keep order)
+        const restoredLessons: any[] = [];
+        for (const l of removedModule.lessons ?? []) {
+          const r = await addLessonToModule(course.id, newModuleId, {
+            title: l.title,
+            lessonType: l.lessonType ?? "VIDEO",
+            duration: l.duration ?? 0,
+            content: l.content ?? "",
+            description: l.description ?? "",
+            videoUrl: l.videoUrl ?? "",
+            sortOrder: l.sortOrder ?? 0,
+            isPreview: l.isPreview ?? false,
+          });
+          if (!r?.success)
+            throw new Error(r?.error ?? "Failed to restore lesson");
+          restoredLessons.push({ ...l, id: r.lessonId });
+        }
+
+        // 3) Put back in UI at original index with new ids
+        setModules((cur: any) => {
+          const next = structuredClone(cur);
+          next.splice(modIndex, 0, {
+            ...removedModule,
+            id: newModuleId,
+            lessons: restoredLessons,
+          });
+          return next;
+        });
+      },
+    });
   };
+
+  // const removeModule = async (e: React.MouseEvent, moduleId: string) => {
+  //   e.preventDefault();
+  //   const removedModule = modules.find((m: any) => m.id === moduleId);
+  //   if (!removedModule) return;
+
+  //   try {
+  //     const res = await removeModuleFromCourse(course.id, moduleId);
+  //     if (!res?.success) {
+  //       toast.error(res?.error ?? "Failed to remove module");
+  //       return;
+  //     }
+
+  //     setModules(modules.filter((m: any) => m.id !== moduleId));
+  //     showUndoToast({
+  //       message: `Module “${removedModule.title}” removed successfully`,
+  //       undoLabel: "Restore module",
+  //       onUndo: async () => {
+  //         await addModuleToCourse(course.id, removedModule);
+  //         setModules((prev: any) => [...prev, removedModule]);
+  //       },
+  //     });
+  //   } catch (err) {
+  //     console.error(err);
+  //     toast.error("Failed to remove module");
+  //   }
+  // };
 
   const updateModule = (
     moduleId: string,
@@ -167,44 +292,152 @@ export function CourseEditClient({
       modules.map((m: any) => (m.id === moduleId ? { ...m, ...updates } : m))
     );
   };
+  const addLesson = async (moduleId: string) => {
+    try {
+      const mod = modules.find((m: any) => m.id === moduleId);
+      if (!mod) return;
 
-  const addLesson = (moduleId: string) => {
-    setModules(
-      modules.map((m: any) =>
-        m.id === moduleId
-          ? {
-              ...m,
-              lessons: [
-                ...m.lessons,
-                {
-                  id: uuidv4(),
-                  title: `Lesson ${m.lessons.length + 1}`,
-                  type: "VIDEO",
-                  duration: 0,
-                  sortOrder: m.lessons.length,
-                  isPreview: false,
-                },
-              ],
-            }
-          : m
-      )
-    );
+      const sortOrder = (mod.lessons.at(-1)?.sortOrder ?? 0) + 1;
+      const payload = {
+        title: `Lesson ${mod.lessons.length + 1}`,
+        lessonType: "VIDEO" as const, // ✅ correct key
+        duration: 1,
+
+        sortOrder,
+        isPreview: false,
+      };
+      console.log({ payload });
+      const res = await addLessonToModule(course.id, moduleId, payload);
+      if (!res?.success) {
+        toast.error(res?.error ?? "Failed to add lesson");
+        return;
+      }
+
+      setModules((prev: any) =>
+        prev.map((m: any) =>
+          m.id !== moduleId
+            ? m
+            : {
+                ...m,
+                lessons: [
+                  ...m.lessons,
+                  {
+                    id: res.lessonId,
+                    ...payload,
+                    content: "",
+                    description: "",
+                    videoUrl: "",
+                  }, // ✅ server id
+                ],
+              }
+        )
+      );
+    } catch (e) {
+      console.error(e);
+      toast.error("Failed to add lesson");
+    }
   };
 
-  const removeLesson = (
+  const removeLesson = async (
     e: React.MouseEvent,
     moduleId: string,
     lessonId: string
   ) => {
     e.preventDefault();
-    setModules(
-      modules.map((m: any) =>
-        m.id === moduleId
-          ? { ...m, lessons: m.lessons.filter((l: any) => l.id !== lessonId) }
-          : m
-      )
+
+    const modIndex = modules.findIndex((m: any) => m.id === moduleId);
+    if (modIndex < 0) return;
+
+    const lessonIndex = modules[modIndex].lessons.findIndex(
+      (l: any) => l.id === lessonId
     );
+    if (lessonIndex < 0) return;
+
+    const removedLesson = modules[modIndex].lessons[lessonIndex];
+    const prevModules = structuredClone(modules);
+
+    // ✅ Optimistic UI: remove immediately
+    setModules((cur: any) => {
+      const next = structuredClone(cur);
+      next[modIndex].lessons.splice(lessonIndex, 1);
+      return next;
+    });
+
+    try {
+      const res = await removeLessonFromModule(course.id, moduleId, lessonId);
+      if (!res?.success)
+        throw new Error(res?.error ?? "Failed to remove lesson");
+    } catch (err) {
+      // Rollback UI on error
+      setModules(prevModules);
+      toast.error("Failed to remove lesson");
+      return;
+    }
+
+    showUndoToast({
+      message: `Lesson ${removedLesson.title} removed sucessfully`,
+      undoLabel: "Restore lesson",
+      onUndo: async () => {
+        // Re-create in DB
+        const r = await addLessonToModule(course.id, moduleId, {
+          title: removedLesson.title,
+          lessonType: removedLesson.lessonType ?? "VIDEO",
+          duration: removedLesson.duration ?? 0,
+          content: removedLesson.content ?? "",
+          description: removedLesson.description ?? "",
+          videoUrl: removedLesson.videoUrl ?? "",
+          sortOrder: removedLesson.sortOrder ?? lessonIndex,
+          isPreview: removedLesson.isPreview ?? false,
+        });
+        if (!r?.success) throw new Error(r?.error ?? "Failed to restore");
+
+        // Put back in UI at the same position, with new id
+        setModules((cur: any) => {
+          const next = structuredClone(cur);
+          next[modIndex].lessons.splice(lessonIndex, 0, {
+            ...removedLesson,
+            id: r.lessonId,
+          });
+          return next;
+        });
+      },
+    });
   };
+
+  // const removeLesson = async (
+  //   e: React.MouseEvent,
+  //   moduleId: string,
+  //   lessonId: string
+  // ) => {
+  //   e.preventDefault();
+  //   const mod = modules.find((m: any) => m.id === moduleId);
+  //   const removedLesson = mod?.lessons.find((l: any) => l.id === lessonId);
+  //   if (!removedLesson) return;
+  //   try {
+  //     const res = await removeLessonFromModule(course.id, moduleId, lessonId);
+  //     if (!res?.success) {
+  //       toast.error(res?.error ?? "Failed to remove lesson");
+  //       return;
+  //     }
+  //     showUndoToast({
+  //       message: `Lesson ${removedLesson.title} removed sucessfully`,
+  //       undoLabel: "Restore lesson",
+  //       onUndo: async () => {
+  //         await addLessonToModule(course.id, moduleId, removedLesson);
+  //         setModules((prev: any) =>
+  //           prev.map((m: any) =>
+  //             m.id === moduleId
+  //               ? { ...m, lessons: [...m.lessons, removedLesson] }
+  //               : m
+  //           )
+  //         );
+  //       },
+  //     });
+  //   } catch (err) {
+  //     console.error(err);
+  //     toast.error("Failed to remove lesson");
+  //   }
+  // };
 
   const updateLesson = (
     moduleId: string,

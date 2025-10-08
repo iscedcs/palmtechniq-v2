@@ -57,6 +57,7 @@ const socialLinks = [
 ];
 
 export function Footer() {
+  const currentYear = new Date().getFullYear();
   return (
     <footer className="relative overflow-hidden bg-gradient-to-b from-background to-gray-900/50">
       {/* Background Effects */}
@@ -198,7 +199,7 @@ export function Footer() {
           <div className="flex flex-col md:flex-row items-center justify-between">
             {/* Copyright */}
             <div className="flex items-center text-gray-300 mb-4 md:mb-0">
-              <span>© 2025 PalmTechnIQ. Made with</span>
+              <span>©{currentYear} PalmTechnIQ. Made with</span>
               <Heart className="w-4 h-4 mx-2 text-red-400 fill-current" />
               <span>for learners worldwide</span>
             </div>

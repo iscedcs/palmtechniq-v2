@@ -9,6 +9,7 @@ import { courseSchema, lessonSchema, moduleSchema } from "@/schemas";
 import { z } from "zod";
 import { toSlug } from "@/lib/utils";
 import { notify } from "@/lib/notify";
+import { getIO } from "@/lib/socket";
 
 export async function createCourse(data: any, modulesData: any[] = []) {
   const session = await auth();
@@ -206,6 +207,13 @@ export async function addModuleToCourse(courseId: string, moduleData: any) {
       },
     });
 
+    const io = getIO();
+    if (io) {
+      const sockets = await io.in(`course:${courseId}`).allSockets();
+      console.log(
+        `course:${courseId} ${newModule.id} sockets = ${sockets.size}`
+      );
+    }
     await notify.course(courseId, {
       type: "info",
       title: "New Module Added",
@@ -222,6 +230,41 @@ export async function addModuleToCourse(courseId: string, moduleData: any) {
   }
 }
 
+export async function removeModuleFromCourse(
+  courseId: string,
+  moduleId: string
+) {
+  const session = await auth();
+  if (!session?.user?.id) {
+    return { error: "Unauthorized" };
+  }
+
+  try {
+    const module = await db.courseModule.findUnique({
+      where: { id: moduleId },
+      include: { course: true },
+    });
+    if (!module || module.course.creatorId !== session.user.id) {
+      return { error: "Unauthorized" };
+    }
+
+    await db.courseModule.delete({ where: { id: moduleId } });
+
+    await notify.course(courseId, {
+      type: "warning",
+      title: "Module Removed",
+      message: `Module “${module.title}” was removed from “${module.course.title}”.`,
+      actionUrl: `/courses/${courseId}`,
+      actionLabel: "Open Course",
+      metadata: { courseId, moduleId },
+    });
+
+    return { success: true };
+  } catch (error) {
+    console.error("Error removing module:", error);
+    return { error: "Failed to remove module" };
+  }
+}
 export async function addLessonToModule(
   courseId: string,
   moduleId: string,
@@ -260,6 +303,13 @@ export async function addLessonToModule(
       },
     });
 
+    const io = getIO();
+    if (io) {
+      const sockets = await io.in(`course:${courseId}`).allSockets();
+      console.log(
+        `course:${courseId},${newLesson.id} sockets = ${sockets.size}`
+      );
+    }
     await notify.course(courseId, {
       type: "info",
       title: "New Lesson Added",
@@ -273,6 +323,44 @@ export async function addLessonToModule(
   } catch (error) {
     console.error("Error adding lesson:", error);
     return { error: "Failed to add lesson" };
+  }
+}
+
+export async function removeLessonFromModule(
+  courseId: string,
+  moduleId: string,
+  lessonId: string
+) {
+  const session = await auth();
+  if (!session?.user?.id) {
+    return { error: "Unauthorized" };
+  }
+
+  try {
+    const lesson = await db.lesson.findUnique({
+      where: { id: lessonId },
+      include: { module: { include: { course: true } } },
+    });
+
+    if (!lesson || lesson.module.course.creatorId !== session.user.id) {
+      return { error: "Unauthorized" };
+    }
+
+    await db.lesson.delete({ where: { id: lessonId } });
+
+    await notify.course(courseId, {
+      type: "warning",
+      title: "Lesson Removed",
+      message: `Lesson “${lesson.title}” was removed from module “${lesson.module.title}” in “${lesson.module.course.title}” .`,
+      actionUrl: `/courses/${courseId}`,
+      actionLabel: "Open Course",
+      metadata: { courseId, moduleId, lessonId },
+    });
+
+    return { success: true };
+  } catch (error) {
+    console.error("Error removing lesson:", error);
+    return { error: "Failed to remove lesson" };
   }
 }
 

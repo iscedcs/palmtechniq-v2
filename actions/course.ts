@@ -132,7 +132,6 @@ export async function updateCourse(
         });
       }
 
-      // Lessons inside module
       for (const lesson of module.lessons || []) {
         const validatedLesson = lessonSchema.safeParse(lesson);
         // console.log("📦 Raw lesson from payload:", lesson);
@@ -161,7 +160,6 @@ export async function updateCourse(
               },
             });
           } else {
-            // fallback: create a new one
             await db.lesson.create({
               data: {
                 title: l.title,
@@ -183,19 +181,29 @@ export async function updateCourse(
     try {
       const io = getIO();
       if (io) {
-        await notify.course(courseId, {
+        await notify.role("STUDENT", {
           type: "success",
           title: "Course Updated",
-          message: `Course "${course.title}" has been updated successfully`,
+          message: `A Course you purchased "${course.title}" has just been updated!`,
           actionUrl: `/courses/${courseId}`,
           actionLabel: "View Course",
         });
-        await notify.course(courseId, {
+
+        await notify.role("TUTOR", {
+          type: "info",
+          title: "Your Course Updated",
+          message: `You updated “${course.title}”.`,
+          actionUrl: `/tutor/courses/${courseId}/edit`,
+          actionLabel: "Open Course",
+        });
+
+        await notify.role("ADMIN", {
           type: "info",
           title: "Course Updated",
-          message: `Tutor for Course "${course.title}" has updated thier course`,
+          message: `Tutor updated “${course.title}”. Review changes.`,
           actionUrl: `/courses/${courseId}`,
-          actionLabel: "Checkout The Change",
+          actionLabel: "Review Changes",
+          metadata: { courseId },
         });
       }
     } catch (e) {

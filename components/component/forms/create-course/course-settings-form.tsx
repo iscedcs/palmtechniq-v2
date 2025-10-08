@@ -224,7 +224,7 @@ export function CourseSettingsForm({
                 !form.getValues("title") ||
                 !form.getValues("description") ||
                 modules.length === 0 ||
-                modules.some((mod) => mod.lessons.length < 5) ||
+                modules.some((mod) => mod.lessons.length < 3) ||
                 !form.getValues("thumbnail")
               }>
               <Eye className="w-4 h-4 mr-2" />

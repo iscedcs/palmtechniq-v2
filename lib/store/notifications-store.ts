@@ -17,7 +17,6 @@ export interface Notification {
   title: string;
   message: string;
   isRead: boolean;
-  // Persisted as ISO string; safer than Date in localStorage
   createdAt: string;
   actionUrl?: string;
   actionLabel?: string;
@@ -26,7 +25,6 @@ export interface Notification {
 
 interface NotificationsState {
   notifications: Notification[];
-  // UI only
   isOpen: boolean;
 
   // Actions
@@ -152,12 +150,9 @@ export const useNotificationsStore = create<NotificationsState>()(
       name: "notifications-storage",
       partialize: (state) => ({
         notifications: state.notifications,
-        // don’t persist isOpen (UI state) or any computed functions
       }),
-      // Recompute or clean up on rehydrate if you need:
       onRehydrateStorage: () => (state) => {
         if (!state) return;
-        // Optional: trim list if older versions stored too many
         if (state.notifications?.length > MAX_NOTIFICATIONS) {
           state.notifications = state.notifications.slice(0, MAX_NOTIFICATIONS);
         }
@@ -166,7 +161,6 @@ export const useNotificationsStore = create<NotificationsState>()(
   )
 );
 
-// Tiny helper: request permission when opening the dropdown (call once in UI if you want)
 export async function ensureNotificationPermission() {
   if (typeof window === "undefined" || !("Notification" in window)) return;
   if (Notification.permission === "default") {

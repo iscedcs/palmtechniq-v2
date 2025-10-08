@@ -20,6 +20,7 @@ import {
 } from "@/components/ui/accordion";
 import LessonUploadFile from "@/components/shared/lesson-uploader";
 import { Dispatch, SetStateAction } from "react";
+import { addLessonToModule } from "@/actions/tutor-actions";
 
 interface CourseLesson {
   id: string;

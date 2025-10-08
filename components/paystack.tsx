@@ -10,10 +10,7 @@ import { Card, CardContent, CardHeader } from "./ui/card";
 
 const schema = z.object({
   email: z.string().email("Invalid email address"),
-  amount: z
-    .number()
-    .min(100, "Minimum amount is 100")
-    .max(1000000, "Maximum amount is 1000000"),
+  amount: z.number(),
 });
 type FormData = z.infer<typeof schema>;
 
@@ -75,9 +72,7 @@ export default function PayStackPayment() {
     <div className="flex justify-center items-center min-h-screen bg-gray-100">
       <Card className="w-full max-w-md shadow-xl bg-white p-6">
         <CardHeader className="text-center py-6">
-          <h2 className="text-2xl font-bold text-gray-800">
-            Pay with PayStack
-          </h2>
+          <h2 className="text-2xl font-bold text-gray-800">Proceed Payment</h2>
         </CardHeader>
         <CardContent>
           <div className="flex flex-col space-y-4 text-gray-600">

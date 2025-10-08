@@ -1,4 +1,3 @@
-// lib/notify.ts
 import { getIO } from "./socket";
 
 export type NotificationPayload = {

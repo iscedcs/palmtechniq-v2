@@ -28,7 +28,7 @@ export default auth((req) => {
     return routes.some((route) => {
       // Convert route pattern to regex (e.g., "/courses/[slug]" -> "/courses/[^/]+")
       const pattern = route.replace(/\[[\w]+\]/g, "[^/]+");
-      const regex = new RegExp(`^₦{pattern}₦`);
+      const regex = new RegExp(`^${pattern}$`);
       return regex.test(pathname) || pathname === route;
     });
   };
@@ -47,22 +47,6 @@ export default auth((req) => {
   if (isApiAuthRoute) {
     return;
   }
-
-  // console.log("MIDDLEWARE DEBUG:", {
-  //   path: nextUrl.pathname,
-  //   isLoggedIn,
-  //   userRole,
-  //   authObjKeys: authObj ? Object.keys(authObj) : [],
-  //   routeChecks: {
-  //     isPublicRoute,
-  //     isAuthRoute,
-  //     isProtectedRoute,
-  //     isAdminRoute,
-  //     isTutorRoute,
-  //     isStudentRoute,
-  //     isPaymentRoute,
-  //   },
-  // });
 
   // Handle authentication routes
   if (isAuthRoute) {
@@ -95,37 +79,24 @@ export default auth((req) => {
       }
       const encodedCallbackUrl = encodeURIComponent(callbackUrl);
       return Response.redirect(
-        new URL(`/login?callbackUrl=₦{encodedCallbackUrl}`, nextUrl)
+        new URL(`/login?callbackUrl=${encodedCallbackUrl}`, nextUrl)
       );
     }
 
     // Role-based access control for protected routes
     if (isAdminRoute && userRole !== "ADMIN") {
-      // console.log(
-      //   `Access denied to admin route. User role: ₦{userRole}, Required: ADMIN`
-      // );
       return Response.redirect(new URL("/courses", nextUrl));
     }
 
     if (isTutorRoute && userRole !== "TUTOR" && userRole !== "ADMIN") {
-      // console.log(
-      //   `Access denied to tutor route. User role: ₦{userRole}, Required: TUTOR or ADMIN`
-      // );
       return Response.redirect(new URL("/courses", nextUrl));
     }
 
     if (isStudentRoute && userRole !== "STUDENT" && userRole !== "ADMIN") {
-      // console.log(
-      //   `Access denied to student route. User role: ₦{userRole}, Required: STUDENT or ADMIN`
-      // );
-      // console.log(
-      //   "Full auth object for debugging:",
-      //   JSON.stringify(authObj, null, 2)
-      // );
       return Response.redirect(new URL("/courses", nextUrl));
     }
 
-    return; // Allow access to protected routes for authorized users
+    return;
   }
 
   // Handle role-based redirects for dashboard routes
@@ -151,7 +122,7 @@ export default auth((req) => {
 export const config = {
   matcher: [
     // Match all routes except static files and Next.js internals
-    "/((?!.+\\.[\\w]+₦|_next).*)",
+    "/((?!.+\\.[\\w]+$|_next).*)",
     "/",
     "/(api|trpc)(.*)",
     // Specifically match protected route patterns

@@ -110,7 +110,6 @@ export const courseSchema = z.object({
 });
 
 export const moduleSchema = z.object({
-  id: z.string().min(1, "Module ID is required"),
   title: z.string().min(1, "Module title is required"),
   content: z.string().nullable().optional(),
   description: z.string().optional(),
@@ -120,7 +119,6 @@ export const moduleSchema = z.object({
 });
 
 export const lessonSchema = z.object({
-  id: z.string().min(1, "Lesson ID is required"),
   title: z.string().min(1, "Lesson title is required"),
   lessonType: z.enum(["VIDEO", "TEXT", "QUIZ", "PROJECT", "LIVE"]),
   duration: z.number().min(0, "Duration must be non-negative"),
