@@ -103,7 +103,7 @@ export async function getStudentDashboardData() {
       title: enrollment.course.title,
       instructor: enrollment.course.tutor.user.name,
       progress: Math.round(progress),
-      nextLesson: nextLesson?.title || "Course Complete",
+      nextLessonTitle: nextLesson?.title || "Course Complete",
       nextLessonId: nextLesson?.id || null,
       timeLeft: `${hours}h ${minutes}m`,
       thumbnail: enrollment.course.thumbnail,
