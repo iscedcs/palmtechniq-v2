@@ -7,7 +7,7 @@ import LessonSidebar from "@/components/pages/courses/courseId/learn/lessonSideb
 import { FloatingAIButton } from "@/components/ai/floating-ai-button";
 import { LessonAIAssistant } from "@/components/ai/lesson-ai-assistant";
 
-export default function ({ courseData }: any) {
+export default function CourseLearningPageClient({ courseData }: any) {
   const [currentLesson, setCurrentLesson] = useState<any>(null);
   const [allLessons, setAllLessons] = useState<any[]>([]);
   const [currentTime, setCurrentTime] = useState(0);
