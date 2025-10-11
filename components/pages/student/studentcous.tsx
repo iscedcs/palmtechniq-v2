@@ -11,6 +11,7 @@ import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar"
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs"
 import { BookOpen, Search, Filter, Star, Clock, Users, Play, Award, TrendingUp, Heart, Share2 } from "lucide-react"
 import { generateRandomAvatar } from "@/lib/utils"
+import { useRouter } from 'next/navigation';
 
 interface Course {
   id: string
@@ -71,7 +72,7 @@ export default function StudentCoursesClient({
     if (!searchQuery.trim()) return courses
     return courses.filter((course) => course.title.toLowerCase().startsWith(searchQuery.toLowerCase()))
   }
-
+  const router = useRouter();
   const filteredEnrolledCourses = filterCourses(enrolledCourses)
   const filteredAvailableCourses = filterCourses(availableCourses)
   const filteredCompletedCourses = filterCourses(completedCourses)
@@ -115,10 +116,20 @@ export default function StudentCoursesClient({
             )}
           </div>
           <div className="absolute top-4 right-4 flex gap-2">
-            <Button size="sm" variant="ghost" className="bg-black/50 text-white hover:bg-black/70">
+            <Button
+              size="sm"
+              variant="ghost"
+              className="bg-black/50 text-white hover:bg-black/70"
+              onClick={() => console.log("[v0] Wishlist clicked for course:", course.id)}
+            >
               <Heart className="w-4 h-4" />
             </Button>
-            <Button size="sm" variant="ghost" className="bg-black/50 text-white hover:bg-black/70">
+            <Button
+              size="sm"
+              variant="ghost"
+              className="bg-black/50 text-white hover:bg-black/70"
+              onClick={() => console.log("[v0] Share clicked for course:", course.id)}
+            >
               <Share2 className="w-4 h-4" />
             </Button>
           </div>
@@ -245,32 +256,55 @@ export default function StudentCoursesClient({
           <div className="flex gap-2">
             {type === "enrolled" && (
               <>
-                <Button className="flex-1 bg-gradient-to-r from-neon-blue to-neon-purple text-white">
+                <Button
+                  className="flex-1 bg-gradient-to-r from-neon-blue to-neon-purple text-white"
+                  onClick={() => router.push(`/courses/${course.id}/learn`)}
+                  
+                >
                   <Play className="w-4 h-4 mr-2" />
-                  Continue
+                  {(course as EnrolledCourse).nextLesson === "All lessons completed" ? "Retake Course" : "Continue"}
                 </Button>
-                <Button variant="outline" className="border-white/20 text-white hover:bg-white/10 bg-transparent">
+
+                <Button
+                  variant="outline"
+                  className="border-white/20 text-white hover:bg-white/10 bg-transparent"
+                  onClick={() => router.push(`/courses/${course.id}`)}
+                >
                   Details
                 </Button>
               </>
             )}
             {type === "available" && (
               <>
-                <Button className="flex-1 bg-gradient-to-r from-neon-green to-emerald-400 text-white">
+                <Button
+                  className="flex-1 bg-gradient-to-r from-neon-green to-emerald-400 text-white"
+                  onClick={() => router.push(`/courses/${course.id}/checkout`)}
+                >
                   Enroll Now
                 </Button>
-                <Button variant="outline" className="border-white/20 text-white hover:bg-white/10 bg-transparent">
+                <Button
+                  variant="outline"
+                  className="border-white/20 text-white hover:bg-white/10 bg-transparent"
+                  onClick={() => router.push(`/courses/${course.id}`)}
+                >
                   Preview
                 </Button>
               </>
             )}
             {type === "completed" && (
               <>
-                <Button className="flex-1 bg-gradient-to-r from-neon-purple to-pink-400 text-white">
+                <Button
+                  className="flex-1 bg-gradient-to-r from-neon-purple to-pink-400 text-white"
+                  onClick={() => console.log("[v0] View certificate:", course.id)}
+                >
                   <Award className="w-4 h-4 mr-2" />
                   Certificate
                 </Button>
-                <Button variant="outline" className="border-white/20 text-white hover:bg-white/10 bg-transparent">
+                <Button
+                  variant="outline"
+                  className="border-white/20 text-white hover:bg-white/10 bg-transparent"
+                  onClick={() => console.log("[v0] Review course:", course.id)}
+                >
                   Review
                 </Button>
               </>
@@ -328,7 +362,11 @@ export default function StudentCoursesClient({
                   className="pl-10 bg-white/10 border-white/20 text-white placeholder:text-gray-400 focus:border-neon-blue"
                 />
               </div>
-              <Button variant="outline" className="border-white/20 text-white hover:bg-white/10 bg-transparent">
+              <Button
+                variant="outline"
+                className="border-white/20 text-white hover:bg-white/10 bg-transparent"
+                onClick={() => console.log("[v0] Filter button clicked")}
+              >
                 <Filter className="w-4 h-4 mr-2" />
                 Filter
               </Button>
@@ -344,19 +382,19 @@ export default function StudentCoursesClient({
             <TabsList className="grid w-full grid-cols-3 bg-white/10 border border-white/20 mb-8">
               <TabsTrigger
                 value="enrolled"
-                className="data-[state=active]:bg-gradient-to-r data-[state=active]:from-neon-blue data-[state=active]:to-neon-purple data-[state=active]:text-white"
+                className="text-white data-[state=active]:bg-gradient-to-r data-[state=active]:from-neon-blue data-[state=active]:to-neon-purple data-[state=active]:text-white"
               >
                 Enrolled ({filteredEnrolledCourses.length})
               </TabsTrigger>
               <TabsTrigger
                 value="available"
-                className="data-[state=active]:bg-gradient-to-r data-[state=active]:from-neon-green data-[state=active]:to-emerald-400 data-[state=active]:text-white"
+                className="text-white data-[state=active]:bg-gradient-to-r data-[state=active]:from-neon-green data-[state=active]:to-emerald-400 data-[state=active]:text-white"
               >
                 Available ({filteredAvailableCourses.length})
               </TabsTrigger>
               <TabsTrigger
                 value="completed"
-                className="data-[state=active]:bg-gradient-to-r data-[state=active]:from-neon-purple data-[state=active]:to-pink-400 data-[state=active]:text-white"
+                className="text-white data-[state=active]:bg-gradient-to-r data-[state=active]:from-neon-purple data-[state=active]:to-pink-400 data-[state=active]:text-white"
               >
                 Completed ({filteredCompletedCourses.length})
               </TabsTrigger>

@@ -1,4 +1,3 @@
-
 import StudentCoursesClient from "@/components/pages/student/studentcous"
 import { getEnrolledCourses, getAvailableCourses, getCompletedCourses } from "@/data/studentcourse"
 

@@ -78,10 +78,11 @@ export default function StickyPurchaseCard({
               onClick={() => console.log("Enroll clicked")}
               className="w-full text-white text-lg py-3 bg-gradient-to-r from-neon-blue to-neon-purple hover:opacity-90 transition">
               {isEnrolled ? (
-                <>
+                
+                <Link href={`/courses/${courseId}/learn`} className="flex items-center justify-center w-full">
                   <Play className="w-4 h-4 mr-2" />
                   Start Learning
-                </>
+                </Link>
               ) : isInCart ? (
                 <>
                   <ShoppingCart className="w-4 h-4 mr-2" />

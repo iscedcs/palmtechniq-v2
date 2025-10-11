@@ -147,3 +147,23 @@ export async function getCourseWithModules(courseId: string) {
     return null;
   }
 }
+// Add this to your existing course-actions.ts file
+export async function checkUserEnrollment(courseId: string) {
+  try {
+    const session = await auth();
+    if (!session?.user?.id) return false;
+
+    const enrollment = await db.enrollment.findFirst({
+      where: {
+        userId: session.user.id,
+        courseId: courseId,
+        status: { in: ["ACTIVE", "COMPLETED"] } // Check both statuses
+      }
+    });
+
+    return !!enrollment;
+  } catch (error) {
+    console.error("Error checking user enrollment:", error);
+    return false;
+  }
+}

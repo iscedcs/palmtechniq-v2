@@ -466,23 +466,20 @@ export default function StudentDashboardClient({
                           </div>
                         </div>
                         <div className="text-right">
-                          {course.nextLessonId ? 
+                           
                             <Link
                               href={`courses/${course.id}/learn`}
                             >
                               <Button className="bg-gradient-to-r from-neon-blue to-neon-purple text-white mb-2">
                                 <Play className="w-4 h-4 mr-2" />
-                                Continue
+                                {course.nextLessonId ? "Continue" : "Retake Course"}
+                            
+                              
                               </Button>
                             </Link>
-                           : 
-                            <Button
-                              disabled
-                              className="bg-gray-400 text-white mb-2"
-                            >
-                              Course Complete
-                            </Button>
-                          }
+                           
+                            
+                          
                           <p className="text-gray-400 text-xs">
                             {course.timeLeft} left
                           </p>
