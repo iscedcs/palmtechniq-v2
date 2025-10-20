@@ -13,21 +13,36 @@ declare global {
 
 export function initIO(server: HttpServer) {
   if (!global._io) {
+    const allowedOrigin = [
+      process.env.NEXT_PUBLIC_URL!,
+      "http://localhost:2026",
+    ].filter(Boolean) as string[];
+
     const io = new IOServer(server, {
       path: "/api/socket",
       cors: {
-        origin: process.env.NEXT_PUBLIC_URL || "*",
+        origin: (origin, cb) => {
+          if (!origin) return cb(null, true);
+          if (
+            allowedOrigin.includes(origin) ||
+            /\.vercel\.app$/.test(new URL(origin).host)
+          ) {
+            return cb(null, true);
+          }
+          cb(new Error("Not allowed by CORS"));
+        },
         credentials: true,
       },
     });
 
     io.use(async (socket, next) => {
       try {
-        const cookie = socket.request.headers.cookie ?? "";
+        const req = socket.request as any;
+        // const cookie = socket.request.headers.cookie ?? "";
         const token = await getToken({
-          req: { headers: { cookie } },
+          req,
           secret: process.env.AUTH_SECRET,
-          cookieName: "authjs.session-token",
+          // cookieName: "authjs.session-token",
         });
         if (!token?.sub) return next(new Error("Unauthorized"));
 
