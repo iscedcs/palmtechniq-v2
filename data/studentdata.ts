@@ -50,7 +50,7 @@ export async function getStudentDashboardData() {
   const enrollments = await db.enrollment.findMany({
     where: {
       userId,
-      status: "ACTIVE",
+       status: { in: ["ACTIVE", "COMPLETED"] }
     },
     include: {
       course: {
