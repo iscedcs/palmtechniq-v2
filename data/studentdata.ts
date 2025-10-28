@@ -2,9 +2,8 @@
 
 import { auth } from "@/auth"
 import { db } from "@/lib/db"
- 
 
- function getLevelNumber(level: string): number {
+function getLevelNumber(level: string): number {
   switch (level) {
     case "BEGINNER":
       return 1
@@ -50,7 +49,7 @@ export async function getStudentDashboardData() {
   const enrollments = await db.enrollment.findMany({
     where: {
       userId,
-       status: { in: ["ACTIVE", "COMPLETED"] }
+      status: { in: ["ACTIVE", "COMPLETED"] }
     },
     include: {
       course: {
@@ -79,38 +78,73 @@ export async function getStudentDashboardData() {
     take: 3,
   })
 
-  // Calculate course details
-  const currentCourses = enrollments.map((enrollment) => {
-    const totalLessons = enrollment.course.modules.reduce((acc, module) => acc + module.lessons.length, 0)
-    const completedLessons = enrollment.lessonProgress.filter((lp) => lp.isCompleted).length
-    const progress = totalLessons > 0 ? (completedLessons / totalLessons) * 100 : 0
+  // Calculate course details with auto-completion check
+  const currentCourses = await Promise.all(
+    enrollments.map(async (enrollment) => {
+      const totalLessons = enrollment.course.modules.reduce((acc, module) => acc + module.lessons.length, 0)
+      const completedLessons = enrollment.lessonProgress.filter((lp) => lp.isCompleted).length
+      const progress = totalLessons > 0 ? (completedLessons / totalLessons) * 100 : 0
 
-    // Calculate time left (estimate based on remaining lessons and average duration)
-    const remainingLessons = totalLessons - completedLessons
-    const avgLessonDuration = 30 // minutes
-    const timeLeftMinutes = remainingLessons * avgLessonDuration
-    const hours = Math.floor(timeLeftMinutes / 60)
-    const minutes = timeLeftMinutes % 60
+      // Check if course should be marked as completed
+      if (progress === 100 && enrollment.status !== "COMPLETED") {
+        // Auto-complete the course
+        await db.enrollment.update({
+          where: { id: enrollment.id },
+          data: {
+            status: "COMPLETED",
+            completedAt: new Date(),
+            progress: 100
+          }
+        })
 
-    // Find next lesson
-    const allLessons = enrollment.course.modules.flatMap((m) => m.lessons)
-    const nextLesson = allLessons.find(
-      (lesson) => !enrollment.lessonProgress.some((lp) => lp.lessonId === lesson.id && lp.isCompleted),
-    )
+        // Update student's completed courses count
+        await db.student.update({
+          where: { userId },
+          data: {
+            coursesCompleted: { increment: 1 },
+            totalPoints: { increment: 1000 } // Add XP for course completion
+          }
+        })
 
-    return {
-      id: enrollment.course.id,
-      title: enrollment.course.title,
-      instructor: enrollment.course.tutor.user.name,
-      progress: Math.round(progress),
-      nextLessonTitle: nextLesson?.title || "Course Complete",
-      nextLessonId: nextLesson?.id || null,
-      timeLeft: `${hours}h ${minutes}m`,
-      thumbnail: enrollment.course.thumbnail,
-      difficulty: enrollment.course.level,
-      rating: 4.8, // You might want to calculate this from reviews
-    }
-  })
+        // Create achievement
+        await db.progressMilestone.create({
+          data: {
+            userId,
+            type: "COURSE_COMPLETED",
+            description: `Completed ${enrollment.course.title} course`,
+            achievedAt: new Date()
+          }
+        })
+      }
+
+      // Calculate time left (estimate based on remaining lessons and average duration)
+      const remainingLessons = totalLessons - completedLessons
+      const avgLessonDuration = 30 // minutes
+      const timeLeftMinutes = remainingLessons * avgLessonDuration
+      const hours = Math.floor(timeLeftMinutes / 60)
+      const minutes = timeLeftMinutes % 60
+
+      // Find next lesson
+      const allLessons = enrollment.course.modules.flatMap((m) => m.lessons)
+      const nextLesson = allLessons.find(
+        (lesson) => !enrollment.lessonProgress.some((lp) => lp.lessonId === lesson.id && lp.isCompleted),
+      )
+
+      return {
+        id: enrollment.course.id,
+        title: enrollment.course.title,
+        instructor: enrollment.course.tutor.user.name,
+        progress: Math.round(progress),
+        nextLessonTitle: nextLesson?.title || "Course Complete",
+        nextLessonId: nextLesson?.id || null,
+        timeLeft: `${hours}h ${minutes}m`,
+        thumbnail: enrollment.course.thumbnail,
+        difficulty: enrollment.course.level,
+        rating: 4.8,
+        status: enrollment.status
+      }
+    })
+  )
 
   // Fetch upcoming mentorship sessions
   const upcomingMentorships = await db.mentorshipSession.findMany({
@@ -237,30 +271,139 @@ export async function getStudentDashboardData() {
   const weeklyHours = Math.floor(totalWatchTimeMinutes / 60)
   const weeklyMinutes = totalWatchTimeMinutes % 60
 
-  // Calculate XP earned this week (you might have a different XP calculation)
-  const weeklyXP = weeklyLessons * 50 // Example: 50 XP per lesson
+  // Calculate XP earned this week
+  const weeklyXP = weeklyLessons * 50
 
-  // Calculate XP to next level
-  const numericLevel = getLevelNumber(student.level)
-  const xpToNext = (numericLevel + 1) * 500 // Example formula
+  // Calculate actual completed courses count dynamically
+  const completedEnrollmentsCount = await db.enrollment.count({
+    where: {
+      userId,
+      status: "COMPLETED"
+    }
+  })
+
+  // Calculate courses in progress (active but not completed)
+  const inProgressEnrollmentsCount = await db.enrollment.count({
+    where: {
+      userId,
+      status: "ACTIVE"
+    }
+  })
+
+  // FIX: Get ALL achievements count
+  const totalAchievementsCount = await db.progressMilestone.count({
+    where: { userId }
+  })
+
+  // FIXED: Calculate learning hours based on course progress (in MINUTES)
+  const allEnrollments = await db.enrollment.findMany({
+    where: { userId },
+    include: {
+      course: {
+        select: {
+          duration: true, // This should be in minutes
+          modules: {
+            include: {
+              lessons: {
+                select: { duration: true } // This should be in minutes
+              }
+            }
+          }
+        }
+      },
+      lessonProgress: {
+        where: { isCompleted: true },
+        select: { 
+          lessonId: true,
+          completedAt: true 
+        }
+      }
+    }
+  })
+
+  // Calculate actual learning minutes completed (progress-based)
+  const actualLearningMinutes = allEnrollments.reduce((total, enrollment) => {
+    const courseDuration = enrollment.course.duration || 0
+    
+    // Calculate progress percentage
+    const totalLessons = enrollment.course.modules.reduce(
+      (acc, module) => acc + module.lessons.length, 0
+    )
+    const completedLessons = enrollment.lessonProgress.length
+    const progress = totalLessons > 0 ? completedLessons / totalLessons : 0
+    
+    // Minutes completed = course duration (minutes) × progress percentage
+    return total + (courseDuration * progress)
+  }, 0)
+
+  // Calculate this week's learning minutes
+  const thisWeekMinutes = allEnrollments.reduce((total, enrollment) => {
+    const courseDuration = enrollment.course.duration || 0
+    const totalLessons = enrollment.course.modules.reduce(
+      (acc, module) => acc + module.lessons.length, 0
+    )
+    
+    // Count lessons completed this week
+    const thisWeekLessons = enrollment.lessonProgress.filter(
+      lp => lp.completedAt && new Date(lp.completedAt) >= oneWeekAgo
+    ).length
+    
+    const progress = totalLessons > 0 ? thisWeekLessons / totalLessons : 0
+    return total + (courseDuration * progress)
+  }, 0)
+
+  // Convert to hours for display
+  const actualLearningHours = Math.floor(actualLearningMinutes / 60)
+  const actualLearningRemainingMinutes = Math.round(actualLearningMinutes % 60)
+  
+  const thisWeekHours = Math.floor(thisWeekMinutes / 60)
+  const thisWeekRemainingMinutes = Math.round(thisWeekMinutes % 60)
+
+  // Calculate XP properly (add XP for completed courses/lessons)
+  const baseXP = student.totalPoints
+
+  // Add XP for completed courses
+  const xpFromCourses = completedEnrollmentsCount * 1000
+
+  // Add XP for completed lessons
+  const completedLessonsCount = await db.lessonProgress.count({
+    where: {
+      userId,
+      isCompleted: true
+    }
+  })
+
+  const xpFromLessons = completedLessonsCount * 50
+  const totalXP = baseXP + xpFromCourses + xpFromLessons
+
+  // Calculate XP to next level (Level 1 → 1000 XP needed)
+  const xpToNextLevel = 1000
+
+  // DEBUG: Add this to see what's happening (remove in production)
+  console.log('=== DEBUG DASHBOARD DATA ===')
+  console.log('Course Durations (minutes):')
+  allEnrollments.forEach(enrollment => {
+    const courseDuration = enrollment.course.duration || 0
+    const totalLessons = enrollment.course.modules.reduce((acc, m) => acc + m.lessons.length, 0)
+    const completedLessons = enrollment.lessonProgress.length
+    const progress = totalLessons > 0 ? (completedLessons / totalLessons) * 100 : 0
+    
+  })
+  console.log('Total learning minutes:', actualLearningMinutes)
+  console.log('Total learning hours:', actualLearningHours)
+  console.log('Total achievements:', totalAchievementsCount)
+  console.log('XP Calculation:', { baseXP, xpFromCourses, xpFromLessons, totalXP })
 
   return {
     studentData: {
-      level:
-        student.level === "BEGINNER"
-          ? 1
-          : student.level === "INTERMEDIATE"
-            ? 5
-            : student.level === "ADVANCED"
-              ? 10
-              : 15,
-      xp: student.totalPoints,
-      xpToNext,
+      level: getLevelNumber(student.level),
+      xp: totalXP,
+      xpToNext: xpToNextLevel,
       streak: student.streak,
-      coursesCompleted: student.coursesCompleted,
-      coursesInProgress: student.coursesStarted - student.coursesCompleted,
-      totalHours: Math.floor(student.studyHours / 60),
-      achievements: recentAchievements.length,
+      coursesCompleted: completedEnrollmentsCount,
+      coursesInProgress: inProgressEnrollmentsCount,
+      totalHours: actualLearningHours > 0 ? actualLearningHours : Math.round(actualLearningMinutes / 60 * 10) / 10, // Show decimal for small amounts
+      achievements: totalAchievementsCount,
       rank: student.currentRank,
     },
     currentCourses,
@@ -268,7 +411,7 @@ export async function getStudentDashboardData() {
     recentAchievements: formattedAchievements,
     weeklyStats: {
       lessonsCompleted: weeklyLessons,
-      studyTime: `${weeklyHours}h ${weeklyMinutes}m`,
+      studyTime: thisWeekHours > 0 ? `${thisWeekHours}h ${thisWeekRemainingMinutes}m` : `${thisWeekRemainingMinutes}m`,
       xpEarned: weeklyXP,
       streak: student.streak,
     },

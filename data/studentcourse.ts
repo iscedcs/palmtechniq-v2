@@ -5,6 +5,7 @@ import { auth } from "@/auth"
 import { revalidatePath } from "next/cache"
 
 // 🧠 Get all active enrolled courses for the current user
+// 🧠 Get all active enrolled courses for the current user
 export async function getEnrolledCourses() {
   try {
     const session = await auth()
@@ -40,12 +41,47 @@ export async function getEnrolledCourses() {
         enrollmentsToUpdate.push(enrollment.id)
       }
 
-      const totalDuration = course.duration || 0
-      const remainingDuration = totalDuration * (1 - progress / 100)
-      const timeLeft =
-        remainingDuration > 0
-          ? `${Math.floor(remainingDuration / 60)}h ${Math.round(remainingDuration % 60)}m`
-          : "Completed"
+      // FIXED: Better time left calculation
+      let timeLeft = "Not started"
+      
+      if (progress > 0 && progress < 100) {
+        // Calculate based on remaining lessons and average duration
+        const remainingLessons = totalLessons - completedLessons
+        const avgLessonDuration = 30 // minutes per lesson (you can adjust this)
+        const remainingMinutes = remainingLessons * avgLessonDuration
+        
+        if (remainingMinutes >= 60) {
+          const hours = Math.floor(remainingMinutes / 60)
+          const minutes = Math.round(remainingMinutes % 60)
+          timeLeft = `${hours}h ${minutes}m`
+        } else {
+          timeLeft = `${Math.round(remainingMinutes)}m`
+        }
+      } else if (progress >= 100) {
+        timeLeft = "Completed"
+      } else {
+        // For new courses (0% progress), estimate based on total course
+        const totalDuration = course.duration || 0
+        if (totalDuration > 0) {
+          if (totalDuration >= 60) {
+            const hours = Math.floor(totalDuration / 60)
+            const minutes = Math.round(totalDuration % 60)
+            timeLeft = `${hours}h ${minutes}m`
+          } else {
+            timeLeft = `${Math.round(totalDuration)}m`
+          }
+        } else {
+          // Fallback: estimate based on number of lessons
+          const estimatedMinutes = totalLessons * 30 // 30 minutes per lesson
+          if (estimatedMinutes >= 60) {
+            const hours = Math.floor(estimatedMinutes / 60)
+            const minutes = Math.round(estimatedMinutes % 60)
+            timeLeft = `${hours}h ${minutes}m`
+          } else {
+            timeLeft = `${Math.round(estimatedMinutes)}m`
+          }
+        }
+      }
 
       const lastAccessedDate =
         enrollment.lessonProgress.length > 0 ? enrollment.lessonProgress[0].updatedAt : enrollment.updatedAt
@@ -77,7 +113,7 @@ export async function getEnrolledCourses() {
         totalLessons,
         completedLessons,
         nextLesson: nextLessonTitle,
-        timeLeft,
+        timeLeft, // Now properly calculated
         thumbnail: course.thumbnail,
         difficulty: course.level,
         rating: Number(averageRating.toFixed(1)),
@@ -108,7 +144,6 @@ export async function getEnrolledCourses() {
     return []
   }
 }
-
 // 🧠 Get available (non-enrolled) courses
 export async function getAvailableCourses() {
   try {
