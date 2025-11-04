@@ -8,19 +8,23 @@ import ReviewsTab from "@/components/pages/courses/courseId/review-tab";
 import StickyPurchaseCard from "@/components/pages/courses/courseId/stickyPurchaseCard";
 import { checkUserEnrollment, getCourseById } from "@/data/course";
 import { generateRandomAvatar } from "@/lib/utils";
-
+import CourseNotFoundSkeleton from "@/components/shared/skeleton/course-not-found-skeleton";
 
 export default async function CourseSlugPage(props: {
   params: Promise<{ courseId: string }>;
 }) {
   const { courseId } = await props.params;
   const course = await getCourseById(courseId);
-  
+
   // Call the server action directly
   const isEnrolled = await checkUserEnrollment(courseId);
 
   if (!course) {
-    return <div className="">Course not found</div>;
+    return (
+      <div className="">
+        <CourseNotFoundSkeleton />
+      </div>
+    );
   }
 
   const totalDuration = course.modules?.reduce((sum, module) => {
@@ -112,7 +116,6 @@ export default async function CourseSlugPage(props: {
                   //     user: { name: "Unknown Tutor", image: undefined },
                   //   }
                   // }
-                
                 />
               </TabsContent>
               <TabsContent value="reviews">
@@ -139,7 +142,7 @@ export default async function CourseSlugPage(props: {
               level={course.level}
               language={course.language}
               certificate={course.certificate!}
-              isEnrolled={isEnrolled} 
+              isEnrolled={isEnrolled}
               isInCart={false}
               courseId={course.id}
             />

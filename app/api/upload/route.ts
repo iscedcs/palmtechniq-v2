@@ -4,17 +4,21 @@ import { v4 as uuidv4 } from "uuid";
 
 export async function POST(request: Request) {
   try {
-    const { filename, contentType, type } = await request.json();
+    const { filename, contentType } = await request.json();
 
-    if (!["image", "video"].includes(type)) {
-      return Response.json(
-        {
-          success: false,
-          error: "Invalid file type. Only images and videos are supported.",
-        },
-        { status: 400 }
-      );
-    }
+    const getFolder = (mime: string) => {
+      if (mime.startsWith("image/")) return "images";
+      if (mime.startsWith("video/")) return "videos";
+      if (mime.startsWith("application/pdf")) return "pdfs";
+      if (mime.includes("officedocument") || mime.includes("msword"))
+        return "docs";
+      return "files";
+    };
+
+    const folder = getFolder(contentType);
+    const type = folder === "videos" ? "video" : "file";
+    const maxSize = type === "video" ? 100 * 1024 * 1024 : 20 * 1024 * 1024;
+
     const client = new S3Client({
       region: process.env.AWS_REGION ?? "us-east-1",
       credentials: {
@@ -22,19 +26,11 @@ export async function POST(request: Request) {
         secretAccessKey: process.env.AWS_SECRET_ACCESS_KEY ?? "",
       },
     });
-    const maxSize = type === "image" ? 10 * 1024 * 1024 : 100 * 1024 * 1024; // 10MB for images, 100MB for videos
 
     const { url, fields } = await createPresignedPost(client, {
       Bucket: process.env.AWS_BUCKET_NAME ?? "",
-      Key: `${type}/${uuidv4()}`,
-      Conditions: [
-        ["content-length-range", 0, maxSize],
-        [
-          "starts-with",
-          "$Content-Type",
-          type === "image" ? "image/" : "video/",
-        ],
-      ],
+      Key: `${folder}/${uuidv4()}-${filename}`,
+      Conditions: [["content-length-range", 0, maxSize]],
       Fields: {
         acl: "public-read",
         "Content-Type": contentType,
@@ -45,9 +41,10 @@ export async function POST(request: Request) {
     console.log({ fields, url });
     return Response.json({ success: true, url, fields });
   } catch (error) {
-    return new Response(JSON.stringify({ error: "unknown error occured" }), {
-      status: 500,
-      headers: { "Content-Type": "application/json" },
-    });
+    console.error("Upload Error:", error);
+    return Response.json(
+      { success: false, error: "Unknown upload error occurred" },
+      { status: 500 }
+    );
   }
 }

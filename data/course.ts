@@ -31,10 +31,11 @@ export async function getCourseById(courseId: string) {
         modules: {
           include: {
             lessons: true,
-            quizzes: true,
+            quiz: true,
             resources: true,
           },
         },
+
         reviews: {
           include: {
             user: true,
@@ -74,9 +75,11 @@ export async function getCourseWithModules(courseId: string) {
         },
         modules: {
           include: {
+            quiz: true,
             lessons: {
               orderBy: { sortOrder: "asc" },
               include: {
+                resources: true,
                 progress: session?.user.id
                   ? {
                       where: { userId: session.user.id },
@@ -85,6 +88,7 @@ export async function getCourseWithModules(courseId: string) {
                   : false,
               },
             },
+            resources: true,
           },
           orderBy: { sortOrder: "asc" },
         },
@@ -110,13 +114,13 @@ export async function getCourseWithModules(courseId: string) {
       .filter((l) => l.progress.length > 0 && l.progress[0].isCompleted)
       .pop();
 
-    let resumeLessonId = allLessons[0]?.id; // fallback: first lesson
+    let resumeLessonId = allLessons[0]?.id;
     if (lastCompleted) {
       const idx = allLessons.findIndex((l) => l.id === lastCompleted.id);
       if (idx >= 0 && idx + 1 < allLessons.length) {
         resumeLessonId = allLessons[idx + 1].id;
       } else {
-        resumeLessonId = lastCompleted.id; // all done → stay on last
+        resumeLessonId = lastCompleted.id;
       }
     }
 
@@ -130,24 +134,76 @@ export async function getCourseWithModules(courseId: string) {
         ? Math.round((completedLessons / totalLessons) * 100)
         : 0;
 
+    const modules = await Promise.all(
+      course.modules.map(async (module, idx, arr) => {
+        const allLessonsCompleted = module.lessons.every(
+          (l) => l.progress?.[0]?.isCompleted
+        );
+
+        let quizPassed = true;
+        if (module.quiz) {
+          const attempt = await db.quizAttempt.findFirst({
+            where: {
+              quizId: module.quiz.id,
+              userId: session?.user.id,
+              isCompleted: true,
+              score: {
+                gte: module.quiz.passingScore || 70,
+              },
+            },
+          });
+          quizPassed = !!attempt;
+        }
+
+        const previousModules = arr.slice(0, idx);
+        const previousCompleted = previousModules.every(
+          (m) =>
+            m.lessons.every((l) => l.progress?.[0]?.isCompleted) &&
+            (!m.quiz || (m.quiz && quizPassed))
+        );
+
+        const isLocked = idx > 0 && !previousCompleted;
+
+        const lessonsWithLocking = module.lessons.map((lesson, lidx) => {
+          const previousLesson = module.lessons[lidx - 1];
+          const isLessonLocked =
+            isLocked ||
+            (lidx > 0 && !previousLesson?.progress?.[0]?.isCompleted);
+
+          return {
+            ...lesson,
+            isCompleted: lesson.progress?.[0]?.isCompleted ?? false,
+            isLocked: isLessonLocked,
+          };
+        });
+
+        return {
+          ...module,
+          isLocked,
+          lessons: lessonsWithLocking,
+        };
+      })
+    );
+
     return {
       ...course,
       progress,
       resumeLessonId,
-      modules: course.modules.map((m) => ({
-        ...m,
-        lessons: m.lessons.map((l) => ({
-          ...l,
-          isCompleted: l.progress?.[0]?.isCompleted ?? false,
-        })),
-      })),
+      modules,
+      // modules: course.modules.map((m) => ({
+      //   ...m,
+      //   lessons: m.lessons.map((l) => ({
+      //     ...l,
+      //     isCompleted: l.progress?.[0]?.isCompleted ?? false,
+      //   })),
+      // })),
     };
   } catch (error) {
     console.error("❌ Error fetching course with modules:", error);
     return null;
   }
 }
-// Add this to your existing course-actions.ts file
+
 export async function checkUserEnrollment(courseId: string) {
   try {
     const session = await auth();
@@ -157,8 +213,8 @@ export async function checkUserEnrollment(courseId: string) {
       where: {
         userId: session.user.id,
         courseId: courseId,
-        status: { in: ["ACTIVE", "COMPLETED"] } // Check both statuses
-      }
+        status: { in: ["ACTIVE", "COMPLETED"] },
+      },
     });
 
     return !!enrollment;

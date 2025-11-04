@@ -1,14 +1,24 @@
 "use client";
 
 import { updateCourse } from "@/actions/course";
+import {
+  addLessonToModule,
+  addModuleToCourse,
+  removeLessonFromModule,
+  removeModuleFromCourse,
+} from "@/actions/tutor-actions";
+import { motion } from "framer-motion";
+
 import { CourseBasicForm } from "@/components/component/forms/create-course/course-basic-form";
 import { CourseCurriculumForm } from "@/components/component/forms/create-course/course-curriculum-form";
 import { CoursePricingForm } from "@/components/component/forms/create-course/course-pricing-form";
 import { CourseSettingsForm } from "@/components/component/forms/create-course/course-settings-form";
 import { NairaSign } from "@/components/shared/naira-sign-icon";
+import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
 import { Form } from "@/components/ui/form";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
+import { showUndoToast } from "@/lib/utils/tosst-util";
 import { courseSchema } from "@/schemas";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { BookOpen, FileText, Settings } from "lucide-react";
@@ -16,15 +26,6 @@ import { useState, useTransition } from "react";
 import { useForm } from "react-hook-form";
 import { toast } from "sonner";
 import { z } from "zod";
-import { v4 as uuidv4 } from "uuid";
-import {
-  addLessonToModule,
-  addModuleToCourse,
-  removeLessonFromModule,
-  removeModuleFromCourse,
-} from "@/actions/tutor-actions";
-import { useNotificationsStore } from "@/lib/store/notifications-store";
-import { showUndoToast } from "@/lib/utils/tosst-util";
 
 const categories: { id: string; name: string }[] = [
   { id: "cmfar9u390000fd1gw9f75qga", name: "Web Development" },
@@ -257,33 +258,6 @@ export function CourseEditClient({
     });
   };
 
-  // const removeModule = async (e: React.MouseEvent, moduleId: string) => {
-  //   e.preventDefault();
-  //   const removedModule = modules.find((m: any) => m.id === moduleId);
-  //   if (!removedModule) return;
-
-  //   try {
-  //     const res = await removeModuleFromCourse(course.id, moduleId);
-  //     if (!res?.success) {
-  //       toast.error(res?.error ?? "Failed to remove module");
-  //       return;
-  //     }
-
-  //     setModules(modules.filter((m: any) => m.id !== moduleId));
-  //     showUndoToast({
-  //       message: `Module “${removedModule.title}” removed successfully`,
-  //       undoLabel: "Restore module",
-  //       onUndo: async () => {
-  //         await addModuleToCourse(course.id, removedModule);
-  //         setModules((prev: any) => [...prev, removedModule]);
-  //       },
-  //     });
-  //   } catch (err) {
-  //     console.error(err);
-  //     toast.error("Failed to remove module");
-  //   }
-  // };
-
   const updateModule = (
     moduleId: string,
     updates: Partial<(typeof modules)[0]>
@@ -404,41 +378,6 @@ export function CourseEditClient({
     });
   };
 
-  // const removeLesson = async (
-  //   e: React.MouseEvent,
-  //   moduleId: string,
-  //   lessonId: string
-  // ) => {
-  //   e.preventDefault();
-  //   const mod = modules.find((m: any) => m.id === moduleId);
-  //   const removedLesson = mod?.lessons.find((l: any) => l.id === lessonId);
-  //   if (!removedLesson) return;
-  //   try {
-  //     const res = await removeLessonFromModule(course.id, moduleId, lessonId);
-  //     if (!res?.success) {
-  //       toast.error(res?.error ?? "Failed to remove lesson");
-  //       return;
-  //     }
-  //     showUndoToast({
-  //       message: `Lesson ${removedLesson.title} removed sucessfully`,
-  //       undoLabel: "Restore lesson",
-  //       onUndo: async () => {
-  //         await addLessonToModule(course.id, moduleId, removedLesson);
-  //         setModules((prev: any) =>
-  //           prev.map((m: any) =>
-  //             m.id === moduleId
-  //               ? { ...m, lessons: [...m.lessons, removedLesson] }
-  //               : m
-  //           )
-  //         );
-  //       },
-  //     });
-  //   } catch (err) {
-  //     console.error(err);
-  //     toast.error("Failed to remove lesson");
-  //   }
-  // };
-
   const updateLesson = (
     moduleId: string,
     lessonId: string,
@@ -483,96 +422,132 @@ export function CourseEditClient({
 
   return (
     <div className="min-h-screen bg-background">
-      <section className="pt-32 pb-16 relative overflow-hidden">
+      <section className="pt-24 pb-12 sm:pt-32 sm:pb-16 relative overflow-hidden">
         <div className="absolute inset-0 cyber-grid opacity-20" />
         <div className="container mx-auto px-6 relative z-10">
           <Card className="glass-card border-white/10 hover-glow">
-            <CardContent className="p-8">
+            <CardContent className="p-8 sm:p-8">
               <Form {...form}>
                 <form
                   onSubmit={form.handleSubmit((data) => onSubmit(data, false))}
                   className="space-y-8">
-                  <Tabs defaultValue="details" className="w-full">
+                  <Tabs defaultValue="details" className="w-full scroll-smooth">
                     {/* Tab Navigation */}
-                    <TabsList className="grid w-full text-wrap text-white grid-cols-4 mb-8 bg-transparent">
-                      <TabsTrigger
-                        value="details"
-                        className="data-[state=active]:bg-gradient-to-r data-[state=active]:from-neon-green data-[state=active]:to-emerald-400 data-[state=active]:text-white">
-                        <FileText className="w-4 h-4 mr-2" />
-                        Details
-                      </TabsTrigger>{" "}
-                      <TabsTrigger
-                        value="content"
-                        className="data-[state=active]:bg-gradient-to-r data-[state=active]:from-neon-blue data-[state=active]:to-neon-purple data-[state=active]:text-white">
-                        <BookOpen className="w-4 h-4 mr-2" />
-                        Content
-                      </TabsTrigger>{" "}
-                      <TabsTrigger
-                        value="pricing"
-                        className="data-[state=active]:bg-gradient-to-r data-[state=active]:from-neon-orange data-[state=active]:to-yellow-400 data-[state=active]:text-white">
-                        <NairaSign className="w-4 h-4 mr-2" />
-                        Pricing
-                      </TabsTrigger>{" "}
-                      <TabsTrigger
-                        value="settings"
-                        className="data-[state=active]:bg-gradient-to-r data-[state=active]:from-neon-purple data-[state=active]:to-pink-400 data-[state=active]:text-white">
-                        <Settings className="w-4 h-4 mr-2" />
-                        Settings
-                      </TabsTrigger>{" "}
+                    <TabsList className="flex sm:grid sm:grid-cols-4 gap-2 overflow-x-auto no-scrollbar mb-6 sm:mb-8 bg-transparent text-white">
+                      {[
+                        { value: "details", label: "Details", icon: FileText },
+                        { value: "content", label: "Content", icon: BookOpen },
+                        { value: "pricing", label: "Pricing", icon: NairaSign },
+                        {
+                          value: "settings",
+                          label: "Settings",
+                          icon: Settings,
+                        },
+                      ].map(({ value, label, icon: Icon }) => (
+                        <TabsTrigger
+                          key={value}
+                          value={value}
+                          className="flex items-center flex-shrink-0 whitespace-nowrap px-3 sm:px-4 py-2 text-xs sm:text-sm font-medium rounded-md data-[state=active]:text-white data-[state=active]:shadow-[0_0_8px_#22c55e80] transition-all data-[state=active]:scale-[1.02] data-[state=active]:bg-gradient-to-r data-[state=active]:from-neon-green data-[state=active]:to-emerald-400">
+                          <Icon className="w-4 h-4 mr-2 sm:mr-2" />
+                          {label}
+                        </TabsTrigger>
+                      ))}
                     </TabsList>
 
                     {/* Details Tab */}
                     <TabsContent value="details">
-                      <CourseBasicForm
-                        form={form}
-                        categories={categories}
-                        levels={levels}
-                        uploading={uploading}
-                        setUploading={setUploading}
-                        currentTag={currentTag}
-                        setCurrentTag={setCurrentTag}
-                        addTag={addTag}
-                        removeTag={removeTag}
-                        currentRequirement={currentRequirement}
-                        setCurrentRequirement={setCurrentRequirement}
-                        addRequirement={addRequirement}
-                        removeRequirement={removeRequirement}
-                        currentOutcome={currentOutcome}
-                        setCurrentOutcome={setCurrentOutcome}
-                        addLearningOutcome={addLearningOutcome}
-                        removeLearningOutcome={removeLearningOutcome}
-                      />
+                      <motion.div
+                        key="details"
+                        initial={{ opacity: 0, y: 10 }}
+                        animate={{ opacity: 1, y: 0 }}
+                        transition={{ duration: 0.3 }}>
+                        <CourseBasicForm
+                          form={form}
+                          categories={categories}
+                          levels={levels}
+                          uploading={uploading}
+                          setUploading={setUploading}
+                          currentTag={currentTag}
+                          setCurrentTag={setCurrentTag}
+                          addTag={addTag}
+                          removeTag={removeTag}
+                          currentRequirement={currentRequirement}
+                          setCurrentRequirement={setCurrentRequirement}
+                          addRequirement={addRequirement}
+                          removeRequirement={removeRequirement}
+                          currentOutcome={currentOutcome}
+                          setCurrentOutcome={setCurrentOutcome}
+                          addLearningOutcome={addLearningOutcome}
+                          removeLearningOutcome={removeLearningOutcome}
+                        />
+                      </motion.div>
                     </TabsContent>
 
                     {/* Curriculum Tab */}
                     <TabsContent value="content">
-                      <CourseCurriculumForm
-                        modules={modules}
-                        addModule={addModule}
-                        removeModule={removeModule}
-                        updateModule={updateModule}
-                        addLesson={addLesson}
-                        removeLesson={removeLesson}
-                        updateLesson={updateLesson}
-                        lessonUploading={lessonUploading}
-                        setLessonUploading={setLessonUploading}
-                      />
+                      <motion.div
+                        key="content"
+                        initial={{ opacity: 0, y: 10 }}
+                        animate={{ opacity: 1, y: 0 }}
+                        transition={{ duration: 0.3 }}>
+                        <CourseCurriculumForm
+                          modules={modules}
+                          addModule={addModule}
+                          removeModule={removeModule}
+                          updateModule={updateModule}
+                          addLesson={addLesson}
+                          removeLesson={removeLesson}
+                          updateLesson={updateLesson}
+                          lessonUploading={lessonUploading}
+                          setLessonUploading={setLessonUploading}
+                        />
+                      </motion.div>
                     </TabsContent>
 
                     {/* Pricing Tab */}
                     <TabsContent value="pricing">
-                      <CoursePricingForm form={form} />
+                      <motion.div
+                        key="pricing"
+                        initial={{ opacity: 0, y: 10 }}
+                        animate={{ opacity: 1, y: 0 }}
+                        transition={{ duration: 0.3 }}>
+                        <CoursePricingForm form={form} />
+                      </motion.div>
                     </TabsContent>
 
                     {/* Settings Tab */}
                     <TabsContent value="settings">
-                      <CourseSettingsForm
-                        form={form}
-                        modules={modules}
-                        onSubmit={onSubmit}
-                      />
+                      <motion.div
+                        key="settings"
+                        initial={{ opacity: 0, y: 10 }}
+                        animate={{ opacity: 1, y: 0 }}
+                        transition={{ duration: 0.3 }}>
+                        <CourseSettingsForm
+                          form={form}
+                          modules={modules}
+                          onSubmit={onSubmit}
+                        />
+                      </motion.div>
                     </TabsContent>
                   </Tabs>
+                  <div className="sticky bottom-0 left-0 w-full bg-neon/40 backdrop-blur-md border-t border-white/10 flex flex-col sm:flex-row justify-end gap-3 px-4 sm:px-6 py-3 sm:py-4">
+                    <Button
+                      type="submit"
+                      onClick={() =>
+                        form.handleSubmit((data) => onSubmit(data, false))()
+                      }
+                      className="w-full sm:w-auto bg-gradient-to-r from-gray-600 to-gray-700 hover:from-gray-500 hover:to-gray-600">
+                      Save Draft
+                    </Button>
+                    <Button
+                      type="button"
+                      onClick={form.handleSubmit((data) =>
+                        onSubmit(data, true)
+                      )}
+                      className="w-full sm:w-auto bg-gradient-to-r from-neon-green to-emerald-400">
+                      Publish Course
+                    </Button>
+                  </div>
                 </form>
               </Form>
             </CardContent>
