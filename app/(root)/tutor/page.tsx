@@ -32,6 +32,7 @@ export default async function TutorDashboardPage() {
             <div className="lg:col-span-2 space-y-8">
               <TutorDashboardEarnings
                 monthlyEarnings={dashboardData.stats.monthlyEarnings}
+                earningsHistory={dashboardData.stats.earningsHistory}
               />
               <TutorDashboardCourses courses={dashboardData.courses} />
               <TutorDashboardProjects
@@ -47,7 +48,7 @@ export default async function TutorDashboardPage() {
               <TutorDashboardActivity
                 activities={dashboardData.recentActivity}
               />
-              <TutorDashboardPerformance />
+              {/* <TutorDashboardPerformance /> */}
             </div>
           </div>
         </div>

@@ -51,19 +51,54 @@ export async function getTutorCourses() {
         course.transactions?.reduce((sum, tx) => sum + (tx.amount || 0), 0) ??
         0;
 
+      // --- 🧮 Compute growth (month over month) ---
+      const now = new Date();
+      const lastMonth = new Date();
+      lastMonth.setDate(now.getDate() - 30);
+
+      const recentEnrollments = course.enrollments.filter(
+        (e) => e.enrolledAt >= lastMonth
+      ).length;
+
+      const previousEnrollments = course.enrollments.length - recentEnrollments;
+
+      const growth =
+        previousEnrollments > 0
+          ? Math.round(
+              ((recentEnrollments - previousEnrollments) /
+                previousEnrollments) *
+                100
+            )
+          : recentEnrollments > 0
+          ? 100
+          : 0;
+
+      // --- 🧮 Compute completion rate ---
+      // If your Enrollment model has `progress` or `completedLessons`
+      // Adjust logic accordingly.
+      const completionRate =
+        course.enrollments.length > 0
+          ? Math.round(
+              course.enrollments.reduce(
+                (sum, e) => sum + (e.progress || 0),
+                0
+              ) / course.enrollments.length
+            )
+          : 0;
+
       return {
         id: course.id,
         title: course.title,
         thumbnail: course.thumbnail ?? null,
         status: course.status.toLowerCase() as "draft" | "published",
-        isPopular: studentsCount > 1000, // simple heuristic
+        isPopular: studentsCount > 1000,
         lessonsCount,
         duration,
         studentsCount,
         avgRating,
         earnings,
-        growth: 0, // placeholder
-        completionRate: 0, // placeholder
+        growth,
+        completionRate,
         updatedAt: course.updatedAt.toISOString(),
       };
     });

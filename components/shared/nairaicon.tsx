@@ -1,3 +1,3 @@
 export function NairaIcon({ className }: { className?: string }) {
-  return <span className={`text-muted-foreground ${className}`}>₦</span>;
+  return <span className={`text-primary ${className}`}>₦</span>;
 }
