@@ -92,7 +92,11 @@ export default async function CourseSlugPage(props: {
                 />
               </TabsContent>
               <TabsContent value="curriculum">
-                <CurriculumTab modules={course.modules} />
+                <CurriculumTab
+                  modules={course.modules}
+                  isEnrolled={isEnrolled}
+                  courseId={course.id}
+                />
               </TabsContent>
               <TabsContent value="instructor">
                 <InstructorTab
@@ -111,11 +115,6 @@ export default async function CourseSlugPage(props: {
                     bio: course.tutor?.user.bio || undefined,
                     title: course.tutor?.title || undefined,
                   }}
-                  // tutor={
-                  //   course.tutor || {
-                  //     user: { name: "Unknown Tutor", image: undefined },
-                  //   }
-                  // }
                 />
               </TabsContent>
               <TabsContent value="reviews">

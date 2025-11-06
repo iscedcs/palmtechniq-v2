@@ -182,7 +182,7 @@ export async function updateCourse(
       const io = getIO();
       if (io) {
         await notify.role("STUDENT", {
-          type: "success",
+          type: "info",
           title: "Course Updated",
           message: `A Course you purchased "${course.title}" has just been updated!`,
           actionUrl: `/courses/${courseId}`,

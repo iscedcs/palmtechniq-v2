@@ -2,16 +2,53 @@ import { auth } from "@/auth";
 import { db } from "@/lib/db";
 
 export async function getPublicCourses() {
-  return db.course.findMany({
+  const courses = await db.course.findMany({
     where: { status: "PUBLISHED" },
     include: {
       category: true,
       tags: true,
+      reviews: { include: { user: true } },
+      _count: { select: { enrollments: true } },
       tutor: {
         include: { user: true },
       },
     },
     orderBy: { createdAt: "desc" },
+  });
+
+  return courses.map((course) => {
+    const discount =
+      course.basePrice && course.currentPrice
+        ? Math.round(
+            ((course.basePrice - course.currentPrice) / course.basePrice) * 100
+          )
+        : 0;
+
+    return {
+      id: course.id,
+      title: course.title,
+      description: course.description,
+      thumbnail: course.thumbnail,
+      level: course.level,
+      tutor: course.tutor,
+      tags: course.tags.map((t) => ({ id: t.id, name: t.name })),
+      averageRating: course.reviews?.length
+        ? course.reviews.reduce((a, r) => a + (r.rating ?? 0), 0) /
+          course.reviews.length
+        : 0,
+      totalStudents: course._count.enrollments,
+      enrollments: course._count.enrollments,
+      price: course.price ?? 0,
+      currentPrice: course.currentPrice ?? 0,
+      basePrice: course.basePrice ?? 0,
+      previewVideo: course.previewVideo ?? "",
+      groupBuyingEnabled: course.groupBuyingEnabled,
+      demandLevel: course.demandLevel ?? "medium",
+      discount,
+      duration: course.duration ?? 0,
+      flashSaleEnd: course.flashSaleEnd,
+      isFlashSale: course.isFlashSale,
+    } satisfies CourseItem;
   });
 }
 

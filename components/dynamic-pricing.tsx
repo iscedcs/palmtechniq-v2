@@ -14,19 +14,22 @@ import { Badge } from "@/components/ui/badge";
 import { Card, CardContent } from "@/components/ui/card";
 import { formatTime } from "@/lib/utils";
 
-// Dynamic Price Display
+type DemandLevel = "low" | "medium" | "high" | "surge" | string;
+
+interface DynamicPriceProps {
+  basePrice?: number | null;
+  currentPrice?: number | null;
+  demandLevel?: DemandLevel | null;
+  priceChangeIn?: number | null;
+}
+
 export function DynamicPriceDisplay({
   basePrice,
   currentPrice,
   demandLevel,
   priceChangeIn,
-}: {
-  basePrice: number;
-  currentPrice: number;
-  demandLevel: "low" | "medium" | "high" | "surge";
-  priceChangeIn: number; // minutes
-}) {
-  const [timeLeft, setTimeLeft] = useState(priceChangeIn * 60); // convert to seconds
+}: DynamicPriceProps) {
+  const [timeLeft, setTimeLeft] = useState((priceChangeIn ?? 0) * 60);
 
   useEffect(() => {
     const timer = setInterval(() => {
@@ -36,7 +39,9 @@ export function DynamicPriceDisplay({
   }, [priceChangeIn]);
 
   const getDemandInfo = () => {
-    switch (demandLevel) {
+    const normalized = demandLevel?.toLowerCase();
+
+    switch (normalized) {
       case "low":
         return {
           color: "text-green-400",
@@ -65,30 +70,40 @@ export function DynamicPriceDisplay({
           text: "Surge Pricing",
           bgColor: "bg-red-500/20",
         };
+      default:
+        return {
+          color: "text-gray-400",
+          icon: TrendingUp,
+          text: "Normal Demand",
+          bgColor: "bg-gray-500/20",
+        };
     }
   };
 
   const demandInfo = getDemandInfo();
   const discount =
-    basePrice > currentPrice
+    basePrice && currentPrice && basePrice > currentPrice
       ? Math.round(((basePrice - currentPrice) / basePrice) * 100)
       : 0;
+
+  const formattedPrice =
+    currentPrice && currentPrice > 0 ? currentPrice : basePrice || 0;
 
   return (
     <div className="space-y-4">
       {/* Current Price */}
       <div className="flex items-center space-x-3">
         <motion.span
-          key={currentPrice}
+          key={formattedPrice}
           initial={{ scale: 1.2, color: "#00D4FF" }}
           animate={{ scale: 1, color: "#FFFFFF" }}
           className="text-3xl font-bold text-gradient">
-          ₦{currentPrice.toLocaleString()}
+          ₦{formattedPrice?.toLocaleString()}
         </motion.span>
         {discount > 0 && (
           <div className="flex items-center space-x-2">
             <span className="text-gray-400 line-through">
-              ₦{basePrice.toLocaleString()}
+              ₦{basePrice?.toLocaleString()}
             </span>
             <Badge className="bg-green-500/20 text-green-400 border-green-500/30">
               {discount}% OFF
@@ -99,10 +114,10 @@ export function DynamicPriceDisplay({
 
       {/* Demand Indicator */}
       <div
-        className={`flex items-center space-x-2 p-3 rounded-lg ${demandInfo.bgColor} border border-white/10`}>
-        <demandInfo.icon className={`w-5 h-5 ${demandInfo.color}`} />
-        <span className={`font-semibold ${demandInfo.color}`}>
-          {demandInfo.text}
+        className={`flex items-center space-x-2 p-3 rounded-lg ${demandInfo?.bgColor} border border-white/10`}>
+        <demandInfo.icon className={`w-5 h-5 ${demandInfo?.color}`} />
+        <span className={`font-semibold ${demandInfo?.color}`}>
+          {demandInfo?.text}
         </span>
         {demandLevel === "surge" && (
           <Badge className="bg-red-500/20 text-red-400 border-red-500/30 animate-pulse">
@@ -143,7 +158,6 @@ export function DynamicPriceDisplay({
   );
 }
 
-// Demand Surge Notification
 export function DemandSurgeNotification() {
   const [isVisible, setIsVisible] = useState(false);
 

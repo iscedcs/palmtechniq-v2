@@ -101,7 +101,7 @@ export const roleMenuItems = {
     { icon: Trophy, label: "Progress", href: "/student/progress" },
     { icon: Calendar, label: "Mentorship", href: "/student/mentorship" },
     { icon: MessageSquare, label: "Projects", href: "/student/projects" },
-    { icon: Settings, label: "Settings", href: "/student/settings" },
+    // { icon: Settings, label: "Settings", href: "/student/settings" },
   ],
   TUTOR: [
     { icon: User, label: "Profile", href: "/tutor/profile" },
