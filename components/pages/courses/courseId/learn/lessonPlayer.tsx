@@ -20,12 +20,14 @@ export default function VideoPlayer({
   autoPlay = false,
   markLessonComplete,
   goToNextLesson,
+  onDurationChange,
 }: {
   src: string;
   poster?: string;
   autoPlay?: boolean;
   markLessonComplete: () => void;
   goToNextLesson: () => void;
+  onDurationChange?: (duration: number) => void;
 }) {
   const videoRef = useRef<HTMLVideoElement>(null);
 
@@ -35,6 +37,7 @@ export default function VideoPlayer({
   const [isMuted, setIsMuted] = useState(false);
   const [volume, setVolume] = useState(1);
   const [isBuffering, setIsBuffering] = useState(true);
+
   const [playbackSpeed, setPlaybackSpeed] = useState(1);
 
   // Handle time updates
@@ -47,7 +50,11 @@ export default function VideoPlayer({
   // Handle metadata loaded (duration available)
   const handleLoadedMetadata = () => {
     if (videoRef.current) {
-      setDuration(videoRef.current.duration);
+      const loadDuration = videoRef.current.duration;
+      setDuration(loadDuration);
+      if (onDurationChange) {
+        onDurationChange(Math.floor(loadDuration));
+      }
     }
   };
 

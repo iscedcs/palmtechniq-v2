@@ -1,5 +1,6 @@
 import { auth } from "@/auth";
 import { db } from "@/lib/db";
+import { resetQuizAttemptsForModule } from "@/lib/quiz-utils";
 import { NextResponse } from "next/server";
 
 export async function POST(
@@ -10,8 +11,11 @@ export async function POST(
   if (!session?.user?.id) {
     return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
   }
+  const userId = session?.user.id;
 
   const { lessonId } = await params;
+  const { duration } = await req.json();
+  const now = new Date();
 
   try {
     // 1. Find the enrollment for this user & lesson’s course
@@ -28,6 +32,17 @@ export async function POST(
           },
         },
       },
+      include: {
+        course: {
+          include: {
+            modules: {
+              include: {
+                lessons: true,
+              },
+            },
+          },
+        },
+      },
     });
 
     if (!enrollment) {
@@ -37,24 +52,77 @@ export async function POST(
       );
     }
 
+    const lesson = await db.lesson.findUnique({
+      where: { id: lessonId },
+      select: { id: true, moduleId: true },
+    });
+
+    if (!lesson) {
+      return NextResponse.json({ error: "Lesson not found" }, { status: 404 });
+    }
+
     // 2. Upsert lesson progress correctly
     await db.lessonProgress.upsert({
       where: {
         userId_lessonId: {
-          userId: session.user.id,
+          userId,
           lessonId,
         },
       },
-      update: { isCompleted: true },
+      update: {
+        isCompleted: true,
+        watchTime: duration,
+        completedAt: now,
+      },
       create: {
-        userId: session.user.id,
-        enrollmentId: enrollment.id, // ✅ correct foreign key
+        userId,
+        enrollmentId: enrollment.id,
         lessonId,
+        watchTime: duration,
+        isCompleted: true,
+        completedAt: now,
+      },
+    });
+
+    const resetResult = await resetQuizAttemptsForModule(
+      userId,
+      lesson.moduleId
+    );
+    const allLessonIds = enrollment.course.modules.flatMap((m) =>
+      m.lessons.map((l) => l.id)
+    );
+
+    const completedCount = await db.lessonProgress.count({
+      where: {
+        userId: session.user.id,
+        lessonId: { in: allLessonIds },
         isCompleted: true,
       },
     });
 
-    return NextResponse.json({ success: true });
+    const totalLessons = allLessonIds.length;
+
+    const newProgress =
+      totalLessons > 0 ? Math.round((completedCount / totalLessons) * 100) : 0;
+
+    await db.enrollment.update({
+      where: { id: enrollment.id },
+      data: {
+        progress: newProgress,
+        status: newProgress === 100 ? "COMPLETED" : "ACTIVE",
+        completedAt: newProgress === 100 ? now : null,
+      },
+    });
+
+    return NextResponse.json({
+      success: true,
+      progress: newProgress,
+      message: resetResult?.reset
+        ? "Lesson completed. Quiz attempts have been reset!"
+        : "Lesson completed.",
+      resetQuiz: resetResult?.reset,
+      quizId: resetResult?.quizId,
+    });
   } catch (error) {
     console.error("Lesson completion error:", error);
     return NextResponse.json(

@@ -228,7 +228,7 @@ model CourseModule {
   content     String?
   course      Course     @relation(fields: [courseId], references: [id], onDelete: Cascade)
   lessons     Lesson[]
-  quizzes     Quiz[]
+  quiz        Quiz?
   resources   Resource[]
 
   @@map("course_modules")
@@ -242,6 +242,7 @@ model Lesson {
   videoUrl    String?
   duration    Int
   sortOrder   Int
+  isLocked    Boolean          @default(false)
   isPreview   Boolean          @default(false)
   lessonType  LessonType       @default(VIDEO)
   moduleId    String
@@ -252,6 +253,23 @@ model Lesson {
   resources   Resource[]
 
   @@map("lessons")
+}
+
+model LessonProgress {
+  id           String     @id @default(cuid())
+  isCompleted  Boolean    @default(false)
+  watchTime    Int        @default(0)
+  completedAt  DateTime?
+  userId       String
+  lessonId     String
+  enrollmentId String
+  createdAt    DateTime   @default(now())
+  updatedAt    DateTime   @updatedAt
+  enrollment   Enrollment @relation(fields: [enrollmentId], references: [id], onDelete: Cascade)
+  lesson       Lesson     @relation(fields: [lessonId], references: [id], onDelete: Cascade)
+
+  @@unique([userId, lessonId])
+  @@map("lesson_progress")
 }
 
 model Enrollment {
@@ -273,23 +291,6 @@ model Enrollment {
   @@map("enrollments")
 }
 
-model LessonProgress {
-  id           String     @id @default(cuid())
-  isCompleted  Boolean    @default(false)
-  watchTime    Int        @default(0)
-  completedAt  DateTime?
-  userId       String
-  lessonId     String
-  enrollmentId String
-  createdAt    DateTime   @default(now())
-  updatedAt    DateTime   @updatedAt
-  enrollment   Enrollment @relation(fields: [enrollmentId], references: [id], onDelete: Cascade)
-  lesson       Lesson     @relation(fields: [lessonId], references: [id], onDelete: Cascade)
-
-  @@unique([userId, lessonId])
-  @@map("lesson_progress")
-}
-
 model Quiz {
   id           String        @id @default(cuid())
   title        String
@@ -298,7 +299,7 @@ model Quiz {
   passingScore Int           @default(70)
   maxAttempts  Int           @default(3)
   isActive     Boolean       @default(true)
-  moduleId     String
+  moduleId     String        @unique
   createdAt    DateTime      @default(now())
   updatedAt    DateTime      @updatedAt
   questions    Question[]
@@ -306,7 +307,7 @@ model Quiz {
   attempts     QuizAttempt[]
   module       CourseModule  @relation(fields: [moduleId], references: [id], onDelete: Cascade)
 
-  @@map("quizzes")
+  @@map("quiz")
 }
 
 model Question {
@@ -336,12 +337,30 @@ model QuizAttempt {
   userId       String
   quizId       String
   enrollmentId String
+  attempts     Int        @default(1)
+  passed       Boolean?   @default(false)
   createdAt    DateTime   @default(now())
   updatedAt    DateTime   @updatedAt
   enrollment   Enrollment @relation(fields: [enrollmentId], references: [id], onDelete: Cascade)
   quiz         Quiz       @relation(fields: [quizId], references: [id], onDelete: Cascade)
 
   @@map("quiz_attempts")
+}
+
+model QuizAnswer {
+  id             String   @id @default(cuid())
+  userId         String
+  quizId         String
+  questionId     String
+  selectedAnswer String
+  isCorrect      Boolean
+  aiExplanation  String?
+  submittedAt    DateTime @default(now())
+  question       Question @relation(fields: [questionId], references: [id], onDelete: Cascade)
+  quiz           Quiz     @relation(fields: [quizId], references: [id], onDelete: Cascade)
+  user           User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@map("quiz_answers")
 }
 
 model Project {
@@ -383,22 +402,6 @@ model Submission {
 
   @@unique([userId, projectId])
   @@map("submissions")
-}
-
-model QuizAnswer {
-  id             String   @id @default(cuid())
-  userId         String
-  quizId         String
-  questionId     String
-  selectedAnswer String
-  isCorrect      Boolean
-  aiExplanation  String?
-  submittedAt    DateTime @default(now())
-  question       Question @relation(fields: [questionId], references: [id], onDelete: Cascade)
-  quiz           Quiz     @relation(fields: [quizId], references: [id], onDelete: Cascade)
-  user           User     @relation(fields: [userId], references: [id], onDelete: Cascade)
-
-  @@map("quiz_answers")
 }
 
 model LearningPath {

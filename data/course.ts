@@ -2,16 +2,53 @@ import { auth } from "@/auth";
 import { db } from "@/lib/db";
 
 export async function getPublicCourses() {
-  return db.course.findMany({
+  const courses = await db.course.findMany({
     where: { status: "PUBLISHED" },
     include: {
       category: true,
       tags: true,
+      reviews: { include: { user: true } },
+      _count: { select: { enrollments: true } },
       tutor: {
         include: { user: true },
       },
     },
     orderBy: { createdAt: "desc" },
+  });
+
+  return courses.map((course) => {
+    const discount =
+      course.basePrice && course.currentPrice
+        ? Math.round(
+            ((course.basePrice - course.currentPrice) / course.basePrice) * 100
+          )
+        : 0;
+
+    return {
+      id: course.id,
+      title: course.title,
+      description: course.description,
+      thumbnail: course.thumbnail,
+      level: course.level,
+      tutor: course.tutor,
+      tags: course.tags.map((t) => ({ id: t.id, name: t.name })),
+      averageRating: course.reviews?.length
+        ? course.reviews.reduce((a, r) => a + (r.rating ?? 0), 0) /
+          course.reviews.length
+        : 0,
+      totalStudents: course._count.enrollments,
+      enrollments: course._count.enrollments,
+      price: course.price ?? 0,
+      currentPrice: course.currentPrice ?? 0,
+      basePrice: course.basePrice ?? 0,
+      previewVideo: course.previewVideo ?? "",
+      groupBuyingEnabled: course.groupBuyingEnabled,
+      demandLevel: course.demandLevel ?? "medium",
+      discount,
+      duration: course.duration ?? 0,
+      flashSaleEnd: course.flashSaleEnd,
+      isFlashSale: course.isFlashSale,
+    } satisfies CourseItem;
   });
 }
 
@@ -31,10 +68,11 @@ export async function getCourseById(courseId: string) {
         modules: {
           include: {
             lessons: true,
-            quizzes: true,
+            quiz: true,
             resources: true,
           },
         },
+
         reviews: {
           include: {
             user: true,
@@ -74,9 +112,11 @@ export async function getCourseWithModules(courseId: string) {
         },
         modules: {
           include: {
+            quiz: true,
             lessons: {
               orderBy: { sortOrder: "asc" },
               include: {
+                resources: true,
                 progress: session?.user.id
                   ? {
                       where: { userId: session.user.id },
@@ -85,6 +125,7 @@ export async function getCourseWithModules(courseId: string) {
                   : false,
               },
             },
+            resources: true,
           },
           orderBy: { sortOrder: "asc" },
         },
@@ -110,13 +151,13 @@ export async function getCourseWithModules(courseId: string) {
       .filter((l) => l.progress.length > 0 && l.progress[0].isCompleted)
       .pop();
 
-    let resumeLessonId = allLessons[0]?.id; // fallback: first lesson
+    let resumeLessonId = allLessons[0]?.id;
     if (lastCompleted) {
       const idx = allLessons.findIndex((l) => l.id === lastCompleted.id);
       if (idx >= 0 && idx + 1 < allLessons.length) {
         resumeLessonId = allLessons[idx + 1].id;
       } else {
-        resumeLessonId = lastCompleted.id; // all done → stay on last
+        resumeLessonId = lastCompleted.id;
       }
     }
 
@@ -130,20 +171,92 @@ export async function getCourseWithModules(courseId: string) {
         ? Math.round((completedLessons / totalLessons) * 100)
         : 0;
 
+    const modules = await Promise.all(
+      course.modules.map(async (module, idx, arr) => {
+        const allLessonsCompleted = module.lessons.every(
+          (l) => l.progress?.[0]?.isCompleted
+        );
+
+        let quizPassed = true;
+        if (module.quiz) {
+          const attempt = await db.quizAttempt.findFirst({
+            where: {
+              quizId: module.quiz.id,
+              userId: session?.user.id,
+              isCompleted: true,
+              score: {
+                gte: module.quiz.passingScore || 70,
+              },
+            },
+          });
+          quizPassed = !!attempt;
+        }
+
+        const previousModules = arr.slice(0, idx);
+        const previousCompleted = previousModules.every(
+          (m) =>
+            m.lessons.every((l) => l.progress?.[0]?.isCompleted) &&
+            (!m.quiz || (m.quiz && quizPassed))
+        );
+
+        const isLocked = idx > 0 && !previousCompleted;
+
+        const lessonsWithLocking = module.lessons.map((lesson, lidx) => {
+          const previousLesson = module.lessons[lidx - 1];
+          const isLessonLocked =
+            isLocked ||
+            (lidx > 0 && !previousLesson?.progress?.[0]?.isCompleted);
+
+          return {
+            ...lesson,
+            isCompleted: lesson.progress?.[0]?.isCompleted ?? false,
+            isLocked: isLessonLocked,
+          };
+        });
+
+        return {
+          ...module,
+          isLocked,
+          lessons: lessonsWithLocking,
+        };
+      })
+    );
+
     return {
       ...course,
       progress,
       resumeLessonId,
-      modules: course.modules.map((m) => ({
-        ...m,
-        lessons: m.lessons.map((l) => ({
-          ...l,
-          isCompleted: l.progress?.[0]?.isCompleted ?? false,
-        })),
-      })),
+      modules,
+      // modules: course.modules.map((m) => ({
+      //   ...m,
+      //   lessons: m.lessons.map((l) => ({
+      //     ...l,
+      //     isCompleted: l.progress?.[0]?.isCompleted ?? false,
+      //   })),
+      // })),
     };
   } catch (error) {
     console.error("❌ Error fetching course with modules:", error);
     return null;
+  }
+}
+
+export async function checkUserEnrollment(courseId: string) {
+  try {
+    const session = await auth();
+    if (!session?.user?.id) return false;
+
+    const enrollment = await db.enrollment.findFirst({
+      where: {
+        userId: session.user.id,
+        courseId: courseId,
+        status: { in: ["ACTIVE", "COMPLETED"] },
+      },
+    });
+
+    return !!enrollment;
+  } catch (error) {
+    console.error("Error checking user enrollment:", error);
+    return false;
   }
 }

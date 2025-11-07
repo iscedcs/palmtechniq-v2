@@ -9,14 +9,17 @@ import { CheckCircle, Circle } from "lucide-react";
 interface Lesson {
   id: string;
   title: string;
+  description: string;
   duration: number; // in seconds
   isCompleted: boolean;
+  isLocked?: boolean;
 }
 
 interface Module {
   id: string;
   title: string;
   lessons: Lesson[];
+  isLocked?: boolean;
 }
 
 export default function LessonSidebar({
@@ -79,11 +82,27 @@ export default function LessonSidebar({
                             key={lesson.id}
                             variant="ghost"
                             className={`w-full text-left justify-start p-2 rounded-lg transition-colors ${
-                              isActive
-                                ? "bg-neon-blue/20 border border-neon-blue/30"
+                              lesson.isLocked && !lesson.isCompleted
+                                ? "cursor-not-allowed opacity-40"
+                                : isActive
+                                ? "bg-neon-blue/20 border border-neon-blue/30 shadow-[0_0_15px_rgba(0,200,255,0.4)] animate-pulse-smooth"
                                 : "hover:bg-white/5"
                             }`}
-                            onClick={() => onChangeLesson(lesson)}>
+                            onClick={(e) => {
+                              if (!lesson.isLocked || lesson.isCompleted) {
+                                const button = e.currentTarget;
+                                button.classList.add("lesson-click-flash");
+                                setTimeout(
+                                  () =>
+                                    button.classList.remove(
+                                      "lesson-click-flash"
+                                    ),
+                                  800
+                                );
+                                onChangeLesson(lesson);
+                              }
+                            }}
+                            disabled={lesson.isLocked && !lesson.isCompleted}>
                             <div className="flex flex-col items-start w-full">
                               <div className="flex items-center gap-2 w-full">
                                 {lesson.isCompleted ? (
@@ -93,9 +112,13 @@ export default function LessonSidebar({
                                 )}
                                 <span
                                   className={`text-sm ${
-                                    isActive ? "text-white" : "text-gray-300"
+                                    isActive
+                                      ? "text-white"
+                                      : lesson.isLocked && !lesson.isCompleted
+                                      ? "text-gray-500"
+                                      : "text-gray-300"
                                   }`}>
-                                  {lesson.title}
+                                  {lesson.title}: {lesson.description}
                                 </span>
                               </div>
                               <p className="text-xs text-gray-400 ml-6 mt-1">

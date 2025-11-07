@@ -4,13 +4,13 @@ import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
-import { Download, FileText, ThumbsUp } from "lucide-react";
+import { Download, FileText, LinkIcon, Video, ThumbsUp } from "lucide-react";
 import { useState } from "react";
 
 interface Resource {
   id: string;
   title: string;
-  type: "PDF" | "VIDEO" | "LINK" | "CODE";
+  type: "PDF" | "VIDEO" | "LINK" | "CODE" | "DOCUMENT";
   url: string;
   size?: string;
 }
@@ -25,15 +25,31 @@ interface Review {
 
 export default function LessonTabs({
   description,
-  resources,
+  lessonResources = [],
+  moduleResources = [],
   reviews = [],
 }: {
   description: string;
-  resources: Resource[];
-  initialNotes?: string;
+  lessonResources?: Resource[];
+  moduleResources?: Resource[];
   reviews?: Review[];
 }) {
   const [activeTab, setActiveTab] = useState("overview");
+
+  const renderResourceIcon = (type: string) => {
+    switch (type) {
+      case "PDF":
+      case "DOCUMENT":
+        return <FileText className="w-4 h-4 text-red-400" />;
+      case "VIDEO":
+        return <Video className="w-4 h-4 text-blue-400" />;
+      case "LINK":
+      case "CODE":
+        return <LinkIcon className="w-4 h-4 text-green-400" />;
+      default:
+        return <Download className="w-4 h-4 text-gray-400" />;
+    }
+  };
 
   return (
     <Card className="glass-card border-white/10 mt-6">
@@ -50,62 +66,79 @@ export default function LessonTabs({
             <h3 className="text-lg font-semibold text-white mb-4">
               Lesson Overview
             </h3>
-            <p className="text-gray-300 leading-relaxed">{description}</p>
+            <p className="text-gray-300 leading-relaxed whitespace-pre-line">
+              {description || "No description provided."}
+            </p>
           </TabsContent>
 
           {/* Resources */}
           <TabsContent value="resources" className="p-6">
-            <h3 className="text-lg font-semibold text-white mb-4">Resources</h3>
-            <div className="space-y-3">
-              {resources.length > 0 ? (
-                resources.map((resource) => (
-                  <div
-                    key={resource.id}
-                    className="flex items-center justify-between p-3 bg-white/5 rounded-lg border border-white/10">
-                    <div className="flex items-center gap-3">
-                      <div className="w-10 h-10 bg-neon-blue/20 rounded-lg flex items-center justify-center">
-                        <FileText className="w-5 h-5 text-neon-blue" />
-                      </div>
-                      <div>
-                        <h4 className="text-white font-medium">
-                          {resource.title}
-                        </h4>
-                        <p className="text-gray-400 text-sm">
-                          {resource.type}{" "}
-                          {resource.size && `• ${resource.size}`}
-                        </p>
-                      </div>
-                    </div>
-                    <Button
-                      variant="outline"
-                      size="sm"
-                      className="border-white/20 text-white hover:bg-white/10 bg-transparent">
-                      <Download className="w-4 h-4 mr-2" />
-                      Download
-                    </Button>
-                  </div>
-                ))
-              ) : (
-                <p className="text-gray-400">No resources available.</p>
-              )}
-            </div>
-          </TabsContent>
+            <h3 className="text-lg font-semibold text-white mb-4">
+              Learning Resources
+            </h3>
 
-          {/* Notes */}
-          {/* <TabsContent value="notes" className="p-6">
-            <h3 className="text-lg font-semibold text-white mb-4">My Notes</h3>
-            <Textarea
-              value={notes}
-              onChange={(e) => setNotes(e.target.value)}
-              placeholder="Take notes about this lesson..."
-              className="min-h-[200px] bg-white/5 border-white/20 text-white placeholder:text-gray-400"
-            />
-            <Button
-              onClick={() => onSaveNotes(notes)}
-              className="mt-4 bg-neon-blue text-white">
-              Save Notes
-            </Button>
-          </TabsContent> */}
+            {lessonResources.length === 0 && moduleResources.length === 0 ? (
+              <p className="text-gray-400 italic">
+                No resources available for this lesson yet.
+              </p>
+            ) : (
+              <>
+                {/* Lesson resources */}
+                {lessonResources.length > 0 && (
+                  <div className="mb-6">
+                    <h4 className="text-md font-medium text-neon-blue mb-2">
+                      Lesson Resources
+                    </h4>
+                    <div className="space-y-2">
+                      {lessonResources.map((res) => (
+                        <a
+                          key={res.id}
+                          href={res.url}
+                          target="_blank"
+                          rel="noopener noreferrer"
+                          className="flex items-center gap-2 bg-white/10 hover:bg-white/20 p-3 rounded-md text-sm text-gray-200 transition">
+                          {renderResourceIcon(res.type)}
+                          <span>
+                            {res.title}{" "}
+                            <span className="text-xs text-gray-400">
+                              ({res.type})
+                            </span>
+                          </span>
+                        </a>
+                      ))}
+                    </div>
+                  </div>
+                )}
+
+                {/* Module resources */}
+                {moduleResources.length > 0 && (
+                  <div>
+                    <h4 className="text-md font-medium text-neon-purple mb-2">
+                      Module Resources
+                    </h4>
+                    <div className="space-y-2">
+                      {moduleResources.map((res) => (
+                        <a
+                          key={res.id}
+                          href={res.url}
+                          target="_blank"
+                          rel="noopener noreferrer"
+                          className="flex items-center gap-2 bg-white/10 hover:bg-white/20 p-3 rounded-md text-sm text-gray-200 transition">
+                          {renderResourceIcon(res.type)}
+                          <span>
+                            {res.title}{" "}
+                            <span className="text-xs text-gray-400">
+                              ({res.type})
+                            </span>
+                          </span>
+                        </a>
+                      ))}
+                    </div>
+                  </div>
+                )}
+              </>
+            )}
+          </TabsContent>
 
           {/* Discussion */}
           <TabsContent value="discussion" className="p-6">
@@ -157,7 +190,9 @@ export default function LessonTabs({
                   </div>
                 ))
               ) : (
-                <p className="text-gray-400">No discussion yet. Be first!</p>
+                <p className="text-gray-400">
+                  No discussion yet. Be the first!
+                </p>
               )}
             </div>
           </TabsContent>

@@ -79,7 +79,7 @@ export const roleNavItems = {
     { icon: Users, label: "Students", href: "/tutor/students" },
     { icon: Calendar, label: "Schedule", href: "/tutor/mentorship" },
     { icon: MessageSquare, label: "Projects", href: "/tutor/projects" },
-    { icon: MessageSquare, label: "Messages", href: "/tutor/messages" },
+    { icon: MessageSquare, label: "Messages", href: "/tutor/reviews" },
   ],
   ADMIN: [
     { icon: Home, label: "Dashboard", href: "/admin" },
@@ -101,7 +101,7 @@ export const roleMenuItems = {
     { icon: Trophy, label: "Progress", href: "/student/progress" },
     { icon: Calendar, label: "Mentorship", href: "/student/mentorship" },
     { icon: MessageSquare, label: "Projects", href: "/student/projects" },
-    { icon: Settings, label: "Settings", href: "/student/settings" },
+    // { icon: Settings, label: "Settings", href: "/student/settings" },
   ],
   TUTOR: [
     { icon: User, label: "Profile", href: "/tutor/profile" },

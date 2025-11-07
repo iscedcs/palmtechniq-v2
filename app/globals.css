@@ -89,6 +89,46 @@
   }
 }
 
+@keyframes pulse-smooth {
+
+  0%,
+  100% {
+    box-shadow: 0 0 15px rgba(0, 200, 255, 0.4);
+  }
+
+  50% {
+    box-shadow: 0 0 25px rgba(0, 200, 255, 0.8);
+  }
+}
+
+.animate-pulse-smooth {
+  animation: pulse-smooth 2s ease-in-out infinite;
+}
+
+@keyframes lesson-click-flash {
+  0% {
+    background-color: rgba(34, 197, 94, 0.3);
+    /* green-500 glow */
+  }
+
+  100% {
+    background-color: transparent;
+  }
+}
+
+.lesson-click-flash {
+  animation: lesson-click-flash 0.8s ease-out;
+}
+
+.no-scrollbar::-webkit-scrollbar {
+  display: none;
+}
+
+.no-scrollbar {
+  -ms-overflow-style: none;
+  scrollbar-width: none;
+}
+
     /* brand: {
       teal: "#00343d",
         green: "#27ba55",

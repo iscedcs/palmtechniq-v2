@@ -12,6 +12,7 @@ export async function finalizePaystackByReference(reference: string) {
       courseId: true,
       status: true,
       amount: true,
+      metadata: true,
     },
   });
   if (!tx) return { ok: false, reason: "tx_not_found" };
@@ -43,13 +44,34 @@ export async function finalizePaystackByReference(reference: string) {
       },
     });
 
-    if (tx.courseId) {
-      await px.enrollment.upsert({
+    const metadata = (v.metadata || tx.metadata || {}) as any;
+    const courseIds = Array.isArray(metadata.courseIds)
+      ? metadata.courseIds
+      : tx.courseId
+      ? [tx.courseId]
+      : [];
+
+    if (courseIds.length > 0) {
+      for (const courseId of courseIds) {
+        await px.enrollment.upsert({
+          where: {
+            userId_courseId: { userId: tx.userId, courseId },
+          },
+          create: {
+            userId: tx.userId,
+            courseId,
+            status: "ACTIVE",
+            enrolledAt: new Date(),
+          },
+          update: {},
+        });
+      }
+
+      await px.cartItem.deleteMany({
         where: {
-          userId_courseId: { userId: tx.userId, courseId: tx.courseId },
+          userId: tx.userId,
+          courseId: { in: courseIds },
         },
-        create: { userId: tx.userId, courseId: tx.courseId, status: "ACTIVE" },
-        update: {},
       });
     }
 
@@ -86,6 +108,13 @@ export async function finalizePaystackByReference(reference: string) {
     console.warn("socket post-finalize error", error);
   }
 
+  const course = await db.course.findUnique({
+    where: { id: tx.courseId! },
+    select: {
+      title: true,
+    },
+  });
+
   await notify.user(tx.userId, {
     type: "success",
     title: "Payment Successful",
@@ -93,6 +122,12 @@ export async function finalizePaystackByReference(reference: string) {
     actionUrl: "/student",
     actionLabel: "Go to Dashboard",
     metadata: { courseId: tx.courseId, reference },
+  });
+
+  await notify.role("TUTOR", {
+    type: "payment",
+    title: "Course Purchase",
+    message: `Your course ${course?.title} has been purchased`,
   });
 
   return { ok: true, courseId: tx.courseId };

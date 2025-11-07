@@ -60,16 +60,6 @@ export function Navigation() {
               </span>
             </motion.div>
           </Link>
-          {/* Search Bar */}
-          {/* <div className="hidden md:flex items-center space-x-4 flex-1 max-w-md mx-8">
-            <div className="relative w-full">
-              <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400 w-4 h-4" />
-              <Input
-                placeholder="Search courses, tutors, or topics..."
-                className="pl-10 glass-card border-white/20 focus:border-neon-blue/50 transition-all duration-300"
-              />
-            </div>
-          </div> */}
 
           {/* Navigation Items */}
           {status === "authenticated" && (

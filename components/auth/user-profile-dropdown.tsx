@@ -6,6 +6,7 @@ import { Button } from "@/components/ui/button";
 import { Separator } from "@/components/ui/separator";
 import { Switch } from "@/components/ui/switch";
 import { roleMenuItems, roleStats } from "@/lib/const";
+import { generateRandomAvatar } from "@/lib/utils";
 import type { UserRole } from "@/types/user";
 import { AnimatePresence, motion } from "framer-motion";
 import {
