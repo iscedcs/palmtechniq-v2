@@ -1,7 +1,7 @@
 "use client";
 
 import ResourceUploaderComponent from "@/components/pages/courses/courseId/resources-uploader";
-import { ModuleQuizEditor } from "@/components/pages/tutor/edit/module-quiz-editor";
+import { LessonQuizEditor } from "@/components/pages/tutor/edit/module-quiz-editor";
 import { CourseCompletionTracker } from "@/components/shared/course-completion-tracker";
 import LessonUploadFile from "@/components/shared/lesson-uploader";
 import {
@@ -34,6 +34,14 @@ interface CourseLesson {
   videoUrl?: string;
   sortOrder: number;
   isPreview: boolean;
+  quiz?: {
+    id: string;
+    title: string;
+    description?: string | null;
+    timeLimit?: number | null;
+    passingScore: number;
+    maxAttempts: number;
+  } | null;
 }
 
 interface CourseModule {
@@ -45,14 +53,6 @@ interface CourseModule {
   lessons: CourseLesson[];
   sortOrder: number;
   isPublished: boolean;
-  quiz?: {
-    id: string;
-    title: string;
-    description?: string | null;
-    timeLimit?: number | null;
-    passingScore: number;
-    maxAttempts: number;
-  } | null;
 }
 
 interface CourseCurriculumFormProps {
@@ -92,12 +92,16 @@ export function CourseCurriculumForm({
       (sum, m) => sum + (m.lessons?.length || 0),
       0
     );
-    const totalQuizzes = modules.filter((m) => m.quiz).length;
+    const totalQuizzes = modules.reduce(
+      (sum, module) =>
+        sum + module.lessons.filter((lesson) => lesson.quiz).length,
+      0
+    );
     const totalDuration = modules.reduce(
       (sum, m) =>
         sum +
-        (m.duration || 0) +
-        m.lessons.reduce((ls, l) => ls + (l.duration || 0), 0),
+        (m.duration ||
+          m.lessons.reduce((ls, l) => ls + (l.duration || 0), 0)),
       0
     );
     return {
@@ -153,17 +157,10 @@ export function CourseCurriculumForm({
                         placeholder="Module title"
                         className="bg-white/10 border-white/20 text-sm sm:text-xl text-white"
                       />
-                      <Input
-                        type="number"
-                        value={module.duration}
-                        onChange={(e) =>
-                          updateModule(module.id, {
-                            duration: Number(e.target.value),
-                          })
-                        }
-                        placeholder="Duration (minutes)"
-                        className="bg-white/10 border-white/20 text-sm sm:text-xl text-white"
-                      />
+                      <div className="text-sm text-gray-300 flex items-center gap-2">
+                        <Clock className="w-4 h-4 text-neon-purple" />
+                        {module.duration} min
+                      </div>
                     </div>
 
                     <Textarea
@@ -262,17 +259,10 @@ export function CourseCurriculumForm({
                                   </SelectContent>
                                 </Select>
 
-                                <Input
-                                  type="number"
-                                  value={lesson.duration}
-                                  placeholder="Duration (minutes)"
-                                  onChange={(e) =>
-                                    updateLesson(module.id, lesson.id, {
-                                      duration: Number(e.target.value),
-                                    })
-                                  }
-                                  className="bg-white/10 border-white/20 text-sm sm:text-xl text-white"
-                                />
+                                <div className="text-sm text-gray-300 flex items-center gap-2">
+                                  <Clock className="w-4 h-4 text-neon-purple" />
+                                  {lesson.duration} min
+                                </div>
                               </div>
 
                               {lesson.lessonType === "VIDEO" && (
@@ -291,17 +281,38 @@ export function CourseCurriculumForm({
                                   <LessonUploadFile
                                     uploading={lessonUploading}
                                     setUploading={setLessonUploading}
-                                    onUploadSuccess={(url) =>
+                                    onUploadSuccess={(url) => {
                                       updateLesson(module.id, lesson.id, {
                                         videoUrl: url,
-                                      })
-                                    }
+                                      });
+                                      const video =
+                                        document.createElement("video");
+                                      video.src = url;
+                                      video.onloadedmetadata = () => {
+                                        const minutes = Math.ceil(
+                                          video.duration / 60
+                                        );
+                                        updateLesson(module.id, lesson.id, {
+                                          duration: minutes,
+                                        });
+                                      };
+                                    }}
                                   />
                                   <ResourceUploaderComponent
                                     lessonId={lesson.id}
                                   />
                                 </div>
                               )}
+
+                              <div className="mt-4 pt-4 border-t border-white/10">
+                                <h4 className="text-white font-medium mb-2">
+                                  Lesson Quiz
+                                </h4>
+                                <LessonQuizEditor
+                                  lessonId={lesson.id}
+                                  existingQuiz={lesson.quiz ?? undefined}
+                                />
+                              </div>
 
                               <Button
                                 variant="destructive"
@@ -317,17 +328,6 @@ export function CourseCurriculumForm({
                         </AccordionItem>
                       ))}
                     </Accordion>
-
-                    {/* Quiz Section */}
-                    <div className="mt-5 pt-5 border-t border-white/10">
-                      <h4 className="text-white font-medium mb-2">
-                        Module Quiz
-                      </h4>
-                      <ModuleQuizEditor
-                        moduleId={module.id}
-                        existingQuiz={module.quiz ?? undefined}
-                      />
-                    </div>
                   </div>
                 </AccordionContent>
               </AccordionItem>

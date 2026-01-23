@@ -36,12 +36,13 @@ export function AnalyticsProvider({ children }: AnalyticsProviderProps) {
   // Track page views
   useEffect(() => {
     const url =
-      pathname + (searchParams.toString() ? `?₦{searchParams.toString()}` : "");
+      pathname +
+      (searchParams?.toString() ? `?${searchParams?.toString()}` : "");
 
     trackEvent("page_view", {
       path: pathname,
       url,
-      search: searchParams.toString(),
+      search: searchParams?.toString(),
       referrer: document.referrer,
       timestamp: new Date().toISOString(),
       userId: user?.id,
@@ -311,7 +312,7 @@ export function useUserTracking() {
   useEffect(() => {
     if (user) {
       identify(user.id, {
-        name: user.name,
+        name: user.firstName + " " + user.lastName,
         email: user.email,
         role: user.role,
         avatar: user.avatar,

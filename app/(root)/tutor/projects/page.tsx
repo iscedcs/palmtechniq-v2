@@ -1,33 +1,18 @@
 "use client";
 
-import { useState } from "react";
-import { motion } from "framer-motion";
-import {
-  Award,
-  Plus,
-  Search,
-  Filter,
-  Eye,
-  Edit,
-  Trash2,
-  MoreHorizontal,
-  Clock,
-  Star,
-  CheckCircle,
-  XCircle,
-  AlertCircle,
-  Download,
-  Code,
-  Target,
-  Trophy,
-  TrendingUp,
-  Calendar,
-} from "lucide-react";
-import { Navigation } from "@/components/navigation";
-import { Card, CardContent } from "@/components/ui/card";
-import { Button } from "@/components/ui/button";
+import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { Badge } from "@/components/ui/badge";
+import { Button } from "@/components/ui/button";
+import { Card, CardContent } from "@/components/ui/card";
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuTrigger,
+} from "@/components/ui/dropdown-menu";
 import { Input } from "@/components/ui/input";
+import { Progress } from "@/components/ui/progress";
+import { Skeleton } from "@/components/ui/skeleton";
 import {
   Select,
   SelectContent,
@@ -35,207 +20,216 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
-import {
-  DropdownMenu,
-  DropdownMenuContent,
-  DropdownMenuItem,
-  DropdownMenuTrigger,
-} from "@/components/ui/dropdown-menu";
-import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
-import { Progress } from "@/components/ui/progress";
-import type { UserRole } from "@/types/user";
 import { generateRandomAvatar } from "@/lib/utils";
+import { motion } from "framer-motion";
+import {
+  AlertCircle,
+  Award,
+  Calendar,
+  CheckCircle,
+  Clock,
+  Code,
+  Download,
+  Edit,
+  Eye,
+  Filter,
+  MoreHorizontal,
+  Plus,
+  Search,
+  Star,
+  Target,
+  Trash2,
+  TrendingUp,
+  Trophy,
+  XCircle,
+} from "lucide-react";
+import { useState, useEffect } from "react";
+import {
+  getProjectStats,
+  getPendingSubmissions,
+  getGradedSubmissions,
+  getTutorProjects,
+  duplicateProject,
+  toggleProjectActive,
+} from "@/actions/project";
+import { CreateProjectModal } from "@/components/tutor/projects/create-project-modal";
+import { GradeSubmissionModal } from "@/components/tutor/projects/grade-submission-modal";
+import { EditProjectModal } from "@/components/tutor/projects/edit-project-modal";
+import { ProjectSubmissionsModal } from "@/components/tutor/projects/project-submissions-modal";
+import { DeleteProjectModal } from "@/components/tutor/projects/delete-project-modal";
+import { ProjectAnalyticsModal } from "@/components/tutor/projects/project-analytics-modal";
+import { tutorProjectFeatures } from "@/lib/feature-settings-config";
+import { toast } from "sonner";
 
 export default function TutorProjectsPage() {
-  const [userRole] = useState<UserRole>("TUTOR");
-  const [userName] = useState("Sarah Chen");
-  const [userAvatar] = useState(generateRandomAvatar());
   const [activeTab, setActiveTab] = useState("pending");
   const [searchQuery, setSearchQuery] = useState("");
   const [statusFilter, setStatusFilter] = useState("all");
+  const [createModalOpen, setCreateModalOpen] = useState(false);
+  const [gradeModalOpen, setGradeModalOpen] = useState(false);
+  const [selectedSubmission, setSelectedSubmission] = useState<any>(null);
+  const [editModalOpen, setEditModalOpen] = useState(false);
+  const [submissionsModalOpen, setSubmissionsModalOpen] = useState(false);
+  const [deleteModalOpen, setDeleteModalOpen] = useState(false);
+  const [analyticsModalOpen, setAnalyticsModalOpen] = useState(false);
+  const [selectedProject, setSelectedProject] = useState<any>(null);
 
-  // Mock projects data
-  const projectStats = {
-    totalProjects: 15,
-    activeProjects: 8,
-    pendingSubmissions: 23,
-    gradedSubmissions: 156,
-    averageScore: 87,
-    completionRate: 78,
+  // Data states
+  const [projectStats, setProjectStats] = useState({
+    totalProjects: 0,
+    activeProjects: 0,
+    pendingSubmissions: 0,
+    gradedSubmissions: 0,
+    averageScore: 0,
+    completionRate: 0,
+  });
+  const [pendingSubmissions, setPendingSubmissions] = useState<any[]>([]);
+  const [gradedSubmissions, setGradedSubmissions] = useState<any[]>([]);
+  const [myProjects, setMyProjects] = useState<any[]>([]);
+  const [loading, setLoading] = useState(true);
+
+  // Fetch data
+  useEffect(() => {
+    const fetchData = async () => {
+      setLoading(true);
+      try {
+        const [statsResult, pendingResult, gradedResult, projectsResult] =
+          await Promise.all([
+            getProjectStats(),
+            getPendingSubmissions(),
+            getGradedSubmissions(),
+            getTutorProjects(),
+          ]);
+
+        if (statsResult.stats) {
+          setProjectStats(statsResult.stats);
+        }
+        if (pendingResult.submissions) {
+          setPendingSubmissions(pendingResult.submissions);
+        }
+        if (gradedResult.submissions) {
+          setGradedSubmissions(gradedResult.submissions);
+        }
+        if (projectsResult.projects) {
+          setMyProjects(projectsResult.projects);
+        }
+      } catch (error) {
+        console.error("Error fetching data:", error);
+      } finally {
+        setLoading(false);
+      }
+    };
+
+    fetchData();
+  }, []);
+
+  const handleRefresh = () => {
+    const fetchData = async () => {
+      try {
+        const [statsResult, pendingResult, gradedResult, projectsResult] =
+          await Promise.all([
+            getProjectStats(),
+            getPendingSubmissions(),
+            getGradedSubmissions(),
+            getTutorProjects(),
+          ]);
+
+        if (statsResult.stats) {
+          setProjectStats(statsResult.stats);
+        }
+        if (pendingResult.submissions) {
+          setPendingSubmissions(pendingResult.submissions);
+        }
+        if (gradedResult.submissions) {
+          setGradedSubmissions(gradedResult.submissions);
+        }
+        if (projectsResult.projects) {
+          setMyProjects(projectsResult.projects);
+        }
+      } catch (error) {
+        console.error("Error fetching data:", error);
+      }
+    };
+
+    fetchData();
   };
 
-  const pendingSubmissions = [
-    {
-      id: 1,
-      title: "Todo App with React Hooks",
-      student: {
-        name: "Alex Kim",
-        avatar: generateRandomAvatar(),
-        email: "alex@example.com",
-      },
-      course: "React Crash Course",
-      submittedAt: "2 hours ago",
-      dueDate: "Tomorrow",
-      difficulty: "Beginner",
-      points: 100,
-      submissionUrl: "https://github.com/alexkim/todo-app",
-      description:
-        "A fully functional todo application with CRUD operations and local storage.",
-      requirements: [
-        "Create, read, update, and delete todos",
-        "Implement local storage persistence",
-        "Add filtering and sorting functionality",
-        "Responsive design implementation",
-      ],
-      isOverdue: false,
-    },
-    {
-      id: 2,
-      title: "E-commerce Product Page",
-      student: {
-        name: "Emma Wilson",
-        avatar: generateRandomAvatar(),
-        email: "emma@example.com",
-      },
-      course: "Advanced React Patterns",
-      submittedAt: "1 day ago",
-      dueDate: "In 3 days",
-      difficulty: "Intermediate",
-      points: 150,
-      submissionUrl: "https://github.com/emmawilson/ecommerce-page",
-      description:
-        "Dynamic product page with shopping cart functionality and image gallery.",
-      requirements: [
-        "Product image gallery with zoom functionality",
-        "Add to cart with quantity selection",
-        "Product reviews and ratings system",
-        "Related products recommendation",
-      ],
-      isOverdue: false,
-    },
-    {
-      id: 3,
-      title: "Real-time Chat Application",
-      student: {
-        name: "Mike Johnson",
-        avatar: generateRandomAvatar(),
-        email: "mike@example.com",
-      },
-      course: "Full Stack Development",
-      submittedAt: "3 days ago",
-      dueDate: "Yesterday",
-      difficulty: "Advanced",
-      points: 200,
-      submissionUrl: "https://github.com/mikejohnson/chat-app",
-      description:
-        "Real-time chat application with Socket.io and user authentication.",
-      requirements: [
-        "Real-time messaging with Socket.io",
-        "User authentication and profiles",
-        "Message history and persistence",
-        "Online/offline status indicators",
-      ],
-      isOverdue: true,
-    },
-  ];
+  const handleGradeClick = (submission: any) => {
+    setSelectedSubmission(submission);
+    setGradeModalOpen(true);
+  };
 
-  const gradedSubmissions = [
-    {
-      id: 4,
-      title: "Portfolio Website",
-      student: {
-        name: "Lisa Rodriguez",
-        avatar: generateRandomAvatar(),
-        email: "lisa@example.com",
-      },
-      course: "Web Development Fundamentals",
-      submittedAt: "1 week ago",
-      gradedAt: "5 days ago",
-      difficulty: "Beginner",
-      points: 100,
-      score: 92,
-      grade: "A",
-      feedback:
-        "Excellent work! Great attention to detail and clean code structure. The responsive design is well implemented.",
-      submissionUrl: "https://github.com/lisarodriguez/portfolio",
-    },
-    {
-      id: 5,
-      title: "API Integration Project",
-      student: {
-        name: "David Brown",
-        avatar: generateRandomAvatar(),
-        email: "david@example.com",
-      },
-      course: "JavaScript Advanced",
-      submittedAt: "2 weeks ago",
-      gradedAt: "1 week ago",
-      difficulty: "Intermediate",
-      points: 150,
-      score: 85,
-      grade: "B+",
-      feedback:
-        "Good implementation of API calls and error handling. Consider adding loading states for better UX.",
-      submissionUrl: "https://github.com/davidbrown/api-project",
-    },
-  ];
+  const handleEditProject = (project: any) => {
+    setSelectedProject(project);
+    setEditModalOpen(true);
+  };
 
-  const myProjects = [
-    {
-      id: 1,
-      title: "Todo App with React Hooks",
-      description:
-        "Build a fully functional todo application using React Hooks, local storage, and modern CSS.",
-      course: "React Crash Course",
-      difficulty: "Beginner",
-      points: 100,
-      estimatedTime: "4-6 hours",
-      submissions: 45,
-      averageScore: 87,
-      completionRate: 78,
-      isActive: true,
-      createdAt: "2024-01-15",
-    },
-    {
-      id: 2,
-      title: "E-commerce Product Page",
-      description:
-        "Create a dynamic product page with shopping cart functionality, image gallery, and product reviews.",
-      course: "Advanced React Patterns",
-      difficulty: "Intermediate",
-      points: 150,
-      estimatedTime: "8-10 hours",
-      submissions: 32,
-      averageScore: 82,
-      completionRate: 65,
-      isActive: true,
-      createdAt: "2024-02-01",
-    },
-    {
-      id: 3,
-      title: "Real-time Chat Application",
-      description:
-        "Build a real-time chat app with Socket.io, user authentication, and message persistence.",
-      course: "Full Stack Development",
-      difficulty: "Advanced",
-      points: 200,
-      estimatedTime: "12-15 hours",
-      submissions: 18,
-      averageScore: 91,
-      completionRate: 89,
-      isActive: true,
-      createdAt: "2024-02-15",
-    },
-  ];
+  const handleViewProjectSubmissions = (project: any) => {
+    setSelectedProject(project);
+    setSubmissionsModalOpen(true);
+  };
+
+  const handleDeleteProject = (project: any) => {
+    setSelectedProject(project);
+    setDeleteModalOpen(true);
+  };
+
+  const handleDuplicateProject = async (project: any) => {
+    const result = await duplicateProject(project.id);
+    if (result.error) {
+      toast.error(result.error);
+    } else {
+      toast.success("Project duplicated");
+      handleRefresh();
+    }
+  };
+
+  const handleToggleProjectActive = async (project: any) => {
+    const result = await toggleProjectActive(project.id, !project.isActive);
+    if (result.error) {
+      toast.error(result.error);
+    } else {
+      toast.success(
+        project.isActive ? "Project deactivated" : "Project activated"
+      );
+      handleRefresh();
+    }
+  };
+
+  const handleAnalyticsProject = (project: any) => {
+    setSelectedProject(project);
+    setAnalyticsModalOpen(true);
+  };
+
+  // Filter submissions based on search and status
+  const filteredPendingSubmissions = pendingSubmissions.filter((sub) => {
+    const matchesSearch =
+      sub.title.toLowerCase().includes(searchQuery.toLowerCase()) ||
+      sub.student.name.toLowerCase().includes(searchQuery.toLowerCase()) ||
+      sub.course.toLowerCase().includes(searchQuery.toLowerCase());
+    return matchesSearch;
+  });
+
+  const filteredGradedSubmissions = gradedSubmissions.filter((sub) => {
+    const matchesSearch =
+      sub.title.toLowerCase().includes(searchQuery.toLowerCase()) ||
+      sub.student.name.toLowerCase().includes(searchQuery.toLowerCase()) ||
+      sub.course.toLowerCase().includes(searchQuery.toLowerCase());
+    const matchesStatus =
+      statusFilter === "all" || sub.grade.startsWith(statusFilter);
+    return matchesSearch && matchesStatus;
+  });
+
+  // Mock data for reference (will be removed)
 
   const getDifficultyColor = (difficulty: string) => {
     switch (difficulty) {
-      case "Beginner":
+      case "BEGINNER":
         return "bg-green-500/20 text-green-400 border-green-500/30";
-      case "Intermediate":
+      case "INTERMEDIATE":
         return "bg-yellow-500/20 text-yellow-400 border-yellow-500/30";
-      case "Advanced":
+      case "ADVANCED":
         return "bg-red-500/20 text-red-400 border-red-500/30";
       default:
         return "bg-gray-500/20 text-gray-400 border-gray-500/30";
@@ -250,6 +244,94 @@ export default function TutorProjectsPage() {
     return "text-red-400";
   };
 
+  const StatsSkeleton = () => (
+    <Card className="glass-card border-white/10">
+      <CardContent className="p-6 text-center">
+        <Skeleton className="h-8 w-8 rounded-full mx-auto mb-2" />
+        <Skeleton className="h-6 w-16 mx-auto mb-1" />
+        <Skeleton className="h-3 w-24 mx-auto" />
+      </CardContent>
+    </Card>
+  );
+
+  const SubmissionSkeleton = () => (
+    <Card className="glass-card border-white/10">
+      <CardContent className="p-6">
+        <div className="flex items-start justify-between mb-4">
+          <div className="flex items-start space-x-4 flex-1">
+            <Skeleton className="w-12 h-12 rounded-full" />
+            <div className="flex-1 space-y-2">
+              <Skeleton className="h-5 w-48" />
+              <Skeleton className="h-4 w-32" />
+              <div className="flex items-center space-x-3">
+                <Skeleton className="h-5 w-20" />
+                <Skeleton className="h-5 w-20" />
+                <Skeleton className="h-4 w-14" />
+              </div>
+              <Skeleton className="h-4 w-full" />
+              <Skeleton className="h-4 w-2/3" />
+            </div>
+          </div>
+          <div className="space-y-2">
+            <Skeleton className="h-6 w-10" />
+            <Skeleton className="h-4 w-16" />
+          </div>
+        </div>
+        <div className="flex items-center justify-between pt-4 border-t border-white/10">
+          <div className="flex items-center space-x-4">
+            <Skeleton className="h-4 w-32" />
+            <Skeleton className="h-4 w-28" />
+          </div>
+          <Skeleton className="h-8 w-20" />
+        </div>
+      </CardContent>
+    </Card>
+  );
+
+  const ProjectSkeleton = () => (
+    <Card className="glass-card border-white/10">
+      <CardContent className="p-6 space-y-4">
+        <div className="flex items-start justify-between">
+          <div className="space-y-2">
+            <Skeleton className="h-5 w-48" />
+            <Skeleton className="h-4 w-64" />
+            <div className="flex items-center space-x-3">
+              <Skeleton className="h-5 w-20" />
+              <Skeleton className="h-5 w-20" />
+              <Skeleton className="h-4 w-14" />
+            </div>
+          </div>
+          <Skeleton className="h-5 w-16" />
+        </div>
+        <div className="grid grid-cols-2 md:grid-cols-3 gap-4">
+          <div className="text-center space-y-2">
+            <Skeleton className="h-5 w-10 mx-auto" />
+            <Skeleton className="h-3 w-20 mx-auto" />
+          </div>
+          <div className="text-center space-y-2">
+            <Skeleton className="h-5 w-10 mx-auto" />
+            <Skeleton className="h-3 w-20 mx-auto" />
+          </div>
+          <div className="text-center space-y-2">
+            <Skeleton className="h-5 w-10 mx-auto" />
+            <Skeleton className="h-3 w-20 mx-auto" />
+          </div>
+        </div>
+        <div className="space-y-2">
+          <Skeleton className="h-4 w-32" />
+          <Skeleton className="h-2 w-full" />
+        </div>
+        <div className="flex items-center justify-between pt-4 border-t border-white/10">
+          <Skeleton className="h-4 w-40" />
+          <div className="flex items-center space-x-2">
+            <Skeleton className="h-8 w-24" />
+            <Skeleton className="h-8 w-8" />
+          </div>
+        </div>
+      </CardContent>
+    </Card>
+  );
+
   const SubmissionCard = ({
     submission,
     type,
@@ -258,7 +340,7 @@ export default function TutorProjectsPage() {
     type: "pending" | "graded";
   }) => (
     <Card
-      className={`glass-card border-white/10 hover-glow group ₦{
+      className={`glass-card border-white/10 hover-glow group ${
         submission.isOverdue ? "border-red-500/30" : ""
       }`}>
       <CardContent className="p-6">
@@ -287,7 +369,8 @@ export default function TutorProjectsPage() {
                   {submission.course}
                 </Badge>
                 <Badge className={getDifficultyColor(submission.difficulty)}>
-                  {submission.difficulty}
+                  {submission.difficulty.charAt(0) +
+                    submission.difficulty.slice(1).toLowerCase()}
                 </Badge>
                 <div className="flex items-center space-x-1 text-neon-orange">
                   <Trophy className="w-3 h-3" />
@@ -305,7 +388,7 @@ export default function TutorProjectsPage() {
             {type === "graded" && (
               <div className="mb-2">
                 <div
-                  className={`text-2xl font-bold ₦{getGradeColor(
+                  className={`text-2xl font-bold ${getGradeColor(
                     submission.grade
                   )}`}>
                   {submission.grade}
@@ -361,28 +444,26 @@ export default function TutorProjectsPage() {
               <Clock className="w-4 h-4" />
               <span>
                 {type === "pending"
-                  ? `Submitted ₦{submission.submittedAt}`
-                  : `Graded ₦{submission.gradedAt}`}
+                  ? `Submitted ${submission.submittedAt}`
+                  : `Graded ${submission.gradedAt}`}
               </span>
             </div>
             {type === "pending" && (
               <div className="flex items-center space-x-1">
                 <Calendar className="w-4 h-4" />
-                <span>Due {submission.dueDate}</span>
+                <span>
+                  {submission.dueDate
+                    ? `Due ${submission.dueDate}`
+                    : "No due date"}
+                </span>
               </div>
             )}
           </div>
           <div className="flex items-center space-x-2">
-            <Button
-              size="sm"
-              variant="outline"
-              className="border-white/20 text-white hover:bg-white/10 bg-transparent">
-              <Eye className="w-4 h-4 mr-2" />
-              View Code
-            </Button>
             {type === "pending" ? (
               <Button
                 size="sm"
+                onClick={() => handleGradeClick(submission)}
                 className="bg-gradient-to-r from-neon-green to-emerald-400 text-white">
                 <Award className="w-4 h-4 mr-2" />
                 Grade
@@ -431,7 +512,8 @@ export default function TutorProjectsPage() {
                 {project.course}
               </Badge>
               <Badge className={getDifficultyColor(project.difficulty)}>
-                {project.difficulty}
+                {project.difficulty.charAt(0) +
+                  project.difficulty.slice(1).toLowerCase()}
               </Badge>
               <div className="flex items-center space-x-1 text-neon-orange">
                 <Trophy className="w-3 h-3" />
@@ -453,7 +535,7 @@ export default function TutorProjectsPage() {
           </div>
         </div>
 
-        <div className="grid grid-cols-2 md:grid-cols-4 gap-4 mb-4">
+        <div className="grid grid-cols-2 md:grid-cols-3 gap-4 mb-4">
           <div className="text-center">
             <div className="text-lg font-bold text-white">
               {project.submissions}
@@ -472,12 +554,6 @@ export default function TutorProjectsPage() {
             </div>
             <div className="text-gray-400 text-xs">Completion</div>
           </div>
-          <div className="text-center">
-            <div className="text-lg font-bold text-neon-blue">
-              {project.estimatedTime}
-            </div>
-            <div className="text-gray-400 text-xs">Est. Time</div>
-          </div>
         </div>
 
         <div className="mb-4">
@@ -495,13 +571,16 @@ export default function TutorProjectsPage() {
             Created {new Date(project.createdAt).toLocaleDateString()}
           </div>
           <div className="flex items-center space-x-2">
-            <Button
-              size="sm"
-              variant="outline"
-              className="border-white/20 text-white hover:bg-white/10 bg-transparent">
-              <TrendingUp className="w-4 h-4 mr-2" />
-              Analytics
-            </Button>
+            {tutorProjectFeatures.analytics && (
+              <Button
+                size="sm"
+                variant="outline"
+                onClick={() => handleAnalyticsProject(project)}
+                className="border-white/20 text-white hover:bg-white/10 bg-transparent">
+                <TrendingUp className="w-4 h-4 mr-2" />
+                Analytics
+              </Button>
+            )}
             <DropdownMenu>
               <DropdownMenuTrigger asChild>
                 <Button
@@ -514,32 +593,46 @@ export default function TutorProjectsPage() {
               <DropdownMenuContent
                 align="end"
                 className="bg-black/90 backdrop-blur-sm border-white/10">
-                <DropdownMenuItem className="text-white hover:bg-white/10">
+                <DropdownMenuItem
+                  className="text-white hover:bg-white/10"
+                  onClick={() => handleEditProject(project)}>
                   <Edit className="w-4 h-4 mr-2" />
                   Edit Project
                 </DropdownMenuItem>
-                <DropdownMenuItem className="text-white hover:bg-white/10">
+                <DropdownMenuItem
+                  className="text-white hover:bg-white/10"
+                  onClick={() => handleViewProjectSubmissions(project)}>
                   <Eye className="w-4 h-4 mr-2" />
                   View Submissions
                 </DropdownMenuItem>
-                <DropdownMenuItem className="text-white hover:bg-white/10">
-                  <Code className="w-4 h-4 mr-2" />
-                  Duplicate
-                </DropdownMenuItem>
-                <DropdownMenuItem className="text-white hover:bg-white/10">
-                  {project.isActive ? (
-                    <>
-                      <XCircle className="w-4 h-4 mr-2" />
-                      Deactivate
-                    </>
-                  ) : (
-                    <>
-                      <CheckCircle className="w-4 h-4 mr-2" />
-                      Activate
-                    </>
-                  )}
-                </DropdownMenuItem>
-                <DropdownMenuItem className="text-red-400 hover:bg-red-500/10">
+                {tutorProjectFeatures.duplicate && (
+                  <DropdownMenuItem
+                    className="text-white hover:bg-white/10"
+                    onClick={() => handleDuplicateProject(project)}>
+                    <Code className="w-4 h-4 mr-2" />
+                    Duplicate
+                  </DropdownMenuItem>
+                )}
+                {tutorProjectFeatures.deactivate && (
+                  <DropdownMenuItem
+                    className="text-white hover:bg-white/10"
+                    onClick={() => handleToggleProjectActive(project)}>
+                    {project.isActive ? (
+                      <>
+                        <XCircle className="w-4 h-4 mr-2" />
+                        Deactivate
+                      </>
+                    ) : (
+                      <>
+                        <CheckCircle className="w-4 h-4 mr-2" />
+                        Activate
+                      </>
+                    )}
+                  </DropdownMenuItem>
+                )}
+                <DropdownMenuItem
+                  className="text-red-400 hover:bg-red-500/10"
+                  onClick={() => handleDeleteProject(project)}>
                   <Trash2 className="w-4 h-4 mr-2" />
                   Delete
                 </DropdownMenuItem>
@@ -571,7 +664,9 @@ export default function TutorProjectsPage() {
                   Create, manage, and grade student projects
                 </p>
               </div>
-              <Button className="bg-gradient-to-r from-neon-green to-emerald-400 text-white text-lg px-8 py-3">
+              <Button
+                onClick={() => setCreateModalOpen(true)}
+                className="bg-gradient-to-r from-neon-green to-emerald-400 text-white text-lg px-8 py-3">
                 <Plus className="w-5 h-5 mr-2" />
                 Create Project
               </Button>
@@ -583,60 +678,73 @@ export default function TutorProjectsPage() {
               animate={{ opacity: 1, y: 0 }}
               transition={{ duration: 0.8, delay: 0.2 }}
               className="grid grid-cols-1 md:grid-cols-3 lg:grid-cols-6 gap-6 mb-8">
-              <Card className="glass-card border-white/10">
-                <CardContent className="p-6 text-center">
-                  <Award className="w-8 h-8 text-neon-green mx-auto mb-2" />
-                  <div className="text-2xl font-bold text-white">
-                    {projectStats.totalProjects}
-                  </div>
-                  <div className="text-gray-400 text-sm">Total Projects</div>
-                </CardContent>
-              </Card>
-              <Card className="glass-card border-white/10">
-                <CardContent className="p-6 text-center">
-                  <CheckCircle className="w-8 h-8 text-neon-blue mx-auto mb-2" />
-                  <div className="text-2xl font-bold text-white">
-                    {projectStats.activeProjects}
-                  </div>
-                  <div className="text-gray-400 text-sm">Active</div>
-                </CardContent>
-              </Card>
-              <Card className="glass-card border-white/10">
-                <CardContent className="p-6 text-center">
-                  <AlertCircle className="w-8 h-8 text-neon-orange mx-auto mb-2" />
-                  <div className="text-2xl font-bold text-white">
-                    {projectStats.pendingSubmissions}
-                  </div>
-                  <div className="text-gray-400 text-sm">Pending</div>
-                </CardContent>
-              </Card>
-              <Card className="glass-card border-white/10">
-                <CardContent className="p-6 text-center">
-                  <Star className="w-8 h-8 text-yellow-400 mx-auto mb-2" />
-                  <div className="text-2xl font-bold text-white">
-                    {projectStats.gradedSubmissions}
-                  </div>
-                  <div className="text-gray-400 text-sm">Graded</div>
-                </CardContent>
-              </Card>
-              <Card className="glass-card border-white/10">
-                <CardContent className="p-6 text-center">
-                  <Trophy className="w-8 h-8 text-neon-purple mx-auto mb-2" />
-                  <div className="text-2xl font-bold text-white">
-                    {projectStats.averageScore}%
-                  </div>
-                  <div className="text-gray-400 text-sm">Avg Score</div>
-                </CardContent>
-              </Card>
-              <Card className="glass-card border-white/10">
-                <CardContent className="p-6 text-center">
-                  <Target className="w-8 h-8 text-pink-400 mx-auto mb-2" />
-                  <div className="text-2xl font-bold text-white">
-                    {projectStats.completionRate}%
-                  </div>
-                  <div className="text-gray-400 text-sm">Completion</div>
-                </CardContent>
-              </Card>
+              {loading ? (
+                <>
+                  <StatsSkeleton />
+                  <StatsSkeleton />
+                  <StatsSkeleton />
+                  <StatsSkeleton />
+                  <StatsSkeleton />
+                  <StatsSkeleton />
+                </>
+              ) : (
+                <>
+                  <Card className="glass-card border-white/10">
+                    <CardContent className="p-6 text-center">
+                      <Award className="w-8 h-8 text-neon-green mx-auto mb-2" />
+                      <div className="text-2xl font-bold text-white">
+                        {projectStats.totalProjects}
+                      </div>
+                      <div className="text-gray-400 text-sm">Total Projects</div>
+                    </CardContent>
+                  </Card>
+                  <Card className="glass-card border-white/10">
+                    <CardContent className="p-6 text-center">
+                      <CheckCircle className="w-8 h-8 text-neon-blue mx-auto mb-2" />
+                      <div className="text-2xl font-bold text-white">
+                        {projectStats.activeProjects}
+                      </div>
+                      <div className="text-gray-400 text-sm">Active</div>
+                    </CardContent>
+                  </Card>
+                  <Card className="glass-card border-white/10">
+                    <CardContent className="p-6 text-center">
+                      <AlertCircle className="w-8 h-8 text-neon-orange mx-auto mb-2" />
+                      <div className="text-2xl font-bold text-white">
+                        {projectStats.pendingSubmissions}
+                      </div>
+                      <div className="text-gray-400 text-sm">Pending</div>
+                    </CardContent>
+                  </Card>
+                  <Card className="glass-card border-white/10">
+                    <CardContent className="p-6 text-center">
+                      <Star className="w-8 h-8 text-yellow-400 mx-auto mb-2" />
+                      <div className="text-2xl font-bold text-white">
+                        {projectStats.gradedSubmissions}
+                      </div>
+                      <div className="text-gray-400 text-sm">Graded</div>
+                    </CardContent>
+                  </Card>
+                  <Card className="glass-card border-white/10">
+                    <CardContent className="p-6 text-center">
+                      <Trophy className="w-8 h-8 text-neon-purple mx-auto mb-2" />
+                      <div className="text-2xl font-bold text-white">
+                        {projectStats.averageScore}%
+                      </div>
+                      <div className="text-gray-400 text-sm">Avg Score</div>
+                    </CardContent>
+                  </Card>
+                  <Card className="glass-card border-white/10">
+                    <CardContent className="p-6 text-center">
+                      <Target className="w-8 h-8 text-pink-400 mx-auto mb-2" />
+                      <div className="text-2xl font-bold text-white">
+                        {projectStats.completionRate}%
+                      </div>
+                      <div className="text-gray-400 text-sm">Completion</div>
+                    </CardContent>
+                  </Card>
+                </>
+              )}
             </motion.div>
 
             {/* Tabs */}
@@ -674,13 +782,30 @@ export default function TutorProjectsPage() {
                   </div>
 
                   <div className="space-y-4">
-                    {pendingSubmissions.map((submission) => (
-                      <SubmissionCard
-                        key={submission.id}
-                        submission={submission}
-                        type="pending"
-                      />
-                    ))}
+                    {loading ? (
+                      <>
+                        <SubmissionSkeleton />
+                        <SubmissionSkeleton />
+                        <SubmissionSkeleton />
+                      </>
+                    ) : filteredPendingSubmissions.length === 0 ? (
+                      <Card className="glass-card border-white/10">
+                        <CardContent className="p-12 text-center">
+                          <AlertCircle className="w-12 h-12 text-gray-400 mx-auto mb-4" />
+                          <p className="text-gray-400 text-lg">
+                            No pending submissions found
+                          </p>
+                        </CardContent>
+                      </Card>
+                    ) : (
+                      filteredPendingSubmissions.map((submission) => (
+                        <SubmissionCard
+                          key={submission.id}
+                          submission={submission}
+                          type="pending"
+                        />
+                      ))
+                    )}
                   </div>
                 </motion.div>
               </TabsContent>
@@ -739,13 +864,30 @@ export default function TutorProjectsPage() {
                   </div>
 
                   <div className="space-y-4">
-                    {gradedSubmissions.map((submission) => (
-                      <SubmissionCard
-                        key={submission.id}
-                        submission={submission}
-                        type="graded"
-                      />
-                    ))}
+                    {loading ? (
+                      <>
+                        <SubmissionSkeleton />
+                        <SubmissionSkeleton />
+                        <SubmissionSkeleton />
+                      </>
+                    ) : filteredGradedSubmissions.length === 0 ? (
+                      <Card className="glass-card border-white/10">
+                        <CardContent className="p-12 text-center">
+                          <Star className="w-12 h-12 text-gray-400 mx-auto mb-4" />
+                          <p className="text-gray-400 text-lg">
+                            No graded submissions found
+                          </p>
+                        </CardContent>
+                      </Card>
+                    ) : (
+                      filteredGradedSubmissions.map((submission) => (
+                        <SubmissionCard
+                          key={submission.id}
+                          submission={submission}
+                          type="graded"
+                        />
+                      ))
+                    )}
                   </div>
                 </motion.div>
               </TabsContent>
@@ -760,16 +902,42 @@ export default function TutorProjectsPage() {
                     <h3 className="text-2xl font-bold text-white">
                       My Projects ({myProjects.length})
                     </h3>
-                    <Button className="bg-gradient-to-r from-neon-green to-emerald-400 text-white">
+                    <Button
+                      onClick={() => setCreateModalOpen(true)}
+                      className="bg-gradient-to-r from-neon-green to-emerald-400 text-white">
                       <Plus className="w-4 h-4 mr-2" />
                       Create New Project
                     </Button>
                   </div>
 
                   <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-                    {myProjects.map((project) => (
-                      <ProjectCard key={project.id} project={project} />
-                    ))}
+                    {loading ? (
+                      <>
+                        <ProjectSkeleton />
+                        <ProjectSkeleton />
+                      </>
+                    ) : myProjects.length === 0 ? (
+                      <div className="col-span-2">
+                        <Card className="glass-card border-white/10">
+                          <CardContent className="p-12 text-center">
+                            <Code className="w-12 h-12 text-gray-400 mx-auto mb-4" />
+                            <p className="text-gray-400 text-lg mb-4">
+                              No projects found
+                            </p>
+                            <Button
+                              onClick={() => setCreateModalOpen(true)}
+                              className="bg-gradient-to-r from-neon-green to-emerald-400 text-white">
+                              <Plus className="w-4 h-4 mr-2" />
+                              Create Your First Project
+                            </Button>
+                          </CardContent>
+                        </Card>
+                      </div>
+                    ) : (
+                      myProjects.map((project) => (
+                        <ProjectCard key={project.id} project={project} />
+                      ))
+                    )}
                   </div>
                 </motion.div>
               </TabsContent>
@@ -777,6 +945,41 @@ export default function TutorProjectsPage() {
           </div>
         </section>
       </div>
+
+      {/* Modals */}
+      <CreateProjectModal
+        open={createModalOpen}
+        onOpenChange={setCreateModalOpen}
+        onSuccess={handleRefresh}
+      />
+      <GradeSubmissionModal
+        open={gradeModalOpen}
+        onOpenChange={setGradeModalOpen}
+        submission={selectedSubmission}
+        onSuccess={handleRefresh}
+      />
+      <EditProjectModal
+        open={editModalOpen}
+        onOpenChange={setEditModalOpen}
+        project={selectedProject}
+        onSuccess={handleRefresh}
+      />
+      <ProjectSubmissionsModal
+        open={submissionsModalOpen}
+        onOpenChange={setSubmissionsModalOpen}
+        projectId={selectedProject?.id || null}
+      />
+      <DeleteProjectModal
+        open={deleteModalOpen}
+        onOpenChange={setDeleteModalOpen}
+        project={selectedProject}
+        onSuccess={handleRefresh}
+      />
+      <ProjectAnalyticsModal
+        open={analyticsModalOpen}
+        onOpenChange={setAnalyticsModalOpen}
+        projectId={selectedProject?.id || null}
+      />
     </div>
   );
 }

@@ -48,7 +48,7 @@ export function TutorDashboardHeader() {
             icon: Award,
             label: "Create Project",
             color: "from-neon-green to-emerald-400",
-            url: "/tutor/projects/create",
+            url: "/tutor/projects",
           },
           {
             icon: BarChart3,

@@ -14,8 +14,10 @@ export default async function QuizPage({
   const quiz = await db.quiz.findUnique({
     where: { id: (await params).quizId },
     include: {
-      module: {
-        select: { courseId: true },
+      lesson: {
+        select: {
+          module: { select: { courseId: true } },
+        },
       },
       questions: {
         orderBy: { sortOrder: "asc" },
@@ -25,7 +27,7 @@ export default async function QuizPage({
   const enrollment = await db.enrollment.findFirst({
     where: {
       userId: session.user.id,
-      courseId: quiz?.module.courseId,
+      courseId: quiz?.lesson.module.courseId,
     },
   });
 

@@ -194,28 +194,6 @@ export function CourseBasicForm({
                 )}
               />
 
-              <FormField
-                control={form.control}
-                name="duration"
-                render={({ field }) => (
-                  <FormItem>
-                    <FormLabel className="text-white">Duration (min)</FormLabel>
-                    <FormControl>
-                      <Input
-                        {...field}
-                        type="number"
-                        min={0}
-                        placeholder="e.g., 90"
-                        className="bg-white/10 border-white/20 text-white"
-                        onChange={(e) => {
-                          const val = e.target.valueAsNumber;
-                          field.onChange(Number.isNaN(val) ? undefined : val);
-                        }}
-                      />
-                    </FormControl>
-                  </FormItem>
-                )}
-              />
             </div>
 
             {/* Language */}
@@ -386,13 +364,13 @@ export function CourseBasicForm({
                   <Plus className="w-4 h-4" />
                 </Button>
               </div>
-              <ul className="list-disc pl-5 text-gray-300 text-sm sm:text-xl space-y-2">
+              <ul className="list-disc pl-5 text-gray-300 text-sm  space-y-2">
                 {form
                   .getValues("requirements")
                   ?.map((req: string, index: number) => (
                     <li
                       key={index}
-                      className="flex justify-between items-center">
+                      className="flex justify-between text-sm  items-center">
                       {req}
                       <X
                         className="w-4 h-4 text-red-400  cursor-pointer"
@@ -426,13 +404,13 @@ export function CourseBasicForm({
                   <Plus className="w-4 h-4" />
                 </Button>
               </div>
-              <ul className="list-disc pl-5 text-gray-300 space-y-2">
+              <ul className="list-disc pl-5 text-sm text-gray-300 space-y-2">
                 {form
                   .getValues("learningOutcomes")
                   ?.map((outcome: string, index: number) => (
                     <li
                       key={index}
-                      className="flex justify-between text-sm sm:text-xl items-center">
+                      className="flex justify-between text-sm  items-center">
                       {outcome}
                       <X
                         className="w-4 h-4 text-red-400 cursor-pointer"
@@ -516,10 +494,6 @@ export function CourseBasicForm({
               <p>
                 <span className="font-medium text-white">Level:</span>{" "}
                 {form.watch("level") || "—"}
-              </p>
-              <p>
-                <span className="font-medium text-white">Duration:</span>{" "}
-                {form.watch("duration") || 0} mins
               </p>
               <p>
                 <span className="font-medium text-white">Language:</span>{" "}

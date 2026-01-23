@@ -1,19 +1,19 @@
 import { db } from "@/lib/db";
 
 /**
- * Resets quiz attempts for a given module once the student re-completes the last lesson.
+ * Resets quiz attempts for a given lesson once the student re-completes it.
  * This allows them to retake the quiz after exhausting all attempts.
  *
  * @param userId - The user who completed the lesson.
- * @param moduleId - The module the lesson belongs to.
+ * @param lessonId - The lesson the quiz belongs to.
  */
-export async function resetQuizAttemptsForModule(
+export async function resetQuizAttemptsForLesson(
   userId: string,
-  moduleId: string
+  lessonId: string
 ) {
   try {
     const quiz = await db.quiz.findFirst({
-      where: { moduleId },
+      where: { lessonId },
     });
 
     if (!quiz) return { reset: false };
@@ -48,8 +48,8 @@ export async function resetQuizAttemptsForModule(
 
     return { reset: false, quizId: quiz?.id };
   } catch (error) {
-    // Find the quiz for the module
-    console.error("resetQuizAttemptsForModule error:", error);
+    // Find the quiz for the lesson
+    console.error("resetQuizAttemptsForLesson error:", error);
     return { reset: false };
   }
 }

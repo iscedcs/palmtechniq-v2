@@ -26,7 +26,7 @@ import { toast } from "sonner";
 import { Avatar, AvatarFallback, AvatarImage } from "../ui/avatar";
 import { beginCheckout } from "@/actions/checkout";
 
-export function ShoppingCartComponent({ courseId }: { courseId: string }) {
+export function ShoppingCartComponent() {
   const [isOpen, setIsOpen] = useState(false);
   const [cartItems, setCartItems] = useState<any[]>([]);
   const [discount, setDiscount] = useState(0);

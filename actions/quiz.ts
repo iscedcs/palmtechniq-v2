@@ -5,8 +5,8 @@ import { db } from "@/lib/db";
 import { QuestionType } from "@prisma/client";
 import { revalidatePath } from "next/cache";
 
-export async function createQuizForModule(
-  moduleId: string,
+export async function createQuizForLesson(
+  lessonId: string,
   formData: FormData
 ) {
   const title = formData.get("title") as string;
@@ -25,7 +25,7 @@ export async function createQuizForModule(
       timeLimit,
       passingScore,
       maxAttempts,
-      moduleId,
+      lessonId,
       questions: {
         createMany: {
           data: questions.map((q: any, idx: number) => ({
@@ -46,7 +46,7 @@ export async function createQuizForModule(
   return quiz;
 }
 
-export async function updateQuizForModule(quizId: string, formData: FormData) {
+export async function updateQuizForLesson(quizId: string, formData: FormData) {
   const title = formData.get("title") as string;
   const description = formData.get("description") as string;
   const timeLimit = Number(formData.get("timeLimit")) || null;

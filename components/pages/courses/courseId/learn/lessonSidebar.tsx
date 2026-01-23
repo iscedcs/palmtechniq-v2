@@ -4,7 +4,8 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Progress } from "@/components/ui/progress";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { Button } from "@/components/ui/button";
-import { CheckCircle, Circle } from "lucide-react";
+import { ChevronDown, CheckCircle, Circle } from "lucide-react";
+import { useState } from "react";
 
 interface Lesson {
   id: string;
@@ -36,15 +37,31 @@ export default function LessonSidebar({
   onChangeLesson: (lesson: Lesson) => void;
 }) {
   const allLessons = modules.flatMap((m) => m.lessons);
+  const [isOpen, setIsOpen] = useState(false);
 
   const completedLessons = allLessons.filter((l) => l.isCompleted).length;
   const totalLessons = allLessons.length;
 
   return (
-    <div className="w-80 p-6 border-l border-white/10">
+    <div className="w-full lg:w-[320px] xl:w-[360px] p-6 border-t lg:border-t-0 lg:border-l border-white/10">
       <Card className="glass-card border-white/10">
         <CardHeader>
-          <CardTitle className="text-white text-xl">{courseTitle}</CardTitle>
+          <div className="flex items-center justify-between gap-3">
+            <CardTitle className="text-white text-xl">{courseTitle}</CardTitle>
+            <Button
+              type="button"
+              variant="ghost"
+              size="sm"
+              onClick={() => setIsOpen((prev) => !prev)}
+              className="lg:hidden text-gray-300 hover:text-white hover:bg-white/10">
+              {isOpen ? "Hide lessons" : "Show lessons"}
+              <ChevronDown
+                className={`ml-2 h-4 w-4 transition-transform ${
+                  isOpen ? "rotate-180" : ""
+                }`}
+              />
+            </Button>
+          </div>
           <Progress value={progress || 0} className="mt-2" />
           <p className="text-sm text-gray-400 mt-1">
             {completedLessons} of {totalLessons} lessons completed
@@ -52,8 +69,8 @@ export default function LessonSidebar({
           {progress ?? 0}% completed
         </CardHeader>
 
-        <CardContent>
-          <ScrollArea className="h-96">
+        <CardContent className={`${isOpen ? "block" : "hidden"} lg:block`}>
+          <ScrollArea className="h-[calc(100vh-240px)] pr-2">
             <div className="space-y-4">
               {modules.map((module) => {
                 const moduleCompleted = module.lessons.every(
@@ -81,7 +98,7 @@ export default function LessonSidebar({
                           <Button
                             key={lesson.id}
                             variant="ghost"
-                            className={`w-full text-left justify-start p-2 rounded-lg transition-colors ${
+                            className={`w-full justify-start p-3 rounded-lg transition-colors text-left h-auto whitespace-normal ${
                               lesson.isLocked && !lesson.isCompleted
                                 ? "cursor-not-allowed opacity-40"
                                 : isActive
@@ -104,21 +121,29 @@ export default function LessonSidebar({
                             }}
                             disabled={lesson.isLocked && !lesson.isCompleted}>
                             <div className="flex flex-col items-start w-full">
-                              <div className="flex items-center gap-2 w-full">
+                              <div className="flex gap-2 w-full items-start">
                                 {lesson.isCompleted ? (
                                   <CheckCircle className="w-4 h-4 text-green-400" />
                                 ) : (
                                   <Circle className="w-4 h-4 text-gray-400" />
                                 )}
                                 <span
-                                  className={`text-sm ${
+                                  className={`text-sm leading-snug break-words ${
                                     isActive
                                       ? "text-white"
                                       : lesson.isLocked && !lesson.isCompleted
                                       ? "text-gray-500"
                                       : "text-gray-300"
                                   }`}>
-                                  {lesson.title}: {lesson.description}
+                                  <span className="font-medium">
+                                    {lesson.title}
+                                  </span>
+                                  {lesson.description && (
+                                    <span className="text-gray-400">
+                                      {" "}
+                                      — {lesson.description}
+                                    </span>
+                                  )}
                                 </span>
                               </div>
                               <p className="text-xs text-gray-400 ml-6 mt-1">

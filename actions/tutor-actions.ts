@@ -10,6 +10,7 @@ import { z } from "zod";
 import { toSlug } from "@/lib/utils";
 import { notify } from "@/lib/notify";
 import { getIO } from "@/lib/socket";
+import { recomputeCourseDurations } from "@/lib/course-duration";
 
 export async function createCourse(data: any, modulesData: any[] = []) {
   const session = await auth();
@@ -48,126 +49,154 @@ export async function createCourse(data: any, modulesData: any[] = []) {
       );
     }
 
-    const course = await db.course.create({
-      data: {
-        title: validatedData.data.title,
-        subtitle: validatedData.data.subtitle,
-        description: validatedData.data.description,
-        category: {
-          connect: { name: validatedData.data.category },
-        },
-        level: validatedData.data.level as any,
-        language: validatedData.data.language,
-        price: validatedData.data.price,
-        basePrice: validatedData.data.basePrice,
-        currentPrice:
-          validatedData.data.currentPrice || validatedData.data.price,
-        demandLevel:
-          validatedData.data.basePrice && validatedData.data.currentPrice
-            ? validatedData.data.currentPrice <
-              validatedData.data.basePrice * 0.7
-              ? "high"
-              : validatedData.data.currentPrice <
-                validatedData.data.basePrice * 0.9
-              ? "medium"
-              : "low"
-            : undefined,
-        requirements: validatedData.data.requirements,
-        outcomes: validatedData.data.outcomes,
-
-        isFlashSale: validatedData.data.isFlashSale,
-        duration: validatedData.data.duration,
-        flashSaleEnd: validatedData.data.flashSaleEnd,
-
-        publishedAt: validatedData.data.isPublished ? new Date() : null,
-        slug: toSlug(validatedData.data.title),
-
-        groupBuyingEnabled: validatedData.data.groupBuyingEnabled,
-        groupBuyingDiscount: validatedData.data.groupBuyingDiscount,
-        thumbnail: validatedData.data.thumbnail,
-        previewVideo: validatedData.data.previewVideo,
-        status: validatedData.data.isPublished ? "PUBLISHED" : "DRAFT",
-        creator: { connect: { id: session.user.id } },
-        tutor: { connect: { id: tutor.id } },
-      },
-    });
-
-    // Create tags
-    if (validatedData.data.tags.length > 0) {
-      await db.courseTag.createMany({
-        data: validatedData.data.tags.map((tag) => ({
-          courseId: course.id,
-          name: tag,
-        })),
-      });
-    }
-
-    // Create modules and lessons
-    for (const mod of modulesData) {
-      const validatedModule = moduleSchema.safeParse(mod);
-
-      if (!validatedModule.success) {
-        throw new Error(validatedModule.error.issues[0].message);
-      }
-
-      const newModule = await db.courseModule.create({
-        data: {
-          title: validatedModule.data.title,
-          description: validatedModule.data.description,
-          sortOrder: validatedModule.data.sortOrder,
-          duration: validatedModule.data.duration || 0,
-          isPublished: validatedModule.data.isPublished,
-          courseId: course.id,
-        },
-      });
-
-      for (const lesson of mod.lessons || []) {
-        const validatedLesson = lessonSchema.safeParse(lesson);
-        if (!validatedLesson.success) {
-          throw new Error(validatedLesson.error.issues[0].message);
-        }
-        await db.lesson.create({
+    const result = await db.$transaction(
+      async (tx) => {
+        const course = await tx.course.create({
           data: {
-            title: validatedLesson.data.title,
-            lessonType: validatedLesson.data.lessonType,
-            duration: validatedLesson.data.duration,
-            content: validatedLesson.data.content,
-            videoUrl: validatedLesson.data.videoUrl,
-            sortOrder: validatedLesson.data.sortOrder,
-            description: validatedLesson.data.description,
-            isPreview: validatedLesson.data.isPreview,
-            moduleId: newModule.id,
+            title: validatedData.data.title,
+            subtitle: validatedData.data.subtitle,
+            description: validatedData.data.description,
+            category: {
+              connect: { name: validatedData.data.category },
+            },
+            level: validatedData.data.level as any,
+            language: validatedData.data.language,
+            price: validatedData.data.price,
+            basePrice: validatedData.data.basePrice,
+            currentPrice:
+              validatedData.data.currentPrice || validatedData.data.price,
+            demandLevel:
+              validatedData.data.basePrice && validatedData.data.currentPrice
+                ? validatedData.data.currentPrice <
+                  validatedData.data.basePrice * 0.7
+                  ? "high"
+                  : validatedData.data.currentPrice <
+                    validatedData.data.basePrice * 0.9
+                  ? "medium"
+                  : "low"
+                : undefined,
+            requirements: validatedData.data.requirements,
+            outcomes: validatedData.data.outcomes,
+
+            isFlashSale: validatedData.data.isFlashSale,
+            duration: 0,
+            flashSaleEnd: validatedData.data.flashSaleEnd,
+
+            publishedAt: validatedData.data.isPublished ? new Date() : null,
+            slug: toSlug(validatedData.data.title),
+
+            groupBuyingEnabled: validatedData.data.groupBuyingEnabled,
+            groupBuyingDiscount: validatedData.data.groupBuyingDiscount,
+            thumbnail: validatedData.data.thumbnail,
+            previewVideo: validatedData.data.previewVideo,
+            status: validatedData.data.isPublished ? "PUBLISHED" : "DRAFT",
+            creator: { connect: { id: session.user.id } },
+            tutor: { connect: { id: tutor.id } },
           },
         });
-      }
-    }
+
+        const groupTiers = validatedData.data.groupTiers ?? [];
+        if (validatedData.data.groupBuyingEnabled && groupTiers.length > 0) {
+          await tx.groupTier.createMany({
+            data: groupTiers.map((tier) => ({
+              courseId: course.id,
+              size: tier.size,
+              groupPrice: tier.groupPrice,
+              cashbackPercent: tier.cashbackPercent ?? 0,
+              isActive: tier.isActive ?? true,
+            })),
+          });
+        }
+
+        // Create tags
+        if (validatedData.data.tags.length > 0) {
+          await tx.courseTag.createMany({
+            data: validatedData.data.tags.map((tag) => ({
+              courseId: course.id,
+              name: tag,
+            })),
+          });
+        }
+
+        // Create modules and lessons
+        for (const mod of modulesData) {
+          const validatedModule = moduleSchema.safeParse(mod);
+
+          if (!validatedModule.success) {
+            throw new Error(validatedModule.error.issues[0].message);
+          }
+
+          const newModule = await tx.courseModule.create({
+            data: {
+              title: validatedModule.data.title,
+              description: validatedModule.data.description,
+              content: validatedModule.data.content,
+              sortOrder: validatedModule.data.sortOrder,
+              duration: 0,
+              isPublished: validatedModule.data.isPublished,
+              courseId: course.id,
+            },
+          });
+
+          for (const lesson of mod.lessons || []) {
+            const validatedLesson = lessonSchema.safeParse({
+              ...lesson,
+              lessonType: lesson.lessonType ?? "VIDEO",
+            });
+
+            if (!validatedLesson.success) {
+              throw new Error(validatedLesson.error.issues[0].message);
+            }
+            await tx.lesson.create({
+              data: {
+                title: validatedLesson.data.title,
+                lessonType: validatedLesson.data.lessonType,
+                duration: validatedLesson.data.duration ?? 0,
+                content: validatedLesson.data.content,
+                videoUrl: validatedLesson.data.videoUrl || null,
+                sortOrder: validatedLesson.data.sortOrder,
+                description: validatedLesson.data.description,
+                isPreview: validatedLesson.data.isPreview,
+                moduleId: newModule.id,
+              },
+            });
+          }
+        }
+
+        await recomputeCourseDurations(tx, course.id);
+
+        return course;
+      },
+      { timeout: 30000 }
+    );
 
     await notify.user(session.user.id, {
       type: "success",
       title: "Course Created",
-      message: `“${course.title}” has been created${
+      message: `“${result.title}” has been created${
         validatedData.data.isPublished ? " and published" : ""
       }.`,
-      actionUrl: `/tutor/courses/${course.id}/edit`,
+      actionUrl: `/tutor/courses/${result.id}/edit`,
       actionLabel: "Continue Editing",
-      metadata: { courseId: course.id },
+      metadata: { category: "course_created", courseId: result.id },
     });
 
     if (validatedData.data.isPublished) {
       await notify.role("STUDENT", {
         type: "course",
         title: "New Course is Live",
-        message: `“${course.title}” is now available.`,
-        actionUrl: `/courses/${course.id}`,
+        message: `“${result.title}” is now available.`,
+        actionUrl: `/courses/${result.id}`,
         actionLabel: "View Course",
         metadata: {
-          courseId: course.id,
-          category: validatedData.data.category,
+          courseId: result.id,
+          category: "course_published",
+          courseCategory: validatedData.data.category,
         },
       });
     }
 
-    return { success: true, courseId: course.id };
+    return { success: true, courseId: result.id };
   } catch (error) {
     console.error("Error creating course:", error);
     return {
@@ -200,12 +229,13 @@ export async function addModuleToCourse(courseId: string, moduleData: any) {
       data: {
         title: validatedModule.data.title,
         description: validatedModule.data.description,
-        duration: validatedModule.data.duration || 0,
+        duration: 0,
         sortOrder: validatedModule.data.sortOrder,
         isPublished: validatedModule.data.isPublished,
         courseId,
       },
     });
+    await recomputeCourseDurations(db, courseId);
 
     const io = getIO();
     if (io) {
@@ -220,7 +250,7 @@ export async function addModuleToCourse(courseId: string, moduleData: any) {
       message: `Module “${newModule.title}” was added to “${course?.title}”.`,
       actionUrl: `/courses/${courseId}`,
       actionLabel: "Open Course",
-      metadata: { courseId, moduleId: newModule.id },
+      metadata: { category: "course_update", courseId, moduleId: newModule.id },
     });
 
     return { success: true, moduleId: newModule.id };
@@ -249,6 +279,7 @@ export async function removeModuleFromCourse(
     }
 
     await db.courseModule.delete({ where: { id: moduleId } });
+    await recomputeCourseDurations(db, courseId);
 
     await notify.course(courseId, {
       type: "warning",
@@ -256,7 +287,7 @@ export async function removeModuleFromCourse(
       message: `Module “${module.title}” was removed from “${module.course.title}”.`,
       actionUrl: `/courses/${courseId}`,
       actionLabel: "Open Course",
-      metadata: { courseId, moduleId },
+      metadata: { category: "course_update", courseId, moduleId },
     });
 
     return { success: true };
@@ -293,7 +324,7 @@ export async function addLessonToModule(
       data: {
         title: validatedLesson.data.title,
         lessonType: validatedLesson.data.lessonType,
-        duration: validatedLesson.data.duration,
+        duration: validatedLesson.data.duration ?? 0,
         content: validatedLesson.data.content,
         videoUrl: validatedLesson.data.videoUrl,
         sortOrder: validatedLesson.data.sortOrder,
@@ -302,6 +333,7 @@ export async function addLessonToModule(
         moduleId,
       },
     });
+    await recomputeCourseDurations(db, courseId);
 
     const io = getIO();
     if (io) {
@@ -316,7 +348,12 @@ export async function addLessonToModule(
       message: `Lesson “${newLesson.title}” was added to module “${module?.title}”.`,
       actionUrl: `/courses/${courseId}`,
       actionLabel: "Open Course",
-      metadata: { courseId, moduleId, lessonId: newLesson.id },
+      metadata: {
+        category: "course_update",
+        courseId,
+        moduleId,
+        lessonId: newLesson.id,
+      },
     });
 
     return { success: true, lessonId: newLesson.id };
@@ -347,6 +384,7 @@ export async function removeLessonFromModule(
     }
 
     await db.lesson.delete({ where: { id: lessonId } });
+    await recomputeCourseDurations(db, courseId);
 
     await notify.course(courseId, {
       type: "warning",
@@ -354,7 +392,7 @@ export async function removeLessonFromModule(
       message: `Lesson “${lesson.title}” was removed from module “${lesson.module.title}” in “${lesson.module.course.title}” .`,
       actionUrl: `/courses/${courseId}`,
       actionLabel: "Open Course",
-      metadata: { courseId, moduleId, lessonId },
+      metadata: { category: "course_update", courseId, moduleId, lessonId },
     });
 
     return { success: true };

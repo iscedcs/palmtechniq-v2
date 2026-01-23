@@ -93,6 +93,10 @@ export function StudentCard({ student, index, onSelect }: StudentCardProps) {
             </div>
             <p className="text-gray-400 text-sm truncate">{student.email}</p>
             <p className="text-gray-500 text-xs mt-1">
+              Joined {new Date(student.joinDate).toLocaleDateString()}
+            </p>
+
+            <p className="text-gray-500 text-xs mt-1">
               Last active: {student.lastActive}
             </p>
           </div>

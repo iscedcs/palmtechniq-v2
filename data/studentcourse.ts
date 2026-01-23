@@ -49,7 +49,13 @@ export async function getEnrolledCourses() {
         enrollmentsToUpdate.push(enrollment.id);
       }
 
-      const totalDuration = course.duration || 0;
+      const computedDuration = course.modules.reduce(
+        (sum, m) => sum + m.lessons.reduce((lsum, l) => lsum + (l.duration || 0), 0),
+        0
+      );
+      const totalDuration = course.duration && course.duration > 0
+        ? course.duration
+        : computedDuration;
       const remainingDuration = totalDuration * (1 - progress / 100);
       const timeLeft =
         remainingDuration > 0
@@ -156,6 +162,7 @@ export async function getAvailableCourses() {
         category: true,
         reviews: { select: { rating: true } },
         enrollments: { select: { id: true } },
+        modules: { include: { lessons: true } },
       },
       orderBy: { createdAt: "desc" },
       take: 20,
@@ -168,6 +175,16 @@ export async function getAvailableCourses() {
             course.reviews.length
           : 0;
 
+      const computedDuration = course.modules.reduce(
+        (sum, m) => sum + m.lessons.reduce((lsum, l) => lsum + (l.duration || 0), 0),
+        0
+      );
+
+      const computedLessons = course.modules.reduce(
+        (sum, m) => sum + m.lessons.length,
+        0
+      );
+
       return {
         id: course.id,
         title: course.title,
@@ -179,10 +196,13 @@ export async function getAvailableCourses() {
         difficulty: course.level,
         rating: Number(averageRating.toFixed(1)),
         students: course.enrollments.length,
-        duration: course.duration
-          ? `${Math.floor(course.duration / 60)} hours`
-          : "N/A",
-        lessons: course.totalLessons,
+        duration:
+          course.duration && course.duration > 0
+            ? course.duration
+            : computedDuration,
+        lessons: course.totalLessons && course.totalLessons > 0
+          ? course.totalLessons
+          : computedLessons,
         category: course.category.name,
         bestseller: course.enrollments.length > 100,
         trending: course.enrollments.length > 50,

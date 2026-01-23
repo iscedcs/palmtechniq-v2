@@ -3,8 +3,8 @@ export const runtime = "nodejs";
 import NextAuth, { type NextAuthConfig } from "next-auth";
 import baseConfig from "./auth.config";
 
-import { PrismaAdapter } from "@auth/prisma-adapter";
 import { db } from "./lib/db";
+import { PrismaAdapter } from "@auth/prisma-adapter";
 
 import Credentials from "next-auth/providers/credentials";
 import Github from "next-auth/providers/github";
@@ -79,12 +79,18 @@ const nodeConfig: NextAuthConfig = {
         token.role = (user as any).role;
       }
 
-      if (trigger === "update" && token.sub) {
-        const userActive = await db.user.findUnique({
-          where: { id: token.sub as string },
-          select: { role: true },
-        });
-        if (userActive?.role) token.role = userActive.role;
+      if (token.sub) {
+        try {
+          const userActive = await db.user.findUnique({
+            where: { id: token.sub as string },
+            select: { role: true },
+          });
+          if (userActive?.role && token.role !== userActive.role) {
+            token.role = userActive.role;
+          }
+        } catch (error) {
+          console.warn("Failed to refresh user role", error);
+        }
       }
 
       // refresh exp

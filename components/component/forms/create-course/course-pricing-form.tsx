@@ -11,14 +11,20 @@ import {
 } from "@/components/ui/form";
 import { Input } from "@/components/ui/input";
 import { Switch } from "@/components/ui/switch";
-import { DollarSign, Percent, Timer, Users } from "lucide-react";
+import { DollarSign, Percent, Timer, Users, Plus, Trash2 } from "lucide-react";
 import { NairaIcon } from "@/components/shared/nairaicon";
+import { useFieldArray } from "react-hook-form";
 
 interface CoursePricingFormProps {
   form: any;
 }
 
 export function CoursePricingForm({ form }: CoursePricingFormProps) {
+  const { fields: groupTierFields, append, remove } = useFieldArray({
+    control: form.control,
+    name: "groupTiers",
+  });
+
   return (
     <motion.div
       initial={{ opacity: 0, y: 10 }}
@@ -109,31 +115,164 @@ export function CoursePricingForm({ form }: CoursePricingFormProps) {
               initial={{ opacity: 0, y: 5 }}
               animate={{ opacity: 1, y: 0 }}
               transition={{ duration: 0.3 }}>
-              <FormField
-                control={form.control}
-                name="groupBuyingDiscount"
-                render={({ field }) => (
-                  <FormItem>
-                    <FormLabel className="flex items-center gap-2 text-white">
-                      <Percent className="w-4 h-4 text-neon-green" />
-                      Group Discount (%)
-                    </FormLabel>
-                    <FormControl>
-                      <Input
-                        type="number"
-                        min="0"
-                        max="100"
-                        value={(field.value ?? 0) * 100}
-                        onChange={(e) =>
-                          field.onChange(Number(e.target.value) / 100)
-                        }
-                        className="bg-white/10 border-white/20 text-white"
-                      />
-                    </FormControl>
-                    <FormMessage />
-                  </FormItem>
+              <div className="space-y-4">
+                <FormField
+                  control={form.control}
+                  name="groupBuyingDiscount"
+                  render={({ field }) => (
+                    <FormItem>
+                      <FormLabel className="flex items-center gap-2 text-white">
+                        <Percent className="w-4 h-4 text-neon-green" />
+                        Group Discount (%)
+                      </FormLabel>
+                      <FormControl>
+                        <Input
+                          type="number"
+                          min="0"
+                          max="100"
+                          value={(field.value ?? 0) * 100}
+                          onChange={(e) =>
+                            field.onChange(Number(e.target.value) / 100)
+                          }
+                          className="bg-white/10 border-white/20 text-white"
+                        />
+                      </FormControl>
+                      <FormMessage />
+                    </FormItem>
+                  )}
+                />
+
+                <div className="flex items-center justify-between">
+                  <div>
+                    <FormLabel className="text-white">Group Tiers</FormLabel>
+                    <p className="text-sm text-gray-400">
+                      Add tier sizes, total group price, and cashback percent.
+                    </p>
+                  </div>
+                  <button
+                    type="button"
+                    onClick={() =>
+                      append({
+                        size: 3,
+                        groupPrice:
+                          form.getValues("basePrice") ||
+                          form.getValues("currentPrice") ||
+                          0,
+                        cashbackPercent: 0,
+                        isActive: true,
+                      })
+                    }
+                    className="inline-flex items-center gap-2 rounded-md border border-white/20 px-3 py-2 text-sm text-white hover:bg-white/10">
+                    <Plus className="w-4 h-4" />
+                    Add Tier
+                  </button>
+                </div>
+
+                {groupTierFields.length === 0 ? (
+                  <p className="text-sm text-gray-400">
+                    No tiers yet. Add at least one to enable group purchase
+                    options.
+                  </p>
+                ) : (
+                  <div className="space-y-3">
+                    {groupTierFields.map((tier, index) => (
+                      <div
+                        key={tier.id}
+                        className="rounded-lg border border-white/10 bg-white/5 p-4 space-y-3">
+                        <div className="flex items-center justify-between">
+                          <p className="text-sm text-gray-300">
+                            Tier {index + 1}
+                          </p>
+                          <button
+                            type="button"
+                            onClick={() => remove(index)}
+                            className="inline-flex items-center gap-1 text-sm text-gray-400 hover:text-red-400">
+                            <Trash2 className="w-4 h-4" />
+                            Remove
+                          </button>
+                        </div>
+
+                        <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
+                          <FormField
+                            control={form.control}
+                            name={`groupTiers.${index}.size`}
+                            render={({ field }) => (
+                              <FormItem>
+                                <FormLabel className="text-xs text-gray-300">
+                                  Group Size
+                                </FormLabel>
+                                <FormControl>
+                                  <Input
+                                    type="number"
+                                    min="2"
+                                    value={field.value ?? ""}
+                                    onChange={(e) =>
+                                      field.onChange(Number(e.target.value))
+                                    }
+                                    className="bg-white/10 border-white/20 text-white"
+                                  />
+                                </FormControl>
+                                <FormMessage />
+                              </FormItem>
+                            )}
+                          />
+
+                          <FormField
+                            control={form.control}
+                            name={`groupTiers.${index}.groupPrice`}
+                            render={({ field }) => (
+                              <FormItem>
+                                <FormLabel className="text-xs text-gray-300">
+                                  Group Price (total)
+                                </FormLabel>
+                                <FormControl>
+                                  <Input
+                                    type="number"
+                                    min="0"
+                                    value={field.value ?? ""}
+                                    onChange={(e) =>
+                                      field.onChange(Number(e.target.value))
+                                    }
+                                    className="bg-white/10 border-white/20 text-white"
+                                  />
+                                </FormControl>
+                                <FormMessage />
+                              </FormItem>
+                            )}
+                          />
+
+                          <FormField
+                            control={form.control}
+                            name={`groupTiers.${index}.cashbackPercent`}
+                            render={({ field }) => (
+                              <FormItem>
+                                <FormLabel className="text-xs text-gray-300">
+                                  Cashback %
+                                </FormLabel>
+                                <FormControl>
+                                  <Input
+                                    type="number"
+                                    min="0"
+                                    max="100"
+                                    value={(field.value ?? 0) * 100}
+                                    onChange={(e) =>
+                                      field.onChange(
+                                        Number(e.target.value) / 100
+                                      )
+                                    }
+                                    className="bg-white/10 border-white/20 text-white"
+                                  />
+                                </FormControl>
+                                <FormMessage />
+                              </FormItem>
+                            )}
+                          />
+                        </div>
+                      </div>
+                    ))}
+                  </div>
                 )}
-              />
+              </div>
             </motion.div>
           )}
 

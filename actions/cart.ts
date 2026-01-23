@@ -79,6 +79,7 @@ export async function addToCart(courseId: string) {
         message: `You added  “${course?.title} to your cart ”`,
         actionUrl: `/courses/${courseId}/checkout`,
         actionLabel: "Procced to checkout!",
+        metadata: { category: "cart", courseId },
       });
     } catch (e) {
       console.warn("⚠️ Socket.IO not initialized yet, skipping emit");

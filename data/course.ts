@@ -65,10 +65,12 @@ export async function getCourseById(courseId: string) {
         },
         category: true,
         tags: true,
+        groupTiers: { orderBy: { size: "asc" } },
         modules: {
           include: {
-            lessons: true,
-            quiz: true,
+            lessons: {
+              include: { quiz: true },
+            },
             resources: true,
           },
         },
@@ -112,11 +114,11 @@ export async function getCourseWithModules(courseId: string) {
         },
         modules: {
           include: {
-            quiz: true,
             lessons: {
               orderBy: { sortOrder: "asc" },
               include: {
                 resources: true,
+                quiz: true,
                 progress: session?.user.id
                   ? {
                       where: { userId: session.user.id },
@@ -146,6 +148,45 @@ export async function getCourseWithModules(courseId: string) {
 
     if (!course) return null;
     const allLessons = course.modules.flatMap((m) => m.lessons);
+    const lessonQuizIds = allLessons
+      .map((lesson) => lesson.quiz?.id)
+      .filter((id): id is string => Boolean(id));
+    const quizAttempts = session?.user.id
+      ? await db.quizAttempt.findMany({
+          where: {
+            userId: session.user.id,
+            quizId: { in: lessonQuizIds },
+            passed: true,
+          },
+          select: { quizId: true },
+        })
+      : [];
+    const passedQuizIds = new Set(quizAttempts.map((attempt) => attempt.quizId));
+
+    const moduleTasks = session?.user.id
+      ? await db.task.findMany({
+          where: {
+            moduleId: { in: course.modules.map((m) => m.id) },
+            isActive: true,
+          },
+          include: {
+            submissions: {
+              where: { userId: session.user.id },
+              select: { status: true },
+            },
+          },
+        })
+      : [];
+    const moduleTaskRequired = new Set(moduleTasks.map((task) => task.moduleId));
+    const moduleTaskSubmitted = new Set(
+      moduleTasks
+        .filter((task) =>
+          task.submissions.some((s) =>
+            ["SUBMITTED", "GRADED", "RETURNED"].includes(s.status)
+          )
+        )
+        .map((task) => task.moduleId)
+    );
 
     const lastCompleted = allLessons
       .filter((l) => l.progress.length > 0 && l.progress[0].isCompleted)
@@ -173,44 +214,35 @@ export async function getCourseWithModules(courseId: string) {
 
     const modules = await Promise.all(
       course.modules.map(async (module, idx, arr) => {
-        const allLessonsCompleted = module.lessons.every(
-          (l) => l.progress?.[0]?.isCompleted
-        );
-
-        let quizPassed = true;
-        if (module.quiz) {
-          const attempt = await db.quizAttempt.findFirst({
-            where: {
-              quizId: module.quiz.id,
-              userId: session?.user.id,
-              isCompleted: true,
-              score: {
-                gte: module.quiz.passingScore || 70,
-              },
-            },
-          });
-          quizPassed = !!attempt;
-        }
-
         const previousModules = arr.slice(0, idx);
         const previousCompleted = previousModules.every(
           (m) =>
             m.lessons.every((l) => l.progress?.[0]?.isCompleted) &&
-            (!m.quiz || (m.quiz && quizPassed))
+            m.lessons.every(
+              (l) => !l.quiz || passedQuizIds.has(l.quiz.id)
+            ) &&
+            (!moduleTaskRequired.has(m.id) ||
+              moduleTaskSubmitted.has(m.id))
         );
 
         const isLocked = idx > 0 && !previousCompleted;
 
         const lessonsWithLocking = module.lessons.map((lesson, lidx) => {
           const previousLesson = module.lessons[lidx - 1];
+          const previousLessonQuizPassed = previousLesson?.quiz
+            ? passedQuizIds.has(previousLesson.quiz.id)
+            : true;
           const isLessonLocked =
             isLocked ||
-            (lidx > 0 && !previousLesson?.progress?.[0]?.isCompleted);
+            (lidx > 0 &&
+              (!previousLesson?.progress?.[0]?.isCompleted ||
+                !previousLessonQuizPassed));
 
           return {
             ...lesson,
             isCompleted: lesson.progress?.[0]?.isCompleted ?? false,
             isLocked: isLessonLocked,
+            quizPassed: lesson.quiz ? passedQuizIds.has(lesson.quiz.id) : true,
           };
         });
 

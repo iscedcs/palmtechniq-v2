@@ -9,6 +9,8 @@ import StickyPurchaseCard from "@/components/pages/courses/courseId/stickyPurcha
 import { checkUserEnrollment, getCourseById } from "@/data/course";
 import { generateRandomAvatar } from "@/lib/utils";
 import CourseNotFoundSkeleton from "@/components/shared/skeleton/course-not-found-skeleton";
+import { GroupBuyingWidget } from "@/components/group-buying";
+import { getMyGroupPurchase } from "@/actions/group-purchase";
 
 export default async function CourseSlugPage(props: {
   params: Promise<{ courseId: string }>;
@@ -18,6 +20,7 @@ export default async function CourseSlugPage(props: {
 
   // Call the server action directly
   const isEnrolled = await checkUserEnrollment(courseId);
+  const { group: activeGroup } = await getMyGroupPurchase(courseId);
 
   if (!course) {
     return (
@@ -124,6 +127,16 @@ export default async function CourseSlugPage(props: {
           </div>
 
           <div>
+            {course.groupBuyingEnabled && course.groupTiers?.length ? (
+              <div className="mb-6">
+                <GroupBuyingWidget
+                  courseId={course.id}
+                  courseTitle={course.title}
+                  tiers={course.groupTiers}
+                  activeGroup={activeGroup}
+                />
+              </div>
+            ) : null}
             <StickyPurchaseCard
               currentPrice={course.currentPrice!}
               originalPrice={

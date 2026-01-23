@@ -1,6 +1,6 @@
 import { auth } from "@/auth";
 import { db } from "@/lib/db";
-import { resetQuizAttemptsForModule } from "@/lib/quiz-utils";
+import { resetQuizAttemptsForLesson } from "@/lib/quiz-utils";
 import { NextResponse } from "next/server";
 
 export async function POST(
@@ -84,10 +84,11 @@ export async function POST(
       },
     });
 
-    const resetResult = await resetQuizAttemptsForModule(
-      userId,
-      lesson.moduleId
-    );
+    const resetResult = await resetQuizAttemptsForLesson(userId, lessonId);
+    const lessonQuiz = await db.quiz.findFirst({
+      where: { lessonId },
+      select: { id: true },
+    });
     const allLessonIds = enrollment.course.modules.flatMap((m) =>
       m.lessons.map((l) => l.id)
     );
@@ -114,6 +115,11 @@ export async function POST(
       },
     });
 
+    const moduleTasks = await db.task.findMany({
+      where: { moduleId: lesson.moduleId, isActive: true },
+      select: { id: true },
+    });
+
     return NextResponse.json({
       success: true,
       progress: newProgress,
@@ -121,7 +127,9 @@ export async function POST(
         ? "Lesson completed. Quiz attempts have been reset!"
         : "Lesson completed.",
       resetQuiz: resetResult?.reset,
-      quizId: resetResult?.quizId,
+      quizId: lessonQuiz?.id || null,
+      taskRequired: moduleTasks.length > 0,
+      moduleHasQuiz: Boolean(resetResult?.quizId),
     });
   } catch (error) {
     console.error("Lesson completion error:", error);

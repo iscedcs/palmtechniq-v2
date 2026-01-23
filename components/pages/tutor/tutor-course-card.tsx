@@ -8,7 +8,7 @@ import { TutorCourseActionsMenu } from "./shared/tutor-course-actions-menu";
 import { TutorCourseStatsRow } from "./shared/tutor-course-stats-row";
 import { TutorCourseProgress } from "./shared/tutor-course-progress";
 import Image from "next/image";
-import { generateRandomAvatar } from "@/lib/utils";
+import { formatDurationMinutes, generateRandomAvatar } from "@/lib/utils";
 import { motion } from "framer-motion";
 
 interface TutorCourseCardProps {
@@ -70,7 +70,7 @@ export function TutorCourseCard({ course }: TutorCourseCardProps) {
 
           <p className="text-sm text-gray-400 mt-1">
             📚 {course.lessonsCount} lessons • ⏱{" "}
-            {Math.round(course.duration / 60)} hours
+            {formatDurationMinutes(course.duration)}
           </p>
 
           <TutorCourseStatsRow
