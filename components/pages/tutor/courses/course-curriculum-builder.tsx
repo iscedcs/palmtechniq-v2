@@ -153,7 +153,7 @@ export default function CourseCurriculumBuilder({
     if (!module) return;
     const newLesson: CourseLesson = {
       id: `temp-${Date.now()}`,
-      title: `Lesson ${module.lessons.length + 1}`,
+      title: "",
       type: "VIDEO",
       duration: 0,
       sortOrder: module.lessons.length,
@@ -320,19 +320,25 @@ export default function CourseCurriculumBuilder({
               <SortableContext
                 items={modules.map((m) => m.id)}
                 strategy={verticalListSortingStrategy}>
-                {modules.map((module) => (
+                {modules.map((module, moduleIndex) => (
                   <SortableItem key={module.id} id={module.id}>
                     <motion.div
                       layout
                       className="bg-white/5 border border-white/10 rounded-xl p-4 space-y-3 shadow-md">
                       <div className="flex justify-between items-center">
-                        <Input
-                          value={module.title}
-                          onChange={(e) =>
-                            updateModule(module.id, { title: e.target.value })
-                          }
-                          className="bg-white/10 border-white/20 text-white placeholder:text-gray-50/35"
-                        />
+                        <div className="flex items-center gap-2 w-full">
+                          <span className="text-sm text-gray-400 shrink-0">
+                            Module {moduleIndex + 1}:
+                          </span>
+                          <Input
+                            value={module.title}
+                            onChange={(e) =>
+                              updateModule(module.id, { title: e.target.value })
+                            }
+                            placeholder="Module title"
+                            className="bg-white/10 border-white/20 text-white placeholder:text-gray-50/35"
+                          />
+                        </div>
                         <div className="flex gap-2">
                           <Button
                             size="icon"
@@ -370,47 +376,62 @@ export default function CourseCurriculumBuilder({
                             exit={{ opacity: 0, height: 0 }}
                             transition={{ duration: 0.3 }}
                             className="space-y-4 mt-4 border-t border-white/10 pt-4">
-                            <Textarea
+                            <div>
+                              <p className="text-xs text-gray-400 mb-2">
+                                Module Description
+                              </p>
+                              <Textarea
                               value={module.description}
                               onChange={(e) =>
                                 updateModule(module.id, {
                                   description: e.target.value,
                                 })
                               }
-                              placeholder="Enter Module description"
+                              placeholder="Enter module description"
                               className="bg-white/10 placeholder:text-gray-50/35 border-white/20 text-white"
                             />
-                            <Textarea
+                            </div>
+                            <div>
+                              <p className="text-xs text-gray-400 mb-2">
+                                Module Content
+                              </p>
+                              <Textarea
                               value={module.content}
                               onChange={(e) =>
                                 updateModule(module.id, {
                                   content: e.target.value,
                                 })
                               }
-                              placeholder="Module content"
+                              placeholder="Enter module content"
                               className="mt-2 bg-white/10 border-white/20 text-white placeholder:text-gray-50/35"
                             />
+                            </div>
                             <div className="mt-2 text-sm text-gray-300">
                               Module duration: {module.duration} min
                             </div>
                             {/* LESSONS */}
                             <div className="space-y-3">
-                              {module.lessons.map((lesson) => (
+                              {module.lessons.map((lesson, lessonIndex) => (
                                 <motion.div
                                   key={lesson.id}
                                   layout
                                   className="bg-white/5 border border-white/10 rounded-lg p-3 space-y-3">
                                   <div className="flex justify-between items-center">
-                                    <Input
-                                      value={lesson.title}
-                                      onChange={(e) =>
-                                        updateLesson(module.id, lesson.id, {
-                                          title: e.target.value,
-                                        })
-                                      }
-                                      placeholder="Lesson title"
-                                      className="bg-white/10 border-white/20 text-white placeholder:text-gray-50/35"
-                                    />
+                                    <div className="flex items-center gap-2 w-full">
+                                      <span className="text-xs text-gray-400 shrink-0">
+                                        Lesson {lessonIndex + 1}:
+                                      </span>
+                                      <Input
+                                        value={lesson.title}
+                                        onChange={(e) =>
+                                          updateLesson(module.id, lesson.id, {
+                                            title: e.target.value,
+                                          })
+                                        }
+                                        placeholder="Lesson title"
+                                        className="bg-white/10 border-white/20 text-white placeholder:text-gray-50/35"
+                                      />
+                                    </div>
                                     <Button
                                       size="icon"
                                       type="button"
@@ -444,13 +465,7 @@ export default function CourseCurriculumBuilder({
                                       <X className="w-4 h-4" />
                                     </Button>
                                   </div> */}
-                                  <Select
-                                    value={lesson.type}
-                                    onValueChange={(value) =>
-                                      updateLesson(module.id, lesson.id, {
-                                        type: value as any,
-                                      })
-                                    }>
+                                  <Select value={lesson.type} disabled>
                                     <SelectTrigger className="mt-2 bg-white/10 border-white/20 text-white placeholder:text-gray-50/35">
                                       <SelectValue />
                                     </SelectTrigger>
@@ -463,27 +478,37 @@ export default function CourseCurriculumBuilder({
 
                                   {lesson.type === "VIDEO" && (
                                     <div className="space-y-3">
-                                      <Input
-                                        type="text"
-                                        value={lesson.description}
-                                        onChange={(e) =>
-                                          updateLesson(module.id, lesson.id, {
-                                            description: e.target.value,
-                                          })
-                                        }
-                                        placeholder="Lesson description"
-                                        className="mt-2 bg-white/10 border-white/20 text-white placeholder:text-gray-50/35"
-                                      />
-                                      <Textarea
-                                        value={lesson.content}
-                                        onChange={(e) =>
-                                          updateLesson(module.id, lesson.id, {
-                                            content: e.target.value,
-                                          })
-                                        }
-                                        placeholder="Lesson content"
-                                        className="my-2 bg-white/10 border-white/20 text-white placeholder:text-gray-50/35"
-                                      />
+                                      <div>
+                                        <p className="text-xs text-gray-400 mb-2">
+                                          Lesson Description
+                                        </p>
+                                        <Input
+                                          type="text"
+                                          value={lesson.description}
+                                          onChange={(e) =>
+                                            updateLesson(module.id, lesson.id, {
+                                              description: e.target.value,
+                                            })
+                                          }
+                                          placeholder="Enter lesson description"
+                                          className="mt-2 bg-white/10 border-white/20 text-white placeholder:text-gray-50/35"
+                                        />
+                                      </div>
+                                      <div>
+                                        <p className="text-xs text-gray-400 mb-2">
+                                          Lesson Content
+                                        </p>
+                                        <Textarea
+                                          value={lesson.content}
+                                          onChange={(e) =>
+                                            updateLesson(module.id, lesson.id, {
+                                              content: e.target.value,
+                                            })
+                                          }
+                                          placeholder="Enter lesson content"
+                                          className="my-2 bg-white/10 border-white/20 text-white placeholder:text-gray-50/35"
+                                        />
+                                      </div>
                                       <LessonUploadFile
                                         uploading={lessonUploading}
                                         setUploading={setLessonUploading}

@@ -1,5 +1,6 @@
 import { auth } from "@/auth";
 import { db } from "@/lib/db";
+import { getAverageRating } from "@/lib/reviews";
 
 export async function getPublicCourses() {
   const courses = await db.course.findMany({
@@ -7,7 +8,7 @@ export async function getPublicCourses() {
     include: {
       category: true,
       tags: true,
-      reviews: { include: { user: true } },
+      reviews: { where: { isPublic: true }, include: { user: true } },
       _count: { select: { enrollments: true } },
       tutor: {
         include: { user: true },
@@ -32,10 +33,7 @@ export async function getPublicCourses() {
       level: course.level,
       tutor: course.tutor,
       tags: course.tags.map((t) => ({ id: t.id, name: t.name })),
-      averageRating: course.reviews?.length
-        ? course.reviews.reduce((a, r) => a + (r.rating ?? 0), 0) /
-          course.reviews.length
-        : 0,
+      averageRating: getAverageRating(course.reviews),
       totalStudents: course._count.enrollments,
       enrollments: course._count.enrollments,
       price: course.price ?? 0,
@@ -67,8 +65,10 @@ export async function getCourseById(courseId: string) {
         tags: true,
         groupTiers: { orderBy: { size: "asc" } },
         modules: {
+          orderBy: { sortOrder: "asc" },
           include: {
             lessons: {
+              orderBy: { sortOrder: "asc" },
               include: { quiz: true },
             },
             resources: true,
@@ -76,8 +76,10 @@ export async function getCourseById(courseId: string) {
         },
 
         reviews: {
+          where: { isPublic: true },
           include: {
             user: true,
+            reactions: { select: { type: true } },
           },
         },
         enrollments: true,

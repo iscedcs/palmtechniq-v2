@@ -64,10 +64,20 @@ export async function updateCourse(
 
     console.log("🔎 Category id to connect:", validatedCourse.data.category);
 
+    const resolvedBasePrice =
+      validatedCourse.data.basePrice ?? validatedCourse.data.price ?? 0;
+    const resolvedCurrentPrice =
+      validatedCourse.data.currentPrice && validatedCourse.data.currentPrice > 0
+        ? validatedCourse.data.currentPrice
+        : resolvedBasePrice;
+
     await db.course.update({
       where: { id: courseId },
       data: {
         ...safeData,
+        price: resolvedBasePrice,
+        basePrice: resolvedBasePrice,
+        currentPrice: resolvedCurrentPrice,
         outcomes: validatedCourse.data.outcomes,
         certificate: validatedCourse.data.certificate ?? false,
         allowDiscussions: allowDiscussions ?? false,

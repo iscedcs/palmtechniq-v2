@@ -7,62 +7,63 @@ datasource db {
 }
 
 model User {
-  id                String              @id @default(cuid())
-  email             String              @unique
-  name              String
-  avatar            String?
-  role              UserRole            @default(USER)
-  isActive          Boolean             @default(true)
-  createdAt         DateTime            @default(now())
-  updatedAt         DateTime            @updatedAt
-  bio               String?
-  location          String?
-  website           String?
-  socialLinks       Json?
-  preferences       Json?
-  timezone          String?
-  language          String              @default("en")
-  emailVerified     DateTime?
-  phone             String?
-  password          String?
-  isVerified        Boolean             @default(false)
-  verificationToken String              @default("")
-  bankName          String?             @map("bank_name")
-  accountNumber     String?             @map("account_number")
-  subaccountCode    String?             @map("subaccount_code")
-  recipientCode     String?             @map("recipient_code")
-  walletBalance     Float               @default(0)
-  image             String?
-  accounts          Account[]
-  adminProfile      Admin?
-  AIRecommendation  AIRecommendation[]
-  cartItems         CartItem[]
-  certificates      Certificate[]
-  createdCourses    Course[]            @relation("CourseCreator")
-  ownedCourses      Course[]            @relation("CourseOwner")
-  discussionReplies DiscussionReply[]
-  discussions       Discussion[]
-  enrollments       Enrollment[]
-  LearningPath      LearningPath[]
-  mentorSessions    MentorshipSession[] @relation("StudentSessions")
-  tutoredSessions   MentorshipSession[] @relation("TutorSessions")
-  notifications     Notification[]
-  paymentMethod     PaymentMethod[]
-  ProgressMilestone ProgressMilestone[]
-  QuizAnswer        QuizAnswer[]
-  reports           Report[]
-  reviews           Review[]
-  sessions          Session[]
-  studentProfile    Student?
-  submissions       Submission[]
-  taskSubmissions   TaskSubmission[]
-  createdGroupPurchases GroupPurchase[] @relation("GroupPurchaseCreator")
-  groupMemberships  GroupMember[]
-  transactions      Transaction[]
-  tutorProfile      Tutor?
-  analytics         UserAnalytics[]
-  UserSkill         UserSkill[]
-  wishlist          Wishlist[]
+  id                    String              @id @default(cuid())
+  email                 String              @unique
+  name                  String
+  avatar                String?
+  role                  UserRole            @default(USER)
+  isActive              Boolean             @default(true)
+  createdAt             DateTime            @default(now())
+  updatedAt             DateTime            @updatedAt
+  bio                   String?
+  location              String?
+  website               String?
+  socialLinks           Json?
+  preferences           Json?
+  timezone              String?
+  language              String              @default("en")
+  emailVerified         DateTime?
+  phone                 String?
+  password              String?
+  isVerified            Boolean             @default(false)
+  verificationToken     String              @default("")
+  bankName              String?             @map("bank_name")
+  accountNumber         String?             @map("account_number")
+  subaccountCode        String?             @map("subaccount_code")
+  recipientCode         String?             @map("recipient_code")
+  walletBalance         Float               @default(0)
+  image                 String?
+  accounts              Account[]
+  adminProfile          Admin?
+  AIRecommendation      AIRecommendation[]
+  cartItems             CartItem[]
+  certificates          Certificate[]
+  createdCourses        Course[]            @relation("CourseCreator")
+  ownedCourses          Course[]            @relation("CourseOwner")
+  discussionReplies     DiscussionReply[]
+  discussions           Discussion[]
+  enrollments           Enrollment[]
+  LearningPath          LearningPath[]
+  mentorSessions        MentorshipSession[] @relation("StudentSessions")
+  tutoredSessions       MentorshipSession[] @relation("TutorSessions")
+  notifications         Notification[]
+  paymentMethod         PaymentMethod[]
+  ProgressMilestone     ProgressMilestone[]
+  QuizAnswer            QuizAnswer[]
+  reports               Report[]
+  reviews               Review[]
+  sessions              Session[]
+  studentProfile        Student?
+  submissions           Submission[]
+  taskSubmissions       TaskSubmission[]
+  createdGroupPurchases GroupPurchase[]     @relation("GroupPurchaseCreator")
+  groupMemberships      GroupMember[]
+  transactions          Transaction[]
+  tutorProfile          Tutor?
+  analytics             UserAnalytics[]
+  UserSkill             UserSkill[]
+  wishlist              Wishlist[]
+  reviewReactions       ReviewReaction[]
 
   @@map("users")
 }
@@ -583,21 +584,37 @@ model ProgramRegistration {
 }
 
 model Review {
-  id           String   @id @default(cuid())
+  id           String           @id @default(cuid())
   rating       Int
   comment      String?
-  isPublic     Boolean  @default(true)
+  isPublic     Boolean          @default(true)
+  responseText String?
+  respondedAt  DateTime?
   userId       String
   courseId     String
   tutorName    String
   reviewerName String
-  createdAt    DateTime @default(now())
-  updatedAt    DateTime @updatedAt
-  course       Course   @relation(fields: [courseId], references: [id], onDelete: Cascade)
-  user         User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  createdAt    DateTime         @default(now())
+  updatedAt    DateTime         @updatedAt
+  course       Course           @relation(fields: [courseId], references: [id], onDelete: Cascade)
+  user         User             @relation(fields: [userId], references: [id], onDelete: Cascade)
+  reactions    ReviewReaction[]
 
   @@unique([userId, courseId])
   @@map("reviews")
+}
+
+model ReviewReaction {
+  id        String             @id @default(cuid())
+  type      ReviewReactionType
+  reviewId  String
+  userId    String
+  createdAt DateTime           @default(now())
+  review    Review             @relation(fields: [reviewId], references: [id], onDelete: Cascade)
+  user      User               @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@unique([reviewId, userId, type])
+  @@map("review_reactions")
 }
 
 model CartItem {
@@ -880,59 +897,65 @@ model PasswordResetToken {
 }
 
 model GroupTier {
-  id              String        @id @default(cuid())
+  id              String          @id @default(cuid())
   courseId        String
   size            Int
   groupPrice      Float
-  cashbackPercent Float         @default(0)
-  isActive        Boolean       @default(true)
-  createdAt       DateTime      @default(now())
-  updatedAt       DateTime      @updatedAt
-  course          Course        @relation(fields: [courseId], references: [id], onDelete: Cascade)
+  cashbackPercent Float           @default(0)
+  isActive        Boolean         @default(true)
+  createdAt       DateTime        @default(now())
+  updatedAt       DateTime        @updatedAt
+  course          Course          @relation(fields: [courseId], references: [id], onDelete: Cascade)
   groupPurchases  GroupPurchase[]
 
   @@map("group_tiers")
 }
 
 model GroupPurchase {
-  id               String               @id @default(cuid())
-  courseId         String
-  tierId           String
-  creatorId        String
-  inviteCode       String               @unique
-  status           GroupPurchaseStatus  @default(PENDING_PAYMENT)
-  memberCount      Int                  @default(1)
-  memberLimit      Int
-  groupPrice       Float
-  cashbackTotal    Float                @default(0)
+  id                String              @id @default(cuid())
+  courseId          String
+  tierId            String
+  creatorId         String
+  inviteCode        String              @unique
+  status            GroupPurchaseStatus @default(PENDING_PAYMENT)
+  memberCount       Int                 @default(1)
+  memberLimit       Int
+  groupPrice        Float
+  cashbackTotal     Float               @default(0)
   cashbackPerMember Float               @default(0)
-  cashbackEarned   Float                @default(0)
-  cashbackReleased Boolean              @default(false)
-  paidAt           DateTime?
-  completedAt      DateTime?
-  createdAt        DateTime             @default(now())
-  updatedAt        DateTime             @updatedAt
-  course           Course               @relation(fields: [courseId], references: [id], onDelete: Cascade)
-  tier             GroupTier            @relation(fields: [tierId], references: [id], onDelete: Cascade)
-  creator          User                 @relation("GroupPurchaseCreator", fields: [creatorId], references: [id], onDelete: Cascade)
-  members          GroupMember[]
-  transactions     Transaction[]
-  enrollments      Enrollment[]
+  cashbackEarned    Float               @default(0)
+  cashbackReleased  Boolean             @default(false)
+  paidAt            DateTime?
+  completedAt       DateTime?
+  createdAt         DateTime            @default(now())
+  updatedAt         DateTime            @updatedAt
+  course            Course              @relation(fields: [courseId], references: [id], onDelete: Cascade)
+  tier              GroupTier           @relation(fields: [tierId], references: [id], onDelete: Cascade)
+  creator           User                @relation("GroupPurchaseCreator", fields: [creatorId], references: [id], onDelete: Cascade)
+  members           GroupMember[]
+  transactions      Transaction[]
+  enrollments       Enrollment[]
 
   @@map("group_purchases")
 }
 
 model GroupMember {
-  id               String           @id @default(cuid())
-  groupPurchaseId  String
-  userId           String
-  role             GroupMemberRole  @default(MEMBER)
-  joinedAt         DateTime         @default(now())
-  groupPurchase    GroupPurchase    @relation(fields: [groupPurchaseId], references: [id], onDelete: Cascade)
-  user             User             @relation(fields: [userId], references: [id], onDelete: Cascade)
+  id              String          @id @default(cuid())
+  groupPurchaseId String
+  userId          String
+  role            GroupMemberRole @default(MEMBER)
+  joinedAt        DateTime        @default(now())
+  groupPurchase   GroupPurchase   @relation(fields: [groupPurchaseId], references: [id], onDelete: Cascade)
+  user            User            @relation(fields: [userId], references: [id], onDelete: Cascade)
 
   @@unique([groupPurchaseId, userId])
   @@map("group_members")
+}
+
+enum ReviewReactionType {
+  HELPFUL
+  LIKE
+  REPORT
 }
 
 enum UserRole {

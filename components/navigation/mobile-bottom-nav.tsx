@@ -157,7 +157,7 @@ export function MobileBottomNav() {
     if (href === "/") {
       return pathname === "/";
     }
-    return pathname.startsWith(href);
+    return pathname?.startsWith(href) ;
   };
 
   return (
@@ -183,7 +183,7 @@ export function MobileBottomNav() {
                   href={item.href}
                   className="relative flex flex-col items-center justify-center p-2 min-w-0 flex-1">
                   <motion.div
-                    className={`relative flex flex-col items-center justify-center transition-all duration-200 ₦{
+                    className={`relative flex flex-col items-center justify-center transition-all duration-200 ${
                       active ? "text-neon-blue" : "text-gray-400"
                     }`}
                     whileTap={{ scale: 0.95 }}
@@ -206,7 +206,7 @@ export function MobileBottomNav() {
                     {/* Icon with badge */}
                     <div className="relative">
                       <Icon
-                        className={`w-5 h-5 transition-colors ₦{
+                        className={`w-5 h-5 transition-colors ${
                           active ? "text-neon-blue" : "text-gray-400"
                         }`}
                       />
@@ -222,7 +222,8 @@ export function MobileBottomNav() {
 
                       {/* Special notification badge */}
                       {item.id === "profile" &&
-                        unreadNotifications > 0 &&
+                        typeof unreadNotifications === "function" &&
+                        unreadNotifications() > 0 &&
                         status === "authenticated" && (
                           <div className="absolute -top-1 -right-1 w-3 h-3 bg-red-500 rounded-full border-2 border-gray-900" />
                         )}
@@ -230,7 +231,7 @@ export function MobileBottomNav() {
 
                     {/* Label */}
                     <span
-                      className={`text-xs mt-1 font-medium transition-colors truncate max-w-full ₦{
+                      className={`text-xs mt-1 font-medium transition-colors truncate max-w-full ${
                         active ? "text-neon-blue" : "text-gray-400"
                       }`}>
                       {item.label}

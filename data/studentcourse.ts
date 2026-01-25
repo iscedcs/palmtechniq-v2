@@ -3,6 +3,7 @@
 import { db } from "@/lib/db";
 import { auth } from "@/auth";
 import { revalidatePath } from "next/cache";
+import { getAverageRating } from "@/lib/reviews";
 
 export async function getEnrolledCourses() {
   try {
@@ -19,7 +20,7 @@ export async function getEnrolledCourses() {
               include: { user: true },
             },
             category: true,
-            reviews: { select: { rating: true } },
+            reviews: { where: { isPublic: true }, select: { rating: true } },
             enrollments: { select: { id: true } },
             modules: {
               include: { lessons: { orderBy: { sortOrder: "asc" } } },
@@ -85,11 +86,7 @@ export async function getEnrolledCourses() {
         }
       }
 
-      const averageRating =
-        course.reviews.length > 0
-          ? course.reviews.reduce((sum, r) => sum + r.rating, 0) /
-            course.reviews.length
-          : 0;
+      const averageRating = getAverageRating(course.reviews);
 
       return {
         id: course.id,
@@ -160,7 +157,7 @@ export async function getAvailableCourses() {
           include: { user: true },
         },
         category: true,
-        reviews: { select: { rating: true } },
+        reviews: { where: { isPublic: true }, select: { rating: true } },
         enrollments: { select: { id: true } },
         modules: { include: { lessons: true } },
       },
@@ -169,11 +166,7 @@ export async function getAvailableCourses() {
     });
 
     return courses.map((course) => {
-      const averageRating =
-        course.reviews.length > 0
-          ? course.reviews.reduce((sum, r) => sum + r.rating, 0) /
-            course.reviews.length
-          : 0;
+      const averageRating = getAverageRating(course.reviews);
 
       const computedDuration = course.modules.reduce(
         (sum, m) => sum + m.lessons.reduce((lsum, l) => lsum + (l.duration || 0), 0),
@@ -234,7 +227,7 @@ export async function getCompletedCourses() {
           include: {
             tutor: { include: { user: true } },
             category: true,
-            reviews: { select: { rating: true } },
+            reviews: { where: { isPublic: true }, select: { rating: true } },
             certificates: {
               where: { userId },
               select: { certificateId: true },
@@ -247,11 +240,7 @@ export async function getCompletedCourses() {
 
     return completedEnrollments.map((enrollment) => {
       const course = enrollment.course;
-      const averageRating =
-        course.reviews.length > 0
-          ? course.reviews.reduce((sum, r) => sum + r.rating, 0) /
-            course.reviews.length
-          : 0;
+      const averageRating = getAverageRating(course.reviews);
 
       const finalGrade =
         enrollment.progress >= 95

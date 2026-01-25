@@ -10,6 +10,7 @@ import { Progress } from "@/components/ui/progress";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { Input } from "@/components/ui/input";
 import { formatToNaira, generateRandomAvatar } from "@/lib/utils";
+import { toast } from "sonner";
 
 type GroupTier = {
   id: string;
@@ -59,24 +60,43 @@ export function GroupBuyingWidget({
 
   const activeTiers = tiers.filter((tier) => tier.isActive);
 
+  const handleCopy = async () => {
+    if (!inviteUrl) return;
+    await navigator.clipboard.writeText(inviteUrl);
+    toast.success("Invite link copied");
+  };
+
+  const handleShare = async () => {
+    if (!inviteUrl) return;
+    if (navigator.share) {
+      await navigator.share({
+        title: `Join my group for ${courseTitle}`,
+        text: "Join my group to unlock this course together.",
+        url: inviteUrl,
+      });
+      return;
+    }
+    await handleCopy();
+  };
+
   return (
-    <Card className="glass-card border-yellow-500/30 bg-yellow-500/5 overflow-hidden">
+    <Card className="glass-card border-white/10 bg-white/5 overflow-hidden">
       <CardHeader className="pb-4">
-        <div className="flex items-center justify-between">
-          <div className="flex items-center space-x-3">
-            <div className="w-12 h-12 bg-gradient-to-r from-yellow-500 to-orange-500 rounded-full flex items-center justify-center">
+        <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
+          <div className="flex items-start space-x-3">
+            <div className="w-12 h-12 bg-gradient-to-r from-neon-blue to-neon-purple rounded-full flex items-center justify-center shrink-0">
               <Users className="w-6 h-6 text-white" />
             </div>
-            <div>
+            <div className="space-y-1">
               <h3 className="text-xl font-bold text-white">Group Learning</h3>
               <p className="text-gray-400 text-sm">
                 Start a group and unlock lifetime access together.
               </p>
+              <Badge className="bg-white/10 text-gray-300 border-white/10 w-fit">
+                {courseTitle}
+              </Badge>
             </div>
           </div>
-          <Badge className="bg-yellow-500/20 text-yellow-400 border-yellow-500/30">
-            {courseTitle}
-          </Badge>
         </div>
       </CardHeader>
 
@@ -84,7 +104,7 @@ export function GroupBuyingWidget({
         {activeGroup ? (
           <>
             {activeGroup.status === "PENDING_PAYMENT" ? (
-              <div className="rounded-lg border border-yellow-500/20 bg-yellow-500/10 p-3 text-xs text-yellow-200">
+              <div className="rounded-lg border border-white/10 bg-white/5 p-3 text-xs text-gray-300">
                 Your payment is pending. Complete payment to activate the group.
               </div>
             ) : null}
@@ -93,7 +113,7 @@ export function GroupBuyingWidget({
                 <span className="text-white font-semibold">
                   {activeGroup.memberCount} / {activeGroup.memberLimit} members
                 </span>
-                <span className="text-yellow-400 font-bold">
+                <span className="text-neon-blue font-bold">
                   {Math.round(activeGroup.tier.cashbackPercent * 100)}% cashback
                 </span>
               </div>
@@ -156,31 +176,29 @@ export function GroupBuyingWidget({
                 <Input
                   value={inviteUrl}
                   readOnly
-                  className="glass-card border-white/20 text-sm"
+                  className="bg-white/10 border-white/20 text-sm text-white"
                 />
                 <Button
                   size="sm"
-                  onClick={() =>
-                    inviteUrl
-                      ? navigator.clipboard.writeText(inviteUrl)
-                      : undefined
-                  }
-                  className="bg-yellow-500 hover:bg-yellow-600 text-black">
+                  onClick={handleCopy}
+                  className="bg-gradient-to-r from-neon-blue to-neon-purple text-white hover:opacity-90">
                   <Copy className="w-4 h-4" />
                 </Button>
               </div>
               <div className="grid grid-cols-2 gap-2">
                 <Button
                   size="sm"
-                  className="bg-blue-500 hover:bg-blue-600 text-white">
+                  onClick={handleShare}
+                  className="bg-gradient-to-r from-neon-blue to-neon-purple text-white hover:opacity-90">
                   <Share2 className="w-4 h-4 mr-2" />
                   Share
                 </Button>
                 <Button
                   size="sm"
-                  className="bg-green-500 hover:bg-green-600 text-white">
+                  onClick={handleCopy}
+                  className="bg-gradient-to-r from-neon-blue to-neon-purple text-white hover:opacity-90">
                   <Gift className="w-4 h-4 mr-2" />
-                  Invite
+                  Copy link
                 </Button>
               </div>
             </div>
@@ -199,7 +217,7 @@ export function GroupBuyingWidget({
                     key={tier.id}
                     className="flex items-center justify-between p-3 rounded-lg border border-white/10 bg-white/5">
                     <div className="flex items-center space-x-3">
-                      <Crown className="w-4 h-4 text-yellow-400" />
+                      <Crown className="w-4 h-4 text-neon-blue" />
                       <div>
                         <p className="text-white text-sm font-medium">
                           {tier.size} members
@@ -228,7 +246,7 @@ export function GroupBuyingWidget({
                   <Button
                     key={tier.id}
                     asChild
-                    className="bg-gradient-to-r from-yellow-500 to-orange-500 hover:from-yellow-600 hover:to-orange-600 text-black font-semibold">
+                    className="bg-gradient-to-r from-neon-blue to-neon-purple text-white font-semibold">
                     <Link
                       href={`/courses/${courseId}/checkout?groupTierId=${tier.id}`}>
                       Start group ({tier.size})

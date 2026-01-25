@@ -259,6 +259,18 @@ export const gradeTaskSubmissionSchema = z.object({
   feedback: z.string().min(1, "Feedback is required"),
 });
 
+export const reviewSchema = z.object({
+  courseId: z.string().min(1, "Course ID is required"),
+  rating: z.number().int().min(1).max(5),
+  comment: z.string().min(3, "Review must be at least 3 characters"),
+});
+
+export const updateReviewSchema = z.object({
+  reviewId: z.string().min(1, "Review ID is required"),
+  rating: z.number().int().min(1).max(5),
+  comment: z.string().min(3, "Review must be at least 3 characters"),
+});
+
 const optionalUrlSchema = z
   .union([z.string().url("Must be a valid URL"), z.literal("")])
   .optional()

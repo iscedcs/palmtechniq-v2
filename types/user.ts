@@ -90,8 +90,12 @@ export interface Project {
 export interface Review {
   id: string;
   userId: string;
+  courseId: string;
   rating: number;
-  comment: string;
+  comment?: string;
+  isPublic?: boolean;
+  reviewerName?: string;
+  tutorName?: string;
   createdAt: Date;
 }
 

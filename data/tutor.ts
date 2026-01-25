@@ -2,6 +2,7 @@
 
 import { auth } from "@/auth";
 import { db } from "@/lib/db";
+import { getAverageRating } from "@/lib/reviews";
 
 export async function getTutorCourses() {
   try {
@@ -22,7 +23,7 @@ export async function getTutorCourses() {
           include: { lessons: true },
         },
         enrollments: true,
-        reviews: true,
+        reviews: { where: { isPublic: true } },
         transactions: true,
       },
       orderBy: { createdAt: "desc" },
@@ -41,11 +42,7 @@ export async function getTutorCourses() {
       );
 
       const studentsCount = course.enrollments.length;
-      const avgRating =
-        course.reviews.length > 0
-          ? course.reviews.reduce((acc, r) => acc + (r.rating || 0), 0) /
-            course.reviews.length
-          : 0;
+      const avgRating = getAverageRating(course.reviews);
 
       const earnings =
         course.transactions?.reduce((sum, tx) => sum + (tx.amount || 0), 0) ??

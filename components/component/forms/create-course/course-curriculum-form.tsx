@@ -136,50 +136,67 @@ export function CourseCurriculumForm({
           )}
 
           <Accordion type="multiple" className="space-y-4">
-            {modules.map((module) => (
+            {modules.map((module, moduleIndex) => (
               <AccordionItem key={module.id} value={module.id}>
                 <AccordionTrigger className="text-lg font-semibold text-white hover:text-neon-blue transition-colors">
                   <div className="flex items-center gap-2">
                     <PlayCircle className="w-4 h-4 text-neon-green" />
-                    {module.title || "Untitled Module"}
+                    Module {moduleIndex + 1}: {module.title || "Untitled Module"}
                   </div>
                 </AccordionTrigger>
 
                 <AccordionContent>
                   <div className="p-6 bg-white/5 rounded-xl border border-white/10 space-y-4 shadow-inner">
                     {/* Module fields */}
-                    <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
-                      <Input
-                        value={module.title}
-                        onChange={(e) =>
-                          updateModule(module.id, { title: e.target.value })
-                        }
-                        placeholder="Module title"
-                        className="bg-white/10 border-white/20 text-sm sm:text-xl text-white"
-                      />
+                    <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 items-center">
+                      <div className="flex items-center gap-2 w-full">
+                        <span className="text-sm text-gray-400 shrink-0">
+                          Module {moduleIndex + 1}:
+                        </span>
+                        <Input
+                          value={module.title}
+                          onChange={(e) =>
+                            updateModule(module.id, { title: e.target.value })
+                          }
+                          placeholder="Module title"
+                          className="bg-white/10 border-white/20 text-sm sm:text-xl text-white"
+                        />
+                      </div>
                       <div className="text-sm text-gray-300 flex items-center gap-2">
                         <Clock className="w-4 h-4 text-neon-purple" />
                         {module.duration} min
                       </div>
                     </div>
 
-                    <Textarea
-                      value={module.description || ""}
-                      onChange={(e) =>
-                        updateModule(module.id, { description: e.target.value })
-                      }
-                      placeholder="Module overview or objectives"
-                      className="bg-white/10 border-white/20 text-sm sm:text-xl text-white min-h-[90px]"
-                    />
+                    <div>
+                      <p className="text-xs text-gray-400 mb-2">
+                        Module Description
+                      </p>
+                      <Textarea
+                        value={module.description || ""}
+                        onChange={(e) =>
+                          updateModule(module.id, {
+                            description: e.target.value,
+                          })
+                        }
+                        placeholder="Enter module description"
+                        className="bg-white/10 border-white/20 text-sm sm:text-xl text-white min-h-[90px]"
+                      />
+                    </div>
 
-                    <Textarea
-                      value={module.content || ""}
-                      onChange={(e) =>
-                        updateModule(module.id, { content: e.target.value })
-                      }
-                      placeholder="Detailed module content"
-                      className="bg-white/10 border-white/20 text-sm sm:text-xl text-white min-h-[90px]"
-                    />
+                    <div>
+                      <p className="text-xs text-gray-400 mb-2">
+                        Module Content
+                      </p>
+                      <Textarea
+                        value={module.content || ""}
+                        onChange={(e) =>
+                          updateModule(module.id, { content: e.target.value })
+                        }
+                        placeholder="Enter module content"
+                        className="bg-white/10 border-white/20 text-sm sm:text-xl text-white min-h-[90px]"
+                      />
+                    </div>
 
                     <div className="pt-2 border-t border-white/10">
                       <ResourceUploaderComponent moduleId={module.id} />
@@ -202,55 +219,65 @@ export function CourseCurriculumForm({
 
                     {/* Lessons */}
                     <Accordion type="multiple" className="mt-4 space-y-3">
-                      {module.lessons.map((lesson) => (
+                      {module.lessons.map((lesson, lessonIndex) => (
                         <AccordionItem key={lesson.id} value={lesson.id}>
                           <AccordionTrigger className="text-md font-medium text-white hover:text-neon-green transition-colors">
+                            Lesson {lessonIndex + 1}:{" "}
                             {lesson.title || "Untitled Lesson"}
                           </AccordionTrigger>
 
                           <AccordionContent>
                             <div className="bg-white/10 border border-white/20 p-2 sm:p-5 rounded-lg space-y-4">
-                              <Input
-                                value={lesson.title}
-                                onChange={(e) =>
-                                  updateLesson(module.id, lesson.id, {
-                                    title: e.target.value,
-                                  })
-                                }
-                                placeholder="Lesson title"
-                                className="bg-white/10 border-white/20 text-sm sm:text-xl text-white"
-                              />
+                              <div className="flex items-center gap-2 w-full">
+                                <span className="text-xs text-gray-400 shrink-0">
+                                  Lesson {lessonIndex + 1}:
+                                </span>
+                                <Input
+                                  value={lesson.title}
+                                  onChange={(e) =>
+                                    updateLesson(module.id, lesson.id, {
+                                      title: e.target.value,
+                                    })
+                                  }
+                                  placeholder="Lesson title"
+                                  className="bg-white/10 border-white/20 text-sm sm:text-xl text-white"
+                                />
+                              </div>
 
-                              <Textarea
-                                value={lesson.description || ""}
-                                onChange={(e) =>
-                                  updateLesson(module.id, lesson.id, {
-                                    description: e.target.value,
-                                  })
-                                }
-                                placeholder="Short description"
-                                className="bg-white/10 border-white/20 text-sm sm:text-xl text-white"
-                              />
+                              <div>
+                                <p className="text-xs text-gray-400 mb-2">
+                                  Lesson Description
+                                </p>
+                                <Textarea
+                                  value={lesson.description || ""}
+                                  onChange={(e) =>
+                                    updateLesson(module.id, lesson.id, {
+                                      description: e.target.value,
+                                    })
+                                  }
+                                  placeholder="Enter lesson description"
+                                  className="bg-white/10 border-white/20 text-sm sm:text-xl text-white"
+                                />
+                              </div>
 
-                              <Textarea
-                                value={lesson.content || ""}
-                                onChange={(e) =>
-                                  updateLesson(module.id, lesson.id, {
-                                    content: e.target.value,
-                                  })
-                                }
-                                placeholder="Main lesson content or notes"
-                                className="bg-white/10 border-white/20 text-sm sm:text-xl text-white"
-                              />
+                              <div>
+                                <p className="text-xs text-gray-400 mb-2">
+                                  Lesson Content
+                                </p>
+                                <Textarea
+                                  value={lesson.content || ""}
+                                  onChange={(e) =>
+                                    updateLesson(module.id, lesson.id, {
+                                      content: e.target.value,
+                                    })
+                                  }
+                                  placeholder="Enter lesson content"
+                                  className="bg-white/10 border-white/20 text-sm sm:text-xl text-white"
+                                />
+                              </div>
 
                               <div className="grid md:grid-cols-2 gap-3">
-                                <Select
-                                  value={lesson.lessonType}
-                                  onValueChange={(value) =>
-                                    updateLesson(module.id, lesson.id, {
-                                      lessonType: value as any,
-                                    })
-                                  }>
+                                <Select value={lesson.lessonType} disabled>
                                   <SelectTrigger className="bg-white/10 text-sm sm:text-xl border-white/20 text-white">
                                     <SelectValue placeholder="Lesson Type" />
                                   </SelectTrigger>

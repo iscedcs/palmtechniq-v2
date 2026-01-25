@@ -82,7 +82,7 @@ export const roleNavItems = {
     // { icon: Calendar, label: "Schedule", href: "/tutor/mentorship" },
     { icon: MessageSquare, label: "Projects", href: "/tutor/projects" },
     { icon: NotebookIcon, label: "Tasks", href: "/tutor/tasks" },
-    { icon: MessageSquare, label: "Messages", href: "/tutor/reviews" },
+    { icon: MessageSquare, label: "Reviews", href: "/tutor/reviews" },
   ],
   ADMIN: [
     { icon: Home, label: "Dashboard", href: "/admin" },

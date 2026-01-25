@@ -12,7 +12,7 @@ import { zodResolver } from "@hookform/resolvers/zod";
 import { motion } from "framer-motion";
 import { BookOpen, Eye, PlayCircle, Save, Settings } from "lucide-react";
 import { useRouter } from "next/navigation";
-import { useState, useTransition } from "react";
+import { useEffect, useRef, useState, useTransition } from "react";
 import { useForm } from "react-hook-form";
 import { toast } from "sonner";
 import { z } from "zod";
@@ -82,36 +82,85 @@ export default function CreateCourse() {
   const [success, setSuccess] = useState("");
   const [isPending, startTransition] = useTransition();
   const router = useRouter();
+  const modulesRef = useRef<CourseModule[]>([]);
+  const draftKey = "courseCreateDraft";
+
+  const defaultValues: z.infer<typeof courseSchema> = {
+    title: "",
+    subtitle: "",
+    description: "",
+    duration: 0,
+    category: "",
+    level: "BEGINNER",
+    language: "English",
+    price: 0,
+    basePrice: 0,
+    currentPrice: 0,
+    currency: "NGN",
+    thumbnail: "",
+    previewVideo: "",
+    tags: [],
+    requirements: [],
+    outcomes: [],
+    isPublished: false,
+    allowDiscussions: true,
+    certificate: true,
+    isFlashSale: false,
+    flashSaleEnd: undefined,
+    groupBuyingEnabled: false,
+    groupBuyingDiscount: 0,
+    groupTiers: [],
+  };
 
   const form = useForm<z.infer<typeof courseSchema>>({
     resolver: zodResolver(courseSchema),
-    defaultValues: {
-      title: "",
-      subtitle: "",
-      description: "",
-      duration: 0,
-      category: "",
-      level: "BEGINNER",
-      language: "English",
-      price: 0,
-      basePrice: 0,
-      currentPrice: 0,
-      currency: "NGN",
-      thumbnail: "",
-      previewVideo: "",
-      tags: [],
-      requirements: [],
-      outcomes: [],
-      isPublished: false,
-      allowDiscussions: true,
-      certificate: true,
-      isFlashSale: false,
-      flashSaleEnd: undefined,
-      groupBuyingEnabled: false,
-      groupBuyingDiscount: 0,
-      groupTiers: [],
-    },
+    defaultValues,
   });
+
+  useEffect(() => {
+    try {
+      const saved = localStorage.getItem(draftKey);
+      if (!saved) return;
+      const parsed = JSON.parse(saved) as {
+        values?: z.infer<typeof courseSchema>;
+        modules?: CourseModule[];
+      };
+      if (parsed?.values) {
+        form.reset({ ...defaultValues, ...parsed.values });
+      }
+      if (parsed?.modules) {
+        setModules(parsed.modules);
+      }
+    } catch (err) {
+      console.warn("Failed to restore course draft", err);
+    }
+  }, [form]);
+
+  useEffect(() => {
+    modulesRef.current = modules;
+    try {
+      localStorage.setItem(
+        draftKey,
+        JSON.stringify({ values: form.getValues(), modules })
+      );
+    } catch (err) {
+      console.warn("Failed to store course draft", err);
+    }
+  }, [modules]);
+
+  useEffect(() => {
+    const subscription = form.watch((values) => {
+      try {
+        localStorage.setItem(
+          draftKey,
+          JSON.stringify({ values, modules: modulesRef.current })
+        );
+      } catch (err) {
+        console.warn("Failed to store course draft", err);
+      }
+    });
+    return () => subscription.unsubscribe?.();
+  }, [form]);
 
   const onSubmit = async (
     values: z.infer<typeof courseSchema>,
@@ -149,8 +198,9 @@ export default function CreateCourse() {
             setError(data.error!);
             toast.error(data.error);
           } else {
-            form.reset();
+            form.reset(defaultValues);
             setModules([]);
+            localStorage.removeItem(draftKey);
             setSuccess("Course created successfully");
             toast.success("Course created successfully");
             router.refresh();
@@ -174,6 +224,15 @@ export default function CreateCourse() {
     { id: 2, title: "Pricing", icon: NairaSign },
     { id: 3, title: "Settings", icon: Settings },
   ];
+
+  const handleResetBuilder = () => {
+    form.reset(defaultValues);
+    setModules([]);
+    setCurrentStep(0);
+    setError("");
+    setSuccess("");
+    localStorage.removeItem(draftKey);
+  };
 
   return (
     <div className="min-h-screen bg-background">
@@ -202,6 +261,16 @@ export default function CreateCourse() {
               className="space-y-8">
               <Card className="glass-card border-white/10 hover-glow">
                 <CardContent className="p-8">
+                  <div className="flex flex-wrap gap-4 mb-8">
+                    <Button
+                      type="button"
+                      variant="outline"
+                      onClick={handleResetBuilder}
+                      className="ml-auto border-white/20 text-white hover:bg-white/10">
+                      Start again
+                    </Button>
+                  </div>
+
                   <div className="flex flex-wrap gap-4 mb-8">
                     {steps.map((step) => (
                       <Button

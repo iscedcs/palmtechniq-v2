@@ -51,6 +51,13 @@ export async function createCourse(data: any, modulesData: any[] = []) {
 
     const result = await db.$transaction(
       async (tx) => {
+        const resolvedBasePrice =
+          validatedData.data.basePrice ?? validatedData.data.price ?? 0;
+        const resolvedCurrentPrice =
+          validatedData.data.currentPrice && validatedData.data.currentPrice > 0
+            ? validatedData.data.currentPrice
+            : resolvedBasePrice;
+
         const course = await tx.course.create({
           data: {
             title: validatedData.data.title,
@@ -61,17 +68,14 @@ export async function createCourse(data: any, modulesData: any[] = []) {
             },
             level: validatedData.data.level as any,
             language: validatedData.data.language,
-            price: validatedData.data.price,
-            basePrice: validatedData.data.basePrice,
-            currentPrice:
-              validatedData.data.currentPrice || validatedData.data.price,
+            price: resolvedBasePrice,
+            basePrice: resolvedBasePrice,
+            currentPrice: resolvedCurrentPrice,
             demandLevel:
-              validatedData.data.basePrice && validatedData.data.currentPrice
-                ? validatedData.data.currentPrice <
-                  validatedData.data.basePrice * 0.7
+              resolvedBasePrice && resolvedCurrentPrice
+                ? resolvedCurrentPrice < resolvedBasePrice * 0.7
                   ? "high"
-                  : validatedData.data.currentPrice <
-                    validatedData.data.basePrice * 0.9
+                  : resolvedCurrentPrice < resolvedBasePrice * 0.9
                   ? "medium"
                   : "low"
                 : undefined,
@@ -79,6 +83,8 @@ export async function createCourse(data: any, modulesData: any[] = []) {
             outcomes: validatedData.data.outcomes,
 
             isFlashSale: validatedData.data.isFlashSale,
+            allowDiscussions: validatedData.data.allowDiscussions ?? false,
+            certificate: validatedData.data.certificate ?? false,
             duration: 0,
             flashSaleEnd: validatedData.data.flashSaleEnd,
 

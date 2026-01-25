@@ -2,6 +2,7 @@
 
 import { auth } from "@/auth";
 import { db } from "@/lib/db";
+import { getAverageRating } from "@/lib/reviews";
 import { formatDistanceToNow } from "date-fns";
 
 export async function getTutorDashboardData() {
@@ -25,7 +26,7 @@ export async function getTutorDashboardData() {
         include: { lessons: true },
       },
       enrollments: true,
-      reviews: true,
+      reviews: { where: { isPublic: true } },
       transactions: true,
     },
   });
@@ -38,7 +39,7 @@ export async function getTutorDashboardData() {
   });
 
   const reviews = await db.review.findMany({
-    where: { course: { tutorId: tutor.id } },
+    where: { course: { tutorId: tutor.id }, isPublic: true },
     include: { user: true, course: true },
     orderBy: { createdAt: "desc" },
     take: 5,
@@ -98,14 +99,7 @@ export async function getTutorDashboardData() {
 
   const coursesSold = courses.reduce((sum, c) => sum + c.enrollments.length, 0);
 
-  const averageRating = (() => {
-    const allReviews = courses.flatMap((c) => c.reviews);
-    if (allReviews.length === 0) return 0;
-    return (
-      allReviews.reduce((sum, r) => sum + (r.rating || 0), 0) /
-      allReviews.length
-    );
-  })();
+  const averageRating = getAverageRating(courses.flatMap((c) => c.reviews));
 
   const earningsChange =
     lastMonthTx._sum.amount && lastMonthTx._sum.amount > 0
@@ -183,10 +177,7 @@ export async function getTutorDashboardData() {
     id: c.id,
     title: c.title,
     students: c.enrollments.length,
-    rating:
-      c.reviews.length > 0
-        ? c.reviews.reduce((sum, r) => sum + r.rating, 0) / c.reviews.length
-        : 0,
+    rating: getAverageRating(c.reviews),
     earnings: c.transactions.reduce((txSum, tx) => txSum + (tx.amount || 0), 0),
     status: c.status.toLowerCase(),
     thumbnail: c.thumbnail,
