@@ -22,7 +22,8 @@ import {
 } from "@/components/ui/select";
 import { Textarea } from "@/components/ui/textarea";
 import { Plus, X, PlayCircle, Clock, BookOpen, Layers } from "lucide-react";
-import { Dispatch, SetStateAction, useMemo } from "react";
+import { Dispatch, SetStateAction, useMemo, useRef } from "react";
+import { updateLessonVideo } from "@/actions/tutor-actions";
 
 interface CourseLesson {
   id: string;
@@ -86,6 +87,7 @@ export function CourseCurriculumForm({
   lessonUploading,
   setLessonUploading,
 }: CourseCurriculumFormProps) {
+  const durationCache = useRef<Record<string, number>>({});
   // 🧮 Compute quick stats
   const stats = useMemo(() => {
     const totalLessons = modules.reduce(
@@ -295,11 +297,27 @@ export function CourseCurriculumForm({
                               {lesson.lessonType === "VIDEO" && (
                                 <div className="space-y-3">
                                   {lesson.videoUrl ? (
-                                    <video
-                                      src={lesson.videoUrl}
-                                      controls
-                                      className="w-full max-h-56 sm:max-h-64 rounded-lg border border-white/20"
-                                    />
+                                    <>
+                                      <video
+                                        src={lesson.videoUrl}
+                                        controls
+                                        className="w-full max-h-56 sm:max-h-64 rounded-lg border border-white/20"
+                                      />
+                                      <div className="space-y-2">
+                                        <Input
+                                          readOnly
+                                          value={lesson.videoUrl}
+                                          className="bg-white/10 border-white/20 text-xs sm:text-sm text-white"
+                                        />
+                                        <a
+                                          href={lesson.videoUrl}
+                                          target="_blank"
+                                          rel="noreferrer"
+                                          className="text-xs text-neon-blue underline underline-offset-4">
+                                          Open current video
+                                        </a>
+                                      </div>
+                                    </>
                                   ) : (
                                     <p className="text-sm text-gray-400 italic">
                                       No video uploaded yet
@@ -312,17 +330,21 @@ export function CourseCurriculumForm({
                                       updateLesson(module.id, lesson.id, {
                                         videoUrl: url,
                                       });
-                                      const video =
-                                        document.createElement("video");
-                                      video.src = url;
-                                      video.onloadedmetadata = () => {
-                                        const minutes = Math.ceil(
-                                          video.duration / 60
-                                        );
-                                        updateLesson(module.id, lesson.id, {
-                                          duration: minutes,
+                                      if (!lesson.id.startsWith("temp-")) {
+                                        updateLessonVideo(
+                                          lesson.id,
+                                          url,
+                                          durationCache.current[lesson.id]
+                                        ).catch((error) => {
+                                          console.error(error);
                                         });
-                                      };
+                                      }
+                                    }}
+                                    onDuration={(minutes) => {
+                                      durationCache.current[lesson.id] = minutes;
+                                      updateLesson(module.id, lesson.id, {
+                                        duration: minutes,
+                                      });
                                     }}
                                   />
                                   <ResourceUploaderComponent

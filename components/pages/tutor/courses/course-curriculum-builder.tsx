@@ -516,21 +516,14 @@ export default function CourseCurriculumBuilder({
                                           updateLesson(module.id, lesson.id, {
                                             videoUrl: url,
                                           });
-
-                                          const video =
-                                            document.createElement("video");
-                                          video.src = url;
-                                          video.onloadedmetadata = () => {
-                                            const minutes = Math.ceil(
-                                              video.duration / 60
-                                            );
-                                            updateLesson(module.id, lesson.id, {
-                                              duration: minutes,
-                                            });
-                                            toast.success(
-                                              `Video uploaded (${minutes} min)`
-                                            );
-                                          };
+                                        }}
+                                        onDuration={(minutes) => {
+                                          updateLesson(module.id, lesson.id, {
+                                            duration: minutes,
+                                          });
+                                          toast.success(
+                                            `Video uploaded (${minutes} min)`
+                                          );
                                         }}
                                       />
                                     </div>

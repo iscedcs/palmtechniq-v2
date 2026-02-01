@@ -1,5 +1,6 @@
 "use client";
 
+import { Badge } from "@/components/ui/badge";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Progress } from "@/components/ui/progress";
 import { ScrollArea } from "@/components/ui/scroll-area";
@@ -21,6 +22,10 @@ interface Module {
   title: string;
   lessons: Lesson[];
   isLocked?: boolean;
+  task?: {
+    hasTask: boolean;
+    isSubmitted: boolean;
+  };
 }
 
 export default function LessonSidebar({
@@ -80,13 +85,24 @@ export default function LessonSidebar({
                 return (
                   <div key={module.id}>
                     {/* Module header */}
-                    <div className="flex items-center gap-2 mb-2">
+                    <div className="flex flex-wrap items-center gap-2 mb-2">
                       {moduleCompleted ? (
                         <CheckCircle className="w-5 h-5 text-green-400" />
                       ) : (
                         <Circle className="w-5 h-5 text-gray-400" />
                       )}
                       <h4 className="font-medium text-white">{module.title}</h4>
+                      {module.task?.hasTask ? (
+                        module.task.isSubmitted ? (
+                          <Badge className="bg-neon-green/20 text-neon-green border border-neon-green/40">
+                            Task done
+                          </Badge>
+                        ) : (
+                          <Badge className="bg-neon-orange/20 text-neon-orange border border-neon-orange/40">
+                            Task required
+                          </Badge>
+                        )
+                      ) : null}
                     </div>
 
                     {/* Lessons inside module */}

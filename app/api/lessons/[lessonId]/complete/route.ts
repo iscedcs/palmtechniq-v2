@@ -34,7 +34,9 @@ export async function POST(
       },
       include: {
         course: {
-          include: {
+          select: {
+            id: true,
+            certificate: true,
             modules: {
               include: {
                 lessons: true,
@@ -106,29 +108,104 @@ export async function POST(
     const newProgress =
       totalLessons > 0 ? Math.round((completedCount / totalLessons) * 100) : 0;
 
+    const quizIds = await db.quiz.findMany({
+      where: { lessonId: { in: allLessonIds } },
+      select: { id: true },
+    });
+    const passedQuizAttempts = quizIds.length
+      ? await db.quizAttempt.findMany({
+          where: {
+            userId,
+            quizId: { in: quizIds.map((q) => q.id) },
+            passed: true,
+          },
+          select: { quizId: true },
+        })
+      : [];
+    const passedQuizIds = new Set(passedQuizAttempts.map((a) => a.quizId));
+    const quizzesComplete = quizIds.every((q) => passedQuizIds.has(q.id));
+
+    const courseTasks = await db.task.findMany({
+      where: { courseId: enrollment.course.id, isActive: true },
+      include: {
+        submissions: {
+          where: { userId },
+          select: { status: true },
+        },
+      },
+    });
+    const submissionStatuses = new Set(["SUBMITTED", "GRADED", "RETURNED"]);
+    const tasksComplete = courseTasks.every((task) =>
+      task.submissions.some((s) => submissionStatuses.has(s.status))
+    );
+
+    const courseProjects = await db.project.findMany({
+      where: {
+        courseId: enrollment.course.id,
+        scope: "COURSE",
+        isActive: true,
+      },
+      include: {
+        submissions: {
+          where: { userId },
+          select: { status: true },
+        },
+      },
+    });
+    const projectsComplete = courseProjects.every((project) =>
+      project.submissions.some((s) => submissionStatuses.has(s.status))
+    );
+
+    const certificateEnabled = Boolean(enrollment.course.certificate);
+    const certificateEligible =
+      newProgress === 100 &&
+      quizzesComplete &&
+      tasksComplete &&
+      projectsComplete;
+    const canCompleteEnrollment =
+      newProgress === 100 && (!certificateEnabled || certificateEligible);
+
     await db.enrollment.update({
       where: { id: enrollment.id },
       data: {
         progress: newProgress,
-        status: newProgress === 100 ? "COMPLETED" : "ACTIVE",
-        completedAt: newProgress === 100 ? now : null,
+        status: canCompleteEnrollment ? "COMPLETED" : "ACTIVE",
+        completedAt: canCompleteEnrollment ? now : null,
       },
     });
 
-    const moduleTasks = await db.task.findMany({
-      where: { moduleId: lesson.moduleId, isActive: true },
-      select: { id: true },
-    });
+    const moduleTasks = courseTasks.filter(
+      (task) => task.moduleId === lesson.moduleId
+    );
+    const pendingModuleTask = moduleTasks.find(
+      (task) =>
+        !task.submissions.some((s) => submissionStatuses.has(s.status))
+    );
+    const moduleTaskId =
+      pendingModuleTask?.id ?? moduleTasks[0]?.id ?? null;
 
     return NextResponse.json({
       success: true,
       progress: newProgress,
+      courseCompleted: newProgress === 100,
+      certificateEnabled,
+      certificateEligible: certificateEnabled ? certificateEligible : true,
+      certificateMissing: certificateEnabled
+        ? {
+            lessons: newProgress < 100,
+            quizzes: !quizzesComplete,
+            tasks: !tasksComplete,
+            projects: !projectsComplete,
+          }
+        : null,
       message: resetResult?.reset
         ? "Lesson completed. Quiz attempts have been reset!"
         : "Lesson completed.",
       resetQuiz: resetResult?.reset,
       quizId: lessonQuiz?.id || null,
       taskRequired: moduleTasks.length > 0,
+      moduleTaskId,
+      moduleTaskSubmitted: moduleTasks.length === 0 || !pendingModuleTask,
       moduleHasQuiz: Boolean(resetResult?.quizId),
     });
   } catch (error) {

@@ -94,9 +94,7 @@ export default function QuizRunnerClient({
       if (data.passed) {
         toast.success("✅ You passed the quiz!");
         if (data.taskRequired) {
-          toast.info("Submit the module task to continue.");
-          router.push("/student/assignments");
-          return;
+          toast.info("Module task available. Submit it for certificate eligibility.");
         }
         if (data.nextLesson) {
           router.push(

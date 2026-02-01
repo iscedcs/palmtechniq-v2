@@ -171,6 +171,7 @@ export async function getCourseWithModules(courseId: string) {
             moduleId: { in: course.modules.map((m) => m.id) },
             isActive: true,
           },
+          orderBy: { createdAt: "asc" },
           include: {
             submissions: {
               where: { userId: session.user.id },
@@ -179,16 +180,41 @@ export async function getCourseWithModules(courseId: string) {
           },
         })
       : [];
-    const moduleTaskRequired = new Set(moduleTasks.map((task) => task.moduleId));
-    const moduleTaskSubmitted = new Set(
-      moduleTasks
-        .filter((task) =>
-          task.submissions.some((s) =>
-            ["SUBMITTED", "GRADED", "RETURNED"].includes(s.status)
-          )
-        )
-        .map((task) => task.moduleId)
-    );
+
+    const moduleTaskMap = new Map<
+      string,
+      { hasTask: boolean; taskId: string | null; isSubmitted: boolean }
+    >();
+
+    const taskSubmissionStatuses = new Set(["SUBMITTED", "GRADED", "RETURNED"]);
+    const moduleTaskBuckets = new Map<string, typeof moduleTasks>();
+    moduleTasks.forEach((task) => {
+      const bucket = moduleTaskBuckets.get(task.moduleId) || [];
+      bucket.push(task);
+      moduleTaskBuckets.set(task.moduleId, bucket);
+    });
+
+    course.modules.forEach((module) => {
+      const tasksForModule = moduleTaskBuckets.get(module.id) || [];
+      if (tasksForModule.length === 0) {
+        moduleTaskMap.set(module.id, {
+          hasTask: false,
+          taskId: null,
+          isSubmitted: true,
+        });
+        return;
+      }
+
+      const pendingTask = tasksForModule.find(
+        (task) =>
+          !task.submissions.some((s) => taskSubmissionStatuses.has(s.status))
+      );
+      moduleTaskMap.set(module.id, {
+        hasTask: true,
+        taskId: pendingTask?.id ?? tasksForModule[0]?.id ?? null,
+        isSubmitted: !pendingTask,
+      });
+    });
 
     const lastCompleted = allLessons
       .filter((l) => l.progress.length > 0 && l.progress[0].isCompleted)
@@ -220,11 +246,7 @@ export async function getCourseWithModules(courseId: string) {
         const previousCompleted = previousModules.every(
           (m) =>
             m.lessons.every((l) => l.progress?.[0]?.isCompleted) &&
-            m.lessons.every(
-              (l) => !l.quiz || passedQuizIds.has(l.quiz.id)
-            ) &&
-            (!moduleTaskRequired.has(m.id) ||
-              moduleTaskSubmitted.has(m.id))
+            m.lessons.every((l) => !l.quiz || passedQuizIds.has(l.quiz.id))
         );
 
         const isLocked = idx > 0 && !previousCompleted;
@@ -252,6 +274,11 @@ export async function getCourseWithModules(courseId: string) {
           ...module,
           isLocked,
           lessons: lessonsWithLocking,
+          task: moduleTaskMap.get(module.id) || {
+            hasTask: false,
+            taskId: null,
+            isSubmitted: true,
+          },
         };
       })
     );

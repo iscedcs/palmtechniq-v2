@@ -6,6 +6,7 @@ import {
   Calendar,
   CheckCircle,
   AlertCircle,
+  Award,
 } from "lucide-react";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { Badge } from "@/components/ui/badge";
@@ -210,7 +211,7 @@ export function StudentDetailModal({
                 </div>
 
                 {/* Action Buttons */}
-                <div className="flex gap-3 pt-4">
+                {/* <div className="flex gap-3 pt-4">
                   <Button className="flex-1 bg-gradient-to-r from-neon-blue to-cyan-400 text-white">
                     <MessageSquare className="w-4 h-4 mr-2" />
                     Send Message
@@ -219,7 +220,11 @@ export function StudentDetailModal({
                     <Calendar className="w-4 h-4 mr-2" />
                     Schedule Call
                   </Button>
-                </div>
+                  </div> */}
+                  <Button className="w-full bg-gradient-to-r from-primary to-secondary text-white">
+                    <Award className="w-4 h-4 mr-2"/>
+                    View Certificate
+                  </Button>
               </CardContent>
             </motion.div>
           </motion.div>

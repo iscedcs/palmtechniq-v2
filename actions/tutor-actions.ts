@@ -369,6 +369,45 @@ export async function addLessonToModule(
   }
 }
 
+export async function updateLessonVideo(
+  lessonId: string,
+  videoUrl: string,
+  duration?: number
+) {
+  const session = await auth();
+  if (!session?.user?.id) {
+    return { error: "Unauthorized" };
+  }
+
+  if (!lessonId || !videoUrl) {
+    return { error: "Lesson ID and video URL are required" };
+  }
+
+  const lesson = await db.lesson.findUnique({
+    where: { id: lessonId },
+    include: {
+      module: { include: { course: { include: { tutor: true } } } },
+    },
+  });
+
+  if (!lesson) return { error: "Lesson not found" };
+  if (lesson.module.course.tutor?.userId !== session.user.id) {
+    return { error: "Unauthorized" };
+  }
+
+  await db.lesson.update({
+    where: { id: lessonId },
+    data: {
+      videoUrl,
+      duration: typeof duration === "number" ? duration : lesson.duration,
+    },
+  });
+
+  await recomputeCourseDurations(db, lesson.module.courseId);
+
+  return { success: true };
+}
+
 export async function removeLessonFromModule(
   courseId: string,
   moduleId: string,

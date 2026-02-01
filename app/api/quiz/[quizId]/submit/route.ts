@@ -120,27 +120,21 @@ export async function POST(
 
       const moduleTasks = await db.task.findMany({
         where: { moduleId: quiz.lesson.moduleId, isActive: true },
-        select: { id: true },
+        include: {
+          submissions: {
+            where: { userId },
+            select: { status: true },
+          },
+        },
       });
 
-      if (moduleTasks.length > 0) {
-        const taskSubmission = await db.taskSubmission.findFirst({
-          where: {
-            taskId: { in: moduleTasks.map((t) => t.id) },
-            userId,
-            status: { in: ["SUBMITTED", "GRADED", "RETURNED"] },
-          },
-        });
-
-        if (!taskSubmission) {
-          return NextResponse.json({
-            message:
-              "Quiz passed! Please submit the module task before proceeding.",
-            passed: true,
-            taskRequired: true,
-          });
-        }
-      }
+      const submissionStatuses = new Set(["SUBMITTED", "GRADED", "RETURNED"]);
+      const pendingModuleTask = moduleTasks.find(
+        (task) =>
+          !task.submissions.some((s) => submissionStatuses.has(s.status))
+      );
+      const moduleTaskId =
+        pendingModuleTask?.id ?? moduleTasks[0]?.id ?? null;
 
       const modules = quiz.lesson.module.course.modules.sort(
         (a, b) => a.sortOrder - b.sortOrder
@@ -172,6 +166,9 @@ export async function POST(
         score,
         remainingAttempts,
         nextLesson,
+        taskRequired: moduleTasks.length > 0,
+        moduleTaskId,
+        moduleTaskSubmitted: moduleTasks.length === 0 || !pendingModuleTask,
       });
     }
     if (remainingAttempts <= 0) {

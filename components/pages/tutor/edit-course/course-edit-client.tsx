@@ -383,8 +383,8 @@ export function CourseEditClient({
     lessonId: string,
     updates: Partial<any>
   ) => {
-    setModules(
-      modules.map((m: any) => {
+    setModules((prev: any) =>
+      prev.map((m: any) => {
         if (m.id !== moduleId) return m;
         const updatedLessons = m.lessons.map((l: any) =>
           l.id === lessonId ? { ...l, ...updates } : l
@@ -546,7 +546,7 @@ export function CourseEditClient({
                         onSubmit(data, true)
                       )}
                       className="w-full sm:w-auto bg-gradient-to-r from-neon-green to-emerald-400">
-                      Publish Course
+                      Update Course
                     </Button>
                   </div>
                 </form>

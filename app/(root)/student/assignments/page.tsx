@@ -35,14 +35,25 @@ import {
 import { generateRandomAvatar } from "@/lib/utils";
 import { getStudentTasks, submitTaskSubmission } from "@/actions/assignment";
 import { toast } from "sonner";
+import { useSearchParams } from "next/navigation";
+import { useRouter } from "next/navigation";
 
 export default function StudentAssignments() {
+  const router = useRouter();
+  const searchParams = useSearchParams();
   const [activeAssignments, setActiveAssignments] = useState<any[]>([]);
   const [completedAssignments, setCompletedAssignments] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
   const [loadingError, setLoadingError] = useState<string | null>(null);
   const [submitting, setSubmitting] = useState<Record<string, boolean>>({});
   const [uploading, setUploading] = useState<Record<string, boolean>>({});
+  const [activeTab, setActiveTab] = useState<"active" | "completed">("active");
+  const [openTaskId, setOpenTaskId] = useState<string | null>(null);
+  const selectedAssignment = openTaskId
+    ? [...activeAssignments, ...completedAssignments].find(
+        (assignment) => assignment.id === openTaskId
+      )
+    : null;
   const [forms, setForms] = useState<
     Record<
       string,
@@ -62,7 +73,7 @@ export default function StudentAssignments() {
     try {
       const result = await getStudentTasks();
       if ("error" in result) {
-        setLoadingError(result.error);
+        setLoadingError(result.error || null);
         return;
       }
       setActiveAssignments(result.activeTasks);
@@ -78,6 +89,32 @@ export default function StudentAssignments() {
   useEffect(() => {
     void loadTasks();
   }, [loadTasks]);
+
+  useEffect(() => {
+    const taskId = searchParams?.get("taskId");
+    if (!taskId || loading) return;
+
+    const activeMatch = activeAssignments.find((task) => task.id === taskId);
+    const completedMatch = completedAssignments.find(
+      (task) => task.id === taskId
+    );
+
+    if (activeMatch) {
+      setActiveTab("active");
+      setOpenTaskId(taskId);
+    } else if (completedMatch) {
+      setActiveTab("completed");
+      setOpenTaskId(taskId);
+    }
+  }, [searchParams, loading, activeAssignments, completedAssignments]);
+
+  useEffect(() => {
+    if (!openTaskId) return;
+    const target = document.getElementById(`task-${openTaskId}`);
+    if (target) {
+      target.scrollIntoView({ behavior: "smooth", block: "center" });
+    }
+  }, [openTaskId]);
 
   const updateForm = (
     taskId: string,
@@ -155,6 +192,11 @@ export default function StudentAssignments() {
       }
 
       toast.success("Assignment submitted.");
+      if (searchParams?.get("taskId") === assignment.id && assignment.courseId) {
+        setOpenTaskId(null);
+        router.push(`/courses/${assignment.courseId}/learn`);
+        return;
+      }
       await loadTasks();
     } catch (error) {
       console.error("Submit error:", error);
@@ -179,54 +221,79 @@ export default function StudentAssignments() {
   }: {
     assignment: any;
     type: "active" | "completed";
-  }) => (
-    <motion.div
-      whileHover={{ scale: 1.02, y: -5 }}
-      className="group"
-      initial={{ opacity: 0, y: 20 }}
-      animate={{ opacity: 1, y: 0 }}
-      transition={{ duration: 0.5 }}>
-      <Card className="glass-card hover-glow border-white/10 overflow-hidden h-full">
-        <CardHeader className="pb-4">
-          <div className="flex items-start justify-between">
-            <div className="flex-1">
-              <CardTitle className="text-xl font-bold text-white mb-2 group-hover:text-gradient transition-colors">
-                {assignment.title}
-              </CardTitle>
-              <p className="text-gray-300 text-sm mb-2">{assignment.course}</p>
-              <div className="flex items-center gap-2">
-                <Avatar className="w-6 h-6">
-                  <AvatarImage
-                    src={assignment.instructorAvatar || generateRandomAvatar()}
-                  />
-                  <AvatarFallback className="bg-gradient-to-r from-neon-blue to-neon-purple text-white text-xs">
-                    {assignment.instructor
-                      .split(" ")
-                      .map((n: string) => n[0])
-                      .join("")}
-                  </AvatarFallback>
-                </Avatar>
-                <span className="text-gray-400 text-sm">
-                  {assignment.instructor}
-                </span>
+  }) => {
+    const dueDate = assignment.dueDate
+      ? new Date(assignment.dueDate)
+      : null;
+    const daysLeft = dueDate
+      ? Math.ceil(
+          (dueDate.getTime() - new Date().getTime()) / (1000 * 60 * 60 * 24)
+        )
+      : null;
+    const isOverdue = type === "active" && daysLeft !== null && daysLeft < 0;
+
+    return (
+      <motion.div
+        id={`task-${assignment.id}`}
+        whileHover={{ scale: 1.02, y: -5 }}
+        className="group"
+        initial={{ opacity: 0, y: 20 }}
+        animate={{ opacity: 1, y: 0 }}
+        transition={{ duration: 0.5 }}>
+        <Card className="glass-card hover-glow border-white/10 overflow-hidden h-full">
+          <CardHeader className="pb-4">
+            <div className="flex items-start justify-between">
+              <div className="flex-1">
+                <CardTitle className="text-xl font-bold text-white mb-2 group-hover:text-gradient transition-colors">
+                  {assignment.title}
+                </CardTitle>
+                <p className="text-gray-300 text-sm mb-2">{assignment.course}</p>
+                <div className="flex items-center gap-2">
+                  <Avatar className="w-6 h-6">
+                    <AvatarImage
+                      src={assignment.instructorAvatar || generateRandomAvatar()}
+                    />
+                    <AvatarFallback className="bg-gradient-to-r from-neon-blue to-neon-purple text-white text-xs">
+                      {assignment.instructor
+                        .split(" ")
+                        .map((n: string) => n[0])
+                        .join("")}
+                    </AvatarFallback>
+                  </Avatar>
+                  <span className="text-gray-400 text-sm">
+                    {assignment.instructor}
+                  </span>
+                </div>
+              </div>
+              <div className="text-right">
+                {type === "active" ? (
+                  <div className="flex flex-col items-end gap-2">
+                    {isOverdue ? (
+                      <Badge className="bg-neon-orange/20 text-neon-orange border border-neon-orange/40">
+                        Overdue
+                      </Badge>
+                    ) : (
+                      <Badge className="bg-neon-blue/20 text-neon-blue border border-neon-blue/40">
+                        {assignment.status}
+                      </Badge>
+                    )}
+                    <p className="text-white font-bold">
+                      {assignment.points} pts
+                    </p>
+                  </div>
+                ) : (
+                  <>
+                    <Badge className="mb-2 bg-neon-green/20 text-neon-green border border-neon-green/40">
+                      {getGradeLabel(assignment.score)}
+                    </Badge>
+                    <p className="text-white font-bold">
+                      {assignment.score ?? 0}/100
+                    </p>
+                  </>
+                )}
               </div>
             </div>
-            <div className="text-right">
-              {type === "active" ? (
-                <p className="text-white font-bold">{assignment.points} pts</p>
-              ) : (
-                <>
-                  <Badge className="mb-2 bg-green-500/20 text-green-400 border-green-500/30">
-                    {getGradeLabel(assignment.score)}
-                  </Badge>
-                  <p className="text-white font-bold">
-                    {assignment.score ?? 0}/100
-                  </p>
-                </>
-              )}
-            </div>
-          </div>
-        </CardHeader>
+          </CardHeader>
 
         <CardContent className="space-y-4">
           <p className="text-gray-300 text-sm">{assignment.description}</p>
@@ -249,19 +316,17 @@ export default function StudentAssignments() {
               </div>
 
               <div className="flex items-center justify-between">
-                <Badge className="bg-blue-500/20 text-blue-400 border-blue-500/30">
+                <Badge className="bg-neon-blue/20 text-neon-blue border border-neon-blue/40">
                   {assignment.status}
                 </Badge>
                 <div className="flex items-center gap-1 text-sm text-gray-400">
                   <Clock className="w-4 h-4" />
                   <span>
-                    {assignment.dueDate
-                      ? `${Math.ceil(
-                          (new Date(assignment.dueDate).getTime() -
-                            new Date().getTime()) /
-                            (1000 * 60 * 60 * 24)
-                        )} days left`
-                      : "No deadline"}
+                    {daysLeft === null
+                      ? "No deadline"
+                      : daysLeft < 0
+                      ? `Overdue by ${Math.abs(daysLeft)} days`
+                      : `${daysLeft} days left`}
                   </span>
                 </div>
               </div>
@@ -299,177 +364,12 @@ export default function StudentAssignments() {
           <div className="flex gap-2">
             {type === "active" && (
               <>
-                <Dialog>
-                  <DialogTrigger asChild>
-                    <Button className="flex-1 bg-gradient-to-r from-neon-blue to-neon-purple text-white">
-                      <Eye className="w-4 h-4 mr-2" />
-                      View Details
-                    </Button>
-                  </DialogTrigger>
-                  <DialogContent className="bg-gray-900 border-white/20 text-white max-w-4xl max-h-[80vh] overflow-y-auto">
-                    <DialogHeader>
-                      <DialogTitle className="text-2xl">
-                        {assignment.title}
-                      </DialogTitle>
-                      <DialogDescription className="text-gray-400">
-                        {assignment.course} •{" "}
-                        {assignment.dueDate
-                          ? `Due ${new Date(
-                              assignment.dueDate
-                            ).toLocaleDateString()}`
-                          : "No due date"}
-                      </DialogDescription>
-                    </DialogHeader>
-                    <div className="space-y-6">
-                      <div>
-                        <h4 className="text-lg font-semibold text-white mb-2">
-                          Description
-                        </h4>
-                        <p className="text-gray-300">
-                          {assignment.description}
-                        </p>
-                      </div>
-                      <div>
-                        <h4 className="text-lg font-semibold text-white mb-2">
-                          Requirements
-                        </h4>
-                        <ul className="space-y-1">
-                          {assignment.requirements.map(
-                            (req: string, index: number) => (
-                              <li
-                                key={index}
-                                className="flex items-center gap-2 text-gray-300">
-                                <CheckCircle className="w-4 h-4 text-green-400" />
-                                {req}
-                              </li>
-                            )
-                          )}
-                        </ul>
-                      </div>
-                      <div>
-                        <h4 className="text-lg font-semibold text-white mb-2">
-                          Resources
-                        </h4>
-                        <div className="space-y-2">
-                          {assignment.resources.map(
-                            (resource: any, index: number) => (
-                              <a
-                                key={index}
-                                href={resource.url}
-                                className="flex items-center gap-2 text-neon-blue hover:text-neon-purple transition-colors">
-                                <ExternalLink className="w-4 h-4" />
-                                {resource.title}
-                              </a>
-                            )
-                          )}
-                        </div>
-                      </div>
-                      <div>
-                        <h4 className="text-lg font-semibold text-white mb-2">
-                          Submit Assignment
-                        </h4>
-                        <div className="space-y-4">
-                          {assignment.submissionType === "QUIZ" ? (
-                            <div className="text-sm text-gray-400">
-                              Complete the module quiz to finish this task.
-                            </div>
-                          ) : (
-                            <>
-                              {assignment.submissionType === "FILE" && (
-                                <div>
-                                  <label className="text-sm font-medium text-white mb-2 block">
-                                    Upload File
-                                  </label>
-                                  <Input
-                                    type="file"
-                                    accept="*"
-                                    disabled={uploading[assignment.id]}
-                                    onChange={(e) => {
-                                      const file = e.target.files?.[0];
-                                      if (file) {
-                                        handleFileUpload(assignment.id, file);
-                                      }
-                                    }}
-                                    className="bg-white/10 border-white/20 text-white placeholder:text-gray-400"
-                                  />
-                                </div>
-                              )}
-                              {(assignment.submissionType === "GITHUB" ||
-                                assignment.submissionType === "LINK") && (
-                                <div>
-                                  <label className="text-sm font-medium text-white mb-2 block">
-                                    Submission URL
-                                  </label>
-                                  <Input
-                                    placeholder="https://github.com/username/repository"
-                                    value={forms[assignment.id]?.githubUrl || ""}
-                                    onChange={(e) =>
-                                      updateForm(
-                                        assignment.id,
-                                        "githubUrl",
-                                        e.target.value
-                                      )
-                                    }
-                                    className="bg-white/10 border-white/20 text-white placeholder:text-gray-400"
-                                  />
-                                </div>
-                              )}
-                              {assignment.submissionType === "TEXT" && (
-                                <div>
-                                  <label className="text-sm font-medium text-white mb-2 block">
-                                    Response
-                                  </label>
-                                  <Textarea
-                                    placeholder="Share your response..."
-                                    rows={4}
-                                    value={forms[assignment.id]?.content || ""}
-                                    onChange={(e) =>
-                                      updateForm(
-                                        assignment.id,
-                                        "content",
-                                        e.target.value
-                                      )
-                                    }
-                                    className="bg-white/10 border-white/20 text-white placeholder:text-gray-400"
-                                  />
-                                </div>
-                              )}
-                              <div>
-                                <label className="text-sm font-medium text-white mb-2 block">
-                                  Additional Notes
-                                </label>
-                                <Textarea
-                                  placeholder="Any additional information about your submission..."
-                                  rows={3}
-                                  value={forms[assignment.id]?.notes || ""}
-                                  onChange={(e) =>
-                                    updateForm(
-                                      assignment.id,
-                                      "notes",
-                                      e.target.value
-                                    )
-                                  }
-                                  className="bg-white/10 border-white/20 text-white placeholder:text-gray-400"
-                                />
-                              </div>
-                              <Button
-                                disabled={submitting[assignment.id]}
-                                onClick={() => handleSubmit(assignment)}
-                                className="w-full bg-gradient-to-r from-neon-green to-emerald-400 text-white">
-                                {submitting[assignment.id] ? (
-                                  <Loader2 className="w-4 h-4 animate-spin mr-2" />
-                                ) : (
-                                  <Upload className="w-4 h-4 mr-2" />
-                                )}
-                                Submit Assignment
-                              </Button>
-                            </>
-                          )}
-                        </div>
-                      </div>
-                    </div>
-                  </DialogContent>
-                </Dialog>
+                <Button
+                  className="flex-1 bg-gradient-to-r from-neon-blue to-neon-purple text-white"
+                  onClick={() => setOpenTaskId(assignment.id)}>
+                  <Eye className="w-4 h-4 mr-2" />
+                  View Details
+                </Button>
                 <Button
                   variant="outline"
                   className="border-white/20 text-white hover:bg-white/10 bg-transparent">
@@ -502,8 +402,9 @@ export default function StudentAssignments() {
           </div>
         </CardContent>
       </Card>
-    </motion.div>
-  );
+      </motion.div>
+    );
+  };
 
   const avgScore =
     completedAssignments.length > 0
@@ -613,7 +514,12 @@ export default function StudentAssignments() {
       {/* Assignment Tabs */}
       <section className="pb-16">
         <div className="container mx-auto px-6">
-          <Tabs defaultValue="active" className="w-full">
+          <Tabs
+            value={activeTab}
+            onValueChange={(value) =>
+              setActiveTab(value as "active" | "completed")
+            }
+            className="w-full">
             <TabsList className="grid w-full grid-cols-2 bg-white/10 border border-white/20 mb-8">
               <TabsTrigger
                 value="active"
@@ -693,6 +599,190 @@ export default function StudentAssignments() {
           </Tabs>
         </div>
       </section>
+
+      <Dialog
+        open={Boolean(openTaskId && selectedAssignment)}
+        onOpenChange={(open) => {
+          if (!open) setOpenTaskId(null);
+        }}>
+        {selectedAssignment && (
+          <DialogContent className="bg-gray-900 border-white/20 text-white max-w-4xl max-h-[80vh] overflow-y-auto">
+            <DialogHeader>
+              <DialogTitle className="text-2xl">
+                {selectedAssignment.title}
+              </DialogTitle>
+              <DialogDescription className="text-gray-400">
+                {selectedAssignment.course} •{" "}
+                {selectedAssignment.dueDate
+                  ? `Due ${new Date(
+                      selectedAssignment.dueDate
+                    ).toLocaleDateString()}`
+                  : "No due date"}
+              </DialogDescription>
+            </DialogHeader>
+            <div className="space-y-6">
+              <div>
+                <h4 className="text-lg font-semibold text-white mb-2">
+                  Description
+                </h4>
+                <p className="text-gray-300">
+                  {selectedAssignment.description}
+                </p>
+              </div>
+              <div>
+                <h4 className="text-lg font-semibold text-white mb-2">
+                  Requirements
+                </h4>
+                <ul className="space-y-1">
+                  {selectedAssignment.requirements.map(
+                    (req: string, index: number) => (
+                      <li
+                        key={index}
+                        className="flex items-center gap-2 text-gray-300">
+                        <CheckCircle className="w-4 h-4 text-green-400" />
+                        {req}
+                      </li>
+                    )
+                  )}
+                </ul>
+              </div>
+              <div>
+                <h4 className="text-lg font-semibold text-white mb-2">
+                  Resources
+                </h4>
+                <div className="space-y-2">
+                  {selectedAssignment.resources.map(
+                    (resource: any, index: number) => (
+                      <a
+                        key={index}
+                        href={resource.url}
+                        className="flex items-center gap-2 text-neon-blue hover:text-neon-purple transition-colors">
+                        <ExternalLink className="w-4 h-4" />
+                        {resource.title}
+                      </a>
+                    )
+                  )}
+                </div>
+              </div>
+              <div>
+                <h4 className="text-lg font-semibold text-white mb-2">
+                  Submit Assignment
+                </h4>
+                <div className="space-y-4">
+                  {selectedAssignment.submissionType === "QUIZ" ? (
+                    <div className="text-sm text-gray-400">
+                      Complete the module quiz to finish this task.
+                    </div>
+                  ) : (
+                    <>
+                      {selectedAssignment.submissionType === "FILE" && (
+                        <div>
+                          <label className="text-sm font-medium text-white mb-2 block">
+                            Upload File
+                          </label>
+                          <Input
+                            type="file"
+                            accept="*"
+                            disabled={uploading[selectedAssignment.id]}
+                            onChange={(e) => {
+                              const file = e.target.files?.[0];
+                              if (file) {
+                                handleFileUpload(selectedAssignment.id, file);
+                              }
+                            }}
+                            className="bg-white/10 border-white/20 text-white placeholder:text-gray-400"
+                          />
+                        </div>
+                      )}
+                      {(selectedAssignment.submissionType === "GITHUB" ||
+                        selectedAssignment.submissionType === "LINK") && (
+                        <div>
+                          <label className="text-sm font-medium text-white mb-2 block">
+                            {selectedAssignment.submissionType === "GITHUB"
+                              ? "GitHub URL"
+                              : "Submission URL"}
+                          </label>
+                          <Input
+                            placeholder={
+                              selectedAssignment.submissionType === "GITHUB"
+                                ? "https://github.com/username/repository"
+                                : "https://example.com"
+                            }
+                            value={
+                              selectedAssignment.submissionType === "GITHUB"
+                                ? forms[selectedAssignment.id]?.githubUrl || ""
+                                : forms[selectedAssignment.id]?.liveUrl || ""
+                            }
+                            onChange={(e) =>
+                              updateForm(
+                                selectedAssignment.id,
+                                selectedAssignment.submissionType === "GITHUB"
+                                  ? "githubUrl"
+                                  : "liveUrl",
+                                e.target.value
+                              )
+                            }
+                            className="bg-white/10 border-white/20 text-white placeholder:text-gray-400"
+                          />
+                        </div>
+                      )}
+                      {selectedAssignment.submissionType === "TEXT" && (
+                        <div>
+                          <label className="text-sm font-medium text-white mb-2 block">
+                            Response
+                          </label>
+                          <Textarea
+                            placeholder="Share your response..."
+                            rows={4}
+                            value={forms[selectedAssignment.id]?.content || ""}
+                            onChange={(e) =>
+                              updateForm(
+                                selectedAssignment.id,
+                                "content",
+                                e.target.value
+                              )
+                            }
+                            className="bg-white/10 border-white/20 text-white placeholder:text-gray-400"
+                          />
+                        </div>
+                      )}
+                      <div>
+                        <label className="text-sm font-medium text-white mb-2 block">
+                          Additional Notes
+                        </label>
+                        <Textarea
+                          placeholder="Any additional information about your submission..."
+                          rows={3}
+                          value={forms[selectedAssignment.id]?.notes || ""}
+                          onChange={(e) =>
+                            updateForm(
+                              selectedAssignment.id,
+                              "notes",
+                              e.target.value
+                            )
+                          }
+                          className="bg-white/10 border-white/20 text-white placeholder:text-gray-400"
+                        />
+                      </div>
+                      <Button
+                        disabled={submitting[selectedAssignment.id]}
+                        onClick={() => handleSubmit(selectedAssignment)}
+                        className="w-full bg-gradient-to-r from-neon-green to-emerald-400 text-white">
+                        {submitting[selectedAssignment.id] ? (
+                          <Loader2 className="w-4 h-4 animate-spin mr-2" />
+                        ) : (
+                          <Upload className="w-4 h-4 mr-2" />
+                        )}
+                        Submit Assignment
+                      </Button>
+                    </>
+                  )}
+                </div>
+              </div>
+            </div>
+          </DialogContent>
+        )}
+      </Dialog>
     </div>
   );
 }

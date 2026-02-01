@@ -132,7 +132,7 @@ export function StudentCard({ student, index, onSelect }: StudentCardProps) {
 
         {/* Right Section - Actions */}
         <div className="flex items-center gap-2">
-          <Button
+          {/* <Button
             size="icon"
             variant="ghost"
             className="hover:bg-neon-blue/20 hover:text-neon-blue"
@@ -147,7 +147,15 @@ export function StudentCard({ student, index, onSelect }: StudentCardProps) {
             title="Schedule Meeting"
             onClick={(e) => e.stopPropagation()}>
             <Calendar className="w-4 h-4" />
-          </Button>
+          </Button> */}
+          <Button
+            size="icon"
+            variant="ghost"
+            className="hover:bg-neon-purple/20 hover:text-neon-purple"
+            title="Schedule Meeting"
+            onClick={(e) => e.stopPropagation()}>
+                <Award className="w-4 h-4 mr-2" />
+                   </Button> 
           <DropdownMenu>
             <DropdownMenuTrigger asChild onClick={(e) => e.stopPropagation()}>
               <Button size="icon" variant="ghost" className="hover:bg-white/10">
@@ -157,14 +165,14 @@ export function StudentCard({ student, index, onSelect }: StudentCardProps) {
             <DropdownMenuContent
               align="end"
               className="glass-card border-white/10">
-              <DropdownMenuItem>
+              {/* <DropdownMenuItem>
                 <Mail className="w-4 h-4 mr-2" />
                 Send Email
-              </DropdownMenuItem>
-              <DropdownMenuItem>
+              </DropdownMenuItem> */}
+              {/* <DropdownMenuItem>
                 <Phone className="w-4 h-4 mr-2" />
                 Call
-              </DropdownMenuItem>
+              </DropdownMenuItem> */}
               <DropdownMenuItem>
                 <Award className="w-4 h-4 mr-2" />
                 View Certificate

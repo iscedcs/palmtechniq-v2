@@ -317,13 +317,17 @@ export async function getStudentTasks() {
       isActive: true,
       course: {
         enrollments: {
-          some: { userId: session.user.id, status: "ACTIVE" },
+          some: {
+            userId: session.user.id,
+            status: { in: ["ACTIVE", "COMPLETED"] },
+          },
         },
       },
     },
     include: {
       course: {
         select: {
+          id: true,
           title: true,
           tutor: { select: { user: { select: { name: true, avatar: true } } } },
         },
@@ -343,6 +347,7 @@ export async function getStudentTasks() {
       id: task.id,
       title: task.title,
       course: task.course.title,
+      courseId: task.course.id,
       module: task.module.title,
       instructor: task.course.tutor?.user?.name || "Tutor",
       instructorAvatar: task.course.tutor?.user?.avatar || "",
@@ -401,6 +406,42 @@ export async function submitTaskSubmission({
   });
   if (!task) return { error: "Task not found" };
 
+  const trimmedContent = content?.trim();
+  const trimmedGithub = githubUrl?.trim();
+  const trimmedLive = liveUrl?.trim();
+
+  switch (task.submissionType) {
+    case "GITHUB":
+      if (!trimmedGithub) {
+        return { error: "Please submit a GitHub URL for this task." };
+      }
+      break;
+    case "LINK":
+      if (!trimmedLive) {
+        return { error: "Please submit the required link for this task." };
+      }
+      break;
+    case "FILE":
+      if (!fileUrl) {
+        return { error: "Please upload a file for this task." };
+      }
+      break;
+    case "TEXT":
+      if (!trimmedContent) {
+        return { error: "Please enter your response for this task." };
+      }
+      break;
+    default:
+      break;
+  }
+
+  const normalizedSubmission = {
+    content: task.submissionType === "TEXT" ? trimmedContent || null : null,
+    fileUrl: task.submissionType === "FILE" ? fileUrl || null : null,
+    githubUrl: task.submissionType === "GITHUB" ? trimmedGithub || null : null,
+    liveUrl: task.submissionType === "LINK" ? trimmedLive || null : null,
+  };
+
   const submission = await db.taskSubmission.upsert({
     where: {
       userId_taskId: {
@@ -411,18 +452,18 @@ export async function submitTaskSubmission({
     create: {
       userId: session.user.id,
       taskId,
-      content: content || null,
-      fileUrl: fileUrl || null,
-      githubUrl: githubUrl || null,
-      liveUrl: liveUrl || null,
+      content: normalizedSubmission.content,
+      fileUrl: normalizedSubmission.fileUrl,
+      githubUrl: normalizedSubmission.githubUrl,
+      liveUrl: normalizedSubmission.liveUrl,
       notes: notes || null,
       status: "SUBMITTED",
     },
     update: {
-      content: content || null,
-      fileUrl: fileUrl || null,
-      githubUrl: githubUrl || null,
-      liveUrl: liveUrl || null,
+      content: normalizedSubmission.content,
+      fileUrl: normalizedSubmission.fileUrl,
+      githubUrl: normalizedSubmission.githubUrl,
+      liveUrl: normalizedSubmission.liveUrl,
       notes: notes || null,
       status: "SUBMITTED",
     },
