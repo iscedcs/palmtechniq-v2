@@ -1,18 +1,36 @@
 import { beginCheckout } from "@/actions/checkout";
+import { beginGroupCheckout } from "@/actions/group-purchase";
 import CheckoutCoursePage from "@/components/pages/courses/checkout/checkout-course";
 import { getCourseById } from "@/data/course";
 import { generateRandomAvatar } from "@/lib/utils";
 import { redirect } from "next/navigation";
+import { db } from "@/lib/db";
 
 export default async function CheckoutPage({
   params,
+  searchParams,
 }: {
   params: Promise<{ courseId: string }>;
+  searchParams?: { groupTierId?: string };
 }) {
   const { courseId } = await params;
   const course = await getCourseById(courseId);
 
   if (!course) redirect("/courses");
+
+  const groupTierId =
+    typeof searchParams?.groupTierId === "string"
+      ? searchParams.groupTierId
+      : undefined;
+  const groupTier = groupTierId
+    ? await db.groupTier.findFirst({
+        where: { id: groupTierId, courseId: course.id, isActive: true },
+      })
+    : null;
+
+  if (groupTierId && !groupTier) {
+    redirect(`/courses/${courseId}`);
+  }
 
   const totalLessonDuration = course.modules?.reduce((sum, module) => {
     return (
@@ -50,17 +68,33 @@ export default async function CheckoutPage({
             : 0
         }
         pricing={{
-          basePrice: course.basePrice ?? course.currentPrice ?? 0,
-          currentPrice: course.currentPrice ?? 0,
-          discountPercent:
+          basePrice: groupTier?.groupPrice ?? course.basePrice ?? 0,
+          currentPrice:
+            groupTier?.groupPrice ?? course.currentPrice ?? course.basePrice ?? 0,
+          discountPercent: groupTier
+            ? undefined
+            :
             course.groupBuyingDiscount && course.groupBuyingDiscount > 0
               ? course.groupBuyingDiscount
               : undefined,
           vatRate: 0.075,
           currency: "NGN",
         }}
+        groupTier={
+          groupTier
+            ? {
+                size: groupTier.size,
+                groupPrice: groupTier.groupPrice,
+                cashbackPercent: groupTier.cashbackPercent ?? 0,
+              }
+            : undefined
+        }
         onProceed={async () => {
           "use server";
+          if (groupTier) {
+            await beginGroupCheckout(course.id, groupTier.id);
+            return;
+          }
           await beginCheckout(course.id);
         }}
       />

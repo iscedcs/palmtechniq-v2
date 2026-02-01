@@ -5,11 +5,11 @@ import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
 import { Button } from "@/components/ui/button";
 import { toast } from "sonner";
-import { createQuizForModule, updateQuizForModule } from "@/actions/quiz";
+import { createQuizForLesson, updateQuizForLesson } from "@/actions/quiz";
 import { QuizQuestionList } from "./quiz-question-list";
 
-interface ModuleQuizEditorProps {
-  moduleId: string;
+interface LessonQuizEditorProps {
+  lessonId: string;
   existingQuiz?: {
     id: string;
     title: string;
@@ -20,10 +20,10 @@ interface ModuleQuizEditorProps {
   };
 }
 
-export function ModuleQuizEditor({
-  moduleId,
+export function LessonQuizEditor({
+  lessonId,
   existingQuiz,
-}: ModuleQuizEditorProps) {
+}: LessonQuizEditorProps) {
   const [title, setTitle] = useState(existingQuiz?.title || "");
   const [description, setDescription] = useState(
     existingQuiz?.description || ""
@@ -72,9 +72,9 @@ export function ModuleQuizEditor({
       formData.set("questions", JSON.stringify(questions));
 
       if (existingQuiz?.id) {
-        await updateQuizForModule(existingQuiz.id, formData);
+        await updateQuizForLesson(existingQuiz.id, formData);
       } else {
-        await createQuizForModule(moduleId, formData);
+        await createQuizForLesson(lessonId, formData);
       }
       toast.success("Quiz saved successfully");
     } catch (error) {
@@ -88,7 +88,7 @@ export function ModuleQuizEditor({
   return (
     <div className="space-y-4 mt-6 p-4 sm:p-6 bg-white/5 border border-white/10 rounded-xl">
       <h3 className="text-base sm:text-lg font-semibold text-white">
-        {existingQuiz ? "Edit Quiz" : "Add Quiz for this Module"}
+        {existingQuiz ? "Edit Quiz" : "Add Quiz for this Lesson"}
       </h3>
 
       {/* Title */}

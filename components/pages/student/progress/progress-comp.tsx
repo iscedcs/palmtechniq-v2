@@ -1,8 +1,6 @@
 "use client";
 
-import { useState } from "react";
 import { motion } from "framer-motion";
-import { Navigation } from "@/components/navigation";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
@@ -22,14 +20,14 @@ import {
   PlayCircle,
   Users,
 } from "lucide-react";
-import type { UserRole } from "@/types/user";
 import { generateRandomAvatar } from "@/lib/utils";
+import type { StudentProgressData } from "@/data/studentprogress";
 
 interface CourseProgress {
   id: string;
   title: string;
   instructor: string;
-  image: string;
+  image: string | null;
   progress: number;
   totalLessons: number;
   completedLessons: number;
@@ -44,7 +42,7 @@ interface Achievement {
   id: string;
   title: string;
   description: string;
-  icon: any;
+  icon: string;
   color: string;
   unlockedAt: string;
   rarity: string;
@@ -58,134 +56,46 @@ interface LearningStreak {
   thisWeek: number[];
 }
 
-export default function StudentProgress() {
-  const [userRole] = useState<UserRole>("STUDENT");
-  const [userName] = useState("Alex Johnson");
-  const [userAvatar] = useState(generateRandomAvatar());
+type StudentProgressProps = StudentProgressData;
 
-  const coursesProgress: CourseProgress[] = [
-    {
-      id: "1",
-      title: "Advanced React Development",
-      instructor: "Sarah Johnson",
-      image: "/placeholder.svg?height=60&width=80",
-      progress: 68,
-      totalLessons: 45,
-      completedLessons: 31,
-      timeSpent: 24.5,
-      lastAccessed: "2 hours ago",
-      nextLesson: "React Performance Optimization",
-      difficulty: "Advanced",
-      rating: 4.8,
-    },
-    {
-      id: "2",
-      title: "Python for Data Science",
-      instructor: "Dr. Michael Chen",
-      image: "/placeholder.svg?height=60&width=80",
-      progress: 34,
-      totalLessons: 38,
-      completedLessons: 13,
-      timeSpent: 18.2,
-      lastAccessed: "1 day ago",
-      nextLesson: "Pandas Data Manipulation",
-      difficulty: "Intermediate",
-      rating: 4.9,
-    },
-    {
-      id: "3",
-      title: "UI/UX Design Fundamentals",
-      instructor: "Emma Wilson",
-      image: "/placeholder.svg?height=60&width=80",
-      progress: 89,
-      totalLessons: 28,
-      completedLessons: 25,
-      timeSpent: 32.1,
-      lastAccessed: "3 days ago",
-      nextLesson: "Design System Creation",
-      difficulty: "Beginner",
-      rating: 4.7,
-    },
-  ];
-
-  const achievements: Achievement[] = [
-    {
-      id: "1",
-      title: "Speed Learner",
-      description: "Complete 3 lessons in one day",
-      icon: Zap,
-      color: "from-yellow-400 to-orange-500",
-      unlockedAt: "2 days ago",
-      rarity: "Common",
-    },
-    {
-      id: "2",
-      title: "Streak Master",
-      description: "Maintain a 7-day learning streak",
-      icon: Fire,
-      color: "from-red-500 to-pink-500",
-      unlockedAt: "Today",
-      rarity: "Rare",
-    },
-    {
-      id: "3",
-      title: "Knowledge Seeker",
-      description: "Enroll in 5+ courses",
-      icon: BookOpen,
-      color: "from-blue-500 to-cyan-500",
-      unlockedAt: "1 week ago",
-      rarity: "Uncommon",
-    },
-    {
-      id: "4",
-      title: "Perfect Score",
-      description: "Get 100% on 3 quizzes",
-      icon: Star,
-      color: "from-green-500 to-emerald-500",
-      unlockedAt: "2 weeks ago",
-      rarity: "Rare",
-      progress: 2,
-      maxProgress: 3,
-    },
-    {
-      id: "5",
-      title: "Brain Power",
-      description: "Complete an advanced course",
-      icon: Brain,
-      color: "from-purple-500 to-indigo-500",
-      unlockedAt: "",
-      rarity: "Epic",
-      progress: 68,
-      maxProgress: 100,
-    },
-  ];
-
-  const learningStreak: LearningStreak = {
-    current: 7,
-    longest: 12,
-    thisWeek: [1, 1, 0, 1, 1, 1, 1], // 1 = active, 0 = inactive
+export default function StudentProgress({
+  coursesProgress,
+  achievements,
+  learningStreak,
+  weeklyHours,
+  weeklyLessonsCompleted,
+  weeklyStudyHours,
+  moduleProgress,
+  recentMilestones,
+  stats,
+}: StudentProgressProps) {
+  const iconMap: Record<string, any> = {
+    Zap,
+    Fire,
+    BookOpen,
+    Star,
+    Brain,
+    Trophy,
+    CheckCircle,
+    Activity,
+    Users,
   };
+  const formattedAchievements: Array<
+    Omit<Achievement, "icon"> & { icon: any }
+  > = achievements.map((achievement) => ({
+    ...achievement,
+    icon: iconMap[achievement.icon] || Trophy,
+  }));
 
   const weekDays = ["Mon", "Tue", "Wed", "Thu", "Fri", "Sat", "Sun"];
 
-  const stats = {
-    totalHours: 74.8,
-    coursesCompleted: 3,
-    coursesInProgress: 3,
-    averageScore: 87,
-    rank: "Advanced Learner",
-    level: 12,
-    xp: 2450,
-    xpToNext: 3000,
-  };
-
   const getDifficultyColor = (difficulty: string) => {
     switch (difficulty) {
-      case "Beginner":
+      case "BEGINNER":
         return "text-green-400 border-green-400";
-      case "Intermediate":
+      case "INTERMEDIATE":
         return "text-yellow-400 border-yellow-400";
-      case "Advanced":
+      case "ADVANCED":
         return "text-red-400 border-red-400";
       default:
         return "text-gray-400 border-gray-400";
@@ -269,29 +179,29 @@ export default function StudentProgress() {
             <StatCard
               icon={Clock}
               title="Total Hours"
-              value={`₦{stats.totalHours}h`}
-              subtitle="This month: 24h"
+              value={`${stats.totalHours}h`}
+              subtitle={`This month: ${stats.monthlyHours}h`}
               color="from-neon-blue to-cyan-400"
             />
             <StatCard
               icon={BookOpen}
               title="Courses"
               value={stats.coursesCompleted}
-              subtitle={`₦{stats.coursesInProgress} in progress`}
+              subtitle={`${stats.coursesInProgress} in progress`}
               color="from-neon-green to-emerald-400"
             />
             <StatCard
               icon={Trophy}
               title="Average Score"
-              value={`₦{stats.averageScore}%`}
+              value={`${stats.averageScore}%`}
               subtitle="Last 10 quizzes"
               color="from-neon-orange to-yellow-400"
             />
             <StatCard
               icon={Fire}
               title="Current Streak"
-              value={`₦{learningStreak.current} days`}
-              subtitle={`Best: ₦{learningStreak.longest} days`}
+              value={`${learningStreak.current} days`}
+              subtitle={`Best: ${learningStreak.longest} days`}
               color="from-neon-purple to-pink-400"
             />
           </div>
@@ -357,7 +267,10 @@ export default function StudentProgress() {
                       </div>
                       <div className="p-3 bg-white/5 rounded-lg">
                         <p className="text-2xl font-bold text-white">
-                          {learningStreak.thisWeek.reduce((a, b) => a + b, 0)}
+                          {learningStreak.thisWeek.reduce<number>(
+                            (sum, value) => sum + value,
+                            0
+                          )}
                         </p>
                         <p className="text-sm text-gray-400">This Week</p>
                       </div>
@@ -417,7 +330,8 @@ export default function StudentProgress() {
                                 className={`text-xs ₦{getDifficultyColor(
                                   course.difficulty
                                 )}`}>
-                                {course.difficulty}
+                                {course.difficulty.charAt(0) +
+                                  course.difficulty.slice(1).toLowerCase()}
                               </Badge>
                               <div className="flex items-center gap-1">
                                 <Star className="w-3 h-3 text-yellow-400 fill-current" />
@@ -481,7 +395,7 @@ export default function StudentProgress() {
 
             <TabsContent value="achievements" className="space-y-6">
               <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-                {achievements.map((achievement, index) => (
+                {formattedAchievements.map((achievement, index) => (
                   <motion.div
                     key={achievement.id}
                     initial={{ opacity: 0, y: 20 }}
@@ -597,14 +511,30 @@ export default function StudentProgress() {
                             Study Time This Week
                           </span>
                           <span className="text-white font-semibold">
-                            12.5h
+                            {weeklyStudyHours}h
                           </span>
                         </div>
                         <div className="flex justify-between items-center">
                           <span className="text-gray-300">
                             Lessons Completed
                           </span>
-                          <span className="text-white font-semibold">69</span>
+                          <span className="text-white font-semibold">
+                            {weeklyLessonsCompleted}
+                          </span>
+                        </div>
+                        <div className="flex justify-between items-center">
+                          <span className="text-gray-300">Module Progress</span>
+                          <span className="text-white font-semibold">
+                            {moduleProgress.completedModules}/
+                            {moduleProgress.totalModules}
+                          </span>
+                        </div>
+                        <div className="flex justify-between items-center">
+                          <span className="text-gray-300">Lesson Progress</span>
+                          <span className="text-white font-semibold">
+                            {moduleProgress.completedLessons}/
+                            {moduleProgress.totalLessons}
+                          </span>
                         </div>
                         <div className="flex justify-between items-center">
                           <span className="text-gray-300">Quiz Average</span>
@@ -645,8 +575,8 @@ export default function StudentProgress() {
                                   : "bg-white/10"
                               }`}>
                               <div className="text-xs text-white font-medium">
-                                {learningStreak.thisWeek[index]
-                                  ? Math.floor(Math.random() * 3) + 1 + "h"
+                                {weeklyHours[index]
+                                  ? `${weeklyHours[index]}h`
                                   : "0h"}
                               </div>
                             </div>
@@ -659,33 +589,31 @@ export default function StudentProgress() {
                           Recent Milestones
                         </h4>
                         <div className="space-y-2">
-                          <div className="flex items-center gap-3 p-2 bg-white/5 rounded">
-                            <Trophy className="w-4 h-4 text-yellow-400" />
-                            <span className="text-sm text-gray-300">
-                              Completed "React Hooks" module
-                            </span>
-                            <span className="text-xs text-gray-500 ml-auto">
-                              2 days ago
-                            </span>
-                          </div>
-                          <div className="flex items-center gap-3 p-2 bg-white/5 rounded">
-                            <Star className="w-4 h-4 text-blue-400" />
-                            <span className="text-sm text-gray-300">
-                              Scored 95% on Python quiz
-                            </span>
-                            <span className="text-xs text-gray-500 ml-auto">
-                              4 days ago
-                            </span>
-                          </div>
-                          <div className="flex items-center gap-3 p-2 bg-white/5 rounded">
-                            <Users className="w-4 h-4 text-green-400" />
-                            <span className="text-sm text-gray-300">
-                              Joined study group
-                            </span>
-                            <span className="text-xs text-gray-500 ml-auto">
-                              1 week ago
-                            </span>
-                          </div>
+                          {recentMilestones.length === 0 ? (
+                            <div className="text-sm text-gray-400">
+                              No milestones yet
+                            </div>
+                          ) : (
+                            recentMilestones.map((milestone) => {
+                              const Icon = iconMap[milestone.icon] || Trophy;
+                              return (
+                                <div
+                                  key={milestone.id}
+                                  className="flex items-center gap-3 p-2 bg-white/5 rounded">
+                                  <Icon className="w-4 h-4 text-yellow-400" />
+                                  <div className="text-sm text-gray-300">
+                                    <div>{milestone.title}</div>
+                                    <div className="text-xs text-gray-500">
+                                      {milestone.description}
+                                    </div>
+                                  </div>
+                                  <span className="text-xs text-gray-500 ml-auto">
+                                    {milestone.earned}
+                                  </span>
+                                </div>
+                              );
+                            })
+                          )}
                         </div>
                       </div>
                     </div>

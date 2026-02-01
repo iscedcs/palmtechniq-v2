@@ -1,5 +1,6 @@
 import { auth } from "@/auth";
 import { db } from "@/lib/db";
+import { getAverageRating } from "@/lib/reviews";
 
 export async function getPublicCourses() {
   const courses = await db.course.findMany({
@@ -7,7 +8,7 @@ export async function getPublicCourses() {
     include: {
       category: true,
       tags: true,
-      reviews: { include: { user: true } },
+      reviews: { where: { isPublic: true }, include: { user: true } },
       _count: { select: { enrollments: true } },
       tutor: {
         include: { user: true },
@@ -32,10 +33,7 @@ export async function getPublicCourses() {
       level: course.level,
       tutor: course.tutor,
       tags: course.tags.map((t) => ({ id: t.id, name: t.name })),
-      averageRating: course.reviews?.length
-        ? course.reviews.reduce((a, r) => a + (r.rating ?? 0), 0) /
-          course.reviews.length
-        : 0,
+      averageRating: getAverageRating(course.reviews),
       totalStudents: course._count.enrollments,
       enrollments: course._count.enrollments,
       price: course.price ?? 0,
@@ -65,17 +63,23 @@ export async function getCourseById(courseId: string) {
         },
         category: true,
         tags: true,
+        groupTiers: { orderBy: { size: "asc" } },
         modules: {
+          orderBy: { sortOrder: "asc" },
           include: {
-            lessons: true,
-            quiz: true,
+            lessons: {
+              orderBy: { sortOrder: "asc" },
+              include: { quiz: true },
+            },
             resources: true,
           },
         },
 
         reviews: {
+          where: { isPublic: true },
           include: {
             user: true,
+            reactions: { select: { type: true } },
           },
         },
         enrollments: true,
@@ -112,11 +116,11 @@ export async function getCourseWithModules(courseId: string) {
         },
         modules: {
           include: {
-            quiz: true,
             lessons: {
               orderBy: { sortOrder: "asc" },
               include: {
                 resources: true,
+                quiz: true,
                 progress: session?.user.id
                   ? {
                       where: { userId: session.user.id },
@@ -146,6 +150,71 @@ export async function getCourseWithModules(courseId: string) {
 
     if (!course) return null;
     const allLessons = course.modules.flatMap((m) => m.lessons);
+    const lessonQuizIds = allLessons
+      .map((lesson) => lesson.quiz?.id)
+      .filter((id): id is string => Boolean(id));
+    const quizAttempts = session?.user.id
+      ? await db.quizAttempt.findMany({
+          where: {
+            userId: session.user.id,
+            quizId: { in: lessonQuizIds },
+            passed: true,
+          },
+          select: { quizId: true },
+        })
+      : [];
+    const passedQuizIds = new Set(quizAttempts.map((attempt) => attempt.quizId));
+
+    const moduleTasks = session?.user.id
+      ? await db.task.findMany({
+          where: {
+            moduleId: { in: course.modules.map((m) => m.id) },
+            isActive: true,
+          },
+          orderBy: { createdAt: "asc" },
+          include: {
+            submissions: {
+              where: { userId: session.user.id },
+              select: { status: true },
+            },
+          },
+        })
+      : [];
+
+    const moduleTaskMap = new Map<
+      string,
+      { hasTask: boolean; taskId: string | null; isSubmitted: boolean }
+    >();
+
+    const taskSubmissionStatuses = new Set(["SUBMITTED", "GRADED", "RETURNED"]);
+    const moduleTaskBuckets = new Map<string, typeof moduleTasks>();
+    moduleTasks.forEach((task) => {
+      const bucket = moduleTaskBuckets.get(task.moduleId) || [];
+      bucket.push(task);
+      moduleTaskBuckets.set(task.moduleId, bucket);
+    });
+
+    course.modules.forEach((module) => {
+      const tasksForModule = moduleTaskBuckets.get(module.id) || [];
+      if (tasksForModule.length === 0) {
+        moduleTaskMap.set(module.id, {
+          hasTask: false,
+          taskId: null,
+          isSubmitted: true,
+        });
+        return;
+      }
+
+      const pendingTask = tasksForModule.find(
+        (task) =>
+          !task.submissions.some((s) => taskSubmissionStatuses.has(s.status))
+      );
+      moduleTaskMap.set(module.id, {
+        hasTask: true,
+        taskId: pendingTask?.id ?? tasksForModule[0]?.id ?? null,
+        isSubmitted: !pendingTask,
+      });
+    });
 
     const lastCompleted = allLessons
       .filter((l) => l.progress.length > 0 && l.progress[0].isCompleted)
@@ -173,44 +242,31 @@ export async function getCourseWithModules(courseId: string) {
 
     const modules = await Promise.all(
       course.modules.map(async (module, idx, arr) => {
-        const allLessonsCompleted = module.lessons.every(
-          (l) => l.progress?.[0]?.isCompleted
-        );
-
-        let quizPassed = true;
-        if (module.quiz) {
-          const attempt = await db.quizAttempt.findFirst({
-            where: {
-              quizId: module.quiz.id,
-              userId: session?.user.id,
-              isCompleted: true,
-              score: {
-                gte: module.quiz.passingScore || 70,
-              },
-            },
-          });
-          quizPassed = !!attempt;
-        }
-
         const previousModules = arr.slice(0, idx);
         const previousCompleted = previousModules.every(
           (m) =>
             m.lessons.every((l) => l.progress?.[0]?.isCompleted) &&
-            (!m.quiz || (m.quiz && quizPassed))
+            m.lessons.every((l) => !l.quiz || passedQuizIds.has(l.quiz.id))
         );
 
         const isLocked = idx > 0 && !previousCompleted;
 
         const lessonsWithLocking = module.lessons.map((lesson, lidx) => {
           const previousLesson = module.lessons[lidx - 1];
+          const previousLessonQuizPassed = previousLesson?.quiz
+            ? passedQuizIds.has(previousLesson.quiz.id)
+            : true;
           const isLessonLocked =
             isLocked ||
-            (lidx > 0 && !previousLesson?.progress?.[0]?.isCompleted);
+            (lidx > 0 &&
+              (!previousLesson?.progress?.[0]?.isCompleted ||
+                !previousLessonQuizPassed));
 
           return {
             ...lesson,
             isCompleted: lesson.progress?.[0]?.isCompleted ?? false,
             isLocked: isLessonLocked,
+            quizPassed: lesson.quiz ? passedQuizIds.has(lesson.quiz.id) : true,
           };
         });
 
@@ -218,6 +274,11 @@ export async function getCourseWithModules(courseId: string) {
           ...module,
           isLocked,
           lessons: lessonsWithLocking,
+          task: moduleTaskMap.get(module.id) || {
+            hasTask: false,
+            taskId: null,
+            isSubmitted: true,
+          },
         };
       })
     );

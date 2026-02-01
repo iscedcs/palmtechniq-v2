@@ -5,6 +5,7 @@ import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Download, FileText, LinkIcon, Video, ThumbsUp } from "lucide-react";
+import { useRouter } from "next/navigation";
 import { useState } from "react";
 
 interface Resource {
@@ -28,13 +29,22 @@ export default function LessonTabs({
   lessonResources = [],
   moduleResources = [],
   reviews = [],
+  quiz,
+  courseId,
+  isCompleted,
+  quizPassed,
 }: {
   description: string;
   lessonResources?: Resource[];
   moduleResources?: Resource[];
   reviews?: Review[];
+  quiz?: { id: string } | null;
+  courseId?: string;
+  isCompleted?: boolean;
+  quizPassed?: boolean;
 }) {
   const [activeTab, setActiveTab] = useState("overview");
+  const router = useRouter();
 
   const renderResourceIcon = (type: string) => {
     switch (type) {
@@ -69,6 +79,17 @@ export default function LessonTabs({
             <p className="text-gray-300 leading-relaxed whitespace-pre-line">
               {description || "No description provided."}
             </p>
+            {quiz && isCompleted && !quizPassed ? (
+              <div className="mt-4">
+                <Button
+                  onClick={() =>
+                    router.push(`/courses/${courseId}/quiz/${quiz.id}`)
+                  }
+                  className="bg-gradient-to-r from-neon-purple to-neon-pink text-white">
+                  Start Quiz
+                </Button>
+              </div>
+            ) : null}
           </TabsContent>
 
           {/* Resources */}

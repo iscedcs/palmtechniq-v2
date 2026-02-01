@@ -1,8 +1,7 @@
 "use client";
 
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { motion } from "framer-motion";
-import { Navigation } from "@/components/navigation";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -44,124 +43,244 @@ import {
   BarChart,
   Bar,
 } from "recharts";
-import type { UserRole } from "@/types/user";
 import { generateRandomAvatar } from "@/lib/utils";
+import {
+  getTutorReviewsOverview,
+  respondToReview,
+  toggleReviewReaction,
+} from "@/actions/review";
+import { toast } from "sonner";
+import {
+  Dialog,
+  DialogContent,
+  DialogDescription,
+  DialogHeader,
+  DialogTitle,
+} from "@/components/ui/dialog";
 
-const reviews = [
-  {
-    id: 1,
-    student: {
-      name: "Sarah Johnson",
-      avatar: generateRandomAvatar(),
-      initials: "SJ",
-    },
-    course: "Advanced React Patterns",
-    rating: 5,
-    date: "2024-01-15",
-    review:
-      "Absolutely fantastic course! Sarah explains complex concepts in a very clear and understandable way. The hands-on projects really helped me grasp the advanced patterns. Highly recommend!",
-    helpful: 12,
-    response: null,
-    verified: true,
-  },
-  {
-    id: 2,
-    student: {
-      name: "Mike Chen",
-      avatar: generateRandomAvatar(),
-      initials: "MC",
-    },
-    course: "JavaScript Fundamentals",
-    rating: 4,
-    date: "2024-01-12",
-    review:
-      "Great course overall. The content is well-structured and the examples are practical. Would love to see more advanced topics covered in future updates.",
-    helpful: 8,
-    response: {
-      text: "Thank you for the feedback, Mike! I'm glad you found the course helpful. I'm actually working on an advanced JavaScript course that should be available next month.",
-      date: "2024-01-13",
-    },
-    verified: true,
-  },
-  {
-    id: 3,
-    student: {
-      name: "Emily Rodriguez",
-      avatar: generateRandomAvatar(),
-      initials: "ER",
-    },
-    course: "Node.js Backend Development",
-    rating: 5,
-    date: "2024-01-10",
-    review:
-      "This course exceeded my expectations! The project-based approach made learning so much more engaging. I built a complete REST API by the end.",
-    helpful: 15,
-    response: {
-      text: "So happy to hear that, Emily! Building real projects is definitely the best way to learn. Keep up the great work!",
-      date: "2024-01-11",
-    },
-    verified: true,
-  },
-];
+type ReviewItem = {
+  id: string;
+  student: {
+    name: string;
+    avatar: string;
+    initials: string;
+  };
+  course: string;
+  rating: number;
+  createdAt: Date;
+  date: string;
+  review: string;
+  helpful: number;
+  likes: number;
+  reports: number;
+  response: { text: string; date: string } | null;
+  verified: boolean;
+};
 
-const ratingTrends = [
-  { month: "Aug", rating: 4.2 },
-  { month: "Sep", rating: 4.3 },
-  { month: "Oct", rating: 4.5 },
-  { month: "Nov", rating: 4.4 },
-  { month: "Dec", rating: 4.6 },
-  { month: "Jan", rating: 4.7 },
-];
-
-const ratingDistribution = [
-  { stars: 5, count: 156 },
-  { stars: 4, count: 89 },
-  { stars: 3, count: 23 },
-  { stars: 2, count: 8 },
-  { stars: 1, count: 3 },
-];
+type RatingTrend = { month: string; rating: number };
+type RatingDistribution = { stars: number; count: number };
 
 export default function TutorReviewsPage() {
-  const [userRole] = useState<UserRole>("TUTOR");
-  const [userName] = useState("Sarah Chen");
-  const [userAvatar] = useState(generateRandomAvatar());
   const [activeTab, setActiveTab] = useState("all");
   const [searchTerm, setSearchTerm] = useState("");
   const [selectedRating, setSelectedRating] = useState("all");
   const [replyText, setReplyText] = useState("");
-  const [replyingTo, setReplyingTo] = useState<number | null>(null);
+  const [replyingTo, setReplyingTo] = useState<string | null>(null);
+  const [reviews, setReviews] = useState<ReviewItem[]>([]);
+  const [averageRating, setAverageRating] = useState(0);
+  const [totalReviews, setTotalReviews] = useState(0);
+  const [responseRate, setResponseRate] = useState(0);
+  const [recentGrowth, setRecentGrowth] = useState(0);
+  const [pendingReplies, setPendingReplies] = useState(0);
+  const [ratingTrends, setRatingTrends] = useState<RatingTrend[]>([]);
+  const [ratingDistribution, setRatingDistribution] = useState<
+    RatingDistribution[]
+  >([]);
+  const [loading, setLoading] = useState(true);
+  const [filterFrom, setFilterFrom] = useState("");
+  const [filterTo, setFilterTo] = useState("");
+  const [sortBy, setSortBy] = useState("newest");
+  const [minRating, setMinRating] = useState("all");
+  const [filtersOpen, setFiltersOpen] = useState(false);
+  const [insightsOpen, setInsightsOpen] = useState(false);
 
-  const averageRating = 4.7;
-  const totalReviews = 279;
-  const responseRate = 89;
-  const recentGrowth = 12.5;
+  useEffect(() => {
+    let isMounted = true;
+    const loadReviews = async () => {
+      setLoading(true);
+      const result = await getTutorReviewsOverview();
+      if (!isMounted) return;
+      if ("error" in result) {
+        toast.error(result.error);
+        setLoading(false);
+        return;
+      }
 
-  const filteredReviews = reviews.filter((review) => {
-    const matchesSearch =
-      review.review.toLowerCase().includes(searchTerm.toLowerCase()) ||
-      review.student.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
-      review.course.toLowerCase().includes(searchTerm.toLowerCase());
-    const matchesRating =
-      selectedRating === "all" || review.rating.toString() === selectedRating;
-    const matchesTab =
-      activeTab === "all" ||
-      (activeTab === "pending" && !review.response) ||
-      (activeTab === "responded" && review.response);
+      const mappedReviews = result.reviews.map((review) => {
+        const name = review.user?.name || "Student";
+        const initials = name
+          .split(" ")
+          .map((part) => part[0])
+          .join("")
+          .slice(0, 2)
+          .toUpperCase();
+        return {
+          id: review.id,
+          student: {
+            name,
+            avatar:
+              review.user?.avatar ||
+              review.user?.image ||
+              generateRandomAvatar(),
+            initials,
+          },
+          course: review.course?.title || "Course",
+          rating: review.rating,
+          createdAt: new Date(review.createdAt),
+          date: new Date(review.createdAt).toLocaleDateString(),
+          review: review.comment || "",
+          helpful: review.reactions.filter((r) => r.type === "HELPFUL").length,
+          likes: review.reactions.filter((r) => r.type === "LIKE").length,
+          reports: review.reactions.filter((r) => r.type === "REPORT").length,
+          response: review.responseText
+            ? {
+                text: review.responseText,
+                date: review.respondedAt
+                  ? new Date(review.respondedAt).toLocaleDateString()
+                  : "Just now",
+              }
+            : null,
+          verified: true,
+        };
+      });
 
-    return matchesSearch && matchesRating && matchesTab;
-  });
+      setReviews(mappedReviews);
+      setAverageRating(result.averageRating);
+      setTotalReviews(result.totalReviews);
+      setRatingDistribution(result.ratingDistribution);
+      setRatingTrends(result.ratingTrends);
+      setResponseRate(result.responseRate);
+      setPendingReplies(result.pendingReplies ?? 0);
+      setRecentGrowth(result.recentGrowth);
+      setLoading(false);
+    };
+    loadReviews();
+    return () => {
+      isMounted = false;
+    };
+  }, []);
 
-  const handleReply = (reviewId: number) => {
-    console.log(`Replying to review ₦{reviewId} with: ₦{replyText}`);
+  const filteredReviews = reviews
+    .filter((review) => {
+      const matchesSearch =
+        review.review.toLowerCase().includes(searchTerm.toLowerCase()) ||
+        review.student.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
+        review.course.toLowerCase().includes(searchTerm.toLowerCase());
+      const matchesRating =
+        selectedRating === "all" || review.rating.toString() === selectedRating;
+      const matchesMinRating =
+        minRating === "all" || review.rating >= Number(minRating);
+      const matchesTab =
+        activeTab === "all" ||
+        (activeTab === "pending" && !review.response) ||
+        (activeTab === "responded" && review.response);
+      const fromDate = filterFrom ? new Date(filterFrom) : null;
+      const toDate = filterTo ? new Date(filterTo) : null;
+      const matchesFrom = fromDate ? review.createdAt >= fromDate : true;
+      const matchesTo = toDate ? review.createdAt <= toDate : true;
+
+      return (
+        matchesSearch &&
+        matchesRating &&
+        matchesMinRating &&
+        matchesTab &&
+        matchesFrom &&
+        matchesTok
+      );
+    })
+    .sort((a, b) => {
+      if (sortBy === "oldest") {
+        return a.createdAt.getTime() - b.createdAt.getTime();
+      }
+      if (sortBy === "highest") {
+        return b.rating - a.rating;
+      }
+      if (sortBy === "lowest") {
+        return a.rating - b.rating;
+      }
+      return b.createdAt.getTime() - a.createdAt.getTime();
+    });
+
+  const handleReply = async (reviewId: string) => {
+    if (replyText.trim().length < 3) {
+      toast.error("Response must be at least 3 characters.");
+      return;
+    }
+
+    const result = await respondToReview(reviewId, replyText.trim());
+    if ("error" in result) {
+      toast.error(result.error);
+      return;
+    }
+
+    const newPending = Math.max(0, pendingReplies - 1);
+
+    setReviews((prev) =>
+      prev.map((review) =>
+        review.id === reviewId
+          ? {
+              ...review,
+              response: {
+                text: replyText.trim(),
+                date: new Date().toLocaleDateString(),
+              },
+            }
+          : review
+      )
+    );
+    setPendingReplies(newPending);
+    setResponseRate(
+      totalReviews > 0
+        ? Math.round(((totalReviews - newPending) / totalReviews) * 100)
+        : 0
+    );
     setReplyingTo(null);
     setReplyText("");
+    toast.success("Response sent");
+  };
+
+  const handleReaction = async (
+    reviewId: string,
+    type: "HELPFUL" | "LIKE" | "REPORT"
+  ) => {
+    const result = await toggleReviewReaction(reviewId, type);
+    if ("error" in result) {
+      toast.error(result.error);
+      return;
+    }
+
+    setReviews((prev) =>
+      prev.map((review) => {
+        if (review.id !== reviewId) return review;
+        const delta = result.added ? 1 : -1;
+        if (type === "HELPFUL") {
+          return { ...review, helpful: Math.max(0, review.helpful + delta) };
+        }
+        if (type === "LIKE") {
+          return { ...review, likes: Math.max(0, review.likes + delta) };
+        }
+        return { ...review, reports: Math.max(0, review.reports + delta) };
+      })
+    );
+
+    toast.success(result.added ? "Updated" : "Removed");
   };
 
   const renderStars = (rating: number) => {
     return Array.from({ length: 5 }, (_, i) => (
       <Star
         key={i}
-        className={`w-4 h-4 ₦{
+        className={`w-4 h-4 ${
           i < rating ? "fill-yellow-400 text-yellow-400" : "text-gray-500"
         }`}
       />
@@ -178,7 +297,7 @@ export default function TutorReviewsPage() {
               <p className="text-3xl font-bold text-white mt-2">{value}</p>
               {change && (
                 <div
-                  className={`flex items-center mt-2 text-sm ₦{
+                  className={`flex items-center mt-2 text-sm ${
                     change > 0 ? "text-green-400" : "text-red-400"
                   }`}>
                   <TrendingUp className="w-4 h-4 mr-1" />
@@ -188,12 +307,12 @@ export default function TutorReviewsPage() {
               )}
             </div>
             <div
-              className={`w-16 h-16 rounded-2xl bg-gradient-to-r ₦{color} p-4 group-hover:scale-110 transition-transform duration-300`}>
+              className={`w-16 h-16 rounded-2xl bg-gradient-to-r ${color} p-4 group-hover:scale-110 transition-transform duration-300`}>
               <Icon className="w-full h-full text-white" />
             </div>
           </div>
           <motion.div
-            className={`absolute inset-0 bg-gradient-to-r ₦{color} opacity-0 group-hover:opacity-5 transition-opacity duration-300 rounded-2xl`}
+            className={`absolute inset-0 bg-gradient-to-r ${color} opacity-0 group-hover:opacity-5 transition-opacity duration-300 rounded-2xl`}
           />
         </CardContent>
       </Card>
@@ -236,16 +355,122 @@ export default function TutorReviewsPage() {
               <div className="flex gap-3">
                 <Button
                   variant="outline"
+                  onClick={() => setFiltersOpen(true)}
                   className="gap-2 border-white/20 text-white hover:bg-white/10 bg-transparent">
                   <Filter className="w-4 h-4" />
                   Advanced Filters
                 </Button>
-                <Button className="gap-2 bg-gradient-to-r from-neon-purple to-pink-400 text-white">
+                <Button
+                  onClick={() => setInsightsOpen(true)}
+                  className="gap-2 bg-gradient-to-r from-neon-purple to-pink-400 text-white">
                   <Award className="w-4 h-4" />
                   Review Insights
                 </Button>
               </div>
             </motion.div>
+            <Dialog open={filtersOpen} onOpenChange={setFiltersOpen}>
+              <DialogContent className="bg-black/95 border-white/10 text-white">
+                <DialogHeader>
+                  <DialogTitle>Advanced Filters</DialogTitle>
+                  <DialogDescription className="text-gray-400">
+                    Refine reviews by date and rating.
+                  </DialogDescription>
+                </DialogHeader>
+                <div className="grid gap-4">
+                  <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
+                    <div className="space-y-2">
+                      <label className="text-sm text-gray-300">From</label>
+                      <Input
+                        type="date"
+                        value={filterFrom}
+                        onChange={(e) => setFilterFrom(e.target.value)}
+                        className="bg-white/5 border-white/10 text-white"
+                      />
+                    </div>
+                    <div className="space-y-2">
+                      <label className="text-sm text-gray-300">To</label>
+                      <Input
+                        type="date"
+                        value={filterTo}
+                        onChange={(e) => setFilterTo(e.target.value)}
+                        className="bg-white/5 border-white/10 text-white"
+                      />
+                    </div>
+                  </div>
+                  <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
+                    <div className="space-y-2">
+                      <label className="text-sm text-gray-300">
+                        Minimum rating
+                      </label>
+                      <Select value={minRating} onValueChange={setMinRating}>
+                        <SelectTrigger className="bg-white/5 border-white/10 text-white">
+                          <SelectValue />
+                        </SelectTrigger>
+                        <SelectContent className="bg-black/90 border-white/10">
+                          <SelectItem value="all">All ratings</SelectItem>
+                          <SelectItem value="5">5 stars</SelectItem>
+                          <SelectItem value="4">4 stars</SelectItem>
+                          <SelectItem value="3">3 stars</SelectItem>
+                          <SelectItem value="2">2 stars</SelectItem>
+                          <SelectItem value="1">1 star</SelectItem>
+                        </SelectContent>
+                      </Select>
+                    </div>
+                    <div className="space-y-2">
+                      <label className="text-sm text-gray-300">Sort by</label>
+                      <Select value={sortBy} onValueChange={setSortBy}>
+                        <SelectTrigger className="bg-white/5 border-white/10 text-white">
+                          <SelectValue />
+                        </SelectTrigger>
+                        <SelectContent className="bg-black/90 border-white/10">
+                          <SelectItem value="newest">Newest</SelectItem>
+                          <SelectItem value="oldest">Oldest</SelectItem>
+                          <SelectItem value="highest">Highest rating</SelectItem>
+                          <SelectItem value="lowest">Lowest rating</SelectItem>
+                        </SelectContent>
+                      </Select>
+                    </div>
+                  </div>
+                </div>
+              </DialogContent>
+            </Dialog>
+
+            <Dialog open={insightsOpen} onOpenChange={setInsightsOpen}>
+              <DialogContent className="bg-black/95 border-white/10 text-white">
+                <DialogHeader>
+                  <DialogTitle>Review Insights</DialogTitle>
+                  <DialogDescription className="text-gray-400">
+                    Snapshot of your review performance.
+                  </DialogDescription>
+                </DialogHeader>
+                <div className="grid gap-3 text-sm text-gray-300">
+                  <div className="flex items-center justify-between">
+                    <span>Average rating</span>
+                    <span className="text-white font-semibold">
+                      {averageRating.toFixed(1)}
+                    </span>
+                  </div>
+                  <div className="flex items-center justify-between">
+                    <span>Total reviews</span>
+                    <span className="text-white font-semibold">
+                      {totalReviews}
+                    </span>
+                  </div>
+                  <div className="flex items-center justify-between">
+                    <span>Response rate</span>
+                    <span className="text-white font-semibold">
+                      {responseRate}%
+                    </span>
+                  </div>
+                  <div className="flex items-center justify-between">
+                    <span>Pending replies</span>
+                    <span className="text-white font-semibold">
+                      {pendingReplies}
+                    </span>
+                  </div>
+                </div>
+              </DialogContent>
+            </Dialog>
 
             {/* Stats Cards */}
             <motion.div
@@ -270,14 +495,14 @@ export default function TutorReviewsPage() {
               <StatCard
                 icon={Reply}
                 title="Response Rate"
-                value={`₦{responseRate}%`}
+                value={`${responseRate}%`}
                 change={null}
                 color="from-neon-green to-emerald-400"
               />
               <StatCard
                 icon={Clock}
                 title="Pending Replies"
-                value="12"
+                value={pendingReplies}
                 change={null}
                 color="from-neon-orange to-yellow-400"
               />
@@ -417,13 +642,13 @@ export default function TutorReviewsPage() {
                       value="pending"
                       className="gap-2 text-white data-[state=active]:bg-white/10">
                       <Clock className="w-4 h-4" />
-                      Pending ({reviews.filter((r) => !r.response).length})
+                      Pending ({pendingReplies})
                     </TabsTrigger>
                     <TabsTrigger
                       value="responded"
                       className="gap-2 text-white data-[state=active]:bg-white/10">
                       <CheckCircle className="w-4 h-4" />
-                      Responded ({reviews.filter((r) => r.response).length})
+                      Responded ({reviews.length - pendingReplies})
                     </TabsTrigger>
                   </TabsList>
 
@@ -433,7 +658,12 @@ export default function TutorReviewsPage() {
                       animate={{ opacity: 1, y: 0 }}
                       transition={{ duration: 0.5 }}
                       className="space-y-6">
-                      {filteredReviews.map((review) => (
+                      {loading ? (
+                        <div className="text-center py-12 text-gray-400">
+                          Loading reviews...
+                        </div>
+                      ) : (
+                        filteredReviews.map((review) => (
                         <div
                           key={review.id}
                           className="bg-white/5 rounded-lg p-6 backdrop-blur-sm">
@@ -497,6 +727,9 @@ export default function TutorReviewsPage() {
                               <Button
                                 variant="ghost"
                                 size="sm"
+                              onClick={() =>
+                                handleReaction(review.id, "HELPFUL")
+                              }
                                 className="gap-2 text-white hover:bg-white/10">
                                 <ThumbsUp className="w-4 h-4" />
                                 Helpful ({review.helpful})
@@ -504,16 +737,20 @@ export default function TutorReviewsPage() {
                               <Button
                                 variant="ghost"
                                 size="sm"
+                              onClick={() => handleReaction(review.id, "LIKE")}
                                 className="gap-2 text-white hover:bg-white/10">
                                 <Heart className="w-4 h-4" />
-                                Like
+                              Like ({review.likes})
                               </Button>
                               <Button
                                 variant="ghost"
                                 size="sm"
+                              onClick={() =>
+                                handleReaction(review.id, "REPORT")
+                              }
                                 className="gap-2 text-white hover:bg-white/10">
                                 <Flag className="w-4 h-4" />
-                                Report
+                              Report ({review.reports})
                               </Button>
                             </div>
                             {!review.response && (
@@ -577,10 +814,11 @@ export default function TutorReviewsPage() {
                             </div>
                           )}
                         </div>
-                      ))}
+                        ))
+                      )}
                     </motion.div>
 
-                    {filteredReviews.length === 0 && (
+                    {!loading && filteredReviews.length === 0 && (
                       <div className="text-center py-12">
                         <MessageSquare className="w-12 h-12 text-gray-400 mx-auto mb-4" />
                         <h3 className="text-lg font-semibold text-gray-400 mb-2">

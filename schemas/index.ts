@@ -102,6 +102,18 @@ export const courseSchema = z.object({
   ) as unknown as z.ZodOptional<z.ZodString>,
   groupBuyingEnabled: z.boolean(),
   groupBuyingDiscount: z.number().min(0).max(1).optional(),
+  groupTiers: z
+    .array(
+      z.object({
+        id: z.string().optional(),
+        size: z.number().int().min(2, "Group size must be at least 2"),
+        groupPrice: z.number().min(0, "Group price must be non-negative"),
+        cashbackPercent: z.number().min(0).max(1).optional().default(0),
+        isActive: z.boolean().optional().default(true),
+      })
+    )
+    .optional()
+    .default([]),
   targetAudience: z
     .array(z.string().min(1, "Audience entry cannot be empty"))
     .optional(),
@@ -111,7 +123,7 @@ export const courseSchema = z.object({
 
 export const moduleSchema = z.object({
   title: z.string().min(1, "Module title is required"),
-  content: z.string().nullable().optional(),
+  content: z.string().optional(),
   description: z.string().optional(),
   sortOrder: z.number().min(0, "Order must be non-negative"),
   duration: z.number().min(0, "Duration must be non-negative"),
@@ -120,12 +132,14 @@ export const moduleSchema = z.object({
 
 export const lessonSchema = z.object({
   title: z.string().min(1, "Lesson title is required"),
-  lessonType: z.enum(["VIDEO", "TEXT", "QUIZ", "PROJECT", "LIVE"]),
+  lessonType: z
+    .enum(["VIDEO", "TEXT", "QUIZ", "PROJECT", "LIVE"])
+    .default("VIDEO"),
   duration: z.number().min(0, "Duration must be non-negative"),
   content: z.string().optional(),
+  description: z.string().optional(),
   videoUrl: z.string().optional(),
   sortOrder: z.number().min(0, "Order must be non-negative"),
-  description: z.string().optional(),
   isPreview: z.boolean().default(false),
 });
 
@@ -157,6 +171,17 @@ export const updateCourseSchema = z.object({
   flashSaleEnd: z.string().datetime().optional(),
   groupBuyingEnabled: z.boolean().optional(),
   groupBuyingDiscount: z.number().min(0).max(1).optional(),
+  groupTiers: z
+    .array(
+      z.object({
+        id: z.string().optional(),
+        size: z.number().int().min(2, "Group size must be at least 2"),
+        groupPrice: z.number().min(0, "Group price must be non-negative"),
+        cashbackPercent: z.number().min(0).max(1).optional().default(0),
+        isActive: z.boolean().optional().default(true),
+      })
+    )
+    .optional(),
   certificate: z.boolean().optional(),
 
   // 🔹 Extra fields for edit
@@ -166,7 +191,112 @@ export const updateCourseSchema = z.object({
   demandLevel: z.enum(["low", "medium", "high"]).optional(),
 });
 
+// Resource schema for projects
+export const projectResourceSchema = z.object({
+  title: z.string().min(1, "Resource title is required"),
+  description: z.string().optional(),
+  url: z.string().url("Must be a valid URL").min(1, "Resource URL is required"),
+  type: z.enum(["PDF", "VIDEO", "AUDIO", "IMAGE", "LINK", "CODE", "DOCUMENT"], {
+    message: "Invalid resource type",
+  }),
+  fileSize: z.number().optional(),
+  mimeType: z.string().optional(),
+  isPublic: z.boolean().default(true),
+});
+
+export const taskSchema = z.object({
+  title: z.string().min(1, "Title is required"),
+  description: z.string().min(1, "Description is required"),
+  requirements: z
+    .array(z.string().min(1, "Requirement cannot be empty"))
+    .min(1, "At least one requirement is required"),
+  points: z.number().int().min(1, "Points must be at least 1").default(100),
+  isActive: z.boolean().default(true),
+  courseId: z.string().min(1, "Course is required"),
+  moduleId: z.string().min(1, "Module is required"),
+  dueDate: z.preprocess(
+    (val) => (val ? new Date(val as string) : null),
+    z.date().nullable().optional()
+  ),
+  submissionType: z.enum(["FILE", "GITHUB", "LINK", "TEXT", "QUIZ"], {
+    message: "Invalid submission type",
+  }),
+  resources: z.array(projectResourceSchema).optional().default([]),
+});
+
+// Project schemas
+export const projectSchema = z
+  .object({
+    title: z.string().min(1, "Title is required"),
+    description: z.string().min(1, "Description is required"),
+    requirements: z
+      .array(z.string().min(1, "Requirement cannot be empty"))
+      .min(1, "At least one requirement is required"),
+    difficulty: z.enum(["BEGINNER", "INTERMEDIATE", "ADVANCED"], {
+      message: "Invalid difficulty level",
+    }),
+    points: z.number().int().min(1, "Points must be at least 1").default(100),
+    isActive: z.boolean().default(true),
+    courseId: z.string().min(1, "Course is required"),
+    resources: z.array(projectResourceSchema).optional().default([]),
+  });
+
+export const gradeSubmissionSchema = z.object({
+  submissionId: z.string().min(1, "Submission ID is required"),
+  score: z
+    .number()
+    .min(0, "Score must be at least 0")
+    .max(100, "Score cannot exceed 100"),
+  feedback: z.string().min(1, "Feedback is required"),
+});
+
+export const gradeTaskSubmissionSchema = z.object({
+  submissionId: z.string().min(1, "Submission ID is required"),
+  score: z
+    .number()
+    .min(0, "Score must be at least 0")
+    .max(100, "Score cannot exceed 100"),
+  feedback: z.string().min(1, "Feedback is required"),
+});
+
+export const reviewSchema = z.object({
+  courseId: z.string().min(1, "Course ID is required"),
+  rating: z.number().int().min(1).max(5),
+  comment: z.string().min(3, "Review must be at least 3 characters"),
+});
+
+export const updateReviewSchema = z.object({
+  reviewId: z.string().min(1, "Review ID is required"),
+  rating: z.number().int().min(1).max(5),
+  comment: z.string().min(3, "Review must be at least 3 characters"),
+});
+
+const optionalUrlSchema = z
+  .union([z.string().url("Must be a valid URL"), z.literal("")])
+  .optional()
+  .transform((value) => (value === "" ? undefined : value));
+
+export const studentSubmissionSchema = z
+  .object({
+    projectId: z.string().min(1, "Project ID is required"),
+    githubUrl: optionalUrlSchema,
+    liveUrl: optionalUrlSchema,
+    notes: z.string().optional(),
+    fileUrl: optionalUrlSchema,
+  })
+  .refine(
+    (data) =>
+      Boolean(data.githubUrl || data.liveUrl || data.notes || data.fileUrl),
+    {
+      message: "Provide at least one of GitHub URL, Live URL, notes, or a file",
+      path: ["githubUrl"],
+    }
+  );
+
 export type LoginFormData = z.infer<typeof loginSchema>;
 export type SignupFormData = z.infer<typeof signupSchema>;
 export type ForgotPasswordFormData = z.infer<typeof forgotPasswordSchema>;
 export type ResetPasswordFormData = z.infer<typeof resetPasswordSchema>;
+export type ProjectFormData = z.infer<typeof projectSchema>;
+export type GradeSubmissionFormData = z.infer<typeof gradeSubmissionSchema>;
+export type StudentSubmissionFormData = z.infer<typeof studentSubmissionSchema>;

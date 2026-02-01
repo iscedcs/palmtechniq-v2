@@ -4,63 +4,66 @@ generator client {
 
 datasource db {
   provider = "postgresql"
-  url      = env("DATABASE_URL")
 }
 
 model User {
-  id                String              @id @default(cuid())
-  email             String              @unique
-  name              String
-  avatar            String?
-  role              UserRole            @default(USER)
-  isActive          Boolean             @default(true)
-  createdAt         DateTime            @default(now())
-  updatedAt         DateTime            @updatedAt
-  bio               String?
-  location          String?
-  website           String?
-  socialLinks       Json?
-  preferences       Json?
-  timezone          String?
-  language          String              @default("en")
-  emailVerified     DateTime?
-  phone             String?
-  password          String?
-  isVerified        Boolean             @default(false)
-  verificationToken String              @default("")
-  bankName          String?             @map("bank_name")
-  accountNumber     String?             @map("account_number")
-  subaccountCode    String?             @map("subaccount_code")
-  recipientCode     String?             @map("recipient_code")
-  walletBalance     Float               @default(0)
-  image             String?
-  accounts          Account[]
-  adminProfile      Admin?
-  AIRecommendation  AIRecommendation[]
-  cartItems         CartItem[]
-  certificates      Certificate[]
-  createdCourses    Course[]            @relation("CourseCreator")
-  ownedCourses      Course[]            @relation("CourseOwner")
-  discussionReplies DiscussionReply[]
-  discussions       Discussion[]
-  enrollments       Enrollment[]
-  LearningPath      LearningPath[]
-  mentorSessions    MentorshipSession[] @relation("StudentSessions")
-  tutoredSessions   MentorshipSession[] @relation("TutorSessions")
-  notifications     Notification[]
-  paymentMethod     PaymentMethod[]
-  ProgressMilestone ProgressMilestone[]
-  QuizAnswer        QuizAnswer[]
-  reports           Report[]
-  reviews           Review[]
-  sessions          Session[]
-  studentProfile    Student?
-  submissions       Submission[]
-  transactions      Transaction[]
-  tutorProfile      Tutor?
-  analytics         UserAnalytics[]
-  UserSkill         UserSkill[]
-  wishlist          Wishlist[]
+  id                    String              @id @default(cuid())
+  email                 String              @unique
+  name                  String
+  avatar                String?
+  role                  UserRole            @default(USER)
+  isActive              Boolean             @default(true)
+  createdAt             DateTime            @default(now())
+  updatedAt             DateTime            @updatedAt
+  bio                   String?
+  location              String?
+  website               String?
+  socialLinks           Json?
+  preferences           Json?
+  timezone              String?
+  language              String              @default("en")
+  emailVerified         DateTime?
+  phone                 String?
+  password              String?
+  isVerified            Boolean             @default(false)
+  verificationToken     String              @default("")
+  bankName              String?             @map("bank_name")
+  accountNumber         String?             @map("account_number")
+  subaccountCode        String?             @map("subaccount_code")
+  recipientCode         String?             @map("recipient_code")
+  walletBalance         Float               @default(0)
+  image                 String?
+  accounts              Account[]
+  adminProfile          Admin?
+  AIRecommendation      AIRecommendation[]
+  cartItems             CartItem[]
+  certificates          Certificate[]
+  createdCourses        Course[]            @relation("CourseCreator")
+  ownedCourses          Course[]            @relation("CourseOwner")
+  discussionReplies     DiscussionReply[]
+  discussions           Discussion[]
+  enrollments           Enrollment[]
+  LearningPath          LearningPath[]
+  mentorSessions        MentorshipSession[] @relation("StudentSessions")
+  tutoredSessions       MentorshipSession[] @relation("TutorSessions")
+  notifications         Notification[]
+  paymentMethod         PaymentMethod[]
+  ProgressMilestone     ProgressMilestone[]
+  QuizAnswer            QuizAnswer[]
+  reports               Report[]
+  reviews               Review[]
+  sessions              Session[]
+  studentProfile        Student?
+  submissions           Submission[]
+  taskSubmissions       TaskSubmission[]
+  createdGroupPurchases GroupPurchase[]     @relation("GroupPurchaseCreator")
+  groupMemberships      GroupMember[]
+  transactions          Transaction[]
+  tutorProfile          Tutor?
+  analytics             UserAnalytics[]
+  UserSkill             UserSkill[]
+  wishlist              Wishlist[]
+  reviewReactions       ReviewReaction[]
 
   @@map("users")
 }
@@ -179,8 +182,11 @@ model Course {
   tutor               Tutor              @relation(fields: [tutorId], references: [id])
   discussions         Discussion[]
   enrollments         Enrollment[]
+  groupTiers          GroupTier[]
+  groupPurchases      GroupPurchase[]
   LearningPath        LearningPath[]
   projects            Project[]
+  tasks               Task[]
   reviews             Review[]
   Skill               Skill[]
   transactions        Transaction[]
@@ -228,8 +234,9 @@ model CourseModule {
   content     String?
   course      Course     @relation(fields: [courseId], references: [id], onDelete: Cascade)
   lessons     Lesson[]
-  quiz        Quiz?
   resources   Resource[]
+  projects    Project[]
+  tasks       Task[]
 
   @@map("course_modules")
 }
@@ -251,6 +258,7 @@ model Lesson {
   progress    LessonProgress[]
   module      CourseModule     @relation(fields: [moduleId], references: [id], onDelete: Cascade)
   resources   Resource[]
+  quiz        Quiz?
 
   @@map("lessons")
 }
@@ -280,9 +288,11 @@ model Enrollment {
   certificateIssued Boolean          @default(false)
   userId            String
   courseId          String
+  groupPurchaseId   String?
   enrolledAt        DateTime         @default(now())
   updatedAt         DateTime         @updatedAt
   course            Course           @relation(fields: [courseId], references: [id], onDelete: Cascade)
+  groupPurchase     GroupPurchase?   @relation(fields: [groupPurchaseId], references: [id])
   user              User             @relation(fields: [userId], references: [id], onDelete: Cascade)
   lessonProgress    LessonProgress[]
   quizAttempts      QuizAttempt[]
@@ -299,13 +309,13 @@ model Quiz {
   passingScore Int           @default(70)
   maxAttempts  Int           @default(3)
   isActive     Boolean       @default(true)
-  moduleId     String        @unique
+  lessonId     String        @unique
   createdAt    DateTime      @default(now())
   updatedAt    DateTime      @updatedAt
   questions    Question[]
   QuizAnswer   QuizAnswer[]
   attempts     QuizAttempt[]
-  module       CourseModule  @relation(fields: [moduleId], references: [id], onDelete: Cascade)
+  lesson       Lesson        @relation(fields: [lessonId], references: [id], onDelete: Cascade)
 
   @@map("quiz")
 }
@@ -364,18 +374,21 @@ model QuizAnswer {
 }
 
 model Project {
-  id           String       @id @default(cuid())
+  id           String        @id @default(cuid())
   title        String
   description  String
   requirements String[]
-  difficulty   CourseLevel  @default(BEGINNER)
-  points       Int          @default(100)
+  difficulty   CourseLevel   @default(BEGINNER)
+  points       Int           @default(100)
   dueDate      DateTime?
-  isActive     Boolean      @default(true)
+  isActive     Boolean       @default(true)
+  scope        ProjectScope  @default(COURSE)
   courseId     String
-  createdAt    DateTime     @default(now())
-  updatedAt    DateTime     @updatedAt
-  course       Course       @relation(fields: [courseId], references: [id], onDelete: Cascade)
+  moduleId     String?
+  createdAt    DateTime      @default(now())
+  updatedAt    DateTime      @updatedAt
+  course       Course        @relation(fields: [courseId], references: [id], onDelete: Cascade)
+  module       CourseModule? @relation(fields: [moduleId], references: [id], onDelete: Cascade)
   resources    Resource[]
   submissions  Submission[]
 
@@ -402,6 +415,49 @@ model Submission {
 
   @@unique([userId, projectId])
   @@map("submissions")
+}
+
+model Task {
+  id             String             @id @default(cuid())
+  title          String
+  description    String
+  requirements   String[]
+  points         Int                @default(100)
+  dueDate        DateTime?
+  isActive       Boolean            @default(true)
+  submissionType TaskSubmissionType @default(TEXT)
+  courseId       String
+  moduleId       String
+  createdAt      DateTime           @default(now())
+  updatedAt      DateTime           @updatedAt
+  course         Course             @relation(fields: [courseId], references: [id], onDelete: Cascade)
+  module         CourseModule       @relation(fields: [moduleId], references: [id], onDelete: Cascade)
+  resources      Resource[]
+  submissions    TaskSubmission[]
+
+  @@map("tasks")
+}
+
+model TaskSubmission {
+  id        String           @id @default(cuid())
+  content   String?
+  fileUrl   String?
+  githubUrl String?
+  liveUrl   String?
+  notes     String?
+  status    SubmissionStatus @default(PENDING)
+  score     Float?
+  feedback  String?
+  gradedAt  DateTime?
+  userId    String
+  taskId    String
+  createdAt DateTime         @default(now())
+  updatedAt DateTime         @updatedAt
+  task      Task             @relation(fields: [taskId], references: [id], onDelete: Cascade)
+  user      User             @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@unique([userId, taskId])
+  @@map("task_submissions")
 }
 
 model LearningPath {
@@ -528,21 +584,37 @@ model ProgramRegistration {
 }
 
 model Review {
-  id           String   @id @default(cuid())
+  id           String           @id @default(cuid())
   rating       Int
   comment      String?
-  isPublic     Boolean  @default(true)
+  isPublic     Boolean          @default(true)
+  responseText String?
+  respondedAt  DateTime?
   userId       String
   courseId     String
   tutorName    String
   reviewerName String
-  createdAt    DateTime @default(now())
-  updatedAt    DateTime @updatedAt
-  course       Course   @relation(fields: [courseId], references: [id], onDelete: Cascade)
-  user         User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  createdAt    DateTime         @default(now())
+  updatedAt    DateTime         @updatedAt
+  course       Course           @relation(fields: [courseId], references: [id], onDelete: Cascade)
+  user         User             @relation(fields: [userId], references: [id], onDelete: Cascade)
+  reactions    ReviewReaction[]
 
   @@unique([userId, courseId])
   @@map("reviews")
+}
+
+model ReviewReaction {
+  id        String             @id @default(cuid())
+  type      ReviewReactionType
+  reviewId  String
+  userId    String
+  createdAt DateTime           @default(now())
+  review    Review             @relation(fields: [reviewId], references: [id], onDelete: Cascade)
+  user      User               @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@unique([reviewId, userId, type])
+  @@map("review_reactions")
 }
 
 model CartItem {
@@ -570,6 +642,7 @@ model Transaction {
   metadata          Json?
   userId            String
   courseId          String?
+  groupPurchaseId   String?
   transactionId     String
   paymentDate       DateTime          @default(now())
   verifiedAt        DateTime          @updatedAt
@@ -581,6 +654,7 @@ model Transaction {
   createdAt         DateTime          @default(now())
   updatedAt         DateTime          @updatedAt
   course            Course?           @relation(fields: [courseId], references: [id])
+  groupPurchase     GroupPurchase?    @relation(fields: [groupPurchaseId], references: [id])
   user              User              @relation(fields: [userId], references: [id], onDelete: Cascade)
 
   @@map("transactions")
@@ -670,11 +744,13 @@ model Resource {
   moduleId    String?
   lessonId    String?
   projectId   String?
+  taskId      String?
   createdAt   DateTime      @default(now())
   updatedAt   DateTime      @updatedAt
   lesson      Lesson?       @relation(fields: [lessonId], references: [id], onDelete: Cascade)
   module      CourseModule? @relation(fields: [moduleId], references: [id], onDelete: Cascade)
   project     Project?      @relation(fields: [projectId], references: [id], onDelete: Cascade)
+  task        Task?         @relation(fields: [taskId], references: [id], onDelete: Cascade)
 
   @@map("resources")
 }
@@ -820,6 +896,68 @@ model PasswordResetToken {
   @@unique([email, token])
 }
 
+model GroupTier {
+  id              String          @id @default(cuid())
+  courseId        String
+  size            Int
+  groupPrice      Float
+  cashbackPercent Float           @default(0)
+  isActive        Boolean         @default(true)
+  createdAt       DateTime        @default(now())
+  updatedAt       DateTime        @updatedAt
+  course          Course          @relation(fields: [courseId], references: [id], onDelete: Cascade)
+  groupPurchases  GroupPurchase[]
+
+  @@map("group_tiers")
+}
+
+model GroupPurchase {
+  id                String              @id @default(cuid())
+  courseId          String
+  tierId            String
+  creatorId         String
+  inviteCode        String              @unique
+  status            GroupPurchaseStatus @default(PENDING_PAYMENT)
+  memberCount       Int                 @default(1)
+  memberLimit       Int
+  groupPrice        Float
+  cashbackTotal     Float               @default(0)
+  cashbackPerMember Float               @default(0)
+  cashbackEarned    Float               @default(0)
+  cashbackReleased  Boolean             @default(false)
+  paidAt            DateTime?
+  completedAt       DateTime?
+  createdAt         DateTime            @default(now())
+  updatedAt         DateTime            @updatedAt
+  course            Course              @relation(fields: [courseId], references: [id], onDelete: Cascade)
+  tier              GroupTier           @relation(fields: [tierId], references: [id], onDelete: Cascade)
+  creator           User                @relation("GroupPurchaseCreator", fields: [creatorId], references: [id], onDelete: Cascade)
+  members           GroupMember[]
+  transactions      Transaction[]
+  enrollments       Enrollment[]
+
+  @@map("group_purchases")
+}
+
+model GroupMember {
+  id              String          @id @default(cuid())
+  groupPurchaseId String
+  userId          String
+  role            GroupMemberRole @default(MEMBER)
+  joinedAt        DateTime        @default(now())
+  groupPurchase   GroupPurchase   @relation(fields: [groupPurchaseId], references: [id], onDelete: Cascade)
+  user            User            @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@unique([groupPurchaseId, userId])
+  @@map("group_members")
+}
+
+enum ReviewReactionType {
+  HELPFUL
+  LIKE
+  REPORT
+}
+
 enum UserRole {
   USER
   STUDENT
@@ -860,6 +998,19 @@ enum EnrollmentStatus {
   SUSPENDED
 }
 
+enum ProjectScope {
+  COURSE
+  MODULE
+}
+
+enum TaskSubmissionType {
+  FILE
+  GITHUB
+  LINK
+  TEXT
+  QUIZ
+}
+
 enum LessonType {
   VIDEO
   TEXT
@@ -897,6 +1048,19 @@ enum TransactionStatus {
   FAILED
   REFUNDED
   CANCELLED
+}
+
+enum GroupPurchaseStatus {
+  PENDING_PAYMENT
+  ACTIVE
+  COMPLETED
+  EXPIRED
+  CANCELLED
+}
+
+enum GroupMemberRole {
+  CREATOR
+  MEMBER
 }
 
 enum PaymentType {

@@ -21,7 +21,6 @@ import {
   Zap,
 } from "lucide-react";
 import Link from "next/link";
-import { title } from "process";
 
 type StudentDashboardProps = {
   studentData: {

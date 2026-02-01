@@ -93,13 +93,16 @@ export default function QuizRunnerClient({
 
       if (data.passed) {
         toast.success("✅ You passed the quiz!");
+        if (data.taskRequired) {
+          toast.info("Module task available. Submit it for certificate eligibility.");
+        }
         if (data.nextLesson) {
           router.push(
-            `/courses/${quiz.module.courseId}/learn/${data.nextLesson.id}`
+            `/courses/${quiz.lesson.module.courseId}/learn/${data.nextLesson.id}`
           );
           router.refresh();
         } else {
-          router.push(`/courses/${quiz.module.courseId}/learn`);
+          router.push(`/courses/${quiz.lesson.module.courseId}/learn`);
           router.refresh();
         }
       } else {
@@ -115,7 +118,7 @@ export default function QuizRunnerClient({
             "You must rewatch the last lesson before retrying the quiz."
           );
           router.push(
-            `/courses/${quiz.module.courseId}/learn/${data.retryLesson.id}`
+            `/courses/${quiz.lesson.module.courseId}/learn/${data.retryLesson.id}`
           );
         } else if (data.remainingAttempts > 0) {
           toast.info(

@@ -18,7 +18,7 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
-import { generateRandomAvatar } from "@/lib/utils";
+import { formatDurationMinutes, generateRandomAvatar } from "@/lib/utils";
 import { motion } from "framer-motion";
 import {
   Clock,
@@ -230,7 +230,7 @@ export default function CoursesGrid({
                         </div>
                         <div className="flex items-center text-gray-400">
                           <Clock className="w-4 h-4 mr-1" />
-                          {course.duration || 0} mins
+                          {formatDurationMinutes(course.duration!)}
                         </div>
                       </div>
 

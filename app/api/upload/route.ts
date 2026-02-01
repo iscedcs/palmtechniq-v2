@@ -4,7 +4,8 @@ import { v4 as uuidv4 } from "uuid";
 
 export async function POST(request: Request) {
   try {
-    const { filename, contentType } = await request.json();
+    const { filename, contentType, folder: requestedFolder } =
+      await request.json();
 
     const getFolder = (mime: string) => {
       if (mime.startsWith("image/")) return "images";
@@ -15,7 +16,10 @@ export async function POST(request: Request) {
       return "files";
     };
 
-    const folder = getFolder(contentType);
+    const allowedFolders = new Set(["project-submissions"]);
+    const folder = allowedFolders.has(requestedFolder)
+      ? requestedFolder
+      : getFolder(contentType);
     const type = folder === "videos" ? "video" : "file";
     const maxSize = type === "video" ? 100 * 1024 * 1024 : 20 * 1024 * 1024;
 

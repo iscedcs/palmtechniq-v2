@@ -29,9 +29,12 @@ export async function POST(
       where: { id: quizId },
       include: {
         questions: true,
-
-        module: {
-          include: { course: { include: { modules: true } }, lessons: true },
+        lesson: {
+          include: {
+            module: {
+              include: { course: { include: { modules: true } }, lessons: true },
+            },
+          },
         },
       },
     });
@@ -52,7 +55,7 @@ export async function POST(
         message:
           "Max attempts reached. Please rewatch the last lesson to unlock the quiz again.",
         passed: false,
-        retryLesson: quiz.module.lessons.at(-1),
+        retryLesson: quiz.lesson,
         remainingAttempts: 0,
       });
     }
@@ -93,18 +96,56 @@ export async function POST(
     const remainingAttempts = Math.max(maxAttempts - (attemptsMade + 1), 0);
 
     if (passed) {
-      // ✅ Unlock next module (if exists)
-      const modules = quiz.module.course.modules.sort(
+      const moduleLessons = quiz.lesson.module.lessons.sort(
         (a, b) => a.sortOrder - b.sortOrder
       );
-      const currentIndex = modules.findIndex((m) => m.id === quiz.moduleId);
+      const lessonIndex = moduleLessons.findIndex(
+        (l) => l.id === quiz.lessonId
+      );
+      const nextLessonInModule = moduleLessons[lessonIndex + 1] || null;
+
+      if (nextLessonInModule) {
+        await db.lesson.update({
+          where: { id: nextLessonInModule.id },
+          data: { isLocked: false },
+        });
+        return NextResponse.json({
+          message: "Quiz passed successfully",
+          passed: true,
+          score,
+          remainingAttempts,
+          nextLesson: nextLessonInModule,
+        });
+      }
+
+      const moduleTasks = await db.task.findMany({
+        where: { moduleId: quiz.lesson.moduleId, isActive: true },
+        include: {
+          submissions: {
+            where: { userId },
+            select: { status: true },
+          },
+        },
+      });
+
+      const submissionStatuses = new Set(["SUBMITTED", "GRADED", "RETURNED"]);
+      const pendingModuleTask = moduleTasks.find(
+        (task) =>
+          !task.submissions.some((s) => submissionStatuses.has(s.status))
+      );
+      const moduleTaskId =
+        pendingModuleTask?.id ?? moduleTasks[0]?.id ?? null;
+
+      const modules = quiz.lesson.module.course.modules.sort(
+        (a, b) => a.sortOrder - b.sortOrder
+      );
+      const currentIndex = modules.findIndex(
+        (m) => m.id === quiz.lesson.moduleId
+      );
       const nextModule = modules[currentIndex + 1];
 
       let nextLesson = null;
-
       if (nextModule) {
-        // unlock lessons in next module
-
         const firstLesson = await db.lesson.findFirst({
           where: { moduleId: nextModule.id },
           orderBy: { sortOrder: "asc" },
@@ -116,20 +157,7 @@ export async function POST(
             data: { isLocked: false },
           });
           nextLesson = firstLesson;
-
-          nextLesson = await db.lesson.findUnique({
-            where: { id: firstLesson.id },
-          });
         }
-        // await db.lesson.updateMany({
-        //   where: { moduleId: nextModule.id },
-        //   data: { isLocked: false },
-        // });
-
-        // nextLesson = await db.lesson.findFirst({
-        //   where: { moduleId: nextModule.id },
-        //   orderBy: { sortOrder: "asc" },
-        // });
       }
 
       return NextResponse.json({
@@ -138,6 +166,9 @@ export async function POST(
         score,
         remainingAttempts,
         nextLesson,
+        taskRequired: moduleTasks.length > 0,
+        moduleTaskId,
+        moduleTaskSubmitted: moduleTasks.length === 0 || !pendingModuleTask,
       });
     }
     if (remainingAttempts <= 0) {
@@ -145,7 +176,7 @@ export async function POST(
         message:
           "You’ve used all attempts. Please rewatch the last lesson to reset your quiz access.",
         passed: false,
-        retryLesson: quiz.module.lessons.at(-1),
+        retryLesson: quiz.lesson,
         remainingAttempts,
       });
     }

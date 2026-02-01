@@ -1,10 +1,12 @@
 import StudentProgress from "@/components/pages/student/progress/progress-comp";
-import React from "react";
+import { getStudentProgressData } from "@/data/studentprogress";
 
-export default function ProgressPage() {
+export default async function ProgressPage() {
+  const progressData = await getStudentProgressData();
+
   return (
     <div>
-      <StudentProgress />
+      <StudentProgress {...progressData} />
     </div>
   );
 }

@@ -6,6 +6,8 @@ import LessonTabs from "@/components/pages/courses/courseId/learn/lessonTabs";
 import LessonSidebar from "@/components/pages/courses/courseId/learn/lessonSidebar";
 import { FloatingAIButton } from "@/components/ai/floating-ai-button";
 import { LessonAIAssistant } from "@/components/ai/lesson-ai-assistant";
+import { Badge } from "@/components/ui/badge";
+import { Button } from "@/components/ui/button";
 import { toast } from "sonner";
 import CourseLearningPageSkeleton from "@/components/shared/skeleton/courselearningpageskeleton";
 import { useRouter } from "next/navigation";
@@ -20,6 +22,10 @@ export default function CourseLearningPageClient({
   const [allLessons, setAllLessons] = useState<any[]>([]);
   const [currentTime, setCurrentTime] = useState(0);
   const [duration, setDuration] = useState(0);
+  const [moduleTaskPrompt, setModuleTaskPrompt] = useState<{
+    taskId: string;
+    moduleTitle: string;
+  } | null>(null);
 
   const [showAI, setShowAI] = useState(false);
   useEffect(() => {
@@ -49,6 +55,34 @@ export default function CourseLearningPageClient({
       setCurrentLesson(initialLesson);
     }
   }, [courseData, initialLessonId]);
+
+  useEffect(() => {
+    if (!currentLesson) return;
+    const moduleForLesson = courseData.modules.find((m: any) =>
+      m.lessons.some((l: any) => l.id === currentLesson.id)
+    );
+    if (!moduleForLesson) {
+      setModuleTaskPrompt(null);
+      return;
+    }
+    const isLastLesson =
+      moduleForLesson.lessons?.[moduleForLesson.lessons.length - 1]?.id ===
+      currentLesson.id;
+    const taskInfo = moduleForLesson.task;
+    if (
+      isLastLesson &&
+      taskInfo?.hasTask &&
+      taskInfo.taskId &&
+      !taskInfo.isSubmitted
+    ) {
+      setModuleTaskPrompt({
+        taskId: taskInfo.taskId,
+        moduleTitle: moduleForLesson.title,
+      });
+    } else {
+      setModuleTaskPrompt(null);
+    }
+  }, [currentLesson, courseData.modules]);
 
   const changeLesson = (lesson: any) => {
     if (lesson.isLocked && !lesson.isCompleted) {
@@ -87,9 +121,13 @@ export default function CourseLearningPageClient({
           return { ...l, isCompleted: true };
         }
 
-        // unlock the next lesson if previous one is now completed
+        // unlock the next lesson only if quiz is passed or not required
         const prev = arr[idx - 1];
-        if (prev && prev.id === lessonId) {
+        if (
+          prev &&
+          prev.id === lessonId &&
+          (!prev.quiz || prev.quizPassed)
+        ) {
           return { ...l, isLocked: false };
         }
 
@@ -108,7 +146,11 @@ export default function CourseLearningPageClient({
 
         const updatedLessons = m.lessons.map((l: any, idx: number) => {
           if (l.id === lessonId) return { ...l, isCompleted: true };
-          if (idx === lessonIndex + 1) return { ...l, isLocked: false }; // unlock next in same module
+          if (
+            idx === lessonIndex + 1 &&
+            (!m.lessons[idx - 1]?.quiz || m.lessons[idx - 1]?.quizPassed)
+          )
+            return { ...l, isLocked: false };
           return l;
         });
 
@@ -124,35 +166,47 @@ export default function CourseLearningPageClient({
       //   }),
       // }));
 
-      const currentModule = courseData.modules.find((m: any) =>
-        m.lessons.some((l: any) => l.id === lessonId)
-      );
-
-      const moduleQuiz = currentModule?.quiz;
-
-      if (data.resetQuiz && data.quizId) {
-        toast.info("Your quiz attempts have been reset. Redirecting...");
-        setTimeout(() => {
-          router.push(`/courses/${courseData.id}/quiz/${data.quizId}`);
-        }, 2000);
+      if (data.quizId) {
+        toast.info("Lesson completed! Start the quiz below to continue.");
         return;
       }
 
-      const allLessonsCompleted = currentModule?.lessons.every(
-        (l: any) => l.isCompleted
+      const moduleForLesson = courseData.modules.find((m: any) =>
+        m.lessons.some((l: any) => l.id === lessonId)
       );
+      const isLastLessonInModule =
+        moduleForLesson?.lessons?.[moduleForLesson.lessons.length - 1]?.id ===
+        lessonId;
 
-      const previouslyCompleted = currentLesson?.isCompleted;
-      if (allLessonsCompleted && !previouslyCompleted) {
-        if (moduleQuiz) {
-          toast.success("🎯 Module lessons completed! Redirecting to quiz...");
-          setTimeout(() => {
-            router.push(`/courses/${courseData.id}/quiz/${moduleQuiz.id}`);
-          }, 1500);
-        } else {
-          toast.info(" ✅Module completed! No quiz assigned.");
+      if (
+        isLastLessonInModule &&
+        data.taskRequired &&
+        data.moduleTaskId &&
+        !data.moduleTaskSubmitted
+      ) {
+        setModuleTaskPrompt({
+          taskId: data.moduleTaskId,
+          moduleTitle: moduleForLesson?.title || "this module",
+        });
+        toast.info(
+          "This module has a task. Submit it to stay eligible for your certificate."
+        );
+      }
+
+      if (
+        data.certificateEnabled &&
+        data.courseCompleted &&
+        !data.certificateEligible
+      ) {
+        const missing: string[] = [];
+        if (data.certificateMissing?.quizzes) missing.push("quizzes");
+        if (data.certificateMissing?.tasks) missing.push("module tasks");
+        if (data.certificateMissing?.projects) missing.push("course project");
+        if (missing.length > 0) {
+          toast.info(
+            `Course completed, but certificate requires: ${missing.join(", ")}.`
+          );
         }
-        return;
       }
 
       toast.success("Lesson completed! Moving to the next lesson...");
@@ -175,12 +229,53 @@ export default function CourseLearningPageClient({
     return <CourseLearningPageSkeleton />;
   }
 
-  return (
-    <div className="min-h-screen bg-background ">
-      <div className="pt-20 flex">
-        {/* Main Content */}
+  const currentModule = courseData.modules.find((m: any) =>
+    m.lessons.some((l: any) => l.id === currentLesson.id)
+  );
 
-        <div className="flex-1 p-6">
+  return (
+    <div className="min-h-screen bg-background">
+      <div className="pt-16 sm:pt-20">
+        <div className="mx-auto max-w-[1600px] flex flex-col lg:flex-row gap-6 px-4">
+          {/* Main Content */}
+          <div className="flex-1 p-4 sm:p-6">
+          <div className="mb-4 flex flex-col gap-3">
+            <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3">
+              <div>
+                <h1 className="text-2xl sm:text-3xl font-semibold text-white">
+                  {currentLesson.title}
+                </h1>
+                <p className="text-sm text-gray-400">
+                  {currentModule?.title ?? "Module"}
+                </p>
+              </div>
+              <div className="flex flex-wrap items-center gap-2">
+                {currentLesson.quiz ? (
+                  <Badge className="bg-neon-purple/20 text-neon-purple border border-neon-purple/40">
+                    Quiz Available
+                  </Badge>
+                ) : null}
+                {currentLesson.quizPassed ? (
+                  <Badge className="bg-neon-green/20 text-neon-green border border-neon-green/40">
+                    Quiz Passed
+                  </Badge>
+                ) : null}
+                {currentLesson.isCompleted ? (
+                  <Badge className="bg-neon-green/20 text-neon-green border border-neon-green/40">
+                    Completed
+                  </Badge>
+                ) : currentLesson.isLocked ? (
+                  <Badge className="bg-gray-500/20 text-gray-300 border border-gray-500/40">
+                    Locked
+                  </Badge>
+                ) : (
+                  <Badge className="bg-neon-blue/20 text-neon-blue border border-neon-blue/40">
+                    In Progress
+                  </Badge>
+                )}
+              </div>
+            </div>
+          </div>
           <VideoPlayer
             src={currentLesson.videoUrl}
             poster={currentLesson.thumbnailUrl}
@@ -195,33 +290,69 @@ export default function CourseLearningPageClient({
             }}
             onDurationChange={(d) => setDuration(d)}
           />
+          {currentLesson?.isCompleted &&
+            currentLesson?.quiz &&
+            !currentLesson?.quizPassed && (
+              <div className="mt-4 flex justify-end">
+                <Button
+                  onClick={() =>
+                    router.push(
+                      `/courses/${courseData.id}/quiz/${currentLesson.quiz.id}`
+                    )
+                  }
+                  className="bg-gradient-to-r from-neon-blue to-neon-purple text-white">
+                  Start Quiz
+                </Button>
+              </div>
+            )}
+          {moduleTaskPrompt && (
+            <div className="mt-4 flex flex-col gap-3 rounded-xl border border-neon-orange/40 bg-neon-orange/10 p-4 text-sm text-orange-100 sm:flex-row sm:items-center sm:justify-between">
+              <div>
+                <p className="font-medium text-white">Module task available</p>
+                <p className="text-orange-200/80">
+                  Complete the task for {moduleTaskPrompt.moduleTitle} to stay
+                  eligible for your certificate.
+                </p>
+              </div>
+              <Button
+                onClick={() =>
+                  router.push(
+                    `/student/assignments?taskId=${moduleTaskPrompt.taskId}`
+                  )
+                }
+                className="bg-gradient-to-r from-neon-orange to-orange-400 text-white">
+                Go to Task
+              </Button>
+            </div>
+          )}
           <LessonTabs
             description={currentLesson.description || ""}
             lessonResources={currentLesson.resources || []}
-            moduleResources={
-              courseData.modules.find((m: any) =>
-                m.lessons.some((l: any) => l.id === currentLesson.id)
-              )?.resources || []
-            }
+            moduleResources={currentModule?.resources || []}
             reviews={currentLesson.reviews || []}
+            quiz={currentLesson.quiz}
+            courseId={courseData.id}
+            isCompleted={currentLesson.isCompleted}
+            quizPassed={currentLesson.quizPassed}
           />
         </div>
 
-        {/* Sidebar */}
-        <LessonSidebar
-          progress={courseData.progress}
-          courseTitle={courseData.title}
-          modules={courseData.modules}
-          currentLessonId={currentLesson.id}
-          onChangeLesson={changeLesson}
-        />
+          {/* Sidebar */}
+          <LessonSidebar
+            progress={courseData.progress}
+            courseTitle={courseData.title}
+            modules={courseData.modules}
+            currentLessonId={currentLesson.id}
+            onChangeLesson={changeLesson}
+          />
+        </div>
 
         {/* AI Assistant */}
-        <FloatingAIButton
+        {/* <FloatingAIButton
           onActivate={() => setShowAI(true)}
           isActive={showAI}
           lessonProgress={(currentTime / duration) * 100}
-        />
+        /> */}
         <LessonAIAssistant
           lessonId={currentLesson.id}
           lessonTitle={currentLesson.title}

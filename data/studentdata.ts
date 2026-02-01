@@ -64,6 +64,11 @@ export async function getStudentDashboardData() {
               },
             },
           },
+          reviews: {
+            select: {
+              rating: true,
+            },
+          },
           modules: {
             include: {
               lessons: true,
@@ -97,6 +102,11 @@ export async function getStudentDashboardData() {
     const nextLesson = allLessons.find(
       (lesson) => !enrollment.lessonProgress.some((lp) => lp.lessonId === lesson.id && lp.isCompleted),
     )
+    const reviewRatings = enrollment.course.reviews.map((review) => review.rating)
+    const avgRating =
+      reviewRatings.length > 0
+        ? reviewRatings.reduce((sum, rating) => sum + rating, 0) / reviewRatings.length
+        : 0
 
     return {
       id: enrollment.course.id,
@@ -108,7 +118,7 @@ export async function getStudentDashboardData() {
       timeLeft: `${hours}h ${minutes}m`,
       thumbnail: enrollment.course.thumbnail,
       difficulty: enrollment.course.level,
-      rating: 4.8, // You might want to calculate this from reviews
+      rating: Number(avgRating.toFixed(1)),
     }
   })
 
@@ -258,7 +268,10 @@ export async function getStudentDashboardData() {
       xpToNext,
       streak: student.streak,
       coursesCompleted: student.coursesCompleted,
-      coursesInProgress: student.coursesStarted - student.coursesCompleted,
+      coursesInProgress: Math.max(
+        student.coursesStarted - student.coursesCompleted,
+        0
+      ),
       totalHours: Math.floor(student.studyHours / 60),
       achievements: recentAchievements.length,
       rank: student.currentRank,

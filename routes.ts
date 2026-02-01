@@ -54,6 +54,9 @@ export const protectedRoutes = [
   "/tutor/profile",
   "/tutor/wallet",
   "/tutor/reviews",
+  "/courses/[courseId]/checkout",
+  "/courses/[courseId]/learn",
+  "/courses/[courseId]/quiz",
   "/admin",
   "/settings",
 ];

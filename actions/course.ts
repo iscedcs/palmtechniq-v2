@@ -7,6 +7,7 @@ import { getIO } from "@/lib/socket";
 import { courseSchema, moduleSchema, lessonSchema } from "@/schemas";
 import { z } from "zod";
 import { notify } from "@/lib/notify";
+import { recomputeCourseDurations } from "@/lib/course-duration";
 
 export async function updateCourse(
   courseId: string,
@@ -55,15 +56,28 @@ export async function updateCourse(
     const {
       isPublished: _isPublished,
       allowDiscussions,
+      duration: _duration,
+      totalLessons: _totalLessons,
+      groupTiers: _groupTiers,
       ...safeData
     } = validatedCourse.data;
 
     console.log("🔎 Category id to connect:", validatedCourse.data.category);
 
+    const resolvedBasePrice =
+      validatedCourse.data.basePrice ?? validatedCourse.data.price ?? 0;
+    const resolvedCurrentPrice =
+      validatedCourse.data.currentPrice && validatedCourse.data.currentPrice > 0
+        ? validatedCourse.data.currentPrice
+        : resolvedBasePrice;
+
     await db.course.update({
       where: { id: courseId },
       data: {
         ...safeData,
+        price: resolvedBasePrice,
+        basePrice: resolvedBasePrice,
+        currentPrice: resolvedCurrentPrice,
         outcomes: validatedCourse.data.outcomes,
         certificate: validatedCourse.data.certificate ?? false,
         allowDiscussions: allowDiscussions ?? false,
@@ -79,11 +93,81 @@ export async function updateCourse(
       },
     });
 
+    const incomingTiers = validatedCourse.data.groupTiers ?? [];
+    const existingTiers = await db.groupTier.findMany({
+      where: { courseId },
+      select: { id: true },
+    });
+
+    if (!validatedCourse.data.groupBuyingEnabled) {
+      await db.groupTier.updateMany({
+        where: { courseId },
+        data: { isActive: false },
+      });
+    } else if (incomingTiers.length > 0) {
+      const incomingIds = new Set(
+        incomingTiers.map((tier) => tier.id).filter(Boolean) as string[]
+      );
+
+      for (const tier of incomingTiers) {
+        if (tier.id && existingTiers.some((t) => t.id === tier.id)) {
+          await db.groupTier.update({
+            where: { id: tier.id },
+            data: {
+              size: tier.size,
+              groupPrice: tier.groupPrice,
+              cashbackPercent: tier.cashbackPercent ?? 0,
+              isActive: tier.isActive ?? true,
+            },
+          });
+        } else {
+          await db.groupTier.create({
+            data: {
+              courseId,
+              size: tier.size,
+              groupPrice: tier.groupPrice,
+              cashbackPercent: tier.cashbackPercent ?? 0,
+              isActive: tier.isActive ?? true,
+            },
+          });
+        }
+      }
+
+      const tiersToDisable = existingTiers
+        .filter((tier) => !incomingIds.has(tier.id))
+        .map((tier) => tier.id);
+
+      if (tiersToDisable.length > 0) {
+        const lockedTiers = await db.groupPurchase.findMany({
+          where: { tierId: { in: tiersToDisable } },
+          select: { tierId: true },
+        });
+        const lockedTierIds = new Set(lockedTiers.map((t) => t.tierId));
+        const safeToDisable = tiersToDisable.filter(
+          (id) => !lockedTierIds.has(id)
+        );
+
+        if (safeToDisable.length > 0) {
+          await db.groupTier.updateMany({
+            where: { id: { in: safeToDisable } },
+            data: { isActive: false },
+          });
+        }
+      }
+    }
+
     // Handle modules + lessons
     for (const module of modules) {
-      const validatedModule = moduleSchema.safeParse(module);
+      const validatedModule = moduleSchema.safeParse({
+        ...module,
+        duration: module.duration ?? 0,
+      });
       if (!validatedModule.success) continue;
 
+      const moduleDuration = (module.lessons || []).reduce(
+        (sum: number, lesson: any) => sum + (lesson.duration || 0),
+        0
+      );
       let savedModule;
 
       if (module.id) {
@@ -98,7 +182,7 @@ export async function updateCourse(
               title: module.title,
               description: module.description,
               content: module.content,
-              duration: module.duration,
+              duration: moduleDuration,
               sortOrder: module.sortOrder,
               isPublished: module.isPublished,
             },
@@ -110,7 +194,7 @@ export async function updateCourse(
               title: module.title,
               description: module.description,
               content: module.content,
-              duration: module.duration,
+              duration: moduleDuration,
               sortOrder: module.sortOrder,
               isPublished: module.isPublished,
               courseId,
@@ -124,7 +208,7 @@ export async function updateCourse(
             title: module.title,
             description: module.description,
             content: module.content,
-            duration: module.duration,
+            duration: moduleDuration,
             sortOrder: module.sortOrder,
             isPublished: module.isPublished,
             courseId,
@@ -133,7 +217,10 @@ export async function updateCourse(
       }
 
       for (const lesson of module.lessons || []) {
-        const validatedLesson = lessonSchema.safeParse(lesson);
+        const validatedLesson = lessonSchema.safeParse({
+          ...lesson,
+          duration: lesson.duration ?? 0,
+        });
         // console.log("📦 Raw lesson from payload:", lesson);
 
         if (!validatedLesson.success) continue;
@@ -178,6 +265,8 @@ export async function updateCourse(
       }
     }
 
+    await recomputeCourseDurations(db, courseId);
+
     try {
       const io = getIO();
       if (io) {
@@ -187,6 +276,7 @@ export async function updateCourse(
           message: `A Course you purchased "${course.title}" has just been updated!`,
           actionUrl: `/courses/${courseId}`,
           actionLabel: "View Course",
+          metadata: { category: "course_update", courseId },
         });
 
         await notify.role("TUTOR", {
@@ -195,6 +285,7 @@ export async function updateCourse(
           message: `You updated “${course.title}”.`,
           actionUrl: `/tutor/courses/${courseId}/edit`,
           actionLabel: "Open Course",
+          metadata: { category: "course_update", courseId },
         });
 
         await notify.role("ADMIN", {
@@ -203,7 +294,7 @@ export async function updateCourse(
           message: `Tutor updated “${course.title}”. Review changes.`,
           actionUrl: `/courses/${courseId}`,
           actionLabel: "Review Changes",
-          metadata: { courseId },
+          metadata: { category: "course_update", courseId },
         });
       }
     } catch (e) {

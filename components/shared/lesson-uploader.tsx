@@ -7,19 +7,34 @@ import { toast } from "sonner";
 
 interface LessonUploadFileProps {
   onUploadSuccess: (url: string) => void;
+  onDuration?: (minutes: number) => void;
   uploading: boolean;
   setUploading: Dispatch<SetStateAction<boolean>>;
 }
 
 export default function LessonUploadFile({
   onUploadSuccess,
+  onDuration,
   uploading,
   setUploading,
 }: LessonUploadFileProps) {
   const [file, setFile] = useState<File | null>(null);
 
   const handleFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
-    setFile(e.target.files?.[0] || null);
+    const selected = e.target.files?.[0] || null;
+    setFile(selected);
+
+    if (selected && onDuration) {
+      const url = URL.createObjectURL(selected);
+      const video = document.createElement("video");
+      video.preload = "metadata";
+      video.src = url;
+      video.onloadedmetadata = () => {
+        const minutes = Math.ceil(video.duration / 60);
+        onDuration(minutes);
+        URL.revokeObjectURL(url);
+      };
+    }
   };
 
   const handleUpload = async () => {

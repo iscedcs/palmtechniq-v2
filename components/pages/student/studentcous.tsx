@@ -10,7 +10,7 @@ import { Input } from "@/components/ui/input"
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar"
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs"
 import { BookOpen, Search, Filter, Star, Clock, Users, Play, Award, TrendingUp, Heart, Share2 } from "lucide-react"
-import { generateRandomAvatar } from "@/lib/utils"
+import { formatDurationMinutes, generateRandomAvatar } from "@/lib/utils"
 import { useRouter } from 'next/navigation';
 
 interface Course {
@@ -39,7 +39,7 @@ interface AvailableCourse extends Course {
   price: number
   originalPrice: number
   students: number
-  duration: string
+  duration: number
   lessons: number
   bestseller: boolean
   trending: boolean
@@ -204,7 +204,9 @@ export default function StudentCoursesClient({
               <div className="flex items-center gap-4 text-sm text-gray-400">
                 <div className="flex items-center gap-1">
                   <Clock className="w-4 h-4" />
-                  <span>{(course as AvailableCourse).duration}</span>
+                  <span>
+                    {formatDurationMinutes((course as AvailableCourse).duration)}
+                  </span>
                 </div>
                 <div className="flex items-center gap-1">
                   <BookOpen className="w-4 h-4" />

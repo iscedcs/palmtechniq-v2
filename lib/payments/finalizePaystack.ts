@@ -10,6 +10,7 @@ export async function finalizePaystackByReference(reference: string) {
       id: true,
       userId: true,
       courseId: true,
+      groupPurchaseId: true,
       status: true,
       amount: true,
       metadata: true,
@@ -45,6 +46,19 @@ export async function finalizePaystackByReference(reference: string) {
     });
 
     const metadata = (v.metadata || tx.metadata || {}) as any;
+    const groupPurchaseId = metadata.groupPurchaseId ?? tx.groupPurchaseId;
+
+    if (groupPurchaseId) {
+      await px.groupPurchase.update({
+        where: { id: groupPurchaseId },
+        data: {
+          status: "ACTIVE",
+          paidAt: new Date(v.paid_at),
+        },
+      });
+      return;
+    }
+
     const courseIds = Array.isArray(metadata.courseIds)
       ? metadata.courseIds
       : tx.courseId
@@ -92,6 +106,28 @@ export async function finalizePaystackByReference(reference: string) {
     }
   });
 
+  const metadata = (v.metadata || tx.metadata || {}) as any;
+  const groupPurchaseId = metadata.groupPurchaseId ?? tx.groupPurchaseId;
+  if (groupPurchaseId) {
+    const groupPurchase = await db.groupPurchase.findUnique({
+      where: { id: groupPurchaseId },
+      select: { inviteCode: true },
+    });
+
+    await notify.user(tx.userId, {
+      type: "success",
+      title: "Group Purchase Started",
+      message:
+        "Your group is live. Share your invite link to unlock access faster.",
+      actionUrl: groupPurchase?.inviteCode
+        ? `/group/${groupPurchase.inviteCode}`
+        : "/student",
+      actionLabel: "View Group",
+      metadata: { category: "group_purchase_started", courseId: tx.courseId },
+    });
+    return { ok: true, courseId: tx.courseId, groupPurchaseId };
+  }
+
   try {
     const io = getIO();
     if (io) {
@@ -121,13 +157,14 @@ export async function finalizePaystackByReference(reference: string) {
     message: "Your enrollment is confirmed. Welcome aboard!",
     actionUrl: "/student",
     actionLabel: "Go to Dashboard",
-    metadata: { courseId: tx.courseId, reference },
+    metadata: { category: "payment_success", courseId: tx.courseId, reference },
   });
 
   await notify.role("TUTOR", {
     type: "payment",
     title: "Course Purchase",
     message: `Your course ${course?.title} has been purchased`,
+    metadata: { category: "payment_received", courseId: tx.courseId },
   });
 
   return { ok: true, courseId: tx.courseId };

@@ -83,7 +83,7 @@ export default function UploadFile({
       });
 
       if (uploadResponse.ok) {
-        setValue(fieldName, fileUrl);
+        setValue(fieldName, fileUrl, { shouldDirty: true });
 
         toast.success(
           `${

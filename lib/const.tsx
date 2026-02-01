@@ -16,6 +16,7 @@ import {
   Target,
   Crown,
   Flame,
+  NotebookIcon,
 } from "lucide-react";
 
 export const courseTypes = [
@@ -63,23 +64,25 @@ export const roleNavItems = {
     { icon: BookOpen, label: "Courses", href: "/courses" },
     { icon: ShoppingCart, label: "Cart", href: "/cart" },
     { icon: User, label: "Profile", href: "/profile" },
-    { icon: Shield, label: "Mentorship", href: "/mentorship" },
+    // { icon: Shield, label: "Mentorship", href: "/mentorship" },
   ],
   STUDENT: [
     { icon: Home, label: "Dashboard", href: "/student" },
     { icon: BookOpen, label: "My Courses", href: "/student/courses" },
     { icon: Trophy, label: "Progress", href: "/student/progress" },
-    { icon: Calendar, label: "Mentorship", href: "/student/mentorship" },
-    { icon: Brain, label: "AI Interview", href: "/student/ai-interview" },
-    { icon: MessageSquare, label: "Projects", href: "/student/assignments" },
+    // { icon: Calendar, label: "Mentorship", href: "/student/mentorship" },
+    // { icon: Brain, label: "AI Interview", href: "/student/ai-interview" },
+    { icon: NotebookIcon, label: "Assignments", href: "/student/assignments" },
+    { icon: MessageSquare, label: "Projects", href: "/student/projects" },
   ],
   TUTOR: [
     { icon: Home, label: "Dashboard", href: "/tutor" },
     { icon: BookOpen, label: "My Courses", href: "/tutor/courses" },
     { icon: Users, label: "Students", href: "/tutor/students" },
-    { icon: Calendar, label: "Schedule", href: "/tutor/mentorship" },
+    // { icon: Calendar, label: "Schedule", href: "/tutor/mentorship" },
     { icon: MessageSquare, label: "Projects", href: "/tutor/projects" },
-    { icon: MessageSquare, label: "Messages", href: "/tutor/reviews" },
+    { icon: NotebookIcon, label: "Tasks", href: "/tutor/tasks" },
+    { icon: MessageSquare, label: "Reviews", href: "/tutor/reviews" },
   ],
   ADMIN: [
     { icon: Home, label: "Dashboard", href: "/admin" },
@@ -99,8 +102,9 @@ export const roleMenuItems = {
     { icon: User, label: "Profile", href: "/student/profile" },
     { icon: BookOpen, label: "My Courses", href: "/student/courses" },
     { icon: Trophy, label: "Progress", href: "/student/progress" },
-    { icon: Calendar, label: "Mentorship", href: "/student/mentorship" },
+    // { icon: Calendar, label: "Mentorship", href: "/student/mentorship" },
     { icon: MessageSquare, label: "Projects", href: "/student/projects" },
+    { icon: NotebookIcon, label: "Tasks", href: "/student/assignments" },
     // { icon: Settings, label: "Settings", href: "/student/settings" },
   ],
   TUTOR: [
@@ -109,8 +113,8 @@ export const roleMenuItems = {
     { icon: Users, label: "Students", href: "/tutor/students" },
     { icon: Wallet, label: "Earnings", href: "/tutor/wallet" },
     { icon: Star, label: "Reviews", href: "/tutor/reviews" },
-    { icon: Calendar, label: "Schedule", href: "/tutor/schedule" },
-    { icon: Settings, label: "Settings", href: "/tutor/settings" },
+    // { icon: Calendar, label: "Schedule", href: "/tutor/schedule" },
+    // { icon: Settings, label: "Settings", href: "/tutor/settings" },
   ],
   ADMIN: [
     { icon: Shield, label: "Admin Panel", href: "/admin" },
@@ -138,3 +142,5 @@ export const roleStats = {
     { label: "Revenue", value: "₦125K", icon: Wallet },
   ],
 };
+
+// Tutor projects feature flags

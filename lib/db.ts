@@ -1,9 +1,32 @@
-import "server-only";
 import { PrismaClient } from "@prisma/client";
-declare global {
-  var prisma: PrismaClient | undefined;
+import { PrismaNeon } from "@prisma/adapter-neon";
+import { neonConfig } from "@neondatabase/serverless";
+
+neonConfig.webSocketConstructor = globalThis.WebSocket;
+
+const globalForPrisma = globalThis as unknown as {
+  prisma: PrismaClient | undefined;
+};
+
+function createPrismaClient() {
+  const connectionString = process.env.DATABASE_URL;
+  if (!connectionString) {
+    throw new Error("DATABASE_URL environment variable is not set");
+  }
+
+  const adapter = new PrismaNeon({ connectionString });
+
+  return new PrismaClient({
+    adapter,
+    log:
+      process.env.NODE_ENV === "development"
+        ? ["query", "error", "warn"]
+        : ["error"],
+  });
 }
 
-export const db = globalThis.prisma || new PrismaClient();
+export const db = globalForPrisma.prisma ?? createPrismaClient();
 
-if (process.env.NODE_ENV !== "production") globalThis.prisma = db;
+if (process.env.NODE_ENV !== "production") globalForPrisma.prisma = db;
+
+export default db;

@@ -9,6 +9,9 @@ import StickyPurchaseCard from "@/components/pages/courses/courseId/stickyPurcha
 import { checkUserEnrollment, getCourseById } from "@/data/course";
 import { generateRandomAvatar } from "@/lib/utils";
 import CourseNotFoundSkeleton from "@/components/shared/skeleton/course-not-found-skeleton";
+import { GroupBuyingWidget } from "@/components/group-buying";
+import { getMyGroupPurchase } from "@/actions/group-purchase";
+import { getAverageRating } from "@/lib/reviews";
 
 export default async function CourseSlugPage(props: {
   params: Promise<{ courseId: string }>;
@@ -18,6 +21,7 @@ export default async function CourseSlugPage(props: {
 
   // Call the server action directly
   const isEnrolled = await checkUserEnrollment(courseId);
+  const { group: activeGroup } = await getMyGroupPurchase(courseId);
 
   if (!course) {
     return (
@@ -62,12 +66,7 @@ export default async function CourseSlugPage(props: {
                     }
                   : { user: { name: "Unknown Tutor", image: undefined } }
               }
-              averageRating={
-                course.reviews?.length
-                  ? course.reviews.reduce((sum, r) => sum + r.rating, 0) /
-                    course.reviews.length
-                  : 0
-              }
+              averageRating={getAverageRating(course.reviews)}
               totalStudents={course.enrollments?.length || 0}
               duration={totalLessonDuration}
             />
@@ -107,8 +106,7 @@ export default async function CourseSlugPage(props: {
                         course.tutor?.user.avatar || generateRandomAvatar(),
                     },
                     rating: course.reviews.length
-                      ? course.reviews.reduce((sum, r) => sum + r.rating, 0) /
-                        course.reviews.length
+                      ? getAverageRating(course.reviews)
                       : undefined,
                     students: course.enrollments.length || 0,
                     courses: course.tutor?.Course.length || 0,
@@ -118,12 +116,26 @@ export default async function CourseSlugPage(props: {
                 />
               </TabsContent>
               <TabsContent value="reviews">
-                <ReviewsTab reviews={course.reviews} />
+                <ReviewsTab
+                  reviews={course.reviews}
+                  courseId={course.id}
+                  isEnrolled={isEnrolled}
+                />
               </TabsContent>
             </Tabs>
           </div>
 
           <div>
+            {course.groupBuyingEnabled && course.groupTiers?.length ? (
+              <div className="mb-6">
+                <GroupBuyingWidget
+                  courseId={course.id}
+                  courseTitle={course.title}
+                  tiers={course.groupTiers}
+                  activeGroup={activeGroup}
+                />
+              </div>
+            ) : null}
             <StickyPurchaseCard
               currentPrice={course.currentPrice!}
               originalPrice={

@@ -22,11 +22,11 @@ export function ContactHeroSection() {
     <div className="min-h-screen bg-background">
       <LiveChatWidget />
 
-      <LiveActivityTicker />
-      <SuccessStoryPopup />
-      <ReferralFloatingWidget />
-      <ReferralSuccessNotification />
-      <DemandSurgeNotification />
+      {/* <LiveActivityTicker /> */}
+      {/* <SuccessStoryPopup /> */}
+      {/* <ReferralFloatingWidget /> */}
+      {/* <ReferralSuccessNotification /> */}
+      {/* <DemandSurgeNotification /> */}
       <section className="pt-32 pb-20 relative overflow-hidden cyber-grid">
         <motion.div
           className="absolute top-20 left-20 w-72 h-72 bg-neon-blue/10 rounded-full blur-3xl"

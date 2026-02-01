@@ -36,10 +36,10 @@ export function HeroSection() {
               Manage, track, and support your enrolled students
             </p>
           </div>
-          <Button className="bg-gradient-to-r from-neon-blue to-neon-purple text-white">
+          {/* <Button className="bg-gradient-to-r from-neon-blue to-neon-purple text-white">
             <Download className="w-4 h-4 mr-2" />
             Export Data
-          </Button>
+          </Button> */}
         </motion.div>
       </div>
     </section>

@@ -36,6 +36,11 @@ interface CheckoutCoursePageProps {
   totalLesson?: number | null;
   courseId?: string;
   pricing: PricingInput;
+  groupTier?: {
+    size: number;
+    groupPrice: number;
+    cashbackPercent: number;
+  };
 }
 
 export default function CheckoutCoursePage({
@@ -47,6 +52,7 @@ export default function CheckoutCoursePage({
   totalLesson,
   courseId,
   pricing,
+  groupTier,
   onProceed,
 }: CheckoutCoursePageProps & { onProceed: () => Promise<void> }) {
   const router = useRouter();
@@ -76,6 +82,10 @@ export default function CheckoutCoursePage({
 
       return { subtotal, discountAmt, vatAmt, total, discountPercent: pct };
     }, [pricing]);
+
+  const cashbackTotal = groupTier
+    ? Math.round(groupTier.groupPrice * groupTier.cashbackPercent)
+    : 0;
 
   // const onProceed = () => {
   //   // Next step: we’ll replace this with a server action that:
@@ -224,6 +234,14 @@ export default function CheckoutCoursePage({
                   </CardHeader>
                   <CardContent className="space-y-4">
                     <div className="space-y-2 text-sm">
+                      {groupTier ? (
+                        <div className="rounded-lg border border-yellow-500/20 bg-yellow-500/10 p-3 text-xs text-yellow-200">
+                          Group purchase for {groupTier.size} members. You pay
+                          the full amount now and earn{" "}
+                          {Math.round(groupTier.cashbackPercent * 100)}%
+                          cashback when the group is complete.
+                        </div>
+                      ) : null}
                       <div className="flex justify-between">
                         <span className="text-gray-400">Price</span>
                         <span className="text-white">
@@ -269,6 +287,12 @@ export default function CheckoutCoursePage({
                           {formatToNaira(total)}
                         </span>
                       </div>
+                      {groupTier ? (
+                        <div className="flex justify-between text-sm text-yellow-300">
+                          <span>Cashback on completion</span>
+                          <span>{formatToNaira(cashbackTotal)}</span>
+                        </div>
+                      ) : null}
                     </div>
 
                     {/* (Optional) Coupon UI – non-blocking for now */}

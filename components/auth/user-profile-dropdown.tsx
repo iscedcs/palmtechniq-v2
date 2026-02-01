@@ -5,21 +5,27 @@ import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Separator } from "@/components/ui/separator";
 import { Switch } from "@/components/ui/switch";
-import { roleMenuItems, roleStats } from "@/lib/const";
+import { getUserRoleStats, type RoleStat } from "@/actions/user-stats";
+import { roleMenuItems } from "@/lib/const";
 import { generateRandomAvatar } from "@/lib/utils";
 import type { UserRole } from "@/types/user";
 import { AnimatePresence, motion } from "framer-motion";
 import {
   Bell,
+  BookOpen,
   ChevronDown,
   Crown,
   HelpCircle,
   LogOut,
   Moon,
+  Star,
   Sun,
+  Trophy,
+  Users,
+  Wallet,
 } from "lucide-react";
 import { signOut } from "next-auth/react";
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { toast } from "sonner";
 
 interface UserProfileDropdownProps {
@@ -38,9 +44,38 @@ export function UserProfileDropdown({
   const [isOpen, setIsOpen] = useState(false);
   const [darkMode, setDarkMode] = useState(true);
   const [notifications, setNotifications] = useState(true);
+  const [stats, setStats] = useState<RoleStat[] | null>(null);
 
   const menuItems = roleMenuItems[userRole];
-  const stats = roleStats[userRole as keyof typeof roleStats];
+  const statIcons = {
+    "book-open": BookOpen,
+    trophy: Trophy,
+    star: Star,
+    users: Users,
+    wallet: Wallet,
+  } as const;
+
+  useEffect(() => {
+    let isMounted = true;
+
+    const loadStats = async () => {
+      try {
+        const result = await getUserRoleStats();
+        if (!isMounted) return;
+        setStats(result.stats);
+      } catch (error) {
+        console.error("Failed to load profile stats:", error);
+        if (!isMounted) return;
+        setStats(null);
+      }
+    };
+
+    loadStats();
+
+    return () => {
+      isMounted = false;
+    };
+  }, [userRole]);
 
   const getRoleColor = () => {
     switch (userRole) {
@@ -164,7 +199,12 @@ export function UserProfileDropdown({
                     {stats.map((stat, index) => (
                       <div key={index} className="text-center">
                         <div className="flex items-center justify-center mb-1">
-                          <stat.icon className="w-4 h-4 text-neon-blue" />
+                          {(() => {
+                            const Icon = statIcons[stat.icon];
+                            return Icon ? (
+                              <Icon className="w-4 h-4 text-neon-blue" />
+                            ) : null;
+                          })()}
                         </div>
                         <p className="text-lg font-bold text-white">
                           {stat.value}

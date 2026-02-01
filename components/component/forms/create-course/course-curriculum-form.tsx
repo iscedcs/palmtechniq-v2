@@ -1,7 +1,7 @@
 "use client";
 
 import ResourceUploaderComponent from "@/components/pages/courses/courseId/resources-uploader";
-import { ModuleQuizEditor } from "@/components/pages/tutor/edit/module-quiz-editor";
+import { LessonQuizEditor } from "@/components/pages/tutor/edit/module-quiz-editor";
 import { CourseCompletionTracker } from "@/components/shared/course-completion-tracker";
 import LessonUploadFile from "@/components/shared/lesson-uploader";
 import {
@@ -22,7 +22,8 @@ import {
 } from "@/components/ui/select";
 import { Textarea } from "@/components/ui/textarea";
 import { Plus, X, PlayCircle, Clock, BookOpen, Layers } from "lucide-react";
-import { Dispatch, SetStateAction, useMemo } from "react";
+import { Dispatch, SetStateAction, useMemo, useRef } from "react";
+import { updateLessonVideo } from "@/actions/tutor-actions";
 
 interface CourseLesson {
   id: string;
@@ -34,6 +35,14 @@ interface CourseLesson {
   videoUrl?: string;
   sortOrder: number;
   isPreview: boolean;
+  quiz?: {
+    id: string;
+    title: string;
+    description?: string | null;
+    timeLimit?: number | null;
+    passingScore: number;
+    maxAttempts: number;
+  } | null;
 }
 
 interface CourseModule {
@@ -45,14 +54,6 @@ interface CourseModule {
   lessons: CourseLesson[];
   sortOrder: number;
   isPublished: boolean;
-  quiz?: {
-    id: string;
-    title: string;
-    description?: string | null;
-    timeLimit?: number | null;
-    passingScore: number;
-    maxAttempts: number;
-  } | null;
 }
 
 interface CourseCurriculumFormProps {
@@ -86,18 +87,23 @@ export function CourseCurriculumForm({
   lessonUploading,
   setLessonUploading,
 }: CourseCurriculumFormProps) {
+  const durationCache = useRef<Record<string, number>>({});
   // 🧮 Compute quick stats
   const stats = useMemo(() => {
     const totalLessons = modules.reduce(
       (sum, m) => sum + (m.lessons?.length || 0),
       0
     );
-    const totalQuizzes = modules.filter((m) => m.quiz).length;
+    const totalQuizzes = modules.reduce(
+      (sum, module) =>
+        sum + module.lessons.filter((lesson) => lesson.quiz).length,
+      0
+    );
     const totalDuration = modules.reduce(
       (sum, m) =>
         sum +
-        (m.duration || 0) +
-        m.lessons.reduce((ls, l) => ls + (l.duration || 0), 0),
+        (m.duration ||
+          m.lessons.reduce((ls, l) => ls + (l.duration || 0), 0)),
       0
     );
     return {
@@ -132,57 +138,67 @@ export function CourseCurriculumForm({
           )}
 
           <Accordion type="multiple" className="space-y-4">
-            {modules.map((module) => (
+            {modules.map((module, moduleIndex) => (
               <AccordionItem key={module.id} value={module.id}>
                 <AccordionTrigger className="text-lg font-semibold text-white hover:text-neon-blue transition-colors">
                   <div className="flex items-center gap-2">
                     <PlayCircle className="w-4 h-4 text-neon-green" />
-                    {module.title || "Untitled Module"}
+                    Module {moduleIndex + 1}: {module.title || "Untitled Module"}
                   </div>
                 </AccordionTrigger>
 
                 <AccordionContent>
                   <div className="p-6 bg-white/5 rounded-xl border border-white/10 space-y-4 shadow-inner">
                     {/* Module fields */}
-                    <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
-                      <Input
-                        value={module.title}
-                        onChange={(e) =>
-                          updateModule(module.id, { title: e.target.value })
-                        }
-                        placeholder="Module title"
-                        className="bg-white/10 border-white/20 text-sm sm:text-xl text-white"
-                      />
-                      <Input
-                        type="number"
-                        value={module.duration}
+                    <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 items-center">
+                      <div className="flex items-center gap-2 w-full">
+                        <span className="text-sm text-gray-400 shrink-0">
+                          Module {moduleIndex + 1}:
+                        </span>
+                        <Input
+                          value={module.title}
+                          onChange={(e) =>
+                            updateModule(module.id, { title: e.target.value })
+                          }
+                          placeholder="Module title"
+                          className="bg-white/10 border-white/20 text-sm sm:text-xl text-white"
+                        />
+                      </div>
+                      <div className="text-sm text-gray-300 flex items-center gap-2">
+                        <Clock className="w-4 h-4 text-neon-purple" />
+                        {module.duration} min
+                      </div>
+                    </div>
+
+                    <div>
+                      <p className="text-xs text-gray-400 mb-2">
+                        Module Description
+                      </p>
+                      <Textarea
+                        value={module.description || ""}
                         onChange={(e) =>
                           updateModule(module.id, {
-                            duration: Number(e.target.value),
+                            description: e.target.value,
                           })
                         }
-                        placeholder="Duration (minutes)"
-                        className="bg-white/10 border-white/20 text-sm sm:text-xl text-white"
+                        placeholder="Enter module description"
+                        className="bg-white/10 border-white/20 text-sm sm:text-xl text-white min-h-[90px]"
                       />
                     </div>
 
-                    <Textarea
-                      value={module.description || ""}
-                      onChange={(e) =>
-                        updateModule(module.id, { description: e.target.value })
-                      }
-                      placeholder="Module overview or objectives"
-                      className="bg-white/10 border-white/20 text-sm sm:text-xl text-white min-h-[90px]"
-                    />
-
-                    <Textarea
-                      value={module.content || ""}
-                      onChange={(e) =>
-                        updateModule(module.id, { content: e.target.value })
-                      }
-                      placeholder="Detailed module content"
-                      className="bg-white/10 border-white/20 text-sm sm:text-xl text-white min-h-[90px]"
-                    />
+                    <div>
+                      <p className="text-xs text-gray-400 mb-2">
+                        Module Content
+                      </p>
+                      <Textarea
+                        value={module.content || ""}
+                        onChange={(e) =>
+                          updateModule(module.id, { content: e.target.value })
+                        }
+                        placeholder="Enter module content"
+                        className="bg-white/10 border-white/20 text-sm sm:text-xl text-white min-h-[90px]"
+                      />
+                    </div>
 
                     <div className="pt-2 border-t border-white/10">
                       <ResourceUploaderComponent moduleId={module.id} />
@@ -205,55 +221,65 @@ export function CourseCurriculumForm({
 
                     {/* Lessons */}
                     <Accordion type="multiple" className="mt-4 space-y-3">
-                      {module.lessons.map((lesson) => (
+                      {module.lessons.map((lesson, lessonIndex) => (
                         <AccordionItem key={lesson.id} value={lesson.id}>
                           <AccordionTrigger className="text-md font-medium text-white hover:text-neon-green transition-colors">
+                            Lesson {lessonIndex + 1}:{" "}
                             {lesson.title || "Untitled Lesson"}
                           </AccordionTrigger>
 
                           <AccordionContent>
                             <div className="bg-white/10 border border-white/20 p-2 sm:p-5 rounded-lg space-y-4">
-                              <Input
-                                value={lesson.title}
-                                onChange={(e) =>
-                                  updateLesson(module.id, lesson.id, {
-                                    title: e.target.value,
-                                  })
-                                }
-                                placeholder="Lesson title"
-                                className="bg-white/10 border-white/20 text-sm sm:text-xl text-white"
-                              />
+                              <div className="flex items-center gap-2 w-full">
+                                <span className="text-xs text-gray-400 shrink-0">
+                                  Lesson {lessonIndex + 1}:
+                                </span>
+                                <Input
+                                  value={lesson.title}
+                                  onChange={(e) =>
+                                    updateLesson(module.id, lesson.id, {
+                                      title: e.target.value,
+                                    })
+                                  }
+                                  placeholder="Lesson title"
+                                  className="bg-white/10 border-white/20 text-sm sm:text-xl text-white"
+                                />
+                              </div>
 
-                              <Textarea
-                                value={lesson.description || ""}
-                                onChange={(e) =>
-                                  updateLesson(module.id, lesson.id, {
-                                    description: e.target.value,
-                                  })
-                                }
-                                placeholder="Short description"
-                                className="bg-white/10 border-white/20 text-sm sm:text-xl text-white"
-                              />
+                              <div>
+                                <p className="text-xs text-gray-400 mb-2">
+                                  Lesson Description
+                                </p>
+                                <Textarea
+                                  value={lesson.description || ""}
+                                  onChange={(e) =>
+                                    updateLesson(module.id, lesson.id, {
+                                      description: e.target.value,
+                                    })
+                                  }
+                                  placeholder="Enter lesson description"
+                                  className="bg-white/10 border-white/20 text-sm sm:text-xl text-white"
+                                />
+                              </div>
 
-                              <Textarea
-                                value={lesson.content || ""}
-                                onChange={(e) =>
-                                  updateLesson(module.id, lesson.id, {
-                                    content: e.target.value,
-                                  })
-                                }
-                                placeholder="Main lesson content or notes"
-                                className="bg-white/10 border-white/20 text-sm sm:text-xl text-white"
-                              />
+                              <div>
+                                <p className="text-xs text-gray-400 mb-2">
+                                  Lesson Content
+                                </p>
+                                <Textarea
+                                  value={lesson.content || ""}
+                                  onChange={(e) =>
+                                    updateLesson(module.id, lesson.id, {
+                                      content: e.target.value,
+                                    })
+                                  }
+                                  placeholder="Enter lesson content"
+                                  className="bg-white/10 border-white/20 text-sm sm:text-xl text-white"
+                                />
+                              </div>
 
                               <div className="grid md:grid-cols-2 gap-3">
-                                <Select
-                                  value={lesson.lessonType}
-                                  onValueChange={(value) =>
-                                    updateLesson(module.id, lesson.id, {
-                                      lessonType: value as any,
-                                    })
-                                  }>
+                                <Select value={lesson.lessonType} disabled>
                                   <SelectTrigger className="bg-white/10 text-sm sm:text-xl border-white/20 text-white">
                                     <SelectValue placeholder="Lesson Type" />
                                   </SelectTrigger>
@@ -262,27 +288,36 @@ export function CourseCurriculumForm({
                                   </SelectContent>
                                 </Select>
 
-                                <Input
-                                  type="number"
-                                  value={lesson.duration}
-                                  placeholder="Duration (minutes)"
-                                  onChange={(e) =>
-                                    updateLesson(module.id, lesson.id, {
-                                      duration: Number(e.target.value),
-                                    })
-                                  }
-                                  className="bg-white/10 border-white/20 text-sm sm:text-xl text-white"
-                                />
+                                <div className="text-sm text-gray-300 flex items-center gap-2">
+                                  <Clock className="w-4 h-4 text-neon-purple" />
+                                  {lesson.duration} min
+                                </div>
                               </div>
 
                               {lesson.lessonType === "VIDEO" && (
                                 <div className="space-y-3">
                                   {lesson.videoUrl ? (
-                                    <video
-                                      src={lesson.videoUrl}
-                                      controls
-                                      className="w-full max-h-56 sm:max-h-64 rounded-lg border border-white/20"
-                                    />
+                                    <>
+                                      <video
+                                        src={lesson.videoUrl}
+                                        controls
+                                        className="w-full max-h-56 sm:max-h-64 rounded-lg border border-white/20"
+                                      />
+                                      <div className="space-y-2">
+                                        <Input
+                                          readOnly
+                                          value={lesson.videoUrl}
+                                          className="bg-white/10 border-white/20 text-xs sm:text-sm text-white"
+                                        />
+                                        <a
+                                          href={lesson.videoUrl}
+                                          target="_blank"
+                                          rel="noreferrer"
+                                          className="text-xs text-neon-blue underline underline-offset-4">
+                                          Open current video
+                                        </a>
+                                      </div>
+                                    </>
                                   ) : (
                                     <p className="text-sm text-gray-400 italic">
                                       No video uploaded yet
@@ -291,17 +326,42 @@ export function CourseCurriculumForm({
                                   <LessonUploadFile
                                     uploading={lessonUploading}
                                     setUploading={setLessonUploading}
-                                    onUploadSuccess={(url) =>
+                                    onUploadSuccess={(url) => {
                                       updateLesson(module.id, lesson.id, {
                                         videoUrl: url,
-                                      })
-                                    }
+                                      });
+                                      if (!lesson.id.startsWith("temp-")) {
+                                        updateLessonVideo(
+                                          lesson.id,
+                                          url,
+                                          durationCache.current[lesson.id]
+                                        ).catch((error) => {
+                                          console.error(error);
+                                        });
+                                      }
+                                    }}
+                                    onDuration={(minutes) => {
+                                      durationCache.current[lesson.id] = minutes;
+                                      updateLesson(module.id, lesson.id, {
+                                        duration: minutes,
+                                      });
+                                    }}
                                   />
                                   <ResourceUploaderComponent
                                     lessonId={lesson.id}
                                   />
                                 </div>
                               )}
+
+                              <div className="mt-4 pt-4 border-t border-white/10">
+                                <h4 className="text-white font-medium mb-2">
+                                  Lesson Quiz
+                                </h4>
+                                <LessonQuizEditor
+                                  lessonId={lesson.id}
+                                  existingQuiz={lesson.quiz ?? undefined}
+                                />
+                              </div>
 
                               <Button
                                 variant="destructive"
@@ -317,17 +377,6 @@ export function CourseCurriculumForm({
                         </AccordionItem>
                       ))}
                     </Accordion>
-
-                    {/* Quiz Section */}
-                    <div className="mt-5 pt-5 border-t border-white/10">
-                      <h4 className="text-white font-medium mb-2">
-                        Module Quiz
-                      </h4>
-                      <ModuleQuizEditor
-                        moduleId={module.id}
-                        existingQuiz={module.quiz ?? undefined}
-                      />
-                    </div>
                   </div>
                 </AccordionContent>
               </AccordionItem>

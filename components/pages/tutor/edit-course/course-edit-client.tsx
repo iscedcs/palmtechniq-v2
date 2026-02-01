@@ -85,6 +85,7 @@ export function CourseEditClient({
       metaDescription: course.metaDescription || "",
       requirements: course.requirements || [],
       outcomes: course.outcomes || [],
+      groupTiers: course.groupTiers || [],
     },
   });
 
@@ -155,8 +156,7 @@ export function CourseEditClient({
       const sortOrder = (modules.at(-1)?.sortOrder ?? 0) + 1;
       const res = await addModuleToCourse(course.id, {
         title: `Module ${modules.length + 1}`,
-
-        duration: 1,
+        duration: 0,
         sortOrder,
         isPublished: false,
       });
@@ -173,7 +173,7 @@ export function CourseEditClient({
           title: `Module ${prev.length + 1}`,
           description: "",
           content: "",
-          duration: 1,
+          duration: 0,
           sortOrder,
           isPublished: false,
           lessons: [],
@@ -275,7 +275,7 @@ export function CourseEditClient({
       const payload = {
         title: `Lesson ${mod.lessons.length + 1}`,
         lessonType: "VIDEO" as const, // ✅ correct key
-        duration: 1,
+        duration: 0,
 
         sortOrder,
         isPreview: false,
@@ -383,17 +383,18 @@ export function CourseEditClient({
     lessonId: string,
     updates: Partial<any>
   ) => {
-    setModules(
-      modules.map((m: any) =>
-        m.id === moduleId
-          ? {
-              ...m,
-              lessons: m.lessons.map((l: any) =>
-                l.id === lessonId ? { ...l, ...updates } : l
-              ),
-            }
-          : m
-      )
+    setModules((prev: any) =>
+      prev.map((m: any) => {
+        if (m.id !== moduleId) return m;
+        const updatedLessons = m.lessons.map((l: any) =>
+          l.id === lessonId ? { ...l, ...updates } : l
+        );
+        const moduleDuration = updatedLessons.reduce(
+          (sum: number, l: any) => sum + (l.duration || 0),
+          0
+        );
+        return { ...m, lessons: updatedLessons, duration: moduleDuration };
+      })
     );
   };
   const onSubmit = (
@@ -545,7 +546,7 @@ export function CourseEditClient({
                         onSubmit(data, true)
                       )}
                       className="w-full sm:w-auto bg-gradient-to-r from-neon-green to-emerald-400">
-                      Publish Course
+                      Update Course
                     </Button>
                   </div>
                 </form>

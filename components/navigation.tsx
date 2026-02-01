@@ -13,6 +13,7 @@ import { useSession } from "next-auth/react";
 import Image from "next/image";
 import Link from "next/link";
 import { useEffect, useState } from "react";
+import { Badge } from "./ui/badge";
 
 export function Navigation() {
   const { data: session, status } = useSession();
@@ -123,18 +124,18 @@ export function Navigation() {
               variant="outline"
               className={`
                 border-2 px-3 py-1 font-semibold hidden sm:flex
-                ₦{userRole === "ADMIN" ? "border-red-500 text-red-400" : ""}
-                ₦{
+                ${UserRole === "ADMIN" ? "border-red-500 text-red-400" : ""}
+                ${
                   userRole === "TUTOR"
                     ? "border-neon-purple text-neon-purple"
                     : ""
                 }
-                ₦{
+                ${
                   userRole === "STUDENT"
                     ? "border-neon-blue text-neon-blue"
                     : ""
                 }
-                ₦{userRole === "USER" ? "border-gray-400 text-gray-400" : ""}
+                ${userRole === "USER" ? "border-gray-400 text-gray-400" : ""}
               `}>
               {userRole}
             </Badge> */}

@@ -1,23 +1,24 @@
 "use client";
 
-import { Search, Filter } from "lucide-react";
-import { Button } from "@/components/ui/button";
+import { motion } from "framer-motion";
+import { Search, Filter, ArrowDownUp } from "lucide-react";
 import { Input } from "@/components/ui/input";
-import { Tabs, TabsList, TabsTrigger } from "@/components/ui/tabs";
-import { CardHeader, CardTitle } from "@/components/ui/card";
+import { Button } from "@/components/ui/button";
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuTrigger,
+} from "@/components/ui/dropdown-menu";
 
 interface SearchFilterBarProps {
   searchTerm: string;
-  onSearchChange: (value: string) => void;
-  filterStatus: string;
-  onFilterChange: (value: string) => void;
-  sortBy: string;
-  onSortChange: (value: string) => void;
-  studentCounts: {
-    total: number;
-    active: number;
-    completed: number;
-  };
+  onSearchChange: (val: string) => void;
+  filterStatus: "all" | "active" | "inactive";
+  onFilterChange: (val: "all" | "active" | "inactive") => void;
+  sortBy: "progress" | "name" | "recent";
+  onSortChange: (val: "progress" | "name" | "recent") => void;
+  studentCounts: { total: number; active: number; completed: number };
 }
 
 export function SearchFilterBar({
@@ -29,82 +30,80 @@ export function SearchFilterBar({
   onSortChange,
   studentCounts,
 }: SearchFilterBarProps) {
+  const filters: {
+    label: string;
+    key: "all" | "active" | "inactive";
+    count: number;
+  }[] = [
+    { label: "All", key: "all", count: studentCounts.total },
+    { label: "Active", key: "active", count: studentCounts.active },
+    {
+      label: "Inactive",
+      key: "inactive",
+      count: studentCounts.total - studentCounts.active,
+    },
+  ];
+
   return (
-    <>
-      <CardHeader>
-        <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
-          <CardTitle className="text-2xl font-bold text-white">
-            Student Directory
-          </CardTitle>
-          <div className="flex items-center gap-4">
-            <div className="relative flex-1 md:w-64">
-              <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400 w-4 h-4" />
-              <Input
-                placeholder="Search by name or email..."
-                value={searchTerm}
-                onChange={(e) => onSearchChange(e.target.value)}
-                className="pl-10 glass-card border-white/20 bg-white/5"
-              />
-            </div>
-            <Button
-              variant="outline"
-              className="border-white/20 text-white hover:bg-white/10 bg-transparent">
-              <Filter className="w-4 h-4 mr-2" />
-              Filter
-            </Button>
-          </div>
-        </div>
-      </CardHeader>
-
-      <div className="px-6 py-4 border-b border-white/10">
-        {/* Tabs */}
-        <Tabs
-          value={filterStatus}
-          onValueChange={onFilterChange}
-          className="mb-6">
-          <TabsList className="glass-card border-white/10 p-1">
-            <TabsTrigger
-              value="all"
-              className="data-[state=active]:bg-neon-blue/20">
-              All Students ({studentCounts.total})
-            </TabsTrigger>
-            <TabsTrigger
-              value="active"
-              className="data-[state=active]:bg-neon-blue/20">
-              <span className="w-2 h-2 bg-green-400 rounded-full mr-2" />
-              Active ({studentCounts.active})
-            </TabsTrigger>
-            <TabsTrigger
-              value="completed"
-              className="data-[state=active]:bg-neon-blue/20">
-              Completed ({studentCounts.completed})
-            </TabsTrigger>
-          </TabsList>
-        </Tabs>
-
-        {/* Sort Options */}
-        <div className="flex items-center gap-4">
-          <span className="text-gray-400 text-sm">Sort by:</span>
-          {[
-            { label: "Most Recent", value: "recent" },
-            { label: "Progress", value: "progress" },
-            { label: "Name", value: "name" },
-          ].map((option) => (
-            <Button
-              key={option.value}
-              variant={sortBy === option.value ? "default" : "outline"}
-              size="sm"
-              onClick={() => onSortChange(option.value)}
-              className={`${
-                sortBy === option.value
-                  ? "bg-gradient-to-r from-neon-blue to-neon-purple"
-                  : "border-white/20 text-white hover:bg-white/10 bg-transparent"
-              }`}>
-              {option.label}
-            </Button>
-          ))}
-        </div>
+    <motion.div
+      initial={{ opacity: 0, y: -10 }}
+      animate={{ opacity: 1, y: 0 }}
+      transition={{ duration: 0.4 }}
+      className="p-4 border-b border-white/10 flex flex-col md:flex-row md:items-center justify-between gap-4">
+      {/* 🔍 Search Input */}
+      <div className="relative w-full md:w-1/3">
+        <Search className="absolute left-3 top-2.5 h-4 w-4 text-gray-400" />
+        <Input
+          value={searchTerm}
+          onChange={(e) => onSearchChange(e.target.value)}
+          placeholder="Search students..."
+          className="pl-9 bg-white/5 border-white/10 text-white placeholder-gray-400 focus-visible:ring-neon-blue/40"
+        />
       </div>
-    </>
+
+      {/* 🔘 Filter Tabs */}
+      <div className="flex flex-wrap items-center gap-2">
+        {filters.map((f) => (
+          <Button
+            key={f.key}
+            variant={filterStatus === f.key ? "default" : "outline"}
+            onClick={() => onFilterChange(f.key)}
+            className={`rounded-full text-sm transition-all ${
+              filterStatus === f.key
+                ? "bg-gradient-to-r from-neon-blue to-neon-purple text-white border-none"
+                : "border-white/10 text-gray-300 hover:bg-white/5"
+            }`}>
+            {f.label}
+            <span className="ml-2 text-xs text-gray-400">({f.count})</span>
+          </Button>
+        ))}
+      </div>
+
+      {/* ⚙️ Sort Dropdown */}
+      <DropdownMenu>
+        <DropdownMenuTrigger asChild>
+          <Button
+            variant="outline"
+            className="flex items-center gap-2 border-white/10 text-gray-300 hover:bg-white/5">
+            <ArrowDownUp className="w-4 h-4" />
+            Sort by{" "}
+            <span className="text-white ml-1 capitalize">
+              {sortBy.replace("-", " ")}
+            </span>
+          </Button>
+        </DropdownMenuTrigger>
+        <DropdownMenuContent className="bg-background/90 border-white/10 text-gray-300">
+          <DropdownMenuItem onClick={() => onSortChange("recent")}>
+            Most Recent
+          </DropdownMenuItem>
+          <DropdownMenuItem onClick={() => onSortChange("progress")}>
+            Progress
+          </DropdownMenuItem>
+          <DropdownMenuItem onClick={() => onSortChange("name")}>
+            Name (A–Z)
+          </DropdownMenuItem>
+        </DropdownMenuContent>
+      </DropdownMenu>
+    </motion.div>
   );
 }

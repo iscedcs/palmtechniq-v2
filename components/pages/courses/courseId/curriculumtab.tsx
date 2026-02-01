@@ -19,10 +19,12 @@ export default function CurriculumTab({
     id: string;
     title: string;
     duration?: number | null;
+    sortOrder?: number | null;
     lessons: {
       id: string;
       title: string;
       duration?: number | null;
+      sortOrder?: number | null;
       isPreview?: boolean;
       previewVideo?: string | null;
     }[];
@@ -32,6 +34,12 @@ export default function CurriculumTab({
 }) {
   const router = useRouter();
   const [openModule, setOpenModule] = useState<string | null>(null);
+  const sortedModules = [...modules].sort((a, b) => {
+    const aOrder = a.sortOrder ?? 0;
+    const bOrder = b.sortOrder ?? 0;
+    if (aOrder !== bOrder) return aOrder - bOrder;
+    return a.title.localeCompare(b.title);
+  });
   const [previewModal, setPreviewModal] = useState<{
     isOpen: boolean;
     title: string;
@@ -68,11 +76,17 @@ export default function CurriculumTab({
         animate={{ opacity: 1, y: 0 }}
         transition={{ duration: 0.5 }}
         className="space-y-4">
-        {modules.length === 0 ? (
+        {sortedModules.length === 0 ? (
           <p className="text-gray-400">No curriculum available yet.</p>
         ) : (
-          modules.map((module) => {
+          sortedModules.map((module) => {
             const isOpen = openModule === module.id;
+            const sortedLessons = [...module.lessons].sort((a, b) => {
+              const aOrder = a.sortOrder ?? 0;
+              const bOrder = b.sortOrder ?? 0;
+              if (aOrder !== bOrder) return aOrder - bOrder;
+              return a.title.localeCompare(b.title);
+            });
             return (
               <Card key={module.id} className="glass-card border-white/10">
                 <CardHeader
@@ -80,7 +94,7 @@ export default function CurriculumTab({
                   onClick={() => toggleModule(module.id)}>
                   <div className="flex items-center justify-between">
                     <h3 className="text-xl font-bold text-white">
-                      {module.title}
+                      Module {sortedModules.indexOf(module) + 1}: {module.title}
                     </h3>
                     <div className="flex items-center space-x-4 text-gray-400">
                       <span>{module.lessons.length} lessons</span>
@@ -102,7 +116,7 @@ export default function CurriculumTab({
                       exit={{ opacity: 0, height: 0 }}
                       transition={{ duration: 0.3 }}
                       className="space-y-3">
-                      {module.lessons.map((lesson) => {
+                      {sortedLessons.map((lesson, lessonIndex) => {
                         const locked = !isEnrolled && !lesson.isPreview;
                         return (
                           <div
@@ -127,6 +141,9 @@ export default function CurriculumTab({
                               ) : (
                                 <Play className="w-4 h-4 text-neon-blue" />
                               )}
+                              <Badge className="bg-white/10 text-gray-300 border-white/10 text-xs">
+                                Lesson {lessonIndex + 1}
+                              </Badge>
                               <span className="text-gray-300 flex-1">
                                 {lesson.title}
                               </span>
