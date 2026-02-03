@@ -348,11 +348,11 @@ export default function CourseLearningPageClient({
         </div>
 
         {/* AI Assistant */}
-        {/* <FloatingAIButton
+        <FloatingAIButton
           onActivate={() => setShowAI(true)}
           isActive={showAI}
           lessonProgress={(currentTime / duration) * 100}
-        /> */}
+        />
         <LessonAIAssistant
           lessonId={currentLesson.id}
           lessonTitle={currentLesson.title}

@@ -40,7 +40,7 @@ export function LessonAIAssistant({
     {
       id: "1",
       type: "ai",
-      content: `Hi! I'm your AI learning assistant for "₦{lessonTitle}". I'm here to help you understand the concepts, answer questions, and provide additional insights. What would you like to know?`,
+      content: `Hi! I'm your AI learning assistant for "${lessonTitle}". I'm here to help you understand the concepts, answer questions, and provide additional insights. What would you like to know?`,
       timestamp: new Date().toISOString(),
     },
   ]);
@@ -93,10 +93,10 @@ export function LessonAIAssistant({
   const generateAIResponse = (question: string, lesson: string): string => {
     // This would be replaced with actual AI API call
     const responses = [
-      `Great question about ₦{lesson}! Let me break this down for you...`,
-      `That's an excellent point to clarify in ₦{lesson}. Here's what you need to know...`,
-      `I can see why that might be confusing in ₦{lesson}. Let me explain it differently...`,
-      `Perfect! This is a key concept in ₦{lesson}. Here's the detailed explanation...`,
+      `Great question about ${lesson}! Let me break this down for you...`,
+      `That's an excellent point to clarify in ${lesson}. Here's what you need to know...`,
+      `I can see why that might be confusing in ${lesson}. Let me explain it differently...`,
+      `Perfect! This is a key concept in ${lesson}. Here's the detailed explanation...`,
     ];
     return responses[Math.floor(Math.random() * responses.length)];
   };

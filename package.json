@@ -5,9 +5,9 @@
   "scripts": {
     "build": "prisma generate && next build",
     "dev": "next dev -p 2026",
-    "lint": "next lint",
-    "postinstall": "prisma generate",
+    "lint": "eslint .",
     "start": "next start",
+    "postinstall": "prisma generate",
     "test-seed-enrollment": "tsx scripts/test-seed-enrollment.ts",
     "recompute-course-durations": "tsx scripts/recompute-course-durations.ts"
   },
