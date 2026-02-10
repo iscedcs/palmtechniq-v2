@@ -5,9 +5,11 @@ import { useRouter } from "next/navigation";
 import { Card, CardContent, CardHeader } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Loader2, CheckCircle2, XCircle } from "lucide-react";
+import { useSession } from "next-auth/react";
 
 export default function VerifyClient({ reference }: { reference?: string }) {
   const router = useRouter();
+  const { update } = useSession();
   const [status, setStatus] = useState<
     "loading" | "success" | "failed" | "error"
   >("loading");
@@ -25,6 +27,7 @@ export default function VerifyClient({ reference }: { reference?: string }) {
         if (!mounted) return;
         if (json.ok) {
           setStatus("success");
+          await update();
           setTimeout(() => router.push("/student"), 1500);
         } else {
           setStatus(json.reason === "failed" ? "failed" : "error");

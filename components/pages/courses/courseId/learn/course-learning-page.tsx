@@ -20,6 +20,9 @@ export default function CourseLearningPageClient({
 
   const [currentLesson, setCurrentLesson] = useState<any>(null);
   const [allLessons, setAllLessons] = useState<any[]>([]);
+  const [courseProgress, setCourseProgress] = useState<number>(
+    courseData.progress ?? 0
+  );
   const [currentTime, setCurrentTime] = useState(0);
   const [duration, setDuration] = useState(0);
   const [moduleTaskPrompt, setModuleTaskPrompt] = useState<{
@@ -113,6 +116,10 @@ export default function CourseLearningPageClient({
 
       const data = await res.json();
       if (!res.ok) throw new Error(data.error);
+      if (typeof data.progress === "number") {
+        setCourseProgress(data.progress);
+        courseData.progress = data.progress;
+      }
 
       // Update the completion and unlocking logic
       const updatedLessons = allLessons.map((l, idx, arr) => {
@@ -281,13 +288,6 @@ export default function CourseLearningPageClient({
             poster={currentLesson.thumbnailUrl}
             autoPlay
             markLessonComplete={() => markLessonComplete(currentLesson.id)}
-            goToNextLesson={() => {
-              const idx = allLessons.findIndex(
-                (l) => l.id === currentLesson.id
-              );
-              if (idx < allLessons.length - 1)
-                changeLesson(allLessons[idx + 1]);
-            }}
             onDurationChange={(d) => setDuration(d)}
           />
           {currentLesson?.isCompleted &&
@@ -339,7 +339,7 @@ export default function CourseLearningPageClient({
 
           {/* Sidebar */}
           <LessonSidebar
-            progress={courseData.progress}
+            progress={courseProgress}
             courseTitle={courseData.title}
             modules={courseData.modules}
             currentLessonId={currentLesson.id}

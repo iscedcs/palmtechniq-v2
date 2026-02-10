@@ -1,8 +1,7 @@
 "use client";
 
-import { useState } from "react";
+import { useEffect, useState, useTransition, type ChangeEvent } from "react";
 import { motion } from "framer-motion";
-import { Navigation } from "@/components/navigation";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -26,7 +25,6 @@ import {
   Eye,
   Shield,
   Bell,
-  Languages,
   Briefcase,
   LinkIcon,
   Youtube,
@@ -34,24 +32,80 @@ import {
   Twitter,
   Github,
   Instagram,
+  Loader2,
 } from "lucide-react";
-import type { UserRole } from "@/types/user";
 import { generateRandomAvatar } from "@/lib/utils";
+import { toast } from "sonner";
+import { defaultUserPreferences } from "@/lib/user-preferences";
+import {
+  getTutorProfileData,
+  type TutorAvailability,
+  type TutorAvailabilityDay,
+  updateTutorProfile,
+} from "../../../../actions/tutor-profile";
+import ProfileLoading from "./loading";
+
+type AvailabilityDay = TutorAvailabilityDay;
+type Availability = TutorAvailability;
+
+const daysOfWeek = [
+  "monday",
+  "tuesday",
+  "wednesday",
+  "thursday",
+  "friday",
+  "saturday",
+  "sunday",
+] as const;
+
+const defaultAvailability: Availability = {
+  monday: { enabled: true, start: "09:00", end: "17:00" },
+  tuesday: { enabled: true, start: "09:00", end: "17:00" },
+  wednesday: { enabled: true, start: "09:00", end: "17:00" },
+  thursday: { enabled: true, start: "09:00", end: "17:00" },
+  friday: { enabled: true, start: "09:00", end: "17:00" },
+  saturday: { enabled: false, start: "09:00", end: "17:00" },
+  sunday: { enabled: false, start: "09:00", end: "17:00" },
+};
 
 export default function TutorProfilePage() {
-  const [userRole] = useState<UserRole>("TUTOR");
-  const [userName] = useState("Sarah Chen");
-  const [userAvatar] = useState(generateRandomAvatar());
   const [activeTab, setActiveTab] = useState("basic");
-  const [profileImage, setProfileImage] = useState(generateRandomAvatar());
-  const [skills, setSkills] = useState([
-    "JavaScript",
-    "React",
-    "Node.js",
-    "Python",
-    "Machine Learning",
-  ]);
+  const [loading, setLoading] = useState(true);
+  const [saving, startSaving] = useTransition();
+  const [uploadingImage, setUploadingImage] = useState(false);
+  const [fallbackAvatar] = useState(generateRandomAvatar());
+  const [profileImage, setProfileImage] = useState("");
+  const [profile, setProfile] = useState({
+    firstName: "",
+    lastName: "",
+    email: "",
+    phone: "",
+    bio: "",
+    title: "",
+    experience: 0,
+    course: "",
+    hourlyRate: "",
+    location: "",
+    timezone: "",
+    language: "",
+  });
+  const [skills, setSkills] = useState<string[]>([]);
+  const [education, setEducation] = useState<string[]>([]);
+  const [certifications, setCertifications] = useState<string[]>([]);
   const [newSkill, setNewSkill] = useState("");
+  const [newEducation, setNewEducation] = useState("");
+  const [newCertification, setNewCertification] = useState("");
+  const [socialLinks, setSocialLinks] = useState({
+    website: "",
+    linkedin: "",
+    twitter: "",
+    github: "",
+    youtube: "",
+    instagram: "",
+  });
+  const [availability, setAvailability] =
+    useState<Availability>(defaultAvailability);
+  const [preferences, setPreferences] = useState(defaultUserPreferences);
 
   const addSkill = () => {
     if (newSkill.trim() && !skills.includes(newSkill.trim())) {
@@ -63,6 +117,186 @@ export default function TutorProfilePage() {
   const removeSkill = (skillToRemove: string) => {
     setSkills(skills.filter((skill) => skill !== skillToRemove));
   };
+
+  const addEducation = () => {
+    if (newEducation.trim() && !education.includes(newEducation.trim())) {
+      setEducation([...education, newEducation.trim()]);
+      setNewEducation("");
+    }
+  };
+
+  const removeEducation = (item: string) => {
+    setEducation(education.filter((entry) => entry !== item));
+  };
+
+  const addCertification = () => {
+    if (
+      newCertification.trim() &&
+      !certifications.includes(newCertification.trim())
+    ) {
+      setCertifications([...certifications, newCertification.trim()]);
+      setNewCertification("");
+    }
+  };
+
+  const removeCertification = (item: string) => {
+    setCertifications(certifications.filter((entry) => entry !== item));
+  };
+
+  const updateAvailability = (
+    day: keyof Availability,
+    updates: Partial<AvailabilityDay>
+  ) => {
+    setAvailability((prev) => ({
+      ...prev,
+      [day]: {
+        ...prev[day],
+        ...updates,
+      },
+    }));
+  };
+
+  const handleProfileImageChange = async (
+    event: ChangeEvent<HTMLInputElement>
+  ) => {
+    const file = event.target.files?.[0];
+    if (!file) return;
+
+    setUploadingImage(true);
+    try {
+      const response = await fetch("/api/upload", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          filename: file.name,
+          contentType: file.type,
+        }),
+      });
+
+      const data = await response.json();
+      if (!response.ok || !data.success) {
+        toast.error(data.error || "Upload initialization failed.");
+        return;
+      }
+
+      const uploadUrl = data.url;
+      const fields = data.fields;
+      const fileUrl = `${uploadUrl}${fields.key}`;
+
+      const formData = new FormData();
+      Object.entries(fields).forEach(([key, value]) =>
+        formData.append(key, value as string)
+      );
+      formData.append("file", file);
+
+      const uploadResponse = await fetch(uploadUrl, {
+        method: "POST",
+        body: formData,
+      });
+
+      if (uploadResponse.ok) {
+        setProfileImage(fileUrl);
+        toast.success("Profile photo updated.");
+      } else {
+        toast.error("Upload failed.");
+      }
+    } catch (error) {
+      console.error("Upload error:", error);
+      toast.error("An unexpected error occurred during upload.");
+    } finally {
+      setUploadingImage(false);
+      event.target.value = "";
+    }
+  };
+
+  const handleSave = () => {
+    startSaving(async () => {
+      const result = await updateTutorProfile({
+        firstName: profile.firstName,
+        lastName: profile.lastName,
+        phone: profile.phone,
+        bio: profile.bio,
+        title: profile.title,
+        experience: profile.experience,
+        course: profile.course,
+        hourlyRate: profile.hourlyRate
+          ? Number(profile.hourlyRate)
+          : undefined,
+        location: profile.location,
+        timezone: profile.timezone,
+        language: profile.language,
+        skills,
+        education,
+        certifications,
+        socialLinks,
+        availability,
+        preferences,
+        avatar: profileImage,
+      });
+
+      if (result?.error) {
+        toast.error(result.error);
+      } else {
+        toast.success("Profile updated successfully.");
+      }
+    });
+  };
+
+  useEffect(() => {
+    let isMounted = true;
+
+    const loadProfile = async () => {
+      setLoading(true);
+      const data = await getTutorProfileData();
+      if (!isMounted) return;
+
+      if ("error" in data) {
+        toast.error(data.error);
+        setLoading(false);
+        return;
+      }
+
+      setProfile({
+        firstName: data.profile.firstName,
+        lastName: data.profile.lastName,
+        email: data.profile.email,
+        phone: data.profile.phone,
+        bio: data.profile.bio,
+        title: data.profile.title,
+        experience: data.profile.experience,
+        course: data.profile.course,
+        hourlyRate: data.profile.hourlyRate
+          ? String(data.profile.hourlyRate)
+          : "",
+        location: data.profile.location,
+        timezone: data.profile.timezone,
+        language: data.profile.language,
+      });
+      setSkills(data.profile.skills);
+      setEducation(data.profile.education);
+      setCertifications(data.profile.certifications);
+      setProfileImage(data.profile.avatar);
+      setSocialLinks(data.socialLinks);
+      setAvailability(data.availability);
+      setPreferences(data.preferences);
+      setLoading(false);
+    };
+
+    loadProfile();
+    return () => {
+      isMounted = false;
+    };
+  }, []);
+
+  if (loading) {
+    return <ProfileLoading />;
+  }
+
+  const initials =
+    [profile.firstName, profile.lastName]
+      .filter(Boolean)
+      .map((name) => name[0]?.toUpperCase())
+      .join("") || "TU";
 
   return (
     <div className="min-h-screen bg-background">
@@ -104,9 +338,16 @@ export default function TutorProfilePage() {
                   <Eye className="w-4 h-4" />
                   Preview Profile
                 </Button>
-                <Button className="gap-2 bg-gradient-to-r from-neon-blue to-neon-purple text-white">
-                  <Save className="w-4 h-4" />
-                  Save Changes
+                <Button
+                  onClick={handleSave}
+                  disabled={saving || uploadingImage}
+                  className="gap-2 bg-gradient-to-r from-neon-blue to-neon-purple text-white">
+                  {saving ? (
+                    <Loader2 className="w-4 h-4 animate-spin" />
+                  ) : (
+                    <Save className="w-4 h-4" />
+                  )}
+                  {saving ? "Saving..." : "Save Changes"}
                 </Button>
               </div>
             </motion.div>
@@ -172,33 +413,30 @@ export default function TutorProfilePage() {
                       <div className="flex items-center gap-6">
                         <div className="relative">
                           <Avatar className="w-24 h-24">
-                            <AvatarImage
-                              src={profileImage || generateRandomAvatar()}
-                            />
+                            <AvatarImage src={profileImage || fallbackAvatar} />
                             <AvatarFallback className="bg-gradient-to-r from-neon-blue to-neon-purple text-white">
-                              SC
+                              {initials}
                             </AvatarFallback>
                           </Avatar>
                           <Button
                             size="sm"
+                            disabled={uploadingImage}
                             className="absolute -bottom-2 -right-2 rounded-full w-8 h-8 p-0 bg-gradient-to-r from-neon-blue to-neon-purple"
                             onClick={() =>
                               document.getElementById("profile-upload")?.click()
                             }>
-                            <Camera className="w-4 h-4" />
+                            {uploadingImage ? (
+                              <Loader2 className="w-4 h-4 animate-spin" />
+                            ) : (
+                              <Camera className="w-4 h-4" />
+                            )}
                           </Button>
                           <input
                             id="profile-upload"
                             type="file"
                             accept="image/*"
                             className="hidden"
-                            onChange={(e) => {
-                              const file = e.target.files?.[0];
-                              if (file) {
-                                const url = URL.createObjectURL(file);
-                                setProfileImage(url);
-                              }
-                            }}
+                            onChange={handleProfileImageChange}
                           />
                         </div>
                         <div>
@@ -222,7 +460,13 @@ export default function TutorProfilePage() {
                           </Label>
                           <Input
                             id="firstName"
-                            defaultValue="Sarah"
+                            value={profile.firstName}
+                            onChange={(event) =>
+                              setProfile((prev) => ({
+                                ...prev,
+                                firstName: event.target.value,
+                              }))
+                            }
                             className="bg-white/5 border-white/10 text-white placeholder-gray-400"
                           />
                         </div>
@@ -232,7 +476,13 @@ export default function TutorProfilePage() {
                           </Label>
                           <Input
                             id="lastName"
-                            defaultValue="Chen"
+                            value={profile.lastName}
+                            onChange={(event) =>
+                              setProfile((prev) => ({
+                                ...prev,
+                                lastName: event.target.value,
+                              }))
+                            }
                             className="bg-white/5 border-white/10 text-white placeholder-gray-400"
                           />
                         </div>
@@ -247,7 +497,8 @@ export default function TutorProfilePage() {
                           <Input
                             id="email"
                             type="email"
-                            defaultValue="sarah.chen@example.com"
+                            value={profile.email}
+                            disabled
                             className="bg-white/5 border-white/10 text-white placeholder-gray-400"
                           />
                         </div>
@@ -257,7 +508,64 @@ export default function TutorProfilePage() {
                           </Label>
                           <Input
                             id="phone"
-                            defaultValue="+1 (555) 123-4567"
+                            value={profile.phone}
+                            onChange={(event) =>
+                              setProfile((prev) => ({
+                                ...prev,
+                                phone: event.target.value,
+                              }))
+                            }
+                            className="bg-white/5 border-white/10 text-white placeholder-gray-400"
+                          />
+                        </div>
+                      </div>
+
+                      <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+                        <div className="space-y-2">
+                          <Label htmlFor="location" className="text-white">
+                            Location
+                          </Label>
+                          <Input
+                            id="location"
+                            value={profile.location}
+                            onChange={(event) =>
+                              setProfile((prev) => ({
+                                ...prev,
+                                location: event.target.value,
+                              }))
+                            }
+                            className="bg-white/5 border-white/10 text-white placeholder-gray-400"
+                          />
+                        </div>
+                        <div className="space-y-2">
+                          <Label htmlFor="timezone" className="text-white">
+                            Timezone
+                          </Label>
+                          <Input
+                            id="timezone"
+                            value={profile.timezone}
+                            onChange={(event) =>
+                              setProfile((prev) => ({
+                                ...prev,
+                                timezone: event.target.value,
+                              }))
+                            }
+                            className="bg-white/5 border-white/10 text-white placeholder-gray-400"
+                          />
+                        </div>
+                        <div className="space-y-2">
+                          <Label htmlFor="language" className="text-white">
+                            Language
+                          </Label>
+                          <Input
+                            id="language"
+                            value={profile.language}
+                            onChange={(event) =>
+                              setProfile((prev) => ({
+                                ...prev,
+                                language: event.target.value,
+                              }))
+                            }
                             className="bg-white/5 border-white/10 text-white placeholder-gray-400"
                           />
                         </div>
@@ -272,10 +580,16 @@ export default function TutorProfilePage() {
                           id="bio"
                           placeholder="Tell students about yourself, your experience, and teaching style..."
                           className="min-h-[120px] bg-white/5 border-white/10 text-white placeholder-gray-400"
-                          defaultValue="Passionate full-stack developer with 8+ years of experience in modern web technologies. I love teaching and helping students master JavaScript, React, and backend development through hands-on projects and real-world applications."
+                          value={profile.bio}
+                          onChange={(event) =>
+                            setProfile((prev) => ({
+                              ...prev,
+                              bio: event.target.value,
+                            }))
+                          }
                         />
                         <p className="text-xs text-gray-400">
-                          0/500 characters
+                          {profile.bio.length}/500 characters
                         </p>
                       </div>
                     </CardContent>
@@ -330,45 +644,129 @@ export default function TutorProfilePage() {
                     </CardContent>
                   </Card>
 
-                  {/* Languages */}
                   <Card className="glass-card border-white/10">
                     <CardHeader>
                       <CardTitle className="flex items-center gap-2 text-white">
-                        <Languages className="w-5 h-5" />
-                        Languages
+                        <Briefcase className="w-5 h-5" />
+                        Professional Details
                       </CardTitle>
                     </CardHeader>
                     <CardContent className="space-y-4">
-                      {[
-                        { language: "English", level: "Native" },
-                        { language: "Spanish", level: "Fluent" },
-                        { language: "French", level: "Intermediate" },
-                      ].map((lang, index) => (
-                        <div
-                          key={index}
-                          className="flex items-center justify-between p-3 bg-white/5 rounded-lg">
-                          <div>
-                            <p className="font-medium text-white">
-                              {lang.language}
-                            </p>
-                            <p className="text-sm text-gray-300">
-                              {lang.level}
-                            </p>
-                          </div>
+                      <div className="space-y-2">
+                        <Label className="text-white">Professional Title</Label>
+                        <Input
+                          value={profile.title}
+                          onChange={(event) =>
+                            setProfile((prev) => ({
+                              ...prev,
+                              title: event.target.value,
+                            }))
+                          }
+                          placeholder="e.g. Senior Full-Stack Developer"
+                          className="bg-white/5 border-white/10 text-white placeholder-gray-400"
+                        />
+                      </div>
+                      <div className="space-y-2">
+                        <Label className="text-white">
+                          Years of Experience
+                        </Label>
+                        <Input
+                          type="number"
+                          value={profile.experience}
+                          onChange={(event) =>
+                            setProfile((prev) => ({
+                              ...prev,
+                              experience: Number(event.target.value),
+                            }))
+                          }
+                          min={0}
+                          className="bg-white/5 border-white/10 text-white placeholder-gray-400"
+                        />
+                      </div>
+                      <div className="space-y-2">
+                        <Label className="text-white">Primary Focus</Label>
+                        <Input
+                          value={profile.course}
+                          onChange={(event) =>
+                            setProfile((prev) => ({
+                              ...prev,
+                              course: event.target.value,
+                            }))
+                          }
+                          placeholder="e.g. Full-Stack Web Development"
+                          className="bg-white/5 border-white/10 text-white placeholder-gray-400"
+                        />
+                      </div>
+                      <div className="space-y-3">
+                        <Label className="text-white">Education</Label>
+                        <div className="flex flex-wrap gap-2">
+                          {education.map((item) => (
+                            <Badge
+                              key={item}
+                              className="gap-1 bg-white/10 text-white border-white/20">
+                              {item}
+                              <X
+                                className="w-3 h-3 cursor-pointer hover:text-red-400 transition-colors"
+                                onClick={() => removeEducation(item)}
+                              />
+                            </Badge>
+                          ))}
+                        </div>
+                        <div className="flex gap-2">
+                          <Input
+                            placeholder="Add education..."
+                            value={newEducation}
+                            onChange={(event) =>
+                              setNewEducation(event.target.value)
+                            }
+                            onKeyPress={(event) =>
+                              event.key === "Enter" && addEducation()
+                            }
+                            className="bg-white/5 border-white/10 text-white placeholder-gray-400"
+                          />
                           <Button
-                            variant="ghost"
+                            onClick={addEducation}
                             size="sm"
-                            className="text-white hover:bg-white/10">
-                            <X className="w-4 h-4" />
+                            className="bg-gradient-to-r from-neon-blue to-neon-purple">
+                            <Plus className="w-4 h-4" />
                           </Button>
                         </div>
-                      ))}
-                      <Button
-                        variant="outline"
-                        className="w-full gap-2 border-white/20 text-white hover:bg-white/10 bg-transparent">
-                        <Plus className="w-4 h-4" />
-                        Add Language
-                      </Button>
+                      </div>
+                      <div className="space-y-3">
+                        <Label className="text-white">Certifications</Label>
+                        <div className="flex flex-wrap gap-2">
+                          {certifications.map((item) => (
+                            <Badge
+                              key={item}
+                              className="gap-1 bg-white/10 text-white border-white/20">
+                              {item}
+                              <X
+                                className="w-3 h-3 cursor-pointer hover:text-red-400 transition-colors"
+                                onClick={() => removeCertification(item)}
+                              />
+                            </Badge>
+                          ))}
+                        </div>
+                        <div className="flex gap-2">
+                          <Input
+                            placeholder="Add certification..."
+                            value={newCertification}
+                            onChange={(event) =>
+                              setNewCertification(event.target.value)
+                            }
+                            onKeyPress={(event) =>
+                              event.key === "Enter" && addCertification()
+                            }
+                            className="bg-white/5 border-white/10 text-white placeholder-gray-400"
+                          />
+                          <Button
+                            onClick={addCertification}
+                            size="sm"
+                            className="bg-gradient-to-r from-neon-blue to-neon-purple">
+                            <Plus className="w-4 h-4" />
+                          </Button>
+                        </div>
+                      </div>
                     </CardContent>
                   </Card>
                 </motion.div>
@@ -388,22 +786,15 @@ export default function TutorProfilePage() {
                       </CardTitle>
                     </CardHeader>
                     <CardContent className="space-y-4">
-                      {[
-                        "monday",
-                        "tuesday",
-                        "wednesday",
-                        "thursday",
-                        "friday",
-                        "saturday",
-                        "sunday",
-                      ].map((day) => (
+                      {daysOfWeek.map((day) => (
                         <div
                           key={day}
                           className="flex items-center justify-between p-4 bg-white/5 rounded-lg">
                           <div className="flex items-center gap-4">
                             <Switch
-                              defaultChecked={
-                                day !== "saturday" && day !== "sunday"
+                              checked={availability[day]?.enabled ?? false}
+                              onCheckedChange={(checked) =>
+                                updateAvailability(day, { enabled: checked })
                               }
                             />
                             <span className="font-medium capitalize text-white w-20">
@@ -413,13 +804,23 @@ export default function TutorProfilePage() {
                           <div className="flex items-center gap-2">
                             <Input
                               type="time"
-                              defaultValue="09:00"
+                              value={availability[day]?.start ?? "09:00"}
+                              onChange={(event) =>
+                                updateAvailability(day, {
+                                  start: event.target.value,
+                                })
+                              }
                               className="w-32 bg-white/5 border-white/10 text-white"
                             />
                             <span className="text-gray-400">to</span>
                             <Input
                               type="time"
-                              defaultValue="17:00"
+                              value={availability[day]?.end ?? "17:00"}
+                              onChange={(event) =>
+                                updateAvailability(day, {
+                                  end: event.target.value,
+                                })
+                              }
                               className="w-32 bg-white/5 border-white/10 text-white"
                             />
                           </div>
@@ -445,45 +846,27 @@ export default function TutorProfilePage() {
                       </CardTitle>
                     </CardHeader>
                     <CardContent className="space-y-4">
-                      {[
-                        {
-                          title: "1-on-1 Session (30 min)",
-                          desc: "Individual mentorship",
-                          price: 69,
-                        },
-                        {
-                          title: "1-on-1 Session (60 min)",
-                          desc: "Extended mentorship",
-                          price: 129,
-                        },
-                        {
-                          title: "Code Review",
-                          desc: "Project feedback",
-                          price: 49,
-                        },
-                      ].map((item, index) => (
-                        <div
-                          key={index}
-                          className="flex items-center justify-between p-4 bg-white/5 rounded-lg">
-                          <div>
-                            <h4 className="font-medium text-white">
-                              {item.title}
-                            </h4>
-                            <p className="text-sm text-gray-300">{item.desc}</p>
-                          </div>
-                          <div className="flex items-center gap-2">
-                            <span className="text-lg font-bold text-white">
-                              ₦{item.price}
-                            </span>
-                            <Button
-                              variant="ghost"
-                              size="sm"
-                              className="text-white hover:bg-white/10">
-                              Edit
-                            </Button>
-                          </div>
-                        </div>
-                      ))}
+                      <div className="space-y-2">
+                        <Label className="text-white">
+                          Hourly Mentorship Rate (₦)
+                        </Label>
+                        <Input
+                          type="number"
+                          min={0}
+                          placeholder="5000"
+                          value={profile.hourlyRate}
+                          onChange={(event) =>
+                            setProfile((prev) => ({
+                              ...prev,
+                              hourlyRate: event.target.value,
+                            }))
+                          }
+                          className="bg-white/5 border-white/10 text-white placeholder-gray-400"
+                        />
+                        <p className="text-xs text-gray-400">
+                          This rate is used for 1-on-1 mentorship sessions.
+                        </p>
+                      </div>
                     </CardContent>
                   </Card>
 
@@ -495,32 +878,37 @@ export default function TutorProfilePage() {
                       </CardTitle>
                     </CardHeader>
                     <CardContent className="space-y-4">
-                      <div className="space-y-2">
+                      <div className="space-y-2 opacity-60">
                         <Label className="text-white">
                           Default Course Price
                         </Label>
                         <Input
                           type="number"
                           placeholder="99"
+                          disabled
                           className="bg-white/5 border-white/10 text-white placeholder-gray-400"
                         />
                       </div>
-                      <div className="space-y-2">
+                      <div className="space-y-2 opacity-60">
                         <Label className="text-white">
                           Discount Percentage
                         </Label>
                         <Input
                           type="number"
                           placeholder="20"
+                          disabled
                           className="bg-white/5 border-white/10 text-white placeholder-gray-400"
                         />
                       </div>
-                      <div className="flex items-center justify-between">
+                      <div className="flex items-center justify-between opacity-60">
                         <Label className="text-white">
                           Enable Dynamic Pricing
                         </Label>
-                        <Switch />
+                        <Switch disabled />
                       </div>
+                      <p className="text-xs text-gray-400">
+                        Course pricing presets are coming soon.
+                      </p>
                     </CardContent>
                   </Card>
                 </motion.div>
@@ -543,43 +931,60 @@ export default function TutorProfilePage() {
                       <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                         {[
                           {
+                            key: "website",
                             icon: LinkIcon,
                             label: "Website",
                             placeholder: "https://yourwebsite.com",
                           },
                           {
+                            key: "linkedin",
                             icon: Linkedin,
                             label: "LinkedIn",
                             placeholder: "https://linkedin.com/in/username",
                           },
                           {
+                            key: "twitter",
                             icon: Twitter,
                             label: "Twitter",
                             placeholder: "https://twitter.com/username",
                           },
                           {
+                            key: "github",
                             icon: Github,
                             label: "GitHub",
                             placeholder: "https://github.com/username",
                           },
                           {
+                            key: "youtube",
                             icon: Youtube,
                             label: "YouTube",
                             placeholder: "https://youtube.com/@username",
                           },
                           {
+                            key: "instagram",
                             icon: Instagram,
                             label: "Instagram",
                             placeholder: "https://instagram.com/username",
                           },
-                        ].map((social, index) => (
-                          <div key={index} className="space-y-2">
+                        ].map((social) => (
+                          <div key={social.key} className="space-y-2">
                             <Label className="flex items-center gap-2 text-white">
                               <social.icon className="w-4 h-4" />
                               {social.label}
                             </Label>
                             <Input
                               placeholder={social.placeholder}
+                              value={
+                                socialLinks[
+                                  social.key as keyof typeof socialLinks
+                                ] || ""
+                              }
+                              onChange={(event) =>
+                                setSocialLinks((prev) => ({
+                                  ...prev,
+                                  [social.key]: event.target.value,
+                                }))
+                              }
                               className="bg-white/5 border-white/10 text-white placeholder-gray-400"
                             />
                           </div>
@@ -607,28 +1012,28 @@ export default function TutorProfilePage() {
                     <CardContent className="space-y-4">
                       {[
                         {
+                          key: "emailNotifications",
                           title: "Email Notifications",
                           desc: "Receive updates via email",
-                          checked: true,
                         },
                         {
+                          key: "courseReminders",
                           title: "New Student Enrollments",
                           desc: "Get notified of new enrollments",
-                          checked: true,
                         },
                         {
+                          key: "mentorshipAlerts",
                           title: "Mentorship Bookings",
                           desc: "Session booking notifications",
-                          checked: true,
                         },
                         {
+                          key: "weeklyProgress",
                           title: "Weekly Reports",
                           desc: "Performance summaries",
-                          checked: false,
                         },
-                      ].map((item, index) => (
+                      ].map((item) => (
                         <div
-                          key={index}
+                          key={item.key}
                           className="flex items-center justify-between">
                           <div>
                             <p className="font-medium text-white">
@@ -636,7 +1041,19 @@ export default function TutorProfilePage() {
                             </p>
                             <p className="text-sm text-gray-300">{item.desc}</p>
                           </div>
-                          <Switch defaultChecked={item.checked} />
+                          <Switch
+                            checked={
+                              preferences[
+                                item.key as keyof typeof preferences
+                              ] || false
+                            }
+                            onCheckedChange={(checked) =>
+                              setPreferences((prev) => ({
+                                ...prev,
+                                [item.key]: checked,
+                              }))
+                            }
+                          />
                         </div>
                       ))}
                     </CardContent>
@@ -659,18 +1076,53 @@ export default function TutorProfilePage() {
                             Show profile to students
                           </p>
                         </div>
-                        <Switch defaultChecked />
+                        <Switch
+                          checked={preferences.publicProfile}
+                          onCheckedChange={(checked) =>
+                            setPreferences((prev) => ({
+                              ...prev,
+                              publicProfile: checked,
+                            }))
+                          }
+                        />
                       </div>
                       <div className="flex items-center justify-between">
                         <div>
                           <p className="font-medium text-white">
-                            Show Contact Info
+                            Show Progress
                           </p>
                           <p className="text-sm text-gray-300">
-                            Display email and phone
+                            Display progress stats on your profile
                           </p>
                         </div>
-                        <Switch />
+                        <Switch
+                          checked={preferences.showProgress}
+                          onCheckedChange={(checked) =>
+                            setPreferences((prev) => ({
+                              ...prev,
+                              showProgress: checked,
+                            }))
+                          }
+                        />
+                      </div>
+                      <div className="flex items-center justify-between">
+                        <div>
+                          <p className="font-medium text-white">
+                            Show Achievements
+                          </p>
+                          <p className="text-sm text-gray-300">
+                            Display badges and milestones
+                          </p>
+                        </div>
+                        <Switch
+                          checked={preferences.showAchievements}
+                          onCheckedChange={(checked) =>
+                            setPreferences((prev) => ({
+                              ...prev,
+                              showAchievements: checked,
+                            }))
+                          }
+                        />
                       </div>
                       <div className="flex items-center justify-between">
                         <div>

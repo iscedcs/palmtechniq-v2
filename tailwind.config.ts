@@ -63,18 +63,18 @@ const config: Config = {
           white: "#ffffff",
         },
         highlight: {
-          blue: "#84c8d4",
-          yellow: "#e4d406",
-          maroon: "#800000",
+          blue: "hsl(var(--secondary))",
+          yellow: "hsl(var(--accent))",
+          maroon: "hsl(var(--destructive))",
         },
 
         // 🌈 For gradient effects
         neon: {
-          blue: "#00D4FF",
-          purple: "#8B5CF6",
-          pink: "#F472B6",
-          green: "#10B981",
-          orange: "#F59E0B",
+          blue: "hsl(var(--primary))",
+          purple: "hsl(var(--secondary))",
+          pink: "hsl(var(--accent))",
+          green: "hsl(var(--primary))",
+          orange: "hsl(var(--accent))",
         },
 
         glass: {

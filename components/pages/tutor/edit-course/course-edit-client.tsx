@@ -155,7 +155,7 @@ export function CourseEditClient({
     try {
       const sortOrder = (modules.at(-1)?.sortOrder ?? 0) + 1;
       const res = await addModuleToCourse(course.id, {
-        title: `Module ${modules.length + 1}`,
+        title: "",
         duration: 0,
         sortOrder,
         isPublished: false,
@@ -170,7 +170,7 @@ export function CourseEditClient({
         ...prev,
         {
           id: res.moduleId,
-          title: `Module ${prev.length + 1}`,
+          title: "",
           description: "",
           content: "",
           duration: 0,
@@ -273,7 +273,7 @@ export function CourseEditClient({
 
       const sortOrder = (mod.lessons.at(-1)?.sortOrder ?? 0) + 1;
       const payload = {
-        title: `Lesson ${mod.lessons.length + 1}`,
+        title: "",
         lessonType: "VIDEO" as const, // ✅ correct key
         duration: 0,
 

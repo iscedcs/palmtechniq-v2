@@ -187,10 +187,28 @@ export default function CreateCourse() {
     setSuccess("");
 
     await new Promise((r) => setTimeout(r, 100));
+    const resolvedBasePrice =
+      typeof values.basePrice === "number"
+        ? values.basePrice
+        : typeof values.currentPrice === "number"
+        ? values.currentPrice
+        : values.price ?? 0;
+    const resolvedCurrentPrice =
+      typeof values.currentPrice === "number"
+        ? values.currentPrice
+        : resolvedBasePrice;
+
     startTransition(() => {
       console.log("Submitting modules:", modules);
       createCourse(
-        { ...values, certificate: values.certificate, isPublished },
+        {
+          ...values,
+          certificate: values.certificate,
+          isPublished,
+          price: resolvedBasePrice,
+          basePrice: resolvedBasePrice,
+          currentPrice: resolvedCurrentPrice,
+        },
         modules
       )
         .then((data) => {

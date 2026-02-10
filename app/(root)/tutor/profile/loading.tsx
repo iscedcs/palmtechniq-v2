@@ -3,8 +3,8 @@ import { Skeleton } from "@/components/ui/skeleton"
 
 export default function ProfileLoading() {
   return (
-    <div className="min-h-screen bg-gradient-to-br from-slate-50 via-blue-50 to-indigo-100 p-6">
-      <div className="max-w-6xl mx-auto space-y-8">
+    <div className="min-h-screen bg-background">
+      <div className="max-w-6xl mx-auto pt-32 pb-8">
         {/* Header Skeleton */}
         <div className="flex items-center justify-between">
           <div>
@@ -21,7 +21,7 @@ export default function ProfileLoading() {
         <div className="space-y-6">
           <Skeleton className="h-12 w-full" />
 
-          <Card className="bg-white/70 backdrop-blur-sm border-white/20">
+          <Card className="glass-card border-white/10">
             <CardHeader>
               <Skeleton className="h-6 w-48" />
               <Skeleton className="h-4 w-64" />

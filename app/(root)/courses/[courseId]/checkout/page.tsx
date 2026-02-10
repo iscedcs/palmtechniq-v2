@@ -89,13 +89,13 @@ export default async function CheckoutPage({
               }
             : undefined
         }
-        onProceed={async () => {
+        onProceed={async (promoCode?: string) => {
           "use server";
           if (groupTier) {
             await beginGroupCheckout(course.id, groupTier.id);
             return;
           }
-          await beginCheckout(course.id);
+          await beginCheckout(course.id, promoCode);
         }}
       />
     </div>

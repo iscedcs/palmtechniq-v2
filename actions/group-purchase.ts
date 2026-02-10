@@ -5,6 +5,7 @@ import { db } from "@/lib/db";
 import { paystackInitialize } from "./paystack";
 import { randomUUID } from "crypto";
 import { redirect } from "next/navigation";
+import { computeCheckoutTotals, DEFAULT_VAT_RATE } from "@/lib/payments/pricing";
 
 const buildInviteCode = () =>
   `GRP-${randomUUID().replace(/-/g, "").slice(0, 8).toUpperCase()}`;
@@ -34,6 +35,7 @@ export async function beginGroupCheckout(courseId: string, tierId: string) {
       id: true,
       title: true,
       groupBuyingEnabled: true,
+      tutor: { select: { userId: true } },
     },
   });
 
@@ -83,6 +85,19 @@ export async function beginGroupCheckout(courseId: string, tierId: string) {
     tier.size > 1 ? cashbackTotal / (tier.size - 1) : 0;
 
   const reference = `ps_${randomUUID()}`;
+  const totals = computeCheckoutTotals({
+    courses: [
+      {
+        id: course.id,
+        tutorId: course.tutor.userId,
+        basePrice: groupPrice,
+        currentPrice: groupPrice,
+        price: groupPrice,
+      },
+    ],
+    promo: null,
+    vatRate: DEFAULT_VAT_RATE,
+  });
 
   const { groupPurchaseId } = await db.$transaction(async (tx) => {
     const groupPurchase = await tx.groupPurchase.create({
@@ -114,17 +129,35 @@ export async function beginGroupCheckout(courseId: string, tierId: string) {
         userId: session.user.id,
         courseId,
         groupPurchaseId: groupPurchase.id,
-        amount: groupPrice,
+        amount: totals.totalAmount,
         currency: "NGN",
         status: "PENDING",
         paymentMethod: "PAYSTACK",
         transactionId: reference,
         description: `Group purchase for ${course.title}`,
+        subtotalAmount: totals.subtotalAmount,
+        discountAmount: totals.discountAmount,
+        vatAmount: totals.vatAmount,
+        tutorShareAmount: totals.tutorShareAmount,
+        platformShareAmount: totals.platformShareAmount,
         metadata: {
           groupPurchaseId: groupPurchase.id,
           courseId,
           tierId,
           type: "group_purchase",
+        },
+        lineItems: {
+          create: totals.lineItems.map((item) => ({
+            courseId: item.courseId,
+            tutorId: item.tutorId,
+            basePrice: item.basePrice,
+            discountedPrice: item.discountedPrice,
+            discountAmount: item.discountAmount,
+            vatAmount: item.vatAmount,
+            totalAmount: item.totalAmount,
+            tutorShareAmount: item.tutorShareAmount,
+            platformShareAmount: item.platformShareAmount,
+          })),
         },
       },
     });
@@ -136,7 +169,7 @@ export async function beginGroupCheckout(courseId: string, tierId: string) {
 
   const init = await paystackInitialize({
     email: session.user.email,
-    amountKobo: Math.round(groupPrice * 100),
+    amountKobo: Math.round(totals.totalAmount * 100),
     reference,
     callback_url: callbackUrl,
     metadata: {
@@ -234,7 +267,7 @@ export async function joinGroupPurchase(inviteCode: string) {
     return { error: "You are already enrolled in this course" };
   }
 
-  await db.$transaction(async (tx) => {
+  const { shouldComplete } = await db.$transaction(async (tx) => {
     await tx.groupMember.create({
       data: {
         groupPurchaseId: group.id,
@@ -262,62 +295,88 @@ export async function joinGroupPurchase(inviteCode: string) {
       },
     });
 
-    if (shouldComplete) {
-      const members = await tx.groupMember.findMany({
-        where: { groupPurchaseId: group.id },
-        select: { userId: true },
-      });
-      const memberIds = members.map((m) => m.userId);
-
-      for (const userId of memberIds) {
-        await tx.enrollment.upsert({
-          where: {
-            userId_courseId: { userId, courseId: group.courseId },
+    if (shouldComplete && group.cashbackTotal > 0) {
+      await tx.user.update({
+        where: { id: group.creatorId },
+        data: {
+          walletBalance: {
+            increment: group.cashbackTotal,
           },
-          update: {},
-          create: {
-            userId,
-            courseId: group.courseId,
-            status: "ACTIVE",
-            groupPurchaseId: group.id,
-            enrolledAt: new Date(),
-          },
-        });
-      }
-
-      const users = await tx.user.findMany({
-        where: { id: { in: memberIds } },
-        select: { id: true, role: true },
+        },
       });
-      const userIdsToUpgrade = users
-        .filter((user) => user.role === "USER")
-        .map((user) => user.id);
-      if (userIdsToUpgrade.length > 0) {
-        await tx.user.updateMany({
-          where: { id: { in: userIdsToUpgrade } },
-          data: { role: "STUDENT" },
-        });
-        for (const userId of userIdsToUpgrade) {
-          await tx.student.upsert({
-            where: { userId },
-            update: {},
-            create: { userId, interests: [], goals: [] },
-          });
-        }
-      }
 
-      if (group.cashbackTotal > 0) {
+      const course = await tx.course.findUnique({
+        where: { id: group.courseId },
+        select: { tutor: { select: { userId: true } } },
+      });
+      if (course?.tutor?.userId) {
         await tx.user.update({
-          where: { id: group.creatorId },
+          where: { id: course.tutor.userId },
           data: {
             walletBalance: {
-              increment: group.cashbackTotal,
+              decrement: group.cashbackTotal,
             },
           },
         });
       }
     }
+
+    return { shouldComplete };
   });
+
+  if (shouldComplete) {
+    const members = await db.groupMember.findMany({
+      where: { groupPurchaseId: group.id },
+      select: { userId: true },
+    });
+    const memberIds = members.map((m) => m.userId);
+
+    const enrollmentOps = memberIds.map((userId) =>
+      db.enrollment.upsert({
+        where: {
+          userId_courseId: { userId, courseId: group.courseId },
+        },
+        update: {},
+        create: {
+          userId,
+          courseId: group.courseId,
+          status: "ACTIVE",
+          groupPurchaseId: group.id,
+          enrolledAt: new Date(),
+        },
+      })
+    );
+
+    const users = await db.user.findMany({
+      where: { id: { in: memberIds } },
+      select: { id: true, role: true },
+    });
+    const userIdsToUpgrade = users
+      .filter((user) => user.role === "USER")
+      .map((user) => user.id);
+
+    const upgradeOps =
+      userIdsToUpgrade.length > 0
+        ? [
+            db.user.updateMany({
+              where: { id: { in: userIdsToUpgrade } },
+              data: { role: "STUDENT" },
+            }),
+            ...userIdsToUpgrade.map((userId) =>
+              db.student.upsert({
+                where: { userId },
+                update: {},
+                create: { userId, interests: [], goals: [] },
+              })
+            ),
+          ]
+        : [];
+
+    const completionOps = [...enrollmentOps, ...upgradeOps];
+    if (completionOps.length > 0) {
+      await db.$transaction(completionOps);
+    }
+  }
 
   return { success: true };
 }

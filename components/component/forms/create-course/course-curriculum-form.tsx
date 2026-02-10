@@ -24,6 +24,7 @@ import { Textarea } from "@/components/ui/textarea";
 import { Plus, X, PlayCircle, Clock, BookOpen, Layers } from "lucide-react";
 import { Dispatch, SetStateAction, useMemo, useRef } from "react";
 import { updateLessonVideo } from "@/actions/tutor-actions";
+import { isYoutubeUrl, toYoutubeEmbedUrl } from "@/lib/youtube";
 
 interface CourseLesson {
   id: string;
@@ -298,11 +299,23 @@ export function CourseCurriculumForm({
                                 <div className="space-y-3">
                                   {lesson.videoUrl ? (
                                     <>
-                                      <video
-                                        src={lesson.videoUrl}
-                                        controls
-                                        className="w-full max-h-56 sm:max-h-64 rounded-lg border border-white/20"
-                                      />
+                                      {isYoutubeUrl(lesson.videoUrl) ? (
+                                        <iframe
+                                          src={toYoutubeEmbedUrl(
+                                            lesson.videoUrl
+                                          )}
+                                          title="Lesson video"
+                                          allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture"
+                                          allowFullScreen
+                                          className="w-full max-h-56 sm:max-h-64 rounded-lg border border-white/20"
+                                        />
+                                      ) : (
+                                        <video
+                                          src={lesson.videoUrl}
+                                          controls
+                                          className="w-full max-h-56 sm:max-h-64 rounded-lg border border-white/20"
+                                        />
+                                      )}
                                       <div className="space-y-2">
                                         <Input
                                           readOnly

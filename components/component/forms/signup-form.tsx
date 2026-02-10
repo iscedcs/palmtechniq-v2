@@ -85,7 +85,7 @@ export function SignupForm() {
       /[a-z]/.test(password),
       /[A-Z]/.test(password),
       /\d/.test(password),
-      /[@₦!%*?&]/.test(password),
+      /[@$!%*?&]/.test(password),
     ];
 
     strength = checks.filter(Boolean).length;

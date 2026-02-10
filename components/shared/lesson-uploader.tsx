@@ -24,14 +24,27 @@ export default function LessonUploadFile({
     const selected = e.target.files?.[0] || null;
     setFile(selected);
 
-    if (selected && onDuration) {
+    if (selected) {
       const url = URL.createObjectURL(selected);
       const video = document.createElement("video");
       video.preload = "metadata";
       video.src = url;
       video.onloadedmetadata = () => {
+        const isPortrait = video.videoHeight > video.videoWidth;
+        if (isPortrait) {
+          toast.error(
+            "Please upload a landscape (16:9) video. Portrait videos become Shorts."
+          );
+          setFile(null);
+          e.target.value = "";
+          URL.revokeObjectURL(url);
+          return;
+        }
+
         const minutes = Math.ceil(video.duration / 60);
-        onDuration(minutes);
+        if (onDuration) {
+          onDuration(minutes);
+        }
         URL.revokeObjectURL(url);
       };
     }
@@ -46,47 +59,24 @@ export default function LessonUploadFile({
     setUploading(true);
 
     try {
-      const response = await fetch(
-        `${process.env.NEXT_PUBLIC_URL}/api/upload`,
-        {
-          method: "POST",
-          headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({
-            filename: file.name,
-            contentType: file.type,
-            type: "video",
-          }),
-        }
-      );
-
-      const data = await response.json();
-      if (!response.ok) {
-        toast.error(data.error || "Server error");
-        return;
-      }
-
-      const uploadUrl = data.url;
-      const fields = data.fields;
-      const fileUrl = `${data.url}${data.fields.key}`;
-
       const formData = new FormData();
-      Object.entries(fields).forEach(([key, value]) =>
-        formData.append(key, value as string)
-      );
       formData.append("file", file);
+      formData.append("title", file.name);
 
-      const uploadResponse = await fetch(uploadUrl, {
+      const response = await fetch("/api/youtube/upload", {
         method: "POST",
         body: formData,
       });
 
-      if (uploadResponse.ok) {
-        onUploadSuccess(fileUrl);
-        toast.success("Lesson video uploaded successfully!");
-        setFile(null);
-      } else {
-        toast.error("Upload failed.");
+      const data = await response.json();
+      if (!response.ok || !data.success) {
+        toast.error(data.error || "Server error");
+        return;
       }
+
+      onUploadSuccess(data.embedUrl);
+      toast.success("Lesson video uploaded successfully!");
+      setFile(null);
     } catch (error) {
       console.error("Unexpected Error:", error);
       toast.error("An unexpected error occurred.");

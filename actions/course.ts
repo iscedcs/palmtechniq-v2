@@ -65,9 +65,13 @@ export async function updateCourse(
     console.log("🔎 Category id to connect:", validatedCourse.data.category);
 
     const resolvedBasePrice =
-      validatedCourse.data.basePrice ?? validatedCourse.data.price ?? 0;
+      typeof validatedCourse.data.basePrice === "number"
+        ? validatedCourse.data.basePrice
+        : typeof validatedCourse.data.currentPrice === "number"
+        ? validatedCourse.data.currentPrice
+        : validatedCourse.data.price ?? 0;
     const resolvedCurrentPrice =
-      validatedCourse.data.currentPrice && validatedCourse.data.currentPrice > 0
+      typeof validatedCourse.data.currentPrice === "number"
         ? validatedCourse.data.currentPrice
         : resolvedBasePrice;
 
@@ -157,12 +161,22 @@ export async function updateCourse(
     }
 
     // Handle modules + lessons
+    const shouldValidateContent = isPublished;
     for (const module of modules) {
-      const validatedModule = moduleSchema.safeParse({
-        ...module,
+      const modulePayload = {
+        title: module.title ?? "",
+        description: module.description ?? "",
+        content: module.content ?? "",
         duration: module.duration ?? 0,
-      });
-      if (!validatedModule.success) continue;
+        sortOrder: module.sortOrder ?? 0,
+        isPublished: Boolean(module.isPublished),
+      };
+      const validatedModule = shouldValidateContent
+        ? moduleSchema.safeParse(modulePayload)
+        : { success: true, data: modulePayload };
+      if (!validatedModule.success) {
+        return { error: validatedModule.error.issues[0].message };
+      }
 
       const moduleDuration = (module.lessons || []).reduce(
         (sum: number, lesson: any) => sum + (lesson.duration || 0),
@@ -217,13 +231,24 @@ export async function updateCourse(
       }
 
       for (const lesson of module.lessons || []) {
-        const validatedLesson = lessonSchema.safeParse({
-          ...lesson,
+        const lessonPayload = {
+          title: lesson.title ?? "",
+          description: lesson.description ?? "",
+          lessonType: lesson.lessonType ?? lesson.type ?? "VIDEO",
           duration: lesson.duration ?? 0,
-        });
+          content: lesson.content ?? "",
+          videoUrl: lesson.videoUrl ?? "",
+          sortOrder: lesson.sortOrder ?? 0,
+          isPreview: Boolean(lesson.isPreview),
+        };
+        const validatedLesson = shouldValidateContent
+          ? lessonSchema.safeParse(lessonPayload)
+          : { success: true, data: lessonPayload };
         // console.log("📦 Raw lesson from payload:", lesson);
 
-        if (!validatedLesson.success) continue;
+        if (!validatedLesson.success) {
+          return { error: validatedLesson.error.issues[0].message };
+        }
 
         const l = validatedLesson.data;
 
@@ -310,6 +335,46 @@ export async function updateCourse(
 
 export async function publishCourse(courseId: string) {
   try {
+    const modules = await db.courseModule.findMany({
+      where: { courseId },
+      include: { lessons: true },
+    });
+
+    for (const module of modules) {
+      const validatedModule = moduleSchema.safeParse({
+        title: module.title ?? "",
+        description: module.description ?? "",
+        content: module.content ?? "",
+        sortOrder: module.sortOrder ?? 0,
+        duration: module.duration ?? 0,
+        isPublished: module.isPublished ?? false,
+      });
+
+      if (!validatedModule.success) {
+        return { success: false, error: validatedModule.error.issues[0].message };
+      }
+
+      for (const lesson of module.lessons) {
+        const validatedLesson = lessonSchema.safeParse({
+          title: lesson.title ?? "",
+          description: lesson.description ?? "",
+          content: lesson.content ?? "",
+          videoUrl: lesson.videoUrl ?? undefined,
+          duration: lesson.duration ?? 0,
+          sortOrder: lesson.sortOrder ?? 0,
+          isPreview: lesson.isPreview ?? false,
+          lessonType: lesson.lessonType ?? "VIDEO",
+        });
+
+        if (!validatedLesson.success) {
+          return {
+            success: false,
+            error: validatedLesson.error.issues[0].message,
+          };
+        }
+      }
+    }
+
     const updatedCourse = await db.course.update({
       where: { id: courseId },
       data: { status: "PUBLISHED" },

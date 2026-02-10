@@ -520,7 +520,7 @@ export default function StudentAssignments() {
               setActiveTab(value as "active" | "completed")
             }
             className="w-full">
-            <TabsList className="grid w-full grid-cols-2 bg-white/10 border border-white/20 mb-8">
+            <TabsList className="grid w-full grid-cols-2 text-white bg-white/10 border border-white/20 mb-8">
               <TabsTrigger
                 value="active"
                 className="data-[state=active]:bg-gradient-to-r data-[state=active]:from-neon-blue data-[state=active]:to-neon-purple data-[state=active]:text-white">

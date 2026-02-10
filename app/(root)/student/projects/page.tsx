@@ -222,10 +222,10 @@ export default function StudentProjectsPage() {
             initial={{ opacity: 0, y: 20 }}
             animate={{ opacity: 1, y: 0 }}
             transition={{ duration: 0.8, delay: 0.5 }}>
-            <Card className="glass-card border-white/10">
+            <Card className="glass-card border-white/10 ">
               <CardContent className="p-0">
                 <Tabs value={activeTab} onValueChange={setActiveTab}>
-                  <TabsList className="grid w-full grid-cols-3 bg-white/5 border-b border-white/10">
+                  <TabsList className="grid w-full grid-cols-3 text-white bg-white/5 border-b border-white/10">
                     <TabsTrigger value="active">
                       Active Projects ({activeProjects.length})
                     </TabsTrigger>
@@ -425,7 +425,7 @@ export default function StudentProjectsPage() {
 
                   {/* Completed Projects */}
                   <TabsContent value="completed" className="p-6">
-                    <div className="space-y-6">
+                    <div className="spacez-y-6">
                       {loading ? (
                         <div className="flex items-center justify-center py-12">
                           <Loader2 className="w-8 h-8 animate-spin text-neon-blue" />

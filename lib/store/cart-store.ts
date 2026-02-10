@@ -141,15 +141,27 @@ export const useCartStore = create<CartState>()(
       applyPromoCode: async (code: string) => {
         set({ isLoading: true });
         try {
-          await new Promise((resolve) => setTimeout(resolve, 500));
-
-          const promo = mockPromoCodes[code.toUpperCase()];
-          if (promo) {
-            set({ promoCode: promo, isLoading: false });
-          } else {
-            set({ isLoading: false });
+          const courseIds = get().items.map((item) => item.courseId);
+          const res = await fetch("/api/promos/validate", {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({ code, courseIds }),
+          });
+          const json = await res.json();
+          if (!res.ok || !json.ok) {
             throw new Error("Invalid promo code");
           }
+
+          const promo = json.promo;
+          set({
+            promoCode: {
+              code: promo.code,
+              discount: promo.discountValue,
+              type: promo.discountType === "PERCENTAGE" ? "percentage" : "fixed",
+              isValid: true,
+            },
+            isLoading: false,
+          });
         } catch (error) {
           set({ isLoading: false });
           throw error;

@@ -52,9 +52,13 @@ export async function createCourse(data: any, modulesData: any[] = []) {
     const result = await db.$transaction(
       async (tx) => {
         const resolvedBasePrice =
-          validatedData.data.basePrice ?? validatedData.data.price ?? 0;
+          typeof validatedData.data.basePrice === "number"
+            ? validatedData.data.basePrice
+            : typeof validatedData.data.currentPrice === "number"
+            ? validatedData.data.currentPrice
+            : validatedData.data.price ?? 0;
         const resolvedCurrentPrice =
-          validatedData.data.currentPrice && validatedData.data.currentPrice > 0
+          typeof validatedData.data.currentPrice === "number"
             ? validatedData.data.currentPrice
             : resolvedBasePrice;
 
@@ -125,8 +129,19 @@ export async function createCourse(data: any, modulesData: any[] = []) {
         }
 
         // Create modules and lessons
+        const shouldValidateContent = validatedData.data.isPublished;
         for (const mod of modulesData) {
-          const validatedModule = moduleSchema.safeParse(mod);
+          const modulePayload = {
+            title: mod.title ?? "",
+            description: mod.description ?? "",
+            content: mod.content ?? "",
+            sortOrder: typeof mod.sortOrder === "number" ? mod.sortOrder : 0,
+            duration: typeof mod.duration === "number" ? mod.duration : 0,
+            isPublished: Boolean(mod.isPublished),
+          };
+          const validatedModule = shouldValidateContent
+            ? moduleSchema.safeParse(modulePayload)
+            : { success: true, data: modulePayload };
 
           if (!validatedModule.success) {
             throw new Error(validatedModule.error.issues[0].message);
@@ -145,10 +160,20 @@ export async function createCourse(data: any, modulesData: any[] = []) {
           });
 
           for (const lesson of mod.lessons || []) {
-            const validatedLesson = lessonSchema.safeParse({
-              ...lesson,
+            const lessonPayload = {
+              title: lesson.title ?? "",
               lessonType: lesson.lessonType ?? "VIDEO",
-            });
+              duration: typeof lesson.duration === "number" ? lesson.duration : 0,
+              content: lesson.content ?? "",
+              description: lesson.description ?? "",
+              videoUrl: lesson.videoUrl ?? "",
+              sortOrder:
+                typeof lesson.sortOrder === "number" ? lesson.sortOrder : 0,
+              isPreview: Boolean(lesson.isPreview),
+            };
+            const validatedLesson = shouldValidateContent
+              ? lessonSchema.safeParse(lessonPayload)
+              : { success: true, data: lessonPayload };
 
             if (!validatedLesson.success) {
               throw new Error(validatedLesson.error.issues[0].message);
@@ -226,18 +251,23 @@ export async function addModuleToCourse(courseId: string, moduleData: any) {
       return { error: "Unauthorized" };
     }
 
-    const validatedModule = moduleSchema.safeParse(moduleData);
-    if (!validatedModule.success) {
-      return { error: validatedModule.error.issues[0].message };
-    }
+    const modulePayload = {
+      title: moduleData.title ?? "",
+      description: moduleData.description ?? "",
+      content: moduleData.content ?? "",
+      duration: typeof moduleData.duration === "number" ? moduleData.duration : 0,
+      sortOrder:
+        typeof moduleData.sortOrder === "number" ? moduleData.sortOrder : 0,
+      isPublished: Boolean(moduleData.isPublished),
+    };
 
     const newModule = await db.courseModule.create({
       data: {
-        title: validatedModule.data.title,
-        description: validatedModule.data.description,
+        title: modulePayload.title,
+        description: modulePayload.description,
         duration: 0,
-        sortOrder: validatedModule.data.sortOrder,
-        isPublished: validatedModule.data.isPublished,
+        sortOrder: modulePayload.sortOrder,
+        isPublished: modulePayload.isPublished,
         courseId,
       },
     });
@@ -321,21 +351,28 @@ export async function addLessonToModule(
       return { error: "Unauthorized" };
     }
 
-    const validatedLesson = lessonSchema.safeParse(lessonData);
-    if (!validatedLesson.success) {
-      return { error: validatedLesson.error.issues[0].message };
-    }
+    const lessonPayload = {
+      title: lessonData.title ?? "",
+      lessonType: lessonData.lessonType ?? "VIDEO",
+      duration: typeof lessonData.duration === "number" ? lessonData.duration : 0,
+      content: lessonData.content ?? "",
+      description: lessonData.description ?? "",
+      videoUrl: lessonData.videoUrl ?? "",
+      sortOrder:
+        typeof lessonData.sortOrder === "number" ? lessonData.sortOrder : 0,
+      isPreview: Boolean(lessonData.isPreview),
+    };
 
     const newLesson = await db.lesson.create({
       data: {
-        title: validatedLesson.data.title,
-        lessonType: validatedLesson.data.lessonType,
-        duration: validatedLesson.data.duration ?? 0,
-        content: validatedLesson.data.content,
-        videoUrl: validatedLesson.data.videoUrl,
-        sortOrder: validatedLesson.data.sortOrder,
-        description: validatedLesson.data.description,
-        isPreview: validatedLesson.data.isPreview,
+        title: lessonPayload.title,
+        lessonType: lessonPayload.lessonType,
+        duration: lessonPayload.duration ?? 0,
+        content: lessonPayload.content,
+        videoUrl: lessonPayload.videoUrl,
+        sortOrder: lessonPayload.sortOrder,
+        description: lessonPayload.description,
+        isPreview: lessonPayload.isPreview,
         moduleId,
       },
     });

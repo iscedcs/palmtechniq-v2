@@ -13,23 +13,29 @@ import {
   Maximize,
   Settings,
 } from "lucide-react";
+import { isYoutubeUrl, toYoutubeEmbedUrl } from "@/lib/youtube";
 
 export default function VideoPlayer({
   src,
   poster,
   autoPlay = false,
   markLessonComplete,
-  goToNextLesson,
   onDurationChange,
 }: {
   src: string;
   poster?: string;
   autoPlay?: boolean;
   markLessonComplete: () => void;
-  goToNextLesson: () => void;
   onDurationChange?: (duration: number) => void;
 }) {
   const videoRef = useRef<HTMLVideoElement>(null);
+  const youtubeContainerRef = useRef<HTMLDivElement>(null);
+  const youtubePlayerRef = useRef<any>(null);
+  const isYoutube = isYoutubeUrl(src);
+  const youtubeEmbedUrl = isYoutube ? toYoutubeEmbedUrl(src) : "";
+  const youtubeVideoId = isYoutube
+    ? youtubeEmbedUrl.split("/embed/")[1]?.split("?")[0]
+    : "";
 
   const [isPlaying, setIsPlaying] = useState(false);
   const [currentTime, setCurrentTime] = useState(0);
@@ -61,11 +67,6 @@ export default function VideoPlayer({
   // When video ends → mark complete & auto-advance
   const handleVideoEnded = () => {
     markLessonComplete();
-
-    // Auto-advance after short delay
-    setTimeout(() => {
-      goToNextLesson();
-    }, 1500);
   };
 
   // Play/pause toggle
@@ -114,6 +115,79 @@ export default function VideoPlayer({
       setIsPlaying(true);
     }
   }, [autoPlay, src]);
+
+  useEffect(() => {
+    if (!isYoutube || !youtubeVideoId) return;
+
+    const initPlayer = () => {
+      if (!youtubeContainerRef.current) return;
+      if (youtubePlayerRef.current) {
+        youtubePlayerRef.current.destroy();
+      }
+      youtubePlayerRef.current = new (window as any).YT.Player(
+        youtubeContainerRef.current,
+        {
+          videoId: youtubeVideoId,
+          playerVars: {
+            autoplay: autoPlay ? 1 : 0,
+            rel: 0,
+            modestbranding: 1,
+          },
+          events: {
+            onReady: (event: any) => {
+              const total = event?.target?.getDuration?.() ?? 0;
+              setDuration(total);
+              if (onDurationChange) {
+                onDurationChange(Math.floor(total));
+              }
+            },
+            onStateChange: (event: any) => {
+              if (event?.data === (window as any).YT?.PlayerState?.ENDED) {
+                markLessonComplete();
+              }
+            },
+          },
+        }
+      );
+    };
+
+    if ((window as any).YT?.Player) {
+      initPlayer();
+      return () => {
+        if (youtubePlayerRef.current) {
+          youtubePlayerRef.current.destroy();
+          youtubePlayerRef.current = null;
+        }
+      };
+    }
+
+    const existingScript = document.getElementById("youtube-iframe-api");
+    if (!existingScript) {
+      const tag = document.createElement("script");
+      tag.src = "https://www.youtube.com/iframe_api";
+      tag.id = "youtube-iframe-api";
+      document.body.appendChild(tag);
+    }
+
+    (window as any).onYouTubeIframeAPIReady = () => {
+      initPlayer();
+    };
+
+    return () => {
+      if (youtubePlayerRef.current) {
+        youtubePlayerRef.current.destroy();
+        youtubePlayerRef.current = null;
+      }
+    };
+  }, [isYoutube, youtubeVideoId, autoPlay, markLessonComplete, onDurationChange]);
+
+  if (isYoutube) {
+    return (
+      <div className="relative bg-black rounded-lg overflow-hidden">
+        <div ref={youtubeContainerRef} className="w-full aspect-video" />
+      </div>
+    );
+  }
 
   return (
     <div className="relative bg-black rounded-lg overflow-hidden">

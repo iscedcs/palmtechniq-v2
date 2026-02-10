@@ -99,7 +99,12 @@ export default function CoursePricingForm({ form }: CoursePricingFormProps) {
                   <Input
                     type="number"
                     {...field}
-                    onChange={(e) => field.onChange(Number(e.target.value))}
+                    value={field.value ?? ""}
+                    onChange={(e) =>
+                      field.onChange(
+                        e.target.value === "" ? undefined : Number(e.target.value)
+                      )
+                    }
                     placeholder="Enter your course price (e.g. ₦5000)"
                     className="bg-white/10 border-white/20 placeholder:text-gray-50/35 text-white"
                   />
@@ -125,7 +130,12 @@ export default function CoursePricingForm({ form }: CoursePricingFormProps) {
                   <Input
                     type="number"
                     {...field}
-                    onChange={(e) => field.onChange(Number(e.target.value))}
+                    value={field.value ?? ""}
+                    onChange={(e) =>
+                      field.onChange(
+                        e.target.value === "" ? undefined : Number(e.target.value)
+                      )
+                    }
                     placeholder="Enter discounted price (e.g. ₦4000)"
                     className="bg-white/10 border-white/20 text-white placeholder:text-gray-50/35"
                   />

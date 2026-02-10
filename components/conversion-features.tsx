@@ -8,6 +8,7 @@ import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { generateRandomAvatar } from "@/lib/utils";
+import { isYoutubeUrl, toYoutubeEmbedUrl } from "@/lib/youtube";
 
 // Live Activity Ticker
 export function LiveActivityTicker() {
@@ -130,6 +131,8 @@ export function CoursePreviewModal({
   previewUrl?: string;
 }) {
   if (!isOpen) return null;
+  const isYoutube = previewUrl ? isYoutubeUrl(previewUrl) : false;
+  const previewSrc = previewUrl ? toYoutubeEmbedUrl(previewUrl) : "";
 
   return (
     <motion.div
@@ -155,12 +158,22 @@ export function CoursePreviewModal({
 
         <div className="aspect-video bg-black">
           {previewUrl ? (
-            <video
-              src={previewUrl}
-              controls
-              autoPlay
-              className="w-full h-full object-cover"
-            />
+            isYoutube ? (
+              <iframe
+                src={`${previewSrc}?autoplay=1`}
+                title={`Preview: ${courseTitle}`}
+                allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture"
+                allowFullScreen
+                className="w-full h-full"
+              />
+            ) : (
+              <video
+                src={previewUrl}
+                controls
+                autoPlay
+                className="w-full h-full object-cover"
+              />
+            )
           ) : (
             <div className="flex flex-col items-center justify-center h-full text-center">
               <Play className="w-16 h-16 text-neon-blue mx-auto mb-4" />

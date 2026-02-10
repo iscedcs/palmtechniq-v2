@@ -69,3 +69,41 @@ export async function paystackVerify(reference: string) {
     metadata?: any;
   };
 }
+
+export async function paystackTransfer({
+  amountKobo,
+  recipientCode,
+  reference,
+  reason,
+}: {
+  amountKobo: number;
+  recipientCode: string;
+  reference: string;
+  reason?: string;
+}) {
+  const res = await fetch(`${BASE}/transfer`, {
+    method: "POST",
+    headers: {
+      Authorization: `Bearer ${process.env.PAYSTACK_SECRET_KEY}`,
+      "Content-Type": "application/json",
+    },
+    body: JSON.stringify({
+      source: "balance",
+      amount: amountKobo,
+      recipient: recipientCode,
+      reference,
+      reason,
+    }),
+  });
+
+  const json = await res.json();
+  if (!res.ok || !json.status) {
+    throw new Error(json.message || "Paystack transfer failed");
+  }
+
+  return json.data as {
+    transfer_code: string;
+    reference: string;
+    status: "success" | "failed" | "pending";
+  };
+}

@@ -30,9 +30,9 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
-import { lessonSchema, moduleSchema } from "@/schemas";
 import { addLessonToModule, addModuleToCourse } from "@/actions/tutor-actions";
 import { UseFormReturn } from "react-hook-form";
+import { isYoutubeUrl, toYoutubeEmbedUrl } from "@/lib/youtube";
 
 interface CourseCurriculumBuilderProps {
   form: UseFormReturn<any>;
@@ -101,7 +101,7 @@ export default function CourseCurriculumBuilder({
   const addModule = async (courseId?: string) => {
     const newModule: CourseModule = {
       id: `temp-${Date.now()}`,
-      title: `Module ${modules.length + 1}`,
+      title: "",
       description: "",
       content: "",
       duration: 0,
@@ -109,16 +109,8 @@ export default function CourseCurriculumBuilder({
       sortOrder: modules.length,
       isPublished: false,
     };
-
-    const ValidatedModule = moduleSchema.safeParse(newModule);
-    if (!ValidatedModule.success) {
-      toast.error(
-        ValidatedModule.error.issues[0]?.message || "Validation error"
-      );
-      return;
-    }
     if (courseId) {
-      const result = await addModuleToCourse(courseId, ValidatedModule.data);
+      const result = await addModuleToCourse(courseId, newModule);
       if (result.success) {
         setModules((prev) => [...prev, { ...newModule, id: result.moduleId }]);
 
@@ -163,18 +155,11 @@ export default function CourseCurriculumBuilder({
       videoUrl: "",
     };
 
-    const ValidatedLesson = lessonSchema.safeParse(newLesson);
-    console.log("Saving lesson videoUrl:", ValidatedLesson.data?.videoUrl);
-    if (!ValidatedLesson.success) {
-      toast.error(ValidatedLesson.error.issues[0]?.message);
-      return;
-    }
-
     if (courseId) {
       const result = await addLessonToModule(
         courseId,
         moduleId,
-        ValidatedLesson.data
+        newLesson
       );
 
       if (result.success) {
@@ -478,6 +463,45 @@ export default function CourseCurriculumBuilder({
 
                                   {lesson.type === "VIDEO" && (
                                     <div className="space-y-3">
+                                      {lesson.videoUrl ? (
+                                        <div className="space-y-2">
+                                          {isYoutubeUrl(lesson.videoUrl) ? (
+                                            <iframe
+                                              src={toYoutubeEmbedUrl(
+                                                lesson.videoUrl
+                                              )}
+                                              title="Lesson video"
+                                              allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture"
+                                              allowFullScreen
+                                              className="w-full max-h-56 sm:max-h-64 rounded-lg border border-white/20"
+                                            />
+                                          ) : (
+                                            <video
+                                              src={lesson.videoUrl}
+                                              controls
+                                              className="w-full max-h-56 sm:max-h-64 rounded-lg border border-white/20"
+                                            />
+                                          )}
+                                          <div className="space-y-2">
+                                            <Input
+                                              readOnly
+                                              value={lesson.videoUrl}
+                                              className="bg-white/10 border-white/20 text-xs sm:text-sm text-white"
+                                            />
+                                            <a
+                                              href={lesson.videoUrl}
+                                              target="_blank"
+                                              rel="noreferrer"
+                                              className="text-xs text-neon-blue underline underline-offset-4">
+                                              Open current video
+                                            </a>
+                                          </div>
+                                        </div>
+                                      ) : (
+                                        <p className="text-sm text-gray-400 italic">
+                                          No video uploaded yet
+                                        </p>
+                                      )}
                                       <div>
                                         <p className="text-xs text-gray-400 mb-2">
                                           Lesson Description

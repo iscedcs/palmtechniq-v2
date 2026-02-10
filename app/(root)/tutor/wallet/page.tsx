@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { motion } from "framer-motion";
 import { Navigation } from "@/components/navigation";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
@@ -50,6 +50,7 @@ import {
 } from "recharts";
 import type { UserRole } from "@/types/user";
 import { generateRandomAvatar } from "@/lib/utils";
+import { toast } from "sonner";
 
 const earningsData = [
   { month: "Jan", courses: 2400, mentorship: 1200, projects: 800 },
@@ -115,10 +116,36 @@ export default function TutorWalletPage() {
   const [userAvatar] = useState(generateRandomAvatar());
   const [activeTab, setActiveTab] = useState("overview");
   const [withdrawalAmount, setWithdrawalAmount] = useState("");
+  const [summary, setSummary] = useState({
+    availableBalance: 0,
+    pendingPayouts: 0,
+    totalEarnings: 0,
+  });
+  const [loadingSummary, setLoadingSummary] = useState(true);
 
-  const totalBalance = 12450.75;
-  const pendingEarnings = 1250.3;
-  const totalEarnings = 45400.0;
+  useEffect(() => {
+    let mounted = true;
+    (async () => {
+      try {
+        const res = await fetch("/api/wallet/summary");
+        const json = await res.json();
+        if (mounted && json.ok) {
+          setSummary(json.summary);
+        }
+      } catch {
+        // ignore
+      } finally {
+        if (mounted) setLoadingSummary(false);
+      }
+    })();
+    return () => {
+      mounted = false;
+    };
+  }, []);
+
+  const totalBalance = summary.availableBalance;
+  const pendingPayouts = summary.pendingPayouts;
+  const totalEarnings = summary.totalEarnings;
   const monthlyGrowth = 23.5;
 
   const StatCard = ({ icon: Icon, title, value, change, color }: any) => (
@@ -209,21 +236,33 @@ export default function TutorWalletPage() {
               <StatCard
                 icon={Wallet}
                 title="Available Balance"
-                value={`₦₦{totalBalance.toLocaleString()}`}
+                  value={
+                    loadingSummary
+                      ? "Loading..."
+                      : `₦₦{totalBalance.toLocaleString()}`
+                  }
                 change={monthlyGrowth}
                 color="from-neon-green to-emerald-400"
               />
               <StatCard
                 icon={PiggyBank}
                 title="Total Earnings"
-                value={`₦₦{totalEarnings.toLocaleString()}`}
+                  value={
+                    loadingSummary
+                      ? "Loading..."
+                      : `₦₦{totalEarnings.toLocaleString()}`
+                  }
                 change={null}
                 color="from-neon-blue to-cyan-400"
               />
               <StatCard
                 icon={Clock}
-                title="Pending Earnings"
-                value={`₦₦{pendingEarnings.toLocaleString()}`}
+                  title="Pending Payouts"
+                  value={
+                    loadingSummary
+                      ? "Loading..."
+                      : `₦₦{pendingPayouts.toLocaleString()}`
+                  }
                 change={null}
                 color="from-neon-purple to-pink-400"
               />
@@ -562,7 +601,32 @@ export default function TutorWalletPage() {
                         </Select>
                       </div>
 
-                      <Button className="w-full bg-gradient-to-r from-neon-green to-emerald-400 text-white">
+                      <Button
+                        className="w-full bg-gradient-to-r from-neon-green to-emerald-400 text-white"
+                        onClick={async () => {
+                          const amount = Number(withdrawalAmount);
+                          if (!amount || amount <= 0) {
+                            toast.error("Enter a valid withdrawal amount");
+                            return;
+                          }
+                          const res = await fetch("/api/wallet/withdraw", {
+                            method: "POST",
+                            headers: { "Content-Type": "application/json" },
+                            body: JSON.stringify({ amount }),
+                          });
+                          const json = await res.json();
+                          if (!res.ok || !json.ok) {
+                            toast.error(json.reason || "Withdrawal failed");
+                            return;
+                          }
+                          toast.success("Withdrawal request submitted");
+                          setWithdrawalAmount("");
+                          const summaryRes = await fetch("/api/wallet/summary");
+                          const summaryJson = await summaryRes.json();
+                          if (summaryJson.ok) {
+                            setSummary(summaryJson.summary);
+                          }
+                        }}>
                         Withdraw ₦{withdrawalAmount || "0.00"}
                       </Button>
                     </CardContent>

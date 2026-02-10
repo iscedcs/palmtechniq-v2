@@ -30,6 +30,7 @@ import {
   CollapsibleTrigger,
 } from "@/components/ui/collapsible";
 import { z } from "zod";
+import { isYoutubeUrl, toYoutubeEmbedUrl } from "@/lib/youtube";
 
 interface CourseBasicInfoFormProps {
   categories: string[];
@@ -293,13 +294,22 @@ export default function CourseBasicInfoForm({
                     }
                   />
                 </FormControl>
-                {field.value && (
-                  <video
-                    src={field.value}
-                    controls
-                    className="mt-3 rounded-md h-28"
-                  />
-                )}
+                {field.value &&
+                  (isYoutubeUrl(field.value) ? (
+                    <iframe
+                      src={`${toYoutubeEmbedUrl(field.value)}?autoplay=0`}
+                      title="Preview video"
+                      allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture"
+                      allowFullScreen
+                      className="mt-3 rounded-md h-28 w-full"
+                    />
+                  ) : (
+                    <video
+                      src={field.value}
+                      controls
+                      className="mt-3 rounded-md h-28"
+                    />
+                  ))}
               </FormItem>
             )}
           />

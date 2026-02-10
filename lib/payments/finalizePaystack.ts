@@ -2,18 +2,14 @@ import { paystackVerify } from "@/actions/paystack";
 import { db } from "@/lib/db";
 import { notify } from "@/lib/notify";
 import { getIO } from "@/lib/socket";
+import { computeCheckoutTotals, DEFAULT_VAT_RATE } from "@/lib/payments/pricing";
 
 export async function finalizePaystackByReference(reference: string) {
   const tx = await db.transaction.findFirst({
     where: { transactionId: reference },
-    select: {
-      id: true,
-      userId: true,
-      courseId: true,
-      groupPurchaseId: true,
-      status: true,
-      amount: true,
-      metadata: true,
+    include: {
+      lineItems: true,
+      promoCode: true,
     },
   });
   if (!tx) return { ok: false, reason: "tx_not_found" };
@@ -48,7 +44,8 @@ export async function finalizePaystackByReference(reference: string) {
     const metadata = (v.metadata || tx.metadata || {}) as any;
     const groupPurchaseId = metadata.groupPurchaseId ?? tx.groupPurchaseId;
 
-    if (groupPurchaseId) {
+    const isGroupPurchase = Boolean(groupPurchaseId);
+    if (isGroupPurchase) {
       await px.groupPurchase.update({
         where: { id: groupPurchaseId },
         data: {
@@ -56,7 +53,6 @@ export async function finalizePaystackByReference(reference: string) {
           paidAt: new Date(v.paid_at),
         },
       });
-      return;
     }
 
     const courseIds = Array.isArray(metadata.courseIds)
@@ -65,7 +61,84 @@ export async function finalizePaystackByReference(reference: string) {
       ? [tx.courseId]
       : [];
 
-    if (courseIds.length > 0) {
+    let lineItems = tx.lineItems;
+    if (!lineItems || lineItems.length === 0) {
+      const courses = await px.course.findMany({
+        where: { id: { in: courseIds } },
+        select: {
+          id: true,
+          basePrice: true,
+          currentPrice: true,
+          price: true,
+          tutor: { select: { userId: true } },
+        },
+      });
+      const promo =
+        tx.promoCode &&
+        tx.promoType &&
+        tx.promoDiscountType &&
+        tx.promoDiscountValue !== null &&
+        tx.promoDiscountValue !== undefined
+          ? {
+              id: tx.promoCode.id,
+              code: tx.promoCode.code,
+              promoType: tx.promoType,
+              discountType: tx.promoDiscountType,
+              discountValue: tx.promoDiscountValue,
+              isGlobal: tx.promoCode.isGlobal,
+              courseId: tx.promoCode.courseId,
+              creatorId: tx.promoCode.creatorId,
+            }
+          : null;
+
+      const totals = computeCheckoutTotals({
+        courses: courses.map((course) => ({
+          id: course.id,
+          tutorId: course.tutor.userId,
+          basePrice: course.basePrice,
+          currentPrice: course.currentPrice,
+          price: course.price,
+        })),
+        promo,
+        vatRate: DEFAULT_VAT_RATE,
+      });
+
+      await px.transaction.update({
+        where: { id: tx.id },
+        data: {
+          subtotalAmount: totals.subtotalAmount,
+          discountAmount: totals.discountAmount,
+          vatAmount: totals.vatAmount,
+          tutorShareAmount: totals.tutorShareAmount,
+          platformShareAmount: totals.platformShareAmount,
+        },
+      });
+
+      lineItems = await Promise.all(
+        totals.lineItems.map((item) =>
+          px.transactionLineItem.create({
+            data: {
+              transactionId: tx.id,
+              courseId: item.courseId,
+              tutorId: item.tutorId,
+              basePrice: item.basePrice,
+              discountedPrice: item.discountedPrice,
+              discountAmount: item.discountAmount,
+              vatAmount: item.vatAmount,
+              totalAmount: item.totalAmount,
+              tutorShareAmount: item.tutorShareAmount,
+              platformShareAmount: item.platformShareAmount,
+              promoCodeId: item.promoCodeId ?? undefined,
+              promoType: item.promoType,
+              promoDiscountType: item.promoDiscountType,
+              promoDiscountValue: item.promoDiscountValue ?? undefined,
+            },
+          })
+        )
+      );
+    }
+
+    if (!isGroupPurchase && courseIds.length > 0) {
       for (const courseId of courseIds) {
         await px.enrollment.upsert({
           where: {
@@ -89,20 +162,81 @@ export async function finalizePaystackByReference(reference: string) {
       });
     }
 
-    const user = await px.user.findUnique({
-      where: { id: tx.userId },
-      select: { role: true },
-    });
-    if (user && user.role === "USER") {
-      await px.user.update({
-        where: { id: tx.userId },
-        data: { role: "STUDENT" },
-      });
-      await px.student.upsert({
-        where: { userId: tx.userId },
+    if (tx.vatAmount && tx.vatAmount > 0) {
+      await px.vatLedger.upsert({
+        where: { transactionId: tx.id },
+        create: {
+          transactionId: tx.id,
+          amount: tx.vatAmount,
+          currency: tx.currency,
+        },
         update: {},
-        create: { userId: tx.userId, interests: [], goals: [] },
       });
+    }
+
+    if (tx.promoCodeId) {
+      const existingRedemption = await px.promoRedemption.findFirst({
+        where: { promoCodeId: tx.promoCodeId, transactionId: tx.id },
+        select: { id: true },
+      });
+      if (!existingRedemption) {
+        await px.promoRedemption.create({
+          data: {
+            promoCodeId: tx.promoCodeId,
+            userId: tx.userId,
+            transactionId: tx.id,
+            courseId: tx.courseId ?? undefined,
+          },
+        });
+      }
+    }
+
+    if (lineItems && lineItems.length > 0) {
+      for (const item of lineItems) {
+        await px.tutorEarning.create({
+          data: {
+            tutorId: item.tutorId,
+            transactionId: tx.id,
+            transactionLineItemId: item.id,
+            courseId: item.courseId,
+            amount: item.tutorShareAmount,
+            splitPercent:
+              item.promoType === "PLATFORM"
+                ? 0.2
+                : item.promoType === "INSTRUCTOR"
+                ? 0.7
+                : 0.25,
+            status: "AVAILABLE",
+          },
+        });
+
+        await px.user.update({
+          where: { id: item.tutorId },
+          data: {
+            walletBalance: {
+              increment: item.tutorShareAmount,
+            },
+          },
+        });
+      }
+    }
+
+    if (!isGroupPurchase) {
+      const user = await px.user.findUnique({
+        where: { id: tx.userId },
+        select: { role: true },
+      });
+      if (user && user.role === "USER") {
+        await px.user.update({
+          where: { id: tx.userId },
+          data: { role: "STUDENT" },
+        });
+        await px.student.upsert({
+          where: { userId: tx.userId },
+          update: {},
+          create: { userId: tx.userId, interests: [], goals: [] },
+        });
+      }
     }
   });
 

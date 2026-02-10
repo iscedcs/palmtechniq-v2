@@ -18,11 +18,11 @@ export const nameSchema = z
   .string()
   .min(2, "Name must be at least 2 characters")
   .max(50, "Name must be less than 50 characters")
-  .regex(/^[a-zA-Z\s]+₦/, "Name can only contain letters and spaces");
+  .regex(/^[a-zA-Z\s]+$/, "Name can only contain letters and spaces");
 
 export const phoneSchema = z
   .string()
-  .regex(/^\+?[1-9]\d{1,14}₦/, "Please enter a valid phone number")
+  .regex(/^\+?[1-9]\d{1,14}$/, "Please enter a valid phone number")
   .min(10, "Phone number must be at least 10 digits");
 
 // Auth schemas

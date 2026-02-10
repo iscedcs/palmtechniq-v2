@@ -54,16 +54,19 @@ export default function CheckoutCoursePage({
   pricing,
   groupTier,
   onProceed,
-}: CheckoutCoursePageProps & { onProceed: () => Promise<void> }) {
+}: CheckoutCoursePageProps & { onProceed: (promoCode?: string) => Promise<void> }) {
   const router = useRouter();
   const [applyingCode, setApplyingCode] = useState(false);
   const [coupon, setCoupon] = useState("");
+  const [promoError, setPromoError] = useState<string | null>(null);
+  const [appliedPromo, setAppliedPromo] = useState<string | null>(null);
+  const [pricingState, setPricingState] = useState<PricingInput>(pricing);
   console.log({ instructor, rating, duration });
 
   const { subtotal, discountAmt, vatAmt, total, discountPercent } =
     useMemo(() => {
-      const base = Math.max(0, pricing.basePrice || 0);
-      const current = Math.max(0, pricing.currentPrice || 0);
+      const base = Math.max(0, pricingState.basePrice || 0);
+      const current = Math.max(0, pricingState.currentPrice || 0);
 
       // If discount % not provided, derive from base/current
       const derivedPct =
@@ -71,17 +74,18 @@ export default function CheckoutCoursePage({
           ? Math.round(((base - current) / base) * 100)
           : 0;
 
-      const pct = pricing.discountPercent ?? (derivedPct > 0 ? derivedPct : 0);
+      const pct =
+        pricingState.discountPercent ?? (derivedPct > 0 ? derivedPct : 0);
       const discountAmt =
         base > current ? base - current : Math.round((base * pct) / 100);
 
       const subtotal = current; // the price user pays before VAT (if you charge VAT)
-      const vatRate = pricing.vatRate ?? 0;
+      const vatRate = pricingState.vatRate ?? 0;
       const vatAmt = Math.round(subtotal * vatRate);
       const total = subtotal + vatAmt;
 
       return { subtotal, discountAmt, vatAmt, total, discountPercent: pct };
-    }, [pricing]);
+    }, [pricingState]);
 
   const cashbackTotal = groupTier
     ? Math.round(groupTier.groupPrice * groupTier.cashbackPercent)
@@ -295,32 +299,76 @@ export default function CheckoutCoursePage({
                       ) : null}
                     </div>
 
-                    {/* (Optional) Coupon UI – non-blocking for now */}
+                    {/* Promo Code */}
                     <div className="mt-2">
                       <div className="flex gap-2">
                         <input
                           value={coupon}
                           onChange={(e) => setCoupon(e.target.value)}
                           placeholder="Promo code"
+                          disabled={Boolean(groupTier) || applyingCode}
                           className="w-full rounded-md bg-transparent border border-white/15 px-3 py-2 text-sm text-white placeholder:text-gray-400 focus:outline-none focus:ring-2 focus:ring-white/20"
                         />
                         <Button
                           variant="outline"
-                          disabled={!coupon || applyingCode}
-                          onClick={() => {
-                            // next step: call a server action to validate and recalc totals
+                          disabled={!coupon || applyingCode || Boolean(groupTier)}
+                          onClick={async () => {
+                            if (!courseId) return;
+                            setPromoError(null);
                             setApplyingCode(true);
-                            setTimeout(() => setApplyingCode(false), 600);
+                            try {
+                              const res = await fetch("/api/promos/validate", {
+                                method: "POST",
+                                headers: { "Content-Type": "application/json" },
+                                body: JSON.stringify({
+                                  code: coupon,
+                                  courseIds: [courseId],
+                                }),
+                              });
+                              const json = await res.json();
+                              if (!res.ok || !json.ok) {
+                                throw new Error(json.reason || "Invalid promo");
+                              }
+                              const lineItem = json.totals.lineItems?.[0];
+                              if (lineItem) {
+                                setPricingState((prev) => ({
+                                  ...prev,
+                                  basePrice: lineItem.basePrice,
+                                  currentPrice: lineItem.discountedPrice,
+                                }));
+                                setAppliedPromo(coupon.trim().toUpperCase());
+                              }
+                            } catch (error: any) {
+                              setPromoError("Promo code is invalid or expired.");
+                              setAppliedPromo(null);
+                            } finally {
+                              setApplyingCode(false);
+                            }
                           }}
                           className="border-white/20 text-white hover:bg-white/10 bg-transparent">
-                          Apply
+                          {applyingCode ? "Checking..." : "Apply"}
                         </Button>
                       </div>
+                      {groupTier ? (
+                        <p className="text-[11px] text-yellow-300 mt-2">
+                          Promo codes are not available for group purchases.
+                        </p>
+                      ) : null}
+                      {promoError ? (
+                        <p className="text-[11px] text-red-400 mt-2">
+                          {promoError}
+                        </p>
+                      ) : null}
+                      {appliedPromo ? (
+                        <p className="text-[11px] text-green-400 mt-2">
+                          Promo applied: {appliedPromo}
+                        </p>
+                      ) : null}
                     </div>
 
                     <Button
                       onClick={async () => {
-                        onProceed();
+                        onProceed(appliedPromo || undefined);
                       }}
                       className="w-full bg-gradient-to-r from-neon-blue to-neon-purple text-white text-lg py-4 disabled:opacity-50">
                       Proceed to Checkout

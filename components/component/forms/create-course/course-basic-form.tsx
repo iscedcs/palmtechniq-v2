@@ -24,6 +24,7 @@ import { Plus, X, Film, ImageIcon, BookOpen } from "lucide-react";
 import { UseFormReturn } from "react-hook-form";
 import UploadFile from "@/components/shared/uploader";
 import Image from "next/image";
+import { isYoutubeUrl, toYoutubeEmbedUrl } from "@/lib/youtube";
 
 type Category = {
   id: string;
@@ -291,13 +292,22 @@ export function CourseBasicForm({
                       }
                     />
                   </FormControl>
-                  {field.value && (
-                    <video
-                      src={field.value}
-                      controls
-                      className="mt-3 w-full max-h-48 rounded-md border border-white/20"
-                    />
-                  )}
+                  {field.value &&
+                    (isYoutubeUrl(field.value) ? (
+                      <iframe
+                        src={`${toYoutubeEmbedUrl(field.value)}?autoplay=0`}
+                        title="Preview video"
+                        allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture"
+                        allowFullScreen
+                        className="mt-3 w-full max-h-48 rounded-md border border-white/20"
+                      />
+                    ) : (
+                      <video
+                        src={field.value}
+                        controls
+                        className="mt-3 w-full max-h-48 rounded-md border border-white/20"
+                      />
+                    ))}
                 </FormItem>
               )}
             />

@@ -50,7 +50,12 @@ export function CoursePricingForm({ form }: CoursePricingFormProps) {
                   <Input
                     type="number"
                     {...field}
-                    onChange={(e) => field.onChange(Number(e.target.value))}
+                    value={field.value ?? ""}
+                    onChange={(e) =>
+                      field.onChange(
+                        e.target.value === "" ? undefined : Number(e.target.value)
+                      )
+                    }
                     placeholder="e.g. 25000"
                     className="bg-white/10 border-white/20 text-white"
                   />
@@ -73,7 +78,12 @@ export function CoursePricingForm({ form }: CoursePricingFormProps) {
                   <Input
                     type="number"
                     {...field}
-                    onChange={(e) => field.onChange(Number(e.target.value))}
+                    value={field.value ?? ""}
+                    onChange={(e) =>
+                      field.onChange(
+                        e.target.value === "" ? undefined : Number(e.target.value)
+                      )
+                    }
                     placeholder="e.g. 20000"
                     className="bg-white/10 border-white/20 text-white"
                   />
