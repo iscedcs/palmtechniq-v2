@@ -92,14 +92,14 @@ export async function createCourse(data: any, modulesData: any[] = []) {
             duration: 0,
             flashSaleEnd: validatedData.data.flashSaleEnd,
 
-            publishedAt: validatedData.data.isPublished ? new Date() : null,
+            publishedAt: null,
             slug: toSlug(validatedData.data.title),
 
             groupBuyingEnabled: validatedData.data.groupBuyingEnabled,
             groupBuyingDiscount: validatedData.data.groupBuyingDiscount,
             thumbnail: validatedData.data.thumbnail,
             previewVideo: validatedData.data.previewVideo,
-            status: validatedData.data.isPublished ? "PUBLISHED" : "DRAFT",
+            status: "DRAFT",
             creator: { connect: { id: session.user.id } },
             tutor: { connect: { id: tutor.id } },
           },
@@ -201,33 +201,34 @@ export async function createCourse(data: any, modulesData: any[] = []) {
       { timeout: 30000 }
     );
 
+    const requestedPublish = Boolean(validatedData.data.isPublished);
     await notify.user(session.user.id, {
       type: "success",
       title: "Course Created",
       message: `“${result.title}” has been created${
-        validatedData.data.isPublished ? " and published" : ""
+        requestedPublish ? " and submitted for approval" : ""
       }.`,
       actionUrl: `/tutor/courses/${result.id}/edit`,
       actionLabel: "Continue Editing",
       metadata: { category: "course_created", courseId: result.id },
     });
 
-    if (validatedData.data.isPublished) {
-      await notify.role("STUDENT", {
-        type: "course",
-        title: "New Course is Live",
-        message: `“${result.title}” is now available.`,
-        actionUrl: `/courses/${result.id}`,
-        actionLabel: "View Course",
-        metadata: {
-          courseId: result.id,
-          category: "course_published",
-          courseCategory: validatedData.data.category,
-        },
+    if (requestedPublish) {
+      await notify.role("ADMIN", {
+        type: "info",
+        title: "Course awaiting approval",
+        message: `Tutor submitted “${result.title}” for approval.`,
+        actionUrl: `/admin/courses`,
+        actionLabel: "Review Course",
+        metadata: { category: "course_review", courseId: result.id },
       });
     }
 
-    return { success: true, courseId: result.id };
+    return {
+      success: true,
+      courseId: result.id,
+      requiresApproval: requestedPublish,
+    };
   } catch (error) {
     console.error("Error creating course:", error);
     return {

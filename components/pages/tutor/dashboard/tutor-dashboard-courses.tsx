@@ -4,7 +4,7 @@ import { motion } from "framer-motion";
 import { Card, CardHeader, CardContent } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
-import { Users, Star, DollarSign, Plus } from "lucide-react";
+import { Users, Star, Plus } from "lucide-react";
 import Image from "next/image";
 import Link from "next/link";
 import { generateRandomAvatar } from "@/lib/utils";

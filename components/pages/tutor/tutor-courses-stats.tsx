@@ -1,7 +1,7 @@
 "use client";
 
 import { motion } from "framer-motion";
-import { Users, Star, DollarSign, TrendingUp } from "lucide-react";
+import { Users, Star, TrendingUp } from "lucide-react";
 import CountUp from "react-countup";
 import { Card, CardContent } from "@/components/ui/card";
 import { NairaSign } from "@/components/icon";

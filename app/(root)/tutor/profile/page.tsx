@@ -16,7 +16,6 @@ import {
   Camera,
   Globe,
   Clock,
-  DollarSign,
   Award,
   BookOpen,
   Plus,
@@ -34,6 +33,7 @@ import {
   Instagram,
   Loader2,
 } from "lucide-react";
+import { NairaSign } from "@/components/shared/naira-sign-icon";
 import { generateRandomAvatar } from "@/lib/utils";
 import { toast } from "sonner";
 import { defaultUserPreferences } from "@/lib/user-preferences";
@@ -378,7 +378,7 @@ export default function TutorProfilePage() {
                 <TabsTrigger
                   value="pricing"
                   className="gap-2 text-white data-[state=active]:bg-white/10">
-                  <DollarSign className="w-4 h-4" />
+                  <NairaSign className="w-4 h-4" />
                   Pricing
                 </TabsTrigger>
                 <TabsTrigger
@@ -841,7 +841,7 @@ export default function TutorProfilePage() {
                   <Card className="glass-card border-white/10">
                     <CardHeader>
                       <CardTitle className="flex items-center gap-2 text-white">
-                        <DollarSign className="w-5 h-5" />
+                        <NairaSign className="w-5 h-5" />
                         Mentorship Rates
                       </CardTitle>
                     </CardHeader>

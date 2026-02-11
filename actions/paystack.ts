@@ -107,3 +107,121 @@ export async function paystackTransfer({
     status: "success" | "failed" | "pending";
   };
 }
+
+export async function paystackListBanks() {
+  const res = await fetch(`${BASE}/bank?currency=NGN`, {
+    method: "GET",
+    headers: { Authorization: `Bearer ${process.env.PAYSTACK_SECRET_KEY}` },
+    cache: "no-store",
+  });
+  const json = await res.json();
+  if (!res.ok || !json.status) {
+    throw new Error(json.message || "Paystack bank list failed");
+  }
+
+  return (json.data || []) as Array<{
+    id: number;
+    name: string;
+    code: string;
+    currency: string;
+  }>;
+}
+
+export async function paystackResolveAccount({
+  accountNumber,
+  bankCode,
+}: {
+  accountNumber: string;
+  bankCode: string;
+}) {
+  const params = new URLSearchParams({
+    account_number: accountNumber,
+    bank_code: bankCode,
+  });
+  const res = await fetch(`${BASE}/bank/resolve?${params.toString()}`, {
+    method: "GET",
+    headers: { Authorization: `Bearer ${process.env.PAYSTACK_SECRET_KEY}` },
+    cache: "no-store",
+  });
+  const json = await res.json();
+  if (!res.ok || !json.status) {
+    throw new Error(json.message || "Paystack bank resolve failed");
+  }
+
+  return json.data as {
+    account_name: string;
+    account_number: string;
+    bank_id: number;
+  };
+}
+
+export async function paystackCreateTransferRecipient({
+  name,
+  accountNumber,
+  bankCode,
+}: {
+  name: string;
+  accountNumber: string;
+  bankCode: string;
+}) {
+  const res = await fetch(`${BASE}/transferrecipient`, {
+    method: "POST",
+    headers: {
+      Authorization: `Bearer ${process.env.PAYSTACK_SECRET_KEY}`,
+      "Content-Type": "application/json",
+    },
+    body: JSON.stringify({
+      type: "nuban",
+      name,
+      account_number: accountNumber,
+      bank_code: bankCode,
+      currency: "NGN",
+    }),
+  });
+  const json = await res.json();
+  if (!res.ok || !json.status) {
+    throw new Error(json.message || "Paystack recipient creation failed");
+  }
+
+  return json.data as {
+    recipient_code: string;
+    details?: Record<string, any>;
+  };
+}
+
+export async function paystackCreateSubaccount({
+  businessName,
+  settlementBank,
+  accountNumber,
+  percentageCharge = 0,
+  contactEmail,
+}: {
+  businessName: string;
+  settlementBank: string;
+  accountNumber: string;
+  percentageCharge?: number;
+  contactEmail?: string;
+}) {
+  const res = await fetch(`${BASE}/subaccount`, {
+    method: "POST",
+    headers: {
+      Authorization: `Bearer ${process.env.PAYSTACK_SECRET_KEY}`,
+      "Content-Type": "application/json",
+    },
+    body: JSON.stringify({
+      business_name: businessName,
+      settlement_bank: settlementBank,
+      account_number: accountNumber,
+      percentage_charge: percentageCharge,
+      primary_contact_email: contactEmail,
+    }),
+  });
+  const json = await res.json();
+  if (!res.ok || !json.status) {
+    throw new Error(json.message || "Paystack subaccount creation failed");
+  }
+
+  return json.data as {
+    subaccount_code: string;
+  };
+}

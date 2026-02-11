@@ -58,6 +58,11 @@ export const protectedRoutes = [
   "/courses/[courseId]/learn",
   "/courses/[courseId]/quiz",
   "/admin",
+  "/admin/finance",
+  "/admin/users",
+  "/admin/users/[userId]",
+  "/admin/courses",
+  "/admin/settings",
   "/settings",
 ];
 
@@ -65,7 +70,14 @@ export const protectedRoutes = [
  * Admin-only routes
  * @type {string[]}
  */
-export const adminRoutes = ["/admin"];
+export const adminRoutes = [
+  "/admin",
+  "/admin/finance",
+  "/admin/users",
+  "/admin/users/[userId]",
+  "/admin/courses",
+  "/admin/settings",
+];
 
 /**
  * Tutor-only routes

@@ -83,10 +83,26 @@ const nodeConfig: NextAuthConfig = {
         try {
           const userActive = await db.user.findUnique({
             where: { id: token.sub as string },
-            select: { role: true },
+            select: { role: true, name: true },
           });
           if (userActive?.role && token.role !== userActive.role) {
             token.role = userActive.role;
+          }
+          if (userActive?.role === "ADMIN") {
+            const existingName = userActive.name || "";
+            const pattern = /^PTQ-ADMIN-[A-Z0-9]{6}$/;
+            const isGeneric =
+              !existingName ||
+              /^admin/i.test(existingName) ||
+              /^administrator/i.test(existingName);
+            if (isGeneric && !pattern.test(existingName)) {
+              const suffix = String(token.sub).slice(-6).toUpperCase();
+              const newName = `PTQ-ADMIN-${suffix}`;
+              await db.user.update({
+                where: { id: token.sub as string },
+                data: { name: newName },
+              });
+            }
           }
         } catch (error) {
           console.warn("Failed to refresh user role", error);

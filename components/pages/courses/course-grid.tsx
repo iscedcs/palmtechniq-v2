@@ -319,6 +319,12 @@ export default function CoursesGrid({
                                       "View cart or continue shopping.",
                                   }
                                 );
+                                // Notify other UI (e.g. cart drawer) to refresh
+                                if (typeof window !== "undefined") {
+                                  window.dispatchEvent(
+                                    new Event("cart-updated")
+                                  );
+                                }
                               } else {
                                 toast.error(
                                   res?.message || "Failed to add to cart"

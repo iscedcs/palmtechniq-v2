@@ -88,6 +88,7 @@ export const roleNavItems = {
     { icon: Home, label: "Dashboard", href: "/admin" },
     { icon: Users, label: "Users", href: "/admin/users" },
     { icon: BookOpen, label: "Courses", href: "/admin/courses" },
+    { icon: Wallet, label: "Finance", href: "/admin/finance" },
     { icon: Settings, label: "Settings", href: "/admin/settings" },
   ],
 };

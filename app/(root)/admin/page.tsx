@@ -1,11 +1,10 @@
 "use client";
 
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { motion } from "framer-motion";
 import {
   Users,
   BookOpen,
-  DollarSign,
   TrendingUp,
   Activity,
   UserCheck,
@@ -24,6 +23,7 @@ import {
   Trash2,
   Plus,
 } from "lucide-react";
+import { NairaSign } from "@/components/shared/naira-sign-icon";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
@@ -46,155 +46,173 @@ import {
   TableRow,
 } from "@/components/ui/table";
 import { generateRandomAvatar } from "@/lib/utils";
+import { getAdminDashboardData } from "@/actions/admin-dashboard";
+import {
+  updateCourseStatus,
+  createUserByAdmin,
+  updateUserRole,
+  updateUserStatus,
+} from "@/actions/admin-dashboard";
+import { toast } from "sonner";
+import {
+  Dialog,
+  DialogContent,
+  DialogDescription,
+  DialogFooter,
+  DialogHeader,
+  DialogTitle,
+} from "@/components/ui/dialog";
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select";
 
-const statsCards = [
-  {
-    title: "Total Users",
-    value: "12,547",
-    change: "+12.5%",
-    trend: "up",
-    icon: Users,
-    color: "text-blue-400",
-    bgColor: "bg-blue-500/10",
-  },
-  {
-    title: "Active Courses",
-    value: "1,234",
-    change: "+8.2%",
-    trend: "up",
-    icon: BookOpen,
-    color: "text-green-400",
-    bgColor: "bg-green-500/10",
-  },
-  {
-    title: "Monthly Revenue",
-    value: "₦125,430",
-    change: "+15.3%",
-    trend: "up",
-    icon: DollarSign,
-    color: "text-yellow-400",
-    bgColor: "bg-yellow-500/10",
-  },
-  {
-    title: "Completion Rate",
-    value: "87.3%",
-    change: "+2.1%",
-    trend: "up",
-    icon: TrendingUp,
-    color: "text-purple-400",
-    bgColor: "bg-purple-500/10",
-  },
-];
+type StatCard = {
+  title: string;
+  value: string;
+  change?: string;
+  trend?: string;
+  icon: string;
+  color: string;
+  bgColor: string;
+};
 
-const recentUsers = [
-  {
-    id: "1",
-    name: "Sarah Johnson",
-    email: "sarah@example.com",
-    role: "STUDENT",
-    avatar: "/placeholder.svg?height=40&width=40",
-    joinDate: "2024-01-15",
-    status: "active",
-    courses: 5,
-  },
-  {
-    id: "2",
-    name: "Dr. Michael Chen",
-    email: "michael@example.com",
-    role: "TUTOR",
-    avatar: "/placeholder.svg?height=40&width=40",
-    joinDate: "2024-01-14",
-    status: "active",
-    courses: 12,
-  },
-  {
-    id: "3",
-    name: "Emily Rodriguez",
-    email: "emily@example.com",
-    role: "STUDENT",
-    avatar: "/placeholder.svg?height=40&width=40",
-    joinDate: "2024-01-13",
-    status: "pending",
-    courses: 2,
-  },
-  {
-    id: "4",
-    name: "James Wilson",
-    email: "james@example.com",
-    role: "TUTOR",
-    avatar: "/placeholder.svg?height=40&width=40",
-    joinDate: "2024-01-12",
-    status: "active",
-    courses: 8,
-  },
-];
+type RecentUser = {
+  id: string;
+  name: string;
+  email: string;
+  role: string;
+  avatar: string | null;
+  joinDate: string;
+  status: string;
+  courses: number;
+};
 
-const topCourses = [
-  {
-    id: "1",
-    title: "Advanced React Development",
-    instructor: "Sarah Johnson",
-    students: 1247,
-    revenue: "₦24,940",
-    rating: 4.8,
-    completion: 89,
-  },
-  {
-    id: "2",
-    title: "Python for Data Science",
-    instructor: "Dr. Michael Chen",
-    students: 987,
-    revenue: "₦19,740",
-    rating: 4.9,
-    completion: 92,
-  },
-  {
-    id: "3",
-    title: "UI/UX Design Masterclass",
-    instructor: "Emily Rodriguez",
-    students: 756,
-    revenue: "₦15,120",
-    rating: 4.7,
-    completion: 85,
-  },
-  {
-    id: "4",
-    title: "Machine Learning Fundamentals",
-    instructor: "James Wilson",
-    students: 654,
-    revenue: "₦13,080",
-    rating: 4.6,
-    completion: 78,
-  },
-];
+type TopCourse = {
+  id: string;
+  title: string;
+  instructor: string;
+  students: number;
+  revenue: string;
+  rating: number;
+  completion: number;
+};
 
-const systemAlerts = [
-  {
-    id: "1",
-    type: "warning",
-    title: "High Server Load",
-    message: "Server CPU usage is at 85%. Consider scaling resources.",
-    timestamp: "5 minutes ago",
-  },
-  {
-    id: "2",
-    type: "info",
-    title: "Scheduled Maintenance",
-    message: "System maintenance scheduled for tonight at 2 AM UTC.",
-    timestamp: "1 hour ago",
-  },
-  {
-    id: "3",
-    type: "success",
-    title: "Backup Completed",
-    message: "Daily database backup completed successfully.",
-    timestamp: "3 hours ago",
-  },
-];
+type SystemAlert = {
+  id: string;
+  type: "warning" | "info" | "success";
+  title: string;
+  message: string;
+  timestamp: string;
+};
+
+type AnalyticsStat = {
+  label: string;
+  value: string;
+};
+
+type UserTableRow = {
+  id: string;
+  name: string;
+  email: string;
+  role: string;
+  avatar: string | null;
+  status: string;
+  joinDate: string;
+};
+
+type CourseTableRow = {
+  id: string;
+  title: string;
+  status: string;
+  price: number;
+  revenue: number;
+  enrollments: number;
+  tutor: string;
+  createdAt: string;
+};
+
+const STAT_ICON_MAP = {
+  Users,
+  BookOpen,
+  NairaSign,
+  TrendingUp,
+};
 
 export default function AdminDashboard() {
+  const [addUserOpen, setAddUserOpen] = useState(false);
+  const [creatingUser, setCreatingUser] = useState(false);
+  const [newUserName, setNewUserName] = useState("");
+  const [newUserEmail, setNewUserEmail] = useState("");
+  const [newUserRole, setNewUserRole] = useState("USER");
   const [searchTerm, setSearchTerm] = useState("");
   const [selectedTab, setSelectedTab] = useState("overview");
+  const [statsCards, setStatsCards] = useState<StatCard[]>([]);
+  const [recentUsers, setRecentUsers] = useState<RecentUser[]>([]);
+  const [topCourses, setTopCourses] = useState<TopCourse[]>([]);
+  const [systemAlerts, setSystemAlerts] = useState<SystemAlert[]>([]);
+  const [analyticsStats, setAnalyticsStats] = useState<AnalyticsStat[]>([]);
+  const [usersTable, setUsersTable] = useState<UserTableRow[]>([]);
+  const [coursesTable, setCoursesTable] = useState<CourseTableRow[]>([]);
+  const [loading, setLoading] = useState(true);
+  const [updatingId, setUpdatingId] = useState<string | null>(null);
+  const normalizedSearch = searchTerm.trim().toLowerCase();
+  const filteredUsers = normalizedSearch
+    ? usersTable.filter((user) =>
+        [user.name, user.email, user.role]
+          .filter(Boolean)
+          .some((value) =>
+            value.toLowerCase().includes(normalizedSearch)
+          )
+      )
+    : usersTable;
+
+  const formatCurrency = (amount: number) =>
+    new Intl.NumberFormat("en-NG", {
+      style: "currency",
+      currency: "NGN",
+      maximumFractionDigits: 0,
+    }).format(amount);
+
+  useEffect(() => {
+    let mounted = true;
+    (async () => {
+      try {
+        const res = await getAdminDashboardData();
+        if (!mounted) return;
+        if ("statsCards" in res) {
+          setStatsCards(res.statsCards || []);
+          setRecentUsers(res.recentUsers || []);
+          setTopCourses(res.topCourses || []);
+          setSystemAlerts(res.systemAlerts || []);
+          setAnalyticsStats(res.analyticsStats || []);
+          setUsersTable(res.usersTable || []);
+          setCoursesTable(res.courses || []);
+        }
+      } finally {
+        if (mounted) setLoading(false);
+      }
+    })();
+    return () => {
+      mounted = false;
+    };
+  }, []);
+
+  const refreshDashboard = async () => {
+    const res = await getAdminDashboardData();
+    if ("statsCards" in res) {
+      setStatsCards(res.statsCards || []);
+      setRecentUsers(res.recentUsers || []);
+      setTopCourses(res.topCourses || []);
+      setSystemAlerts(res.systemAlerts || []);
+      setAnalyticsStats(res.analyticsStats || []);
+      setUsersTable(res.usersTable || []);
+      setCoursesTable(res.courses || []);
+    }
+  };
 
   const getRoleColor = (role: string) => {
     switch (role) {
@@ -233,6 +251,50 @@ export default function AdminDashboard() {
     }
   };
 
+  const handleExportData = () => {
+    const payload = {
+      exportedAt: new Date().toISOString(),
+      statsCards,
+      analyticsStats,
+      usersTable,
+      coursesTable,
+    };
+    const blob = new Blob([JSON.stringify(payload, null, 2)], {
+      type: "application/json",
+    });
+    const url = URL.createObjectURL(blob);
+    const anchor = document.createElement("a");
+    anchor.href = url;
+    anchor.download = `admin-export-${Date.now()}.json`;
+    anchor.click();
+    URL.revokeObjectURL(url);
+  };
+
+  const handleAddUser = async () => {
+    if (!newUserName.trim() || !newUserEmail.trim()) {
+      toast.error("Name and email are required");
+      return;
+    }
+    setCreatingUser(true);
+    const res = await createUserByAdmin({
+      name: newUserName.trim(),
+      email: newUserEmail.trim(),
+      role: newUserRole as "USER" | "STUDENT" | "TUTOR" | "ADMIN",
+    });
+    if ("error" in res) {
+      toast.error(res.error);
+      setCreatingUser(false);
+      return;
+    }
+    toast.success("User created and reset email sent");
+    setNewUserName("");
+    setNewUserEmail("");
+    setNewUserRole("USER");
+    setAddUserOpen(false);
+    await refreshDashboard();
+    setCreatingUser(false);
+  };
+
   return (
     <div className="min-h-screen bg-gradient-to-br from-dark-900 via-dark-800 to-dark-900 pt-24">
       <div className="container mx-auto px-6 py-8">
@@ -254,16 +316,69 @@ export default function AdminDashboard() {
           <div className="flex items-center gap-4 mt-4 md:mt-0">
             <Button
               variant="outline"
+              onClick={handleExportData}
               className="border-neon-blue/50 hover:bg-neon-blue/10 bg-transparent">
               <Download className="w-4 h-4 mr-2" />
               Export Data
             </Button>
-            <Button className="bg-gradient-to-r from-neon-blue to-neon-purple hover:from-neon-blue/80 hover:to-neon-purple/80">
+            <Button
+              onClick={() => setAddUserOpen(true)}
+              className="bg-gradient-to-r from-neon-blue to-neon-purple hover:from-neon-blue/80 hover:to-neon-purple/80">
               <Plus className="w-4 h-4 mr-2" />
               Add User
             </Button>
           </div>
         </motion.div>
+        <Dialog open={addUserOpen} onOpenChange={setAddUserOpen}>
+          <DialogContent className="glass-card border-white/10">
+            <DialogHeader>
+              <DialogTitle className="text-white">Add User</DialogTitle>
+              <DialogDescription className="text-gray-400">
+                Create a new user and send them a password reset email.
+              </DialogDescription>
+            </DialogHeader>
+            <div className="space-y-4">
+              <Input
+                placeholder="Full name"
+                value={newUserName}
+                onChange={(e) => setNewUserName(e.target.value)}
+                className="glass-card border-white/20"
+              />
+              <Input
+                placeholder="Email address"
+                value={newUserEmail}
+                onChange={(e) => setNewUserEmail(e.target.value)}
+                className="glass-card border-white/20"
+              />
+              <Select value={newUserRole} onValueChange={setNewUserRole}>
+                <SelectTrigger className="glass-card border-white/20">
+                  <SelectValue placeholder="Role" />
+                </SelectTrigger>
+                <SelectContent className="glass-card border-white/10">
+                  <SelectItem value="USER">User</SelectItem>
+                  <SelectItem value="STUDENT">Student</SelectItem>
+                  <SelectItem value="TUTOR">Tutor</SelectItem>
+                  <SelectItem value="ADMIN">Admin</SelectItem>
+                </SelectContent>
+              </Select>
+            </div>
+            <DialogFooter>
+              <Button
+                variant="outline"
+                className="border-white/10 bg-transparent"
+                onClick={() => setAddUserOpen(false)}
+                disabled={creatingUser}>
+                Cancel
+              </Button>
+              <Button
+                onClick={handleAddUser}
+                disabled={creatingUser}
+                className="bg-gradient-to-r from-neon-blue to-neon-purple hover:from-neon-blue/80 hover:to-neon-purple/80">
+                {creatingUser ? "Creating..." : "Create User"}
+              </Button>
+            </DialogFooter>
+          </DialogContent>
+        </Dialog>
 
         {/* Stats Cards */}
         <motion.div
@@ -271,40 +386,54 @@ export default function AdminDashboard() {
           initial={{ opacity: 0, y: 20 }}
           animate={{ opacity: 1, y: 0 }}
           transition={{ duration: 0.6, delay: 0.1 }}>
-          {statsCards.map((stat, index) => (
-            <motion.div
-              key={stat.title}
-              initial={{ opacity: 0, y: 20 }}
-              animate={{ opacity: 1, y: 0 }}
-              transition={{ delay: index * 0.1 }}>
-              <Card className="glass-card border-white/10 hover-glow">
-                <CardContent className="p-6">
-                  <div className="flex items-center justify-between">
-                    <div>
-                      <p className="text-gray-400 text-sm font-medium">
-                        {stat.title}
-                      </p>
-                      <p className="text-2xl font-bold text-white mt-1">
-                        {stat.value}
-                      </p>
-                      <div className="flex items-center mt-2">
-                        <TrendingUp className="w-3 h-3 text-green-400 mr-1" />
-                        <span className="text-green-400 text-xs font-medium">
-                          {stat.change}
-                        </span>
-                        <span className="text-gray-500 text-xs ml-1">
-                          vs last month
-                        </span>
+          {statsCards.length === 0 && !loading ? (
+            <Card className="glass-card border-white/10">
+              <CardContent className="p-6 text-gray-400">
+                No stats available yet.
+              </CardContent>
+            </Card>
+          ) : (
+            statsCards.map((stat, index) => {
+              const Icon =
+                STAT_ICON_MAP[stat.icon as keyof typeof STAT_ICON_MAP] || Users;
+              return (
+                <motion.div
+                  key={stat.title}
+                  initial={{ opacity: 0, y: 20 }}
+                  animate={{ opacity: 1, y: 0 }}
+                  transition={{ delay: index * 0.1 }}>
+                  <Card className="glass-card border-white/10 hover-glow">
+                    <CardContent className="p-6">
+                      <div className="flex items-center justify-between">
+                        <div>
+                          <p className="text-gray-400 text-sm font-medium">
+                            {stat.title}
+                          </p>
+                          <p className="text-2xl font-bold text-white mt-1">
+                            {stat.value}
+                          </p>
+                          {stat.change ? (
+                            <div className="flex items-center mt-2">
+                              <TrendingUp className="w-3 h-3 text-green-400 mr-1" />
+                              <span className="text-green-400 text-xs font-medium">
+                                {stat.change}
+                              </span>
+                              <span className="text-gray-500 text-xs ml-1">
+                                vs last month
+                              </span>
+                            </div>
+                          ) : null}
+                        </div>
+                        <div className={`p-3 rounded-xl ${stat.bgColor}`}>
+                          <Icon className={`w-6 h-6 ${stat.color}`} />
+                        </div>
                       </div>
-                    </div>
-                    <div className={`p-3 rounded-xl ₦{stat.bgColor}`}>
-                      <stat.icon className={`w-6 h-6 ₦{stat.color}`} />
-                    </div>
-                  </div>
-                </CardContent>
-              </Card>
-            </motion.div>
-          ))}
+                    </CardContent>
+                  </Card>
+                </motion.div>
+              );
+            })
+          )}
         </motion.div>
 
         {/* Main Content Tabs */}
@@ -370,7 +499,12 @@ export default function AdminDashboard() {
                     </CardHeader>
                     <CardContent>
                       <div className="space-y-4">
-                        {recentUsers.map((user) => (
+                        {recentUsers.length === 0 ? (
+                          <p className="text-gray-400 text-sm">
+                            No recent users yet.
+                          </p>
+                        ) : (
+                          recentUsers.map((user) => (
                           <div
                             key={user.id}
                             className="flex items-center justify-between p-3 rounded-lg hover:bg-white/5 transition-colors">
@@ -428,7 +562,8 @@ export default function AdminDashboard() {
                               </DropdownMenu>
                             </div>
                           </div>
-                        ))}
+                          ))
+                        )}
                       </div>
                     </CardContent>
                   </Card>
@@ -445,7 +580,12 @@ export default function AdminDashboard() {
                     </CardHeader>
                     <CardContent>
                       <div className="space-y-3">
-                        {systemAlerts.map((alert) => (
+                        {systemAlerts.length === 0 ? (
+                          <p className="text-gray-400 text-sm">
+                            No system alerts.
+                          </p>
+                        ) : (
+                          systemAlerts.map((alert) => (
                           <div
                             key={alert.id}
                             className="p-3 rounded-lg border border-white/10 hover:bg-white/5 transition-colors">
@@ -464,7 +604,8 @@ export default function AdminDashboard() {
                               </div>
                             </div>
                           </div>
-                        ))}
+                          ))
+                        )}
                       </div>
                     </CardContent>
                   </Card>
@@ -507,7 +648,16 @@ export default function AdminDashboard() {
                         </TableRow>
                       </TableHeader>
                       <TableBody>
-                        {topCourses.map((course) => (
+                        {topCourses.length === 0 ? (
+                          <TableRow className="border-white/10">
+                            <TableCell
+                              className="text-gray-400 text-sm"
+                              colSpan={7}>
+                              No course data yet.
+                            </TableCell>
+                          </TableRow>
+                        ) : (
+                          topCourses.map((course) => (
                           <TableRow
                             key={course.id}
                             className="border-white/10 hover:bg-white/5">
@@ -559,10 +709,6 @@ export default function AdminDashboard() {
                                     <Eye className="w-4 h-4 mr-2" />
                                     View Details
                                   </DropdownMenuItem>
-                                  <DropdownMenuItem>
-                                    <Edit className="w-4 h-4 mr-2" />
-                                    Edit Course
-                                  </DropdownMenuItem>
                                   <DropdownMenuItem className="text-red-400">
                                     <Trash2 className="w-4 h-4 mr-2" />
                                     Archive Course
@@ -571,7 +717,8 @@ export default function AdminDashboard() {
                               </DropdownMenu>
                             </TableCell>
                           </TableRow>
-                        ))}
+                          ))
+                        )}
                       </TableBody>
                     </Table>
                   </div>
@@ -607,14 +754,214 @@ export default function AdminDashboard() {
                   </div>
                 </CardHeader>
                 <CardContent>
-                  <div className="text-center py-12">
-                    <Users className="w-16 h-16 text-gray-600 mx-auto mb-4" />
-                    <p className="text-gray-400 text-lg">
-                      User Management Interface
-                    </p>
-                    <p className="text-gray-500 text-sm">
-                      Advanced user management features coming soon!
-                    </p>
+                  <div className="overflow-x-auto">
+                    <Table>
+                      <TableHeader>
+                        <TableRow className="border-white/10">
+                          <TableHead className="text-gray-400">User</TableHead>
+                          <TableHead className="text-gray-400">Role</TableHead>
+                          <TableHead className="text-gray-400">Status</TableHead>
+                          <TableHead className="text-gray-400">Joined</TableHead>
+                          <TableHead className="text-gray-400">Actions</TableHead>
+                        </TableRow>
+                      </TableHeader>
+                      <TableBody>
+                        {filteredUsers.length === 0 ? (
+                          <TableRow className="border-white/10">
+                            <TableCell
+                              className="text-gray-400 text-sm"
+                              colSpan={5}>
+                              No users found.
+                            </TableCell>
+                          </TableRow>
+                        ) : (
+                          filteredUsers.map((user) => (
+                            <TableRow
+                              key={user.id}
+                              className="border-white/10 hover:bg-white/5">
+                              <TableCell className="text-white">
+                                <div className="flex items-center gap-3">
+                                  <Avatar className="w-9 h-9">
+                                    <AvatarImage
+                                      src={user.avatar || generateRandomAvatar()}
+                                      alt={user.name}
+                                    />
+                                    <AvatarFallback className="bg-gradient-to-r from-neon-blue to-neon-purple text-white">
+                                      {user.name.charAt(0)}
+                                    </AvatarFallback>
+                                  </Avatar>
+                                  <div>
+                                    <p className="font-medium">{user.name}</p>
+                                    <p className="text-xs text-gray-400">
+                                      {user.email}
+                                    </p>
+                                  </div>
+                                </div>
+                              </TableCell>
+                              <TableCell>
+                                <Badge className={getRoleColor(user.role)}>
+                                  {user.role}
+                                </Badge>
+                              </TableCell>
+                              <TableCell>
+                                <Badge className={getStatusColor(user.status)}>
+                                  {user.status}
+                                </Badge>
+                              </TableCell>
+                              <TableCell className="text-gray-300">
+                                {user.joinDate}
+                              </TableCell>
+                              <TableCell>
+                                <DropdownMenu>
+                                  <DropdownMenuTrigger asChild>
+                                    <Button
+                                      variant="ghost"
+                                      size="icon"
+                                      className="w-8 h-8">
+                                      <MoreVertical className="w-4 h-4" />
+                                    </Button>
+                                  </DropdownMenuTrigger>
+                                  <DropdownMenuContent
+                                    align="end"
+                                    className="glass-card border-white/10">
+                                    <DropdownMenuItem>
+                                      <Eye className="w-4 h-4 mr-2" />
+                                      View Profile
+                                    </DropdownMenuItem>
+                                  <DropdownMenuItem
+                                    disabled={updatingId === user.id}
+                                    onClick={async () => {
+                                      const action =
+                                        user.status === "active"
+                                          ? "suspend"
+                                          : "activate";
+                                      const confirmed = window.confirm(
+                                        `Are you sure you want to ${action} ${user.name}?`
+                                      );
+                                      if (!confirmed) return;
+                                      setUpdatingId(user.id);
+                                      const res = await updateUserStatus({
+                                        userId: user.id,
+                                        isActive: user.status !== "active",
+                                      });
+                                      if ("error" in res) {
+                                        toast.error(res.error);
+                                        setUpdatingId(null);
+                                        return;
+                                      }
+                                      toast.success("User status updated");
+                                      await refreshDashboard();
+                                      setUpdatingId(null);
+                                    }}>
+                                    <Edit className="w-4 h-4 mr-2" />
+                                    {user.status === "active"
+                                      ? "Suspend User"
+                                      : "Activate User"}
+                                  </DropdownMenuItem>
+                                  <DropdownMenuItem
+                                    disabled={updatingId === user.id}
+                                    onClick={async () => {
+                                      const confirmed = window.confirm(
+                                        `Set ${user.name} as USER?`
+                                      );
+                                      if (!confirmed) return;
+                                      setUpdatingId(user.id);
+                                      const res = await updateUserRole({
+                                        userId: user.id,
+                                        role: "USER",
+                                      });
+                                      if ("error" in res) {
+                                        toast.error(res.error);
+                                        setUpdatingId(null);
+                                        return;
+                                      }
+                                      toast.success("Role updated");
+                                      await refreshDashboard();
+                                      setUpdatingId(null);
+                                    }}>
+                                    <Edit className="w-4 h-4 mr-2" />
+                                    Make USER
+                                  </DropdownMenuItem>
+                                  <DropdownMenuItem
+                                    disabled={updatingId === user.id}
+                                    onClick={async () => {
+                                      const confirmed = window.confirm(
+                                        `Promote ${user.name} to STUDENT?`
+                                      );
+                                      if (!confirmed) return;
+                                      setUpdatingId(user.id);
+                                      const res = await updateUserRole({
+                                        userId: user.id,
+                                        role: "STUDENT",
+                                      });
+                                      if ("error" in res) {
+                                        toast.error(res.error);
+                                        setUpdatingId(null);
+                                        return;
+                                      }
+                                      toast.success("Role updated");
+                                      await refreshDashboard();
+                                      setUpdatingId(null);
+                                    }}>
+                                    <Edit className="w-4 h-4 mr-2" />
+                                    Make STUDENT
+                                  </DropdownMenuItem>
+                                  <DropdownMenuItem
+                                    disabled={updatingId === user.id}
+                                    onClick={async () => {
+                                      const confirmed = window.confirm(
+                                        `Promote ${user.name} to TUTOR?`
+                                      );
+                                      if (!confirmed) return;
+                                      setUpdatingId(user.id);
+                                      const res = await updateUserRole({
+                                        userId: user.id,
+                                        role: "TUTOR",
+                                      });
+                                      if ("error" in res) {
+                                        toast.error(res.error);
+                                        setUpdatingId(null);
+                                        return;
+                                      }
+                                      toast.success("Role updated");
+                                      await refreshDashboard();
+                                      setUpdatingId(null);
+                                    }}>
+                                    <Edit className="w-4 h-4 mr-2" />
+                                    Make TUTOR
+                                  </DropdownMenuItem>
+                                  <DropdownMenuItem
+                                    disabled={updatingId === user.id}
+                                    onClick={async () => {
+                                      const confirmed = window.confirm(
+                                        `Promote ${user.name} to ADMIN?`
+                                      );
+                                      if (!confirmed) return;
+                                      setUpdatingId(user.id);
+                                      const res = await updateUserRole({
+                                        userId: user.id,
+                                        role: "ADMIN",
+                                      });
+                                      if ("error" in res) {
+                                        toast.error(res.error);
+                                        setUpdatingId(null);
+                                        return;
+                                      }
+                                      toast.success("Role updated");
+                                      await refreshDashboard();
+                                      setUpdatingId(null);
+                                    }}>
+                                    <Edit className="w-4 h-4 mr-2" />
+                                    Make ADMIN
+                                  </DropdownMenuItem>
+                                  </DropdownMenuContent>
+                                </DropdownMenu>
+                              </TableCell>
+                            </TableRow>
+                          ))
+                        )}
+                      </TableBody>
+                    </Table>
                   </div>
                 </CardContent>
               </Card>
@@ -629,14 +976,140 @@ export default function AdminDashboard() {
                   </CardTitle>
                 </CardHeader>
                 <CardContent>
-                  <div className="text-center py-12">
-                    <BookOpen className="w-16 h-16 text-gray-600 mx-auto mb-4" />
-                    <p className="text-gray-400 text-lg">
-                      Course Management Interface
-                    </p>
-                    <p className="text-gray-500 text-sm">
-                      Comprehensive course management tools coming soon!
-                    </p>
+                  <div className="overflow-x-auto">
+                    <Table>
+                      <TableHeader>
+                        <TableRow className="border-white/10">
+                          <TableHead className="text-gray-400">Course</TableHead>
+                          <TableHead className="text-gray-400">Tutor</TableHead>
+                          <TableHead className="text-gray-400">Status</TableHead>
+                          <TableHead className="text-gray-400">Price</TableHead>
+                          <TableHead className="text-gray-400">
+                            Enrollments
+                          </TableHead>
+                          <TableHead className="text-gray-400">Revenue</TableHead>
+                          <TableHead className="text-gray-400">Created</TableHead>
+                          <TableHead className="text-gray-400">Actions</TableHead>
+                        </TableRow>
+                      </TableHeader>
+                      <TableBody>
+                        {coursesTable.length === 0 ? (
+                          <TableRow className="border-white/10">
+                            <TableCell
+                              className="text-gray-400 text-sm"
+                              colSpan={7}>
+                              No courses available.
+                            </TableCell>
+                          </TableRow>
+                        ) : (
+                          coursesTable.map((course) => (
+                            <TableRow
+                              key={course.id}
+                              className="border-white/10 hover:bg-white/5">
+                              <TableCell className="text-white font-medium">
+                                {course.title}
+                              </TableCell>
+                              <TableCell className="text-gray-300">
+                                {course.tutor}
+                              </TableCell>
+                              <TableCell>
+                                <Badge className={getStatusColor(course.status)}>
+                                  {course.status}
+                                </Badge>
+                              </TableCell>
+                              <TableCell className="text-gray-300">
+                                {formatCurrency(course.price)}
+                              </TableCell>
+                              <TableCell className="text-gray-300">
+                                {course.enrollments.toLocaleString("en-NG")}
+                              </TableCell>
+                              <TableCell className="text-gray-300">
+                                {formatCurrency(course.revenue)}
+                              </TableCell>
+                              <TableCell className="text-gray-300">
+                                {course.createdAt}
+                              </TableCell>
+                              <TableCell>
+                                <DropdownMenu>
+                                  <DropdownMenuTrigger asChild>
+                                    <Button
+                                      variant="ghost"
+                                      size="icon"
+                                      className="w-8 h-8">
+                                      <MoreVertical className="w-4 h-4" />
+                                    </Button>
+                                  </DropdownMenuTrigger>
+                                  <DropdownMenuContent
+                                    align="end"
+                                    className="glass-card border-white/10">
+                                    <DropdownMenuItem
+                                      disabled={updatingId === course.id}
+                                      onClick={async () => {
+                                        const action =
+                                          course.status === "PUBLISHED"
+                                            ? "archive"
+                                            : "publish";
+                                        const confirmed = window.confirm(
+                                          `Are you sure you want to ${action} "${course.title}"?`
+                                        );
+                                        if (!confirmed) return;
+                                        setUpdatingId(course.id);
+                                        const res = await updateCourseStatus({
+                                          courseId: course.id,
+                                          status:
+                                            course.status === "PUBLISHED"
+                                              ? "ARCHIVED"
+                                              : "PUBLISHED",
+                                        });
+                                        if ("error" in res) {
+                                        toast.error(res.error);
+                                          setUpdatingId(null);
+                                          return;
+                                        }
+                                      toast.success("Course status updated");
+                                        await refreshDashboard();
+                                        setUpdatingId(null);
+                                      }}>
+                                      <Edit className="w-4 h-4 mr-2" />
+                                      {course.status === "PUBLISHED"
+                                        ? "Archive"
+                                        : "Publish"}
+                                    </DropdownMenuItem>
+                                    <DropdownMenuItem
+                                      disabled={
+                                        updatingId === course.id ||
+                                        course.status === "SUSPENDED"
+                                      }
+                                      onClick={async () => {
+                                        const confirmed = window.confirm(
+                                          `Suspend "${course.title}"?`
+                                        );
+                                        if (!confirmed) return;
+                                        setUpdatingId(course.id);
+                                        const res = await updateCourseStatus({
+                                          courseId: course.id,
+                                          status: "SUSPENDED",
+                                        });
+                                        if ("error" in res) {
+                                        toast.error(res.error);
+                                          setUpdatingId(null);
+                                          return;
+                                        }
+                                      toast.success("Course suspended");
+                                        await refreshDashboard();
+                                        setUpdatingId(null);
+                                      }}>
+                                      <Edit className="w-4 h-4 mr-2" />
+                                      Suspend
+                                    </DropdownMenuItem>
+                                  </DropdownMenuContent>
+                                </DropdownMenu>
+                              </TableCell>
+                            </TableRow>
+                          ))
+                        )}
+                      </TableBody>
+                    </Table>
                   </div>
                 </CardContent>
               </Card>
@@ -651,12 +1124,23 @@ export default function AdminDashboard() {
                   </CardTitle>
                 </CardHeader>
                 <CardContent>
-                  <div className="text-center py-12">
-                    <BarChart3 className="w-16 h-16 text-gray-600 mx-auto mb-4" />
-                    <p className="text-gray-400 text-lg">Analytics Dashboard</p>
-                    <p className="text-gray-500 text-sm">
-                      Detailed analytics and reporting features coming soon!
-                    </p>
+                  <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+                    {analyticsStats.length === 0 ? (
+                      <p className="text-gray-400 text-sm">
+                        No analytics available yet.
+                      </p>
+                    ) : (
+                      analyticsStats.map((stat) => (
+                        <div
+                          key={stat.label}
+                          className="rounded-lg border border-white/10 p-4">
+                          <p className="text-sm text-gray-400">{stat.label}</p>
+                          <p className="text-2xl text-white font-semibold">
+                            {stat.value}
+                          </p>
+                        </div>
+                      ))
+                    )}
                   </div>
                 </CardContent>
               </Card>
@@ -669,15 +1153,25 @@ export default function AdminDashboard() {
                   <CardTitle className="text-white">System Settings</CardTitle>
                 </CardHeader>
                 <CardContent>
-                  <div className="text-center py-12">
-                    <Settings className="w-16 h-16 text-gray-600 mx-auto mb-4" />
-                    <p className="text-gray-400 text-lg">
-                      System Configuration
-                    </p>
-                    <p className="text-gray-500 text-sm">
-                      Advanced system settings and configuration options coming
-                      soon!
-                    </p>
+                  <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                    <div className="rounded-lg border border-white/10 p-4">
+                      <p className="text-sm text-gray-400">Payout Mode</p>
+                      <p className="text-white font-medium">
+                        Manual approval
+                      </p>
+                      <p className="text-xs text-gray-500 mt-1">
+                        Admins approve payouts from /admin/finance
+                      </p>
+                    </div>
+                    <div className="rounded-lg border border-white/10 p-4">
+                      <p className="text-sm text-gray-400">Admin Naming</p>
+                      <p className="text-white font-medium">
+                        PTQ-ADMIN-XXXXXX
+                      </p>
+                      <p className="text-xs text-gray-500 mt-1">
+                        Applied automatically on admin login
+                      </p>
+                    </div>
                   </div>
                 </CardContent>
               </Card>

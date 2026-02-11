@@ -11,7 +11,7 @@ import {
 } from "@/components/ui/form";
 import { Input } from "@/components/ui/input";
 import { Switch } from "@/components/ui/switch";
-import { DollarSign, Percent, Timer, Users, Plus, Trash2 } from "lucide-react";
+import { Percent, Timer, Users, Plus, Trash2 } from "lucide-react";
 import { NairaIcon } from "@/components/shared/nairaicon";
 import { useFieldArray } from "react-hook-form";
 

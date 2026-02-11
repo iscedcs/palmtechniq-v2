@@ -6,7 +6,6 @@ import {
   Calendar,
   Clock,
   Users,
-  DollarSign,
   Plus,
   Search,
   Video,
@@ -21,6 +20,7 @@ import {
   Timer,
   TrendingUp,
 } from "lucide-react";
+import { NairaSign } from "@/components/shared/naira-sign-icon";
 import { Navigation } from "@/components/navigation";
 import { Card, CardContent } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
@@ -486,7 +486,7 @@ export default function TutorMentorshipPage() {
               </Card>
               <Card className="glass-card border-white/10">
                 <CardContent className="p-6 text-center">
-                  <DollarSign className="w-8 h-8 text-neon-orange mx-auto mb-2" />
+                  <NairaSign className="w-8 h-8 text-neon-orange mx-auto mb-2" />
                   <div className="text-2xl font-bold text-white">
                     ₦{mentorshipStats.totalEarnings.toLocaleString()}
                   </div>

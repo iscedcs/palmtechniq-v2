@@ -32,10 +32,28 @@ export function ShoppingCartComponent() {
   const [discount, setDiscount] = useState(0);
 
   useEffect(() => {
-    (async () => {
+    const fetchCart = async () => {
       const res = await getUserCart();
-      setCartItems(res);
-    })();
+      setCartItems(res ?? []);
+    };
+
+    // Initial load
+    fetchCart();
+
+    // Listen for cart updates from anywhere in the app
+    const handleCartUpdated = () => {
+      fetchCart();
+    };
+
+    if (typeof window !== "undefined") {
+      window.addEventListener("cart-updated", handleCartUpdated);
+    }
+
+    return () => {
+      if (typeof window !== "undefined") {
+        window.removeEventListener("cart-updated", handleCartUpdated);
+      }
+    };
   }, []);
 
   const updateQuantity = async (courseId: string, newQty: number) => {
@@ -43,8 +61,8 @@ export function ShoppingCartComponent() {
       await updateCartQuantity(courseId, newQty);
       setCartItems((prev) =>
         prev.map((item) =>
-          item.id === courseId ? { ...item, quantity: newQty } : item
-        )
+          item.id === courseId ? { ...item, quantity: newQty } : item,
+        ),
       );
     } catch (e) {
       toast.error("Failed to update quantity");
@@ -61,9 +79,9 @@ export function ShoppingCartComponent() {
     }
   };
 
-  const subtotal = cartItems.reduce(
+  const subtotal = (cartItems ?? []).reduce(
     (sum, item) => sum + item.price * item.quantity,
-    0
+    0,
   );
   const discountAmount = subtotal * discount;
   const total = subtotal - discountAmount;
@@ -202,7 +220,7 @@ export function ShoppingCartComponent() {
                               <Badge
                                 variant="outline"
                                 className={`text-xs px-1 py-0 ${getLevelColor(
-                                  item.level
+                                  item.level,
                                 )}`}>
                                 {item.level}
                               </Badge>
@@ -220,7 +238,7 @@ export function ShoppingCartComponent() {
                                     ₦
                                     {item.originalPrice?.toLocaleString(
                                       "en-NG",
-                                      { minimumFractionDigits: 2 }
+                                      { minimumFractionDigits: 2 },
                                     )}
                                   </span>
                                 )}

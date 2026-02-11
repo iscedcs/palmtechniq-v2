@@ -75,6 +75,8 @@ export async function updateCourse(
         ? validatedCourse.data.currentPrice
         : resolvedBasePrice;
 
+    const shouldPublish = isPublished && session.user.role === "ADMIN";
+
     await db.course.update({
       where: { id: courseId },
       data: {
@@ -85,7 +87,8 @@ export async function updateCourse(
         outcomes: validatedCourse.data.outcomes,
         certificate: validatedCourse.data.certificate ?? false,
         allowDiscussions: allowDiscussions ?? false,
-        status: isPublished ? "PUBLISHED" : "DRAFT",
+        status: shouldPublish ? "PUBLISHED" : "DRAFT",
+        publishedAt: shouldPublish ? new Date() : null,
         updatedAt: new Date(),
         category: {
           connect: { id: validatedCourse.data.category },
@@ -326,7 +329,10 @@ export async function updateCourse(
       console.warn("⚠️ Socket.IO not initialized yet, skipping emit");
     }
 
-    return { success: true };
+    return {
+      success: true,
+      requiresApproval: isPublished && !shouldPublish,
+    };
   } catch (error) {
     console.error("❌ Error updating course:", error);
     return { error: "Something went wrong while updating the course" };
@@ -335,6 +341,23 @@ export async function updateCourse(
 
 export async function publishCourse(courseId: string) {
   try {
+    const session = await auth();
+    if (!session?.user?.id) {
+      return { error: "Unauthorized" };
+    }
+
+    const courseOwner = await db.course.findUnique({
+      where: { id: courseId },
+      select: { id: true, tutor: { select: { userId: true } } },
+    });
+    if (!courseOwner) return { error: "Course not found" };
+    if (
+      session.user.role !== "ADMIN" &&
+      courseOwner.tutor?.userId !== session.user.id
+    ) {
+      return { error: "Unauthorized" };
+    }
+
     const modules = await db.courseModule.findMany({
       where: { courseId },
       include: { lessons: true },
@@ -375,30 +398,40 @@ export async function publishCourse(courseId: string) {
       }
     }
 
+    const shouldPublish = session.user.role === "ADMIN";
     const updatedCourse = await db.course.update({
       where: { id: courseId },
-      data: { status: "PUBLISHED" },
+      data: {
+        status: shouldPublish ? "PUBLISHED" : "DRAFT",
+        publishedAt: shouldPublish ? new Date() : null,
+      },
     });
 
-    // 🔔 Emit notification
-    try {
-      const io = getIO();
-      if (io) {
-        io.emit("notification", {
-          type: "success",
-          title: "Course Published",
-          message: `The course "${updatedCourse.title}" is now live!`,
-          actionUrl: `/courses/${updatedCourse.id}`,
-          actionLabel: "View Course",
-        });
+    if (shouldPublish) {
+      // 🔔 Emit notification
+      try {
+        const io = getIO();
+        if (io) {
+          io.emit("notification", {
+            type: "success",
+            title: "Course Published",
+            message: `The course "${updatedCourse.title}" is now live!`,
+            actionUrl: `/courses/${updatedCourse.id}`,
+            actionLabel: "View Course",
+          });
+        }
+      } catch (e) {
+        console.warn("⚠️ Socket.IO not initialized yet, skipping emit");
       }
-    } catch (e) {
-      console.warn("⚠️ Socket.IO not initialized yet, skipping emit");
     }
 
-    return { success: true, course: updatedCourse };
+    return {
+      success: true,
+      course: updatedCourse,
+      requiresApproval: !shouldPublish,
+    };
   } catch (error) {
     console.error("Error publishing course:", error);
-    return { success: false, error: "Failed to publish course" };
+    return { error: "Failed to publish course" };
   }
 }

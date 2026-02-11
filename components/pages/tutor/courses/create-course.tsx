@@ -220,7 +220,11 @@ export default function CreateCourse() {
             setModules([]);
             localStorage.removeItem(draftKey);
             setSuccess("Course created successfully");
-            toast.success("Course created successfully");
+            if (isPublished && data?.requiresApproval) {
+              toast.success("Course submitted for approval");
+            } else {
+              toast.success("Course created successfully");
+            }
             router.refresh();
             if (isPublished) {
               router.push("/tutor/courses");

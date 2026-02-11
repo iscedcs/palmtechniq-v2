@@ -1,6 +1,6 @@
 "use client";
 
-import { Users, Star, DollarSign, TrendingUp } from "lucide-react";
+import { Users, Star, TrendingUp } from "lucide-react";
 
 export function TutorCourseStatsRow({
   students,

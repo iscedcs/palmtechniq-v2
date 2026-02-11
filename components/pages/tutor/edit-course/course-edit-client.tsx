@@ -409,9 +409,13 @@ export function CourseEditClient({
           toast.error(res.error);
           console.error("❌ Update failed:", res.error);
         } else {
-          toast.success(
-            isPublished ? "Course published!" : "Course saved as draft"
-          );
+          if (isPublished && res.requiresApproval) {
+            toast.success("Course submitted for approval");
+          } else {
+            toast.success(
+              isPublished ? "Course published!" : "Course saved as draft"
+            );
+          }
           console.log("✅ Course updated:", res);
         }
       } catch (error) {
