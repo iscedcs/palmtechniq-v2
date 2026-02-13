@@ -90,7 +90,7 @@ export default function PrivacyPolicy() {
                     {sections.map((section) => (
                       <a
                         key={section.id}
-                        href={`#₦{section.id}`}
+                        href={`#${section.id}`}
                         className="flex items-center gap-2 text-sm text-gray-400 hover:text-neon-blue transition-colors duration-200 py-1">
                         <section.icon className="w-3 h-3" />
                         {section.title}
@@ -112,11 +112,11 @@ export default function PrivacyPolicy() {
                   {/* Introduction */}
                   <div className="prose prose-invert max-w-none">
                     <p className="text-gray-300 text-lg leading-relaxed">
-                      At PalmTechnIQ, we are committed to protecting your privacy
-                      and ensuring the security of your personal information.
-                      This Privacy Policy explains how we collect, use,
-                      disclose, and safeguard your information when you use our
-                      online learning platform.
+                      At PalmTechnIQ, we are committed to protecting your
+                      privacy and ensuring the security of your personal
+                      information. This Privacy Policy explains how we collect,
+                      use, disclose, and safeguard your information when you use
+                      our online learning platform.
                     </p>
                   </div>
 

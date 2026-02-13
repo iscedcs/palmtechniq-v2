@@ -51,7 +51,8 @@ export default function TermsOfService() {
               Terms of Service
             </h1>
             <p className="text-xl text-gray-400 max-w-3xl mx-auto">
-              Please read these terms carefully before using PalmTechnIQ platform
+              Please read these terms carefully before using PalmTechnIQ
+              platform
             </p>
             <div className="flex items-center justify-center gap-4 mt-6">
               <Badge
@@ -85,7 +86,7 @@ export default function TermsOfService() {
                     {sections.map((section) => (
                       <a
                         key={section.id}
-                        href={`#₦{section.id}`}
+                        href={`#${section.id}`}
                         className="flex items-center gap-2 text-sm text-gray-400 hover:text-neon-blue transition-colors duration-200 py-1">
                         <section.icon className="w-3 h-3" />
                         {section.title}
@@ -148,7 +149,8 @@ export default function TermsOfService() {
                     </h2>
                     <div className="prose prose-invert max-w-none">
                       <p className="text-gray-300">
-                        PalmTechnIQ is an online learning platform that provides:
+                        PalmTechnIQ is an online learning platform that
+                        provides:
                       </p>
                       <ul className="text-gray-300 space-y-2 ml-6">
                         <li>
@@ -327,8 +329,8 @@ export default function TermsOfService() {
                     </h2>
                     <div className="prose prose-invert max-w-none">
                       <p className="text-gray-300">
-                        PalmTechnIQ is provided "as is" without warranties of any
-                        kind. We do not guarantee:
+                        PalmTechnIQ is provided "as is" without warranties of
+                        any kind. We do not guarantee:
                       </p>
                       <ul className="text-gray-300 space-y-2 ml-6">
                         <li>• Uninterrupted or error-free service</li>
@@ -349,10 +351,10 @@ export default function TermsOfService() {
                     </h2>
                     <div className="prose prose-invert max-w-none">
                       <p className="text-gray-300">
-                        To the maximum extent permitted by law, PalmTechnIQ shall
-                        not be liable for any indirect, incidental, special, or
-                        consequential damages arising from your use of our
-                        services.
+                        To the maximum extent permitted by law, PalmTechnIQ
+                        shall not be liable for any indirect, incidental,
+                        special, or consequential damages arising from your use
+                        of our services.
                       </p>
                       <p className="text-gray-300">
                         Our total liability shall not exceed the amount you paid
