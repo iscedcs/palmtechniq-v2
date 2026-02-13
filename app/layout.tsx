@@ -9,7 +9,7 @@ import type { Metadata } from "next";
 import { SessionProvider } from "next-auth/react";
 import { Inter } from "next/font/google";
 import type React from "react";
-import { Suspense, useEffect } from "react";
+import { Suspense } from "react";
 import "./globals.css";
 import { ToploaderProvider } from "@/components/shared/toploader-provider";
 import { SocketInitializer } from "@/components/shared/web-socket-init";
@@ -17,12 +17,26 @@ import { SocketInitializer } from "@/components/shared/web-socket-init";
 const inter = Inter({ subsets: ["latin"] });
 
 export const metadata: Metadata = {
-  title: "PalmTechnIQ - Advanced E-Learning Platform",
+  title: {
+    default: "PalmTechnIQ - Advanced E-Learning Platform",
+    template: "%s | PalmTechnIQ",
+  },
   description:
-    "Master the future with our cutting-edge cyberpunk-themed learning platform. Courses in AI, Web Development, Data Science, and more.",
+    "PalmTechnIQ is an advanced e-learning platform for AI, web development, data science, and career-focused technical skills.",
+  applicationName: "PalmTechnIQ",
+  keywords: [
+    "PalmTechnIQ",
+    "e-learning platform",
+    "online courses",
+    "AI courses",
+    "web development",
+    "data science",
+    "tech mentorship",
+  ],
   authors: [{ name: "PalmTechnIQ Team" }],
-  creator: "ISCE Digital Concept",
-  publisher: "ISCE Digital Concept",
+  creator: "PalmTechnIQ",
+  publisher: "PalmTechnIQ",
+  category: "education",
   formatDetection: {
     email: false,
     address: false,
@@ -31,22 +45,16 @@ export const metadata: Metadata = {
   metadataBase: new URL("https://palmtechniq.com"),
   alternates: {
     canonical: "/",
-    languages: {
-      "en-US": "/en-US",
-      "es-ES": "/es-ES",
-      "fr-FR": "/fr-FR",
-      "de-DE": "/de-DE",
-    },
   },
   openGraph: {
     title: "PalmTechnIQ - Advanced E-Learning Platform",
     description:
-      "Master the future with our cutting-edge cyberpunk-themed learning platform.",
+      "Learn in-demand technical skills with practical courses, expert guidance, and a modern learning experience.",
     url: "https://palmtechniq.com",
     siteName: "PalmTechnIQ",
     images: [
       {
-        url: "/og-image.jpg",
+        url: "/opengraph-image",
         width: 1200,
         height: 630,
         alt: "PalmTechnIQ Platform",
@@ -59,8 +67,9 @@ export const metadata: Metadata = {
     card: "summary_large_image",
     title: "PalmTechnIQ - Advanced E-Learning Platform",
     description:
-      "Master the future with our cutting-edge cyberpunk-themed learning platform.",
-    images: ["/twitter-image.jpg"],
+      "Learn in-demand technical skills with practical courses, expert guidance, and a modern learning experience.",
+    images: ["/twitter-image"],
+    site: "@palmtechniq",
     creator: "@palmtechniq",
   },
   robots: {
@@ -86,11 +95,45 @@ export default async function MainRootLayout({
   children: React.ReactNode;
 }) {
   const session = await auth();
-  const user = session?.user;
+  const organizationJsonLd = {
+    "@context": "https://schema.org",
+    "@type": "Organization",
+    name: "PalmTechnIQ",
+    url: "https://palmtechniq.com",
+    email: "support@palmtechniq.com",
+    logo: "https://palmtechniq.com/opengraph-image",
+    sameAs: [],
+  };
+
+  const websiteJsonLd = {
+    "@context": "https://schema.org",
+    "@type": "WebSite",
+    name: "PalmTechnIQ",
+    url: "https://palmtechniq.com",
+    potentialAction: {
+      "@type": "SearchAction",
+      target: "https://palmtechniq.com/search?q={search_term_string}",
+      "query-input": "required name=search_term_string",
+    },
+  };
+
   return (
     <SessionProvider session={session}>
       <html lang="en" suppressHydrationWarning>
         <head>
+          <script
+            type="application/ld+json"
+            dangerouslySetInnerHTML={{
+              __html: JSON.stringify(organizationJsonLd),
+            }}
+          />
+          <script
+            type="application/ld+json"
+            dangerouslySetInnerHTML={{
+              __html: JSON.stringify(websiteJsonLd),
+            }}
+          />
+
           {/* Google Analytics */}
           <script
             async
