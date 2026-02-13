@@ -1,0 +1,47 @@
+name: build
+
+on:
+  pull_request:
+    branches:
+      - main
+  workflow_dispatch:
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    env:
+      # Safe placeholders for build-time checks in CI.
+      DATABASE_URL: postgresql://postgres:postgres@localhost:5432/postgres
+      NEXTAUTH_SECRET: ci-placeholder-secret
+      AUTH_SECRET: ci-placeholder-secret
+      NEXTAUTH_URL: http://localhost:3000
+      RESEND_API_KEY: ci-placeholder
+      PAYSTACK_SECRET_KEY: ci-placeholder
+      PAYSTACK_PUBLIC_KEY: ci-placeholder
+      UPSTASH_REDIS_REST_URL: https://example.upstash.io
+      UPSTASH_REDIS_REST_TOKEN: ci-placeholder
+      AWS_REGION: us-east-1
+      AWS_ACCESS_KEY_ID: ci-placeholder
+      AWS_SECRET_ACCESS_KEY: ci-placeholder
+      AWS_BUCKET_NAME: ci-placeholder
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup pnpm
+        uses: pnpm/action-setup@v4
+        with:
+          version: 10
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: pnpm
+
+      - name: Install dependencies
+        run: pnpm install --frozen-lockfile
+
+      - name: Build
+        run: pnpm build
