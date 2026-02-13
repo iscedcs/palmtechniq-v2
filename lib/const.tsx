@@ -95,9 +95,9 @@ export const roleNavItems = {
 
 export const roleMenuItems = {
   USER: [
-    { icon: User, label: "Profile", href: "/profile" },
+    // { icon: User, label: "Profile", href: "/profile" },
     { icon: BookOpen, label: "My Courses", href: "/courses" },
-    { icon: Settings, label: "Settings", href: "/settings" },
+    // { icon: Settings, label: "Settings", href: "/settings" },
   ],
   STUDENT: [
     { icon: User, label: "Profile", href: "/student/profile" },

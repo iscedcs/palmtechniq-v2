@@ -112,7 +112,7 @@ export default function PrivacyPolicy() {
                   {/* Introduction */}
                   <div className="prose prose-invert max-w-none">
                     <p className="text-gray-300 text-lg leading-relaxed">
-                      At LearnForge, we are committed to protecting your privacy
+                      At PalmTechnIQ, we are committed to protecting your privacy
                       and ensuring the security of your personal information.
                       This Privacy Policy explains how we collect, use,
                       disclose, and safeguard your information when you use our
@@ -128,7 +128,7 @@ export default function PrivacyPolicy() {
                     </h2>
                     <div className="prose prose-invert max-w-none">
                       <p className="text-gray-300">
-                        This Privacy Policy applies to all users of LearnForge,
+                        This Privacy Policy applies to all users of PalmTechnIQ,
                         including students, instructors, and administrators. We
                         believe in transparency and want you to understand:
                       </p>
@@ -342,7 +342,7 @@ export default function PrivacyPolicy() {
                       </ul>
                       <p className="text-gray-300">
                         To exercise these rights, contact us at
-                        privacy@learnforge.com.
+                        privacy@palmtechniq.com.
                       </p>
                     </div>
                   </section>
@@ -410,7 +410,7 @@ export default function PrivacyPolicy() {
                     </h2>
                     <div className="prose prose-invert max-w-none">
                       <p className="text-gray-300">
-                        LearnForge is not intended for children under 13. We do
+                        PalmTechnIQ is not intended for children under 13. We do
                         not knowingly collect personal information from children
                         under 13. If we become aware that we have collected such
                         information, we will delete it promptly.
@@ -470,7 +470,7 @@ export default function PrivacyPolicy() {
                               General Privacy Inquiries
                             </h4>
                             <p className="text-gray-300 text-sm">
-                              <strong>Email:</strong> privacy@learnforge.com
+                              <strong>Email:</strong> privacy@palmtechniq.com
                               <br />
                               <strong>Response Time:</strong> 48 hours
                             </p>
@@ -480,7 +480,7 @@ export default function PrivacyPolicy() {
                               Data Protection Officer
                             </h4>
                             <p className="text-gray-300 text-sm">
-                              <strong>Email:</strong> dpo@learnforge.com
+                              <strong>Email:</strong> dpo@palmtechniq.com
                               <br />
                               <strong>Phone:</strong> +1 (555) 123-4567
                             </p>
@@ -490,7 +490,7 @@ export default function PrivacyPolicy() {
                           <p className="text-gray-300 text-sm">
                             <strong>Mailing Address:</strong>
                             <br />
-                            LearnForge Privacy Team
+                            PalmTechnIQ Privacy Team
                             <br />
                             123 Learning Street
                             <br />

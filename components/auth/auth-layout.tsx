@@ -94,7 +94,7 @@ export function AuthLayout({
             <div className="w-12 h-12 rounded-xl bg-gradient-to-r from-neon-blue to-neon-purple flex items-center justify-center mr-3">
               <Brain className="w-6 h-6 text-white" />
             </div>
-            <span className="text-2xl font-bold text-gradient">LearnForge</span>
+            <span className="text-2xl font-bold text-gradient">PalmTechnIQ</span>
           </div>
 
           {/* Back Button */}
