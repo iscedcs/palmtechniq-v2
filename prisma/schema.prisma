@@ -71,6 +71,8 @@ model User {
   wishlist              Wishlist[]
   reviewReactions       ReviewReaction[]
   transactionLineItems  TransactionLineItem[]
+  advisorSessions       AdvisorSession[]
+  advisorFollowUps      AdvisorFollowUp[]
 
   @@map("users")
 }
@@ -202,6 +204,7 @@ model Course {
   promoCodes           PromoCode[]
   promoRedemptions     PromoRedemption[]
   tutorEarnings        TutorEarning[]
+  advisorRecommendations AdvisorRecommendation[]
 
   @@map("courses")
 }
@@ -228,6 +231,7 @@ model Category {
   parent      Category?  @relation("CategoryHierarchy", fields: [parentId], references: [id])
   children    Category[] @relation("CategoryHierarchy")
   courses     Course[]
+  advisorRecommendations AdvisorRecommendation[]
 
   @@map("categories")
 }
@@ -538,6 +542,73 @@ model AIRecommendation {
   user        User     @relation(fields: [userId], references: [id], onDelete: Cascade)
 
   @@map("ai_recommendations")
+}
+
+model AdvisorSession {
+  id             String         @id @default(cuid())
+  sessionToken   String         @unique
+  userId         String?
+  createdAt      DateTime       @default(now())
+  updatedAt      DateTime       @updatedAt
+  turns          AdvisorTurn[]
+  followUps      AdvisorFollowUp[]
+  user           User?          @relation(fields: [userId], references: [id], onDelete: SetNull)
+
+  @@index([userId])
+  @@map("advisor_sessions")
+}
+
+model AdvisorTurn {
+  id                String                 @id @default(cuid())
+  advisorSessionId  String
+  userMessage       String
+  assistantMessage  String
+  createdAt         DateTime               @default(now())
+  advisorSession    AdvisorSession         @relation(fields: [advisorSessionId], references: [id], onDelete: Cascade)
+  recommendations   AdvisorRecommendation[]
+  followUps         AdvisorFollowUp[]
+
+  @@index([advisorSessionId, createdAt])
+  @@map("advisor_turns")
+}
+
+model AdvisorRecommendation {
+  id             String      @id @default(cuid())
+  advisorTurnId  String
+  courseId       String?
+  categoryId     String?
+  reason         String
+  rank           Int         @default(0)
+  createdAt      DateTime    @default(now())
+  advisorTurn    AdvisorTurn @relation(fields: [advisorTurnId], references: [id], onDelete: Cascade)
+  course         Course?     @relation(fields: [courseId], references: [id], onDelete: SetNull)
+  category       Category?   @relation(fields: [categoryId], references: [id], onDelete: SetNull)
+
+  @@index([advisorTurnId, rank])
+  @@index([courseId])
+  @@index([categoryId])
+  @@map("advisor_recommendations")
+}
+
+model AdvisorFollowUp {
+  id               String               @id @default(cuid())
+  advisorSessionId String
+  advisorTurnId    String?
+  userId           String?
+  name             String
+  email            String
+  note             String?
+  status           AdvisorFollowUpStatus @default(NEW)
+  createdAt        DateTime             @default(now())
+  updatedAt        DateTime             @updatedAt
+  advisorSession   AdvisorSession       @relation(fields: [advisorSessionId], references: [id], onDelete: Cascade)
+  advisorTurn      AdvisorTurn?         @relation(fields: [advisorTurnId], references: [id], onDelete: SetNull)
+  user             User?                @relation(fields: [userId], references: [id], onDelete: SetNull)
+
+  @@index([advisorSessionId, createdAt])
+  @@index([status, createdAt])
+  @@index([email])
+  @@map("advisor_follow_ups")
 }
 
 model MentorshipSession {
@@ -1129,6 +1200,12 @@ enum ReviewReactionType {
   HELPFUL
   LIKE
   REPORT
+}
+
+enum AdvisorFollowUpStatus {
+  NEW
+  CONTACTED
+  CLOSED
 }
 
 enum PromoType {

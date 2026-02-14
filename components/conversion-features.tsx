@@ -1,14 +1,15 @@
 "use client";
 
-import { useState, useEffect } from "react";
+import { useState, useEffect, useRef } from "react";
 import { motion, AnimatePresence } from "framer-motion";
-import { Star, Zap, X, MessageCircle, Play } from "lucide-react";
+import { Star, Zap, X, MessageCircle, Play, Loader2, Send } from "lucide-react";
 import { Card, CardContent } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { generateRandomAvatar } from "@/lib/utils";
 import { isYoutubeUrl, toYoutubeEmbedUrl } from "@/lib/youtube";
+import Link from "next/link";
 
 // Live Activity Ticker
 export function LiveActivityTicker() {
@@ -271,7 +272,189 @@ export function SuccessStoryPopup() {
 
 // Live Chat Widget
 export function LiveChatWidget() {
+  const createBrowserSessionToken = () =>
+    (typeof crypto !== "undefined" && "randomUUID" in crypto
+      ? crypto.randomUUID()
+      : `${Date.now()}-${Math.random().toString(36).slice(2)}`)
+      .replace(/[^a-zA-Z0-9_-]/g, "");
+
   const [isOpen, setIsOpen] = useState(false);
+  const [advisorSessionToken, setAdvisorSessionToken] = useState("");
+  const [latestAdvisorTurnId, setLatestAdvisorTurnId] = useState<string | null>(
+    null
+  );
+  const [messageInput, setMessageInput] = useState("");
+  const [isSending, setIsSending] = useState(false);
+  const [showLeadCapture, setShowLeadCapture] = useState(false);
+  const [leadName, setLeadName] = useState("");
+  const [leadEmail, setLeadEmail] = useState("");
+  const [leadNote, setLeadNote] = useState("");
+  const [isSubmittingLead, setIsSubmittingLead] = useState(false);
+  const [leadSubmitted, setLeadSubmitted] = useState(false);
+  const messagesEndRef = useRef<HTMLDivElement | null>(null);
+
+  type RecommendedCourse = {
+    id: string;
+    reason: string;
+    title: string;
+    level: string;
+    price: number;
+    categoryName: string;
+  };
+
+  type RecommendedCategory = {
+    id: string;
+    name: string;
+    reason: string;
+  };
+
+  type ChatMessage = {
+    id: string;
+    role: "assistant" | "user";
+    content: string;
+    recommendedCourses?: RecommendedCourse[];
+    recommendedCategories?: RecommendedCategory[];
+  };
+
+  const [messages, setMessages] = useState<ChatMessage[]>([
+    {
+      id: "welcome",
+      role: "assistant",
+      content:
+        "Hi, I am your PalmTechnIQ course advisor. Tell me your goal, current level, and time availability, and I will recommend the best-fit courses.",
+    },
+  ]);
+
+  useEffect(() => {
+    messagesEndRef.current?.scrollIntoView({ behavior: "smooth" });
+  }, [messages, isSending]);
+
+  useEffect(() => {
+    const existingToken =
+      typeof window !== "undefined"
+        ? window.localStorage.getItem("advisor-session-token")
+        : null;
+    if (existingToken) {
+      setAdvisorSessionToken(existingToken);
+      return;
+    }
+    const freshToken = createBrowserSessionToken();
+    setAdvisorSessionToken(freshToken);
+    if (typeof window !== "undefined") {
+      window.localStorage.setItem("advisor-session-token", freshToken);
+    }
+  }, []);
+
+  const starterPrompts = [
+    "I am a beginner in web development. What should I take first?",
+    "I want to switch to data/AI roles in 3 months.",
+    "Recommend budget-friendly courses for intermediate learners.",
+  ];
+
+  async function sendMessage(rawMessage: string) {
+    const message = rawMessage.trim();
+    if (!message || isSending) return;
+
+    const userMessage: ChatMessage = {
+      id: `u-${Date.now()}`,
+      role: "user",
+      content: message,
+    };
+    setMessages((prev) => [...prev, userMessage]);
+    setMessageInput("");
+    setIsSending(true);
+
+    try {
+      const res = await fetch("/api/advisor/chat", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          message,
+          sessionToken: advisorSessionToken || undefined,
+        }),
+      });
+
+      const data = await res.json().catch(() => ({}));
+      if (!res.ok) {
+        throw new Error(data?.error || "Unable to get advisor response right now.");
+      }
+
+      const assistantMessage: ChatMessage = {
+        id: `a-${Date.now()}`,
+        role: "assistant",
+        content:
+          typeof data.answer === "string" && data.answer
+            ? data.answer
+            : "I can help you compare courses. Tell me your goal and current level.",
+        recommendedCourses: Array.isArray(data.recommendedCourses)
+          ? data.recommendedCourses
+          : [],
+        recommendedCategories: Array.isArray(data.recommendedCategories)
+          ? data.recommendedCategories
+          : [],
+      };
+
+      setMessages((prev) => [...prev, assistantMessage]);
+      if (typeof data.sessionToken === "string" && data.sessionToken) {
+        setAdvisorSessionToken(data.sessionToken);
+        if (typeof window !== "undefined") {
+          window.localStorage.setItem("advisor-session-token", data.sessionToken);
+        }
+      }
+      if (typeof data.advisorTurnId === "string" && data.advisorTurnId) {
+        setLatestAdvisorTurnId(data.advisorTurnId);
+      }
+      if (data.shouldOfferHumanFollowUp) {
+        setShowLeadCapture(true);
+      }
+    } catch (error) {
+      console.error("Course advisor request failed:", error);
+      setMessages((prev) => [
+        ...prev,
+        {
+          id: `a-fallback-${Date.now()}`,
+          role: "assistant",
+          content:
+            "I could not respond right now. Please try again in a moment, or request a human advisor and we will contact you.",
+        },
+      ]);
+    } finally {
+      setIsSending(false);
+    }
+  }
+
+  async function submitLead() {
+    if (!leadName.trim() || !leadEmail.trim() || isSubmittingLead) return;
+
+    setIsSubmittingLead(true);
+    try {
+      const res = await fetch("/api/advisor/lead", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          name: leadName.trim(),
+          email: leadEmail.trim(),
+          note: leadNote.trim(),
+          sessionToken: advisorSessionToken || createBrowserSessionToken(),
+          advisorTurnId: latestAdvisorTurnId || undefined,
+        }),
+      });
+      const data = await res.json().catch(() => ({}));
+      if (!res.ok) {
+        throw new Error(data?.error || "Failed to submit follow-up request.");
+      }
+
+      setLeadSubmitted(true);
+      setShowLeadCapture(false);
+      setLeadName("");
+      setLeadEmail("");
+      setLeadNote("");
+    } catch (error) {
+      console.error("Course advisor lead submission failed:", error);
+    } finally {
+      setIsSubmittingLead(false);
+    }
+  }
 
   return (
     <>
@@ -289,7 +472,7 @@ export function LiveChatWidget() {
             initial={{ opacity: 0, scale: 0.8, y: 20 }}
             animate={{ opacity: 1, scale: 1, y: 0 }}
             exit={{ opacity: 0, scale: 0.8, y: 20 }}
-            className="fixed bottom-24 right-6 w-80 h-96 z-50">
+            className="fixed bottom-24 right-6 w-[22rem] max-w-[calc(100vw-3rem)] h-[32rem] z-50">
             <Card className="glass-card border-white/10 h-full">
               <CardContent className="p-0 h-full flex flex-col">
                 <div className="p-4 border-b border-white/10">
@@ -303,21 +486,159 @@ export function LiveChatWidget() {
                     </Button>
                   </div>
                   <p className="text-gray-400 text-sm">
-                    Get instant help choosing the right course
+                    Personalized guidance using PalmTechnIQ course catalog
                   </p>
                 </div>
-                <div className="flex-1 p-4 flex items-center justify-center">
-                  <div className="text-center">
-                    <div className="w-12 h-12 bg-gradient-to-r from-neon-blue to-neon-purple rounded-full flex items-center justify-center mx-auto mb-3">
-                      <MessageCircle className="w-6 h-6 text-white" />
+
+                <div className="flex-1 min-h-0 p-3 overflow-y-auto space-y-3">
+                  {messages.map((message) => (
+                    <div key={message.id} className="space-y-2">
+                      <div
+                        className={`max-w-[90%] rounded-xl px-3 py-2 text-sm ${
+                          message.role === "user"
+                            ? "ml-auto bg-neon-blue/20 border border-neon-blue/40 text-white"
+                            : "bg-white/5 border border-white/10 text-gray-100"
+                        }`}>
+                        {message.content}
+                      </div>
+
+                      {message.role === "assistant" &&
+                        Array.isArray(message.recommendedCourses) &&
+                        message.recommendedCourses.length > 0 && (
+                          <div className="space-y-2">
+                            {message.recommendedCourses.map((course) => (
+                              <Link
+                                key={course.id}
+                                href={`/courses/${course.id}`}
+                                className="block rounded-lg border border-white/15 bg-white/5 px-3 py-2 hover:bg-white/10 transition-colors">
+                                <p className="text-white text-sm font-medium">
+                                  {course.title}
+                                </p>
+                                <p className="text-gray-400 text-xs">
+                                  {course.level} • {course.categoryName} • ₦
+                                  {Math.round(course.price).toLocaleString()}
+                                </p>
+                                <p className="text-gray-300 text-xs mt-1">
+                                  {course.reason}
+                                </p>
+                              </Link>
+                            ))}
+                          </div>
+                        )}
+
+                      {message.role === "assistant" &&
+                        Array.isArray(message.recommendedCategories) &&
+                        message.recommendedCategories.length > 0 && (
+                          <div className="space-y-2">
+                            {message.recommendedCategories.map((category) => (
+                              <div
+                                key={category.id}
+                                className="rounded-lg border border-neon-purple/40 bg-neon-purple/10 px-3 py-2">
+                                <p className="text-xs text-gray-100 font-medium">
+                                  {category.name}
+                                </p>
+                                <p className="text-[11px] text-gray-300 mt-1">
+                                  {category.reason}
+                                </p>
+                              </div>
+                            ))}
+                          </div>
+                        )}
                     </div>
-                    <p className="text-gray-300 text-sm">
-                      Chat with our course advisors
+                  ))}
+
+                  {isSending && (
+                    <div className="inline-flex items-center gap-2 rounded-xl bg-white/5 border border-white/10 px-3 py-2 text-sm text-gray-300">
+                      <Loader2 className="w-4 h-4 animate-spin" />
+                      Thinking...
+                    </div>
+                  )}
+
+                  {showLeadCapture && !leadSubmitted && (
+                    <div className="rounded-xl border border-white/15 bg-white/5 p-3 space-y-2">
+                      <p className="text-sm text-white font-medium">
+                        Need a human advisor?
+                      </p>
+                      <input
+                        value={leadName}
+                        onChange={(e) => setLeadName(e.target.value)}
+                        placeholder="Your name"
+                        className="w-full rounded-md bg-black/20 border border-white/15 px-3 py-2 text-sm text-white outline-none focus:border-neon-blue/50"
+                      />
+                      <input
+                        value={leadEmail}
+                        onChange={(e) => setLeadEmail(e.target.value)}
+                        placeholder="Your email"
+                        type="email"
+                        className="w-full rounded-md bg-black/20 border border-white/15 px-3 py-2 text-sm text-white outline-none focus:border-neon-blue/50"
+                      />
+                      <textarea
+                        value={leadNote}
+                        onChange={(e) => setLeadNote(e.target.value)}
+                        placeholder="Optional note about your goals"
+                        rows={2}
+                        className="w-full rounded-md bg-black/20 border border-white/15 px-3 py-2 text-sm text-white outline-none focus:border-neon-blue/50 resize-none"
+                      />
+                      <Button
+                        onClick={submitLead}
+                        disabled={isSubmittingLead}
+                        className="w-full bg-gradient-to-r from-neon-blue to-neon-purple text-white">
+                        {isSubmittingLead ? "Submitting..." : "Request Follow-up"}
+                      </Button>
+                    </div>
+                  )}
+
+                  {leadSubmitted && (
+                    <p className="text-xs text-green-300 bg-green-500/10 border border-green-500/30 rounded-lg px-3 py-2">
+                      Thanks, our team will reach out shortly.
                     </p>
-                    <p className="text-gray-400 text-xs mt-1">
-                      Average response time: 2 minutes
-                    </p>
+                  )}
+
+                  <div ref={messagesEndRef} />
+                </div>
+
+                <div className="p-3 border-t border-white/10 space-y-2">
+                  <div className="flex gap-2">
+                    {starterPrompts.slice(0, 2).map((prompt) => (
+                      <button
+                        key={prompt}
+                        onClick={() => sendMessage(prompt)}
+                        disabled={isSending}
+                        className="text-[11px] px-2 py-1 rounded-full border border-white/20 text-gray-300 hover:bg-white/10 disabled:opacity-60">
+                        {prompt.length > 34 ? `${prompt.slice(0, 34)}...` : prompt}
+                      </button>
+                    ))}
                   </div>
+
+                  <form
+                    onSubmit={(e) => {
+                      e.preventDefault();
+                      void sendMessage(messageInput);
+                    }}
+                    className="flex items-center gap-2">
+                    <input
+                      value={messageInput}
+                      onChange={(e) => setMessageInput(e.target.value)}
+                      placeholder="Ask about goals, level, or budget..."
+                      maxLength={1200}
+                      className="flex-1 rounded-lg bg-black/20 border border-white/15 px-3 py-2 text-sm text-white outline-none focus:border-neon-blue/50"
+                    />
+                    <Button
+                      type="submit"
+                      size="icon"
+                      disabled={isSending || !messageInput.trim()}
+                      className="bg-gradient-to-r from-neon-blue to-neon-purple text-white">
+                      <Send className="w-4 h-4" />
+                    </Button>
+                  </form>
+
+                  {!showLeadCapture && !leadSubmitted && (
+                    <button
+                      onClick={() => setShowLeadCapture(true)}
+                      className="text-xs text-neon-blue hover:text-neon-purple transition-colors">
+                      Prefer a human advisor? Request follow-up
+                    </button>
+                  )}
                 </div>
               </CardContent>
             </Card>
