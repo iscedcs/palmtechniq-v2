@@ -114,10 +114,18 @@ export async function login(
 
       const { sendVerificationEmail } = await import("@/lib/mail");
 
-      await sendVerificationEmail(
-        verificationToken.email,
-        verificationToken.token
-      );
+      try {
+        await sendVerificationEmail(
+          verificationToken.email,
+          verificationToken.token
+        );
+      } catch (mailError) {
+        console.error("Verification email failed:", mailError);
+        return {
+          error:
+            "Unable to send verification email. Please try again later.",
+        };
+      }
       return {
         success: "Confirmation email sent! Please check your inbox.",
       };
