@@ -85,12 +85,7 @@ export function TutorCourseCard({ course }: TutorCourseCardProps) {
             updatedAt={course.updatedAt}
           />
 
-          <div className="flex justify-between items-center mt-4">
-            <Button
-              variant="outline"
-              className="border-white/20 text-white hover:bg-white/10">
-              Manage
-            </Button>
+          <div className="flex justify-end mt-4">
             <Button
               asChild
               className="bg-gradient-to-r from-indigo-500 to-purple-500 text-white">
