@@ -27,7 +27,7 @@ export async function getTutorDashboardData() {
       },
       enrollments: true,
       reviews: { where: { isPublic: true } },
-      transactions: true,
+      transactions: { where: { status: "COMPLETED" } },
     },
   });
 
@@ -59,6 +59,7 @@ export async function getTutorDashboardData() {
 
   const currentMonthTx = await db.transaction.aggregate({
     where: {
+      status: "COMPLETED",
       course: { tutorId: tutor.id },
       createdAt: { gte: startOfMonth },
     },
@@ -67,6 +68,7 @@ export async function getTutorDashboardData() {
 
   const lastMonthTx = await db.transaction.aggregate({
     where: {
+      status: "COMPLETED",
       course: { tutorId: tutor.id },
       createdAt: {
         gte: startOfLastMonth,
@@ -81,14 +83,17 @@ export async function getTutorDashboardData() {
     0
   );
 
-  const totalEarnings = courses.reduce(
-    (sum, c) =>
-      sum + c.transactions.reduce((txSum, tx) => txSum + (tx.amount || 0), 0),
-    0
-  );
+  const totalEarnings =
+    courses.reduce(
+      (sum, c) =>
+        sum +
+        c.transactions.reduce((txSum, tx) => txSum + (tx.amount || 0), 0),
+      0
+    ) / 100;
 
   const monthlyEarnings = await db.transaction.aggregate({
     where: {
+      status: "COMPLETED",
       course: { tutorId: tutor.id },
       createdAt: {
         gte: new Date(new Date().getFullYear(), new Date().getMonth(), 1),
@@ -101,10 +106,11 @@ export async function getTutorDashboardData() {
 
   const averageRating = getAverageRating(courses.flatMap((c) => c.reviews));
 
+  const currentMonthAmount = (currentMonthTx._sum.amount || 0) / 100;
+  const lastMonthAmount = (lastMonthTx._sum.amount || 0) / 100;
   const earningsChange =
-    lastMonthTx._sum.amount && lastMonthTx._sum.amount > 0
-      ? (((currentMonthTx._sum.amount || 0) - lastMonthTx._sum.amount) /
-          lastMonthTx._sum.amount) *
+    lastMonthAmount > 0
+      ? ((currentMonthAmount - lastMonthAmount) / lastMonthAmount) *
         100
       : 0;
 
@@ -157,6 +163,7 @@ export async function getTutorDashboardData() {
 
     const sum = await db.transaction.aggregate({
       where: {
+        status: "COMPLETED",
         course: { tutorId: tutor.id },
         createdAt: {
           gte: start,
@@ -168,7 +175,7 @@ export async function getTutorDashboardData() {
 
     earningsHistory.push({
       month: monthName,
-      amount: sum._sum.amount || 0,
+      amount: (sum._sum.amount || 0) / 100,
     });
   }
 
@@ -178,7 +185,8 @@ export async function getTutorDashboardData() {
     title: c.title,
     students: c.enrollments.length,
     rating: getAverageRating(c.reviews),
-    earnings: c.transactions.reduce((txSum, tx) => txSum + (tx.amount || 0), 0),
+    earnings:
+      c.transactions.reduce((txSum, tx) => txSum + (tx.amount || 0), 0) / 100,
     status: c.status.toLowerCase(),
     thumbnail: c.thumbnail,
     lastUpdated: c.updatedAt.toLocaleDateString(),
@@ -216,7 +224,7 @@ export async function getTutorDashboardData() {
     stats: {
       totalStudents,
       totalEarnings,
-      monthlyEarnings: monthlyEarnings._sum.amount || 0,
+      monthlyEarnings: (monthlyEarnings._sum.amount || 0) / 100,
       earningsHistory,
       coursesSold,
       averageRating,

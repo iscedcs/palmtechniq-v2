@@ -24,7 +24,7 @@ export async function getTutorCourses() {
         },
         enrollments: true,
         reviews: { where: { isPublic: true } },
-        transactions: true,
+        transactions: { where: { status: "COMPLETED" } },
       },
       orderBy: { createdAt: "desc" },
     });
@@ -45,8 +45,8 @@ export async function getTutorCourses() {
       const avgRating = getAverageRating(course.reviews);
 
       const earnings =
-        course.transactions?.reduce((sum, tx) => sum + (tx.amount || 0), 0) ??
-        0;
+        (course.transactions?.reduce((sum, tx) => sum + (tx.amount || 0), 0) ??
+          0) / 100;
 
       // --- 🧮 Compute growth (month over month) ---
       const now = new Date();

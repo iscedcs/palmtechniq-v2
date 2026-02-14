@@ -13,6 +13,9 @@ const formatCurrency = (amount: number) =>
     maximumFractionDigits: 0,
   }).format(amount);
 
+const formatTransactionCurrency = (amount: number) =>
+  formatCurrency(amount / 100);
+
 const formatDate = (date: Date) =>
   date.toLocaleDateString("en-GB", {
     day: "2-digit",
@@ -49,6 +52,7 @@ export async function getAdminDashboardData() {
     roleCounts,
     paidWithdrawalsAgg,
     pendingWithdrawalsAgg,
+    pendingRevenueAgg,
     courseRows,
     courseEnrollmentCounts,
     courseRevenueAgg,
@@ -88,6 +92,7 @@ export async function getAdminDashboardData() {
       by: ["courseId"],
       _sum: { totalAmount: true },
       _count: { _all: true },
+      where: { transaction: { status: "COMPLETED" } },
       orderBy: { _sum: { totalAmount: "desc" } },
       take: 5,
     }),
@@ -111,6 +116,10 @@ export async function getAdminDashboardData() {
       where: { status: { in: ["PENDING", "APPROVED"] } },
       _sum: { amount: true },
     }),
+    db.transaction.aggregate({
+      where: { status: "PENDING" },
+      _sum: { amount: true },
+    }),
     db.course.findMany({
       orderBy: { createdAt: "desc" },
       take: 50,
@@ -132,6 +141,7 @@ export async function getAdminDashboardData() {
     db.transactionLineItem.groupBy({
       by: ["courseId"],
       _sum: { totalAmount: true },
+      where: { transaction: { status: "COMPLETED" } },
     }),
   ]);
 
@@ -162,7 +172,7 @@ export async function getAdminDashboardData() {
     },
     {
       title: "Monthly Revenue",
-      value: formatCurrency(monthlyRevenue),
+      value: formatTransactionCurrency(monthlyRevenue),
       change: "",
       trend: "up",
       icon: "NairaSign",
@@ -259,7 +269,7 @@ export async function getAdminDashboardData() {
       title: course?.title || "Course",
       instructor: course?.tutor?.user?.name || "Tutor",
       students: completionInfo.total,
-      revenue: formatCurrency(revenue),
+      revenue: formatTransactionCurrency(revenue),
       rating: Number(rating.toFixed(1)),
       completion,
     };
@@ -310,6 +320,10 @@ export async function getAdminDashboardData() {
       value: formatCurrency(pendingWithdrawalsAgg._sum.amount ?? 0),
     },
     {
+      label: "Pending Revenue",
+      value: formatTransactionCurrency(pendingRevenueAgg._sum.amount ?? 0),
+    },
+    {
       label: "Active Tutors",
       value: (roleCountMap.get("TUTOR") ?? 0).toLocaleString("en-NG"),
     },
@@ -338,7 +352,7 @@ export async function getAdminDashboardData() {
     status: course.status,
     price:
       course.currentPrice ?? course.basePrice ?? course.price ?? 0,
-    revenue: revenueByCourse.get(course.id) ?? 0,
+    revenue: (revenueByCourse.get(course.id) ?? 0) / 100,
     enrollments: enrollmentCountByCourse.get(course.id) ?? 0,
     tutor: course.tutor?.user?.name || "Tutor",
     createdAt: formatDate(course.createdAt),
@@ -677,7 +691,7 @@ export async function getAdminCoursesPageData(params?: {
     title: course.title,
     status: course.status,
     price: course.currentPrice ?? course.basePrice ?? course.price ?? 0,
-    revenue: revenueByCourse.get(course.id) ?? 0,
+    revenue: (revenueByCourse.get(course.id) ?? 0) / 100,
     enrollments: enrollmentCountByCourse.get(course.id) ?? 0,
     tutor: course.tutor?.user?.name || "Tutor",
     createdAt: formatDate(course.createdAt),
