@@ -62,6 +62,7 @@ export const protectedRoutes = [
   "/admin/users",
   "/admin/users/[userId]",
   "/admin/courses",
+  "/admin/advisor",
   "/admin/settings",
   "/settings",
 ];
@@ -76,6 +77,7 @@ export const adminRoutes = [
   "/admin/users",
   "/admin/users/[userId]",
   "/admin/courses",
+  "/admin/advisor",
   "/admin/settings",
 ];
 
