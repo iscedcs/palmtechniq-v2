@@ -82,6 +82,7 @@ export default function UploadFile({
             filename: file.name,
             contentType: file.type,
             type: "image",
+            visibility: "public",
           }),
         });
 

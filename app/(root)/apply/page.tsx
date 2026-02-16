@@ -1,8 +1,9 @@
 "use client";
 
-import { useState } from "react";
+import { useEffect, useState, type ChangeEvent } from "react";
 import { motion } from "framer-motion";
 import { useRouter } from "next/navigation";
+import { useSession } from "next-auth/react";
 import { Navigation } from "@/components/navigation";
 import { Card, CardContent } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
@@ -33,8 +34,6 @@ import {
   Clock,
 } from "lucide-react";
 import { toast } from "sonner";
-import type { UserRole } from "@/types/user";
-import { generateRandomAvatar } from "@/lib/utils";
 
 interface ApplicationData {
   applicationType: "tutor" | "mentor" | "";
@@ -57,6 +56,7 @@ interface ApplicationData {
     skills: string[];
     achievements: string[];
     resume: File | null;
+    resumeUrl: string;
     portfolio: string;
   };
   teaching: {
@@ -78,14 +78,17 @@ interface ApplicationData {
 
 export default function ApplicationPage() {
   const router = useRouter();
-  const [userRole] = useState<UserRole>("USER");
-  const [userName] = useState("Alex Johnson");
-  const [userAvatar] = useState(generateRandomAvatar());
+  const { data: session } = useSession();
 
   const [currentStep, setCurrentStep] = useState(1);
   const [isSubmitting, setIsSubmitting] = useState(false);
+  const [isUploadingResume, setIsUploadingResume] = useState(false);
   const [newSkill, setNewSkill] = useState("");
   const [newAchievement, setNewAchievement] = useState("");
+  const signedInEmail = session?.user?.email?.trim() ?? "";
+  const signedInRole = session?.user?.role ?? "USER";
+  const isStudentApplicant = signedInRole === "STUDENT";
+  const shouldLockEmail = Boolean(signedInEmail) && !isStudentApplicant;
 
   const [applicationData, setApplicationData] = useState<ApplicationData>({
     applicationType: "",
@@ -108,6 +111,7 @@ export default function ApplicationPage() {
       skills: [],
       achievements: [],
       resume: null,
+      resumeUrl: "",
       portfolio: "",
     },
     teaching: {
@@ -129,6 +133,33 @@ export default function ApplicationPage() {
 
   const totalSteps = 5;
   const progress = (currentStep / totalSteps) * 100;
+
+  useEffect(() => {
+    if (!signedInEmail) return;
+    setApplicationData((prev) => {
+      if (shouldLockEmail) {
+        if (prev.personalInfo.email === signedInEmail) return prev;
+        return {
+          ...prev,
+          personalInfo: {
+            ...prev.personalInfo,
+            email: signedInEmail,
+          },
+        };
+      }
+
+      if (!prev.personalInfo.email) {
+        return {
+          ...prev,
+          personalInfo: {
+            ...prev.personalInfo,
+            email: signedInEmail,
+          },
+        };
+      }
+      return prev;
+    });
+  }, [signedInEmail, shouldLockEmail]);
 
   const industries = [
     "Technology",
@@ -200,7 +231,7 @@ export default function ApplicationPage() {
       professional: {
         ...prev.professional,
         skills: prev.professional.skills.filter(
-          (skill) => skill !== skillToRemove
+          (skill) => skill !== skillToRemove,
         ),
       },
     }));
@@ -231,7 +262,7 @@ export default function ApplicationPage() {
       professional: {
         ...prev.professional,
         achievements: prev.professional.achievements.filter(
-          (achievement) => achievement !== achievementToRemove
+          (achievement) => achievement !== achievementToRemove,
         ),
       },
     }));
@@ -249,17 +280,129 @@ export default function ApplicationPage() {
     }
   };
 
+  const handleResumeUpload = async (event: ChangeEvent<HTMLInputElement>) => {
+    const file = event.target.files?.[0];
+    if (!file) return;
+
+    const allowedTypes = [
+      "application/pdf",
+      "application/msword",
+      "application/vnd.openxmlformats-officedocument.wordprocessingml.document",
+    ];
+    const maxSize = 5 * 1024 * 1024;
+
+    if (!allowedTypes.includes(file.type)) {
+      toast.error("Please upload a PDF, DOC, or DOCX file.");
+      event.target.value = "";
+      return;
+    }
+
+    if (file.size > maxSize) {
+      toast.error("Resume file is too large. Max size is 5MB.");
+      event.target.value = "";
+      return;
+    }
+
+    setIsUploadingResume(true);
+    try {
+      const signedUploadRes = await fetch("/api/upload", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          filename: file.name,
+          contentType: file.type,
+          visibility: "public",
+        }),
+      });
+
+      const signedUploadData = await signedUploadRes.json().catch(() => null);
+      if (
+        !signedUploadRes.ok ||
+        !signedUploadData?.success ||
+        !signedUploadData?.url ||
+        !signedUploadData?.fields?.key
+      ) {
+        throw new Error(
+          signedUploadData?.error || "Failed to initialize upload",
+        );
+      }
+
+      const uploadFormData = new FormData();
+      Object.entries(signedUploadData.fields).forEach(([key, value]) => {
+        uploadFormData.append(key, String(value));
+      });
+      uploadFormData.append("file", file);
+
+      const uploadRes = await fetch(signedUploadData.url, {
+        method: "POST",
+        body: uploadFormData,
+      });
+      if (!uploadRes.ok) {
+        throw new Error("Failed to upload resume");
+      }
+
+      const uploadUrl = String(signedUploadData.url);
+      const objectKey = String(signedUploadData.fields.key);
+      const separator = uploadUrl.endsWith("/") ? "" : "/";
+      const resumeUrl = `${uploadUrl}${separator}${objectKey}`;
+
+      setApplicationData((prev) => ({
+        ...prev,
+        professional: {
+          ...prev.professional,
+          resume: file,
+          resumeUrl,
+        },
+      }));
+      toast.success("Resume uploaded successfully.");
+    } catch (error) {
+      toast.error(
+        error instanceof Error ? error.message : "Failed to upload resume.",
+      );
+    } finally {
+      setIsUploadingResume(false);
+      event.target.value = "";
+    }
+  };
+
   const submitApplication = async () => {
+    if (!applicationData.professional.resumeUrl) {
+      toast.error("Please upload your resume before submitting.");
+      return;
+    }
+
     setIsSubmitting(true);
     try {
-      // Simulate API call
-      await new Promise((resolve) => setTimeout(resolve, 2000));
+      const response = await fetch("/api/applications", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          ...applicationData,
+          professional: {
+            ...applicationData.professional,
+            resumeFileName: applicationData.professional.resume?.name ?? "",
+            resumeUrl: applicationData.professional.resumeUrl,
+            resumeMimeType: applicationData.professional.resume?.type ?? "",
+            resumeFileSize: applicationData.professional.resume?.size ?? 0,
+          },
+        }),
+      });
+
+      const result = await response.json().catch(() => null);
+      if (!response.ok || !result?.ok) {
+        throw new Error(result?.error || "Failed to submit application");
+      }
+
       toast.success(
-        "Application submitted successfully! We'll review it within 48 hours."
+        "Application submitted successfully! We'll review it within 48 hours.",
       );
       router.push("/");
     } catch (error) {
-      toast.error("Failed to submit application. Please try again.");
+      toast.error(
+        error instanceof Error
+          ? error.message
+          : "Failed to submit application. Please try again.",
+      );
     } finally {
       setIsSubmitting(false);
     }
@@ -466,6 +609,7 @@ export default function ApplicationPage() {
                   id="email"
                   type="email"
                   value={applicationData.personalInfo.email}
+                  disabled={shouldLockEmail}
                   onChange={(e) =>
                     setApplicationData((prev) => ({
                       ...prev,
@@ -477,6 +621,11 @@ export default function ApplicationPage() {
                   }
                   className="mt-1 bg-white/10 border-white/20 text-white"
                 />
+                {shouldLockEmail && (
+                  <p className="text-xs text-gray-400 mt-1">
+                    Email is locked to your signed-in account.
+                  </p>
+                )}
               </div>
 
               <div>
@@ -767,21 +916,39 @@ export default function ApplicationPage() {
                         onClick={() => removeAchievement(achievement)}>
                         {achievement} ×
                       </Badge>
-                    )
+                    ),
                   )}
                 </div>
               </div>
 
               <div>
                 <Label className="text-white">Resume/CV *</Label>
-                <div className="mt-2 border-2 border-dashed border-white/20 rounded-lg p-6 text-center hover:border-white/40 transition-colors cursor-pointer">
+                <div className="mt-2 border-2 border-dashed border-white/20 rounded-lg p-6 text-center transition-colors">
                   <Upload className="h-8 w-8 mx-auto text-gray-400 mb-2" />
                   <p className="text-sm text-gray-400">
-                    Click to upload your resume (PDF, DOC, DOCX)
+                    Upload your resume (PDF, DOC, DOCX)
                   </p>
                   <p className="text-xs text-gray-500 mt-1">
                     Max file size: 5MB
                   </p>
+                  <Input
+                    type="file"
+                    accept=".pdf,.doc,.docx,application/pdf,application/msword,application/vnd.openxmlformats-officedocument.wordprocessingml.document"
+                    onChange={handleResumeUpload}
+                    disabled={isUploadingResume}
+                    className="mt-4 bg-white/10 border-white/20 text-white file:bg-neon-blue/20 file:text-neon-blue file:border-0"
+                  />
+                  {isUploadingResume && (
+                    <p className="text-xs text-neon-blue mt-3">
+                      Uploading resume...
+                    </p>
+                  )}
+                  {!isUploadingResume &&
+                    applicationData.professional.resume && (
+                      <p className="text-xs text-neon-green mt-3">
+                        Uploaded: {applicationData.professional.resume.name}
+                      </p>
+                    )}
                 </div>
               </div>
 
@@ -842,7 +1009,7 @@ export default function ApplicationPage() {
                       <Checkbox
                         id={subject}
                         checked={applicationData.teaching.subjects.includes(
-                          subject
+                          subject,
                         )}
                         onCheckedChange={(checked) => {
                           if (checked) {
@@ -859,7 +1026,7 @@ export default function ApplicationPage() {
                               teaching: {
                                 ...prev.teaching,
                                 subjects: prev.teaching.subjects.filter(
-                                  (s) => s !== subject
+                                  (s) => s !== subject,
                                 ),
                               },
                             }));
@@ -934,7 +1101,7 @@ export default function ApplicationPage() {
                 </Label>
                 <Textarea
                   id="approach"
-                  placeholder={`Describe your ₦{
+                  placeholder={`Describe your ${
                     applicationData.applicationType === "tutor"
                       ? "teaching"
                       : "mentoring"
@@ -964,7 +1131,7 @@ export default function ApplicationPage() {
                         <Checkbox
                           id={time}
                           checked={applicationData.teaching.availability.includes(
-                            time
+                            time,
                           )}
                           onCheckedChange={(checked) => {
                             if (checked) {
@@ -985,7 +1152,7 @@ export default function ApplicationPage() {
                                   ...prev.teaching,
                                   availability:
                                     prev.teaching.availability.filter(
-                                      (t) => t !== time
+                                      (t) => t !== time,
                                     ),
                                 },
                               }));
@@ -1001,34 +1168,36 @@ export default function ApplicationPage() {
                   </div>
                 </div>
 
-                <div>
-                  <Label htmlFor="hourlyRate" className="text-white">
-                    Desired Hourly Rate (USD) *
-                  </Label>
-                  <Input
-                    id="hourlyRate"
-                    type="number"
-                    placeholder="e.g., 50"
-                    value={applicationData.teaching.hourlyRate || ""}
-                    onChange={(e) =>
-                      setApplicationData((prev) => ({
-                        ...prev,
-                        teaching: {
-                          ...prev.teaching,
-                          hourlyRate: Number.parseInt(e.target.value) || 0,
-                        },
-                      }))
-                    }
-                    className="mt-1 bg-white/10 border-white/20 text-white"
-                  />
-                  <p className="text-xs text-gray-400 mt-1">
-                    Platform takes 30% commission. You'll earn ₦
-                    {((applicationData.teaching.hourlyRate || 0) * 0.7).toFixed(
-                      0
-                    )}
-                    /hour
-                  </p>
-                </div>
+                {applicationData.applicationType === "mentor" && (
+                  <div>
+                    <Label htmlFor="hourlyRate" className="text-white">
+                      Desired Hourly Rate (NGN) *
+                    </Label>
+                    <Input
+                      id="hourlyRate"
+                      type="number"
+                      placeholder="e.g., 50"
+                      value={applicationData.teaching.hourlyRate || ""}
+                      onChange={(e) =>
+                        setApplicationData((prev) => ({
+                          ...prev,
+                          teaching: {
+                            ...prev.teaching,
+                            hourlyRate: Number.parseInt(e.target.value) || 0,
+                          },
+                        }))
+                      }
+                      className="mt-1 bg-white/10 border-white/20 text-white"
+                    />
+                    <p className="text-xs text-gray-400 mt-1">
+                      Platform takes 30% commission. You'll earn ₦
+                      {(
+                        (applicationData.teaching.hourlyRate || 0) * 0.7
+                      ).toFixed(0)}
+                      /hour
+                    </p>
+                  </div>
+                )}
               </div>
 
               <div>
@@ -1041,7 +1210,7 @@ export default function ApplicationPage() {
                       <Checkbox
                         id={language}
                         checked={applicationData.teaching.languages.includes(
-                          language
+                          language,
                         )}
                         onCheckedChange={(checked) => {
                           if (checked) {
@@ -1061,7 +1230,7 @@ export default function ApplicationPage() {
                               teaching: {
                                 ...prev.teaching,
                                 languages: prev.teaching.languages.filter(
-                                  (l) => l !== language
+                                  (l) => l !== language,
                                 ),
                               },
                             }));
@@ -1211,12 +1380,14 @@ export default function ApplicationPage() {
                       {applicationData.teaching.subjects.length} selected
                     </span>
                   </div>
-                  <div>
-                    <span className="text-gray-400">Hourly Rate:</span>
-                    <span className="text-white ml-2">
-                      ₦{applicationData.teaching.hourlyRate}/hour
-                    </span>
-                  </div>
+                  {applicationData.applicationType === "mentor" && (
+                    <div>
+                      <span className="text-gray-400">Hourly Rate:</span>
+                      <span className="text-white ml-2">
+                        ₦{applicationData.teaching.hourlyRate}/hour
+                      </span>
+                    </div>
+                  )}
                 </div>
               </div>
 

@@ -9,6 +9,9 @@ on:
 jobs:
   build:
     runs-on: ubuntu-latest
+    permissions:
+      contents: read
+      security-events: write
     env:
       # Safe placeholders for build-time checks in CI.
       DATABASE_URL: postgresql://postgres:postgres@localhost:5432/postgres
@@ -42,6 +45,22 @@ jobs:
 
       - name: Install dependencies
         run: pnpm install --frozen-lockfile
+
+      - name: Lint
+        run: pnpm lint
+
+      - name: Dependency Audit
+        run: pnpm audit --registry=https://registry.npmjs.org --audit-level=high
+
+      - name: Secret Scan (Gitleaks)
+        uses: gitleaks/gitleaks-action@v2
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Static Security Scan (Semgrep)
+        uses: returntocorp/semgrep-action@v1
+        with:
+          config: p/security-audit
 
       - name: Build
         run: pnpm build

@@ -57,14 +57,14 @@ export default async function AdminAdvisorPage() {
         by: ["courseId"],
         where: { courseId: { not: null } },
         _count: { _all: true },
-        orderBy: { _count: { _all: "desc" } },
+        orderBy: { _count: { courseId: "desc" } },
         take: 10,
       }),
       db.advisorRecommendation.groupBy({
         by: ["categoryId"],
         where: { categoryId: { not: null } },
         _count: { _all: true },
-        orderBy: { _count: { _all: "desc" } },
+        orderBy: { _count: { categoryId: "desc" } },
         take: 10,
       }),
     ]);

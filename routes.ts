@@ -10,6 +10,7 @@ export const publicRoutes = [
   "/courses/[slug]", // Individual course pages are public for viewing
   "/mentorship", // External mentorship page is public
   "/apply", // Application page is public
+  "/become-a-tutor",
   "/terms",
   "/privacy",
   "/api/chat",
@@ -63,6 +64,7 @@ export const protectedRoutes = [
   "/admin/users/[userId]",
   "/admin/courses",
   "/admin/advisor",
+  "/admin/applications",
   "/admin/settings",
   "/settings",
 ];
@@ -78,6 +80,7 @@ export const adminRoutes = [
   "/admin/users/[userId]",
   "/admin/courses",
   "/admin/advisor",
+  "/admin/applications",
   "/admin/settings",
 ];
 

@@ -2,6 +2,7 @@
 
 import { useEffect, useState } from "react";
 import { motion } from "framer-motion";
+import Link from "next/link";
 import {
   Users,
   BookOpen,
@@ -22,6 +23,7 @@ import {
   Edit,
   Trash2,
   Plus,
+  FileText,
 } from "lucide-react";
 import { NairaSign } from "@/components/shared/naira-sign-icon";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
@@ -314,6 +316,15 @@ export default function AdminDashboard() {
             </p>
           </div>
           <div className="flex items-center gap-4 mt-4 md:mt-0">
+            <Button
+              asChild
+              variant="outline"
+              className="border-neon-purple/50 hover:bg-neon-purple/10 bg-transparent">
+              <Link href="/admin/applications">
+                <FileText className="w-4 h-4 mr-2" />
+                Applications
+              </Link>
+            </Button>
             <Button
               variant="outline"
               onClick={handleExportData}

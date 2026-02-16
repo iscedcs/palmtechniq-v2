@@ -141,7 +141,7 @@ export async function createCourse(data: any, modulesData: any[] = []) {
           };
           const validatedModule = shouldValidateContent
             ? moduleSchema.safeParse(modulePayload)
-            : { success: true, data: modulePayload };
+            : ({ success: true, data: modulePayload } as const);
 
           if (!validatedModule.success) {
             throw new Error(validatedModule.error.issues[0].message);
@@ -173,7 +173,7 @@ export async function createCourse(data: any, modulesData: any[] = []) {
             };
             const validatedLesson = shouldValidateContent
               ? lessonSchema.safeParse(lessonPayload)
-              : { success: true, data: lessonPayload };
+              : ({ success: true, data: lessonPayload } as const);
 
             if (!validatedLesson.success) {
               throw new Error(validatedLesson.error.issues[0].message);
@@ -507,6 +507,7 @@ export async function uploadCourseFile(
         filename: file.name,
         contentType: file.type,
         type,
+        visibility: "public",
       }),
     });
 

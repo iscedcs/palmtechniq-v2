@@ -30,9 +30,10 @@ const getStatusColor = (status: string) => {
 export default async function AdminUserProfilePage({
   params,
 }: {
-  params: { userId: string };
+  params: Promise<{ userId: string }>;
 }) {
-  const res = await getAdminUserProfile(params.userId);
+  const { userId } = await params;
+  const res = await getAdminUserProfile(userId);
 
   if ("error" in res) {
     return (

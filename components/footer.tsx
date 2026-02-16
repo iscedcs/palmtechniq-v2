@@ -23,9 +23,9 @@ import Image from "next/image";
 const footerLinks = {
   platform: [
     { name: "Courses", href: "/courses" },
-    { name: "Tutors", href: "/tutors" },
-    { name: "Pricing", href: "/pricing" },
-    { name: "Success Stories", href: "/success-stories" },
+    { name: "Become a Tutor", href: "/become-a-tutor" },
+    // { name: "Pricing", href: "/pricing" },
+    // { name: "Success Stories", href: "/success-stories" },
   ],
   features: [
     { name: "AI Interview Coach", href: "/features/ai-interview" },
@@ -36,8 +36,8 @@ const footerLinks = {
   company: [
     { name: "About Us", href: "/about" },
     { name: "Careers", href: "/careers" },
-    { name: "Press", href: "/press" },
-    { name: "Blog", href: "/blog" },
+    // { name: "Press", href: "/press" },
+    // { name: "Blog", href: "/blog" },
   ],
   support: [
     { name: "Help Center", href: "/help" },

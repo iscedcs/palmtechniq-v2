@@ -75,15 +75,15 @@ export async function POST(req: NextRequest) {
       select: { id: true },
     });
 
-    const relatedTurn =
-      parsed.data.advisorTurnId &&
-      (await db.advisorTurn.findFirst({
-        where: {
-          id: parsed.data.advisorTurnId,
-          advisorSessionId: advisorSession.id,
-        },
-        select: { id: true },
-      }));
+    const relatedTurn = parsed.data.advisorTurnId
+      ? await db.advisorTurn.findFirst({
+          where: {
+            id: parsed.data.advisorTurnId,
+            advisorSessionId: advisorSession.id,
+          },
+          select: { id: true },
+        })
+      : null;
 
     await db.advisorFollowUp.create({
       data: {

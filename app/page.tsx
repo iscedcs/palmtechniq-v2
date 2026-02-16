@@ -18,7 +18,7 @@ export default function HomePage() {
       <CourseCategoriesSection />
       <InteractiveDemo />
       <TestimonialsSection />
-      <PricingSection />
+      {/* <PricingSection /> */}
       <Footer />
     </div>
   );

@@ -170,6 +170,7 @@ export default function TutorProfilePage() {
         body: JSON.stringify({
           filename: file.name,
           contentType: file.type,
+          visibility: "public",
         }),
       });
 

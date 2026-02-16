@@ -11,16 +11,17 @@ export default async function CheckoutPage({
   searchParams,
 }: {
   params: Promise<{ courseId: string }>;
-  searchParams?: { groupTierId?: string };
+  searchParams?: Promise<{ groupTierId?: string }>;
 }) {
   const { courseId } = await params;
+  const resolvedSearchParams = (await searchParams) ?? {};
   const course = await getCourseById(courseId);
 
   if (!course) redirect("/courses");
 
   const groupTierId =
-    typeof searchParams?.groupTierId === "string"
-      ? searchParams.groupTierId
+    typeof resolvedSearchParams.groupTierId === "string"
+      ? resolvedSearchParams.groupTierId
       : undefined;
   const groupTier = groupTierId
     ? await db.groupTier.findFirst({

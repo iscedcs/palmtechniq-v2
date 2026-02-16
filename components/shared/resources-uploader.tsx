@@ -41,6 +41,7 @@ export default function ResourceUploaderFile({
         body: JSON.stringify({
           filename: file.name,
           contentType: file.type,
+          visibility: "public",
         }),
       });
 

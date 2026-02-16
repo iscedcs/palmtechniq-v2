@@ -57,7 +57,6 @@ export default auth((req) => {
             userRole as keyof typeof DEFAULT_LOGIN_REDIRECTS
           ]
         : DEFAULT_LOGIN_REDIRECT;
-      console.log("Redirecting from auth route to:", redirectPath);
 
       return Response.redirect(new URL(redirectPath, nextUrl));
     }
