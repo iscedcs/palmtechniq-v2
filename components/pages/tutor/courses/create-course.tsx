@@ -13,7 +13,7 @@ import { motion } from "framer-motion";
 import { BookOpen, Eye, PlayCircle, Save, Settings } from "lucide-react";
 import { useRouter } from "next/navigation";
 import { useEffect, useRef, useState, useTransition } from "react";
-import { useForm } from "react-hook-form";
+import { useForm, type Resolver } from "react-hook-form";
 import { toast } from "sonner";
 import { z } from "zod";
 import CourseBasicInfoForm from "./course-basic-info-form";
@@ -113,7 +113,7 @@ export default function CreateCourse() {
   };
 
   const form = useForm<z.infer<typeof courseSchema>>({
-    resolver: zodResolver(courseSchema),
+    resolver: zodResolver(courseSchema) as Resolver<z.infer<typeof courseSchema>>,
     defaultValues,
   });
 

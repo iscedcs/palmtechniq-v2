@@ -23,7 +23,7 @@ import { courseSchema } from "@/schemas";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { BookOpen, FileText, Settings } from "lucide-react";
 import { useState, useTransition } from "react";
-import { useForm } from "react-hook-form";
+import { useForm, type Resolver } from "react-hook-form";
 import { toast } from "sonner";
 import { z } from "zod";
 
@@ -73,7 +73,7 @@ export function CourseEditClient({
   const [lessonUploading, setLessonUploading] = useState(false);
 
   const form = useForm<z.infer<typeof courseSchema>>({
-    resolver: zodResolver(courseSchema),
+    resolver: zodResolver(courseSchema) as Resolver<z.infer<typeof courseSchema>>,
     defaultValues: {
       ...course,
       isPublished: course.isPublished ?? false,

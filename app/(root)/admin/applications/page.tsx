@@ -13,17 +13,15 @@ export default async function AdminApplicationsPage() {
 
   return (
     <AdminApplicationsClient
-      initialApplications={"applications" in data ? data.applications : []}
+      initialApplications={(data && "applications" in data ? data.applications : undefined) ?? []}
       initialStats={
-        "stats" in data
-          ? data.stats
-          : {
-              total: 0,
-              pending: 0,
-              underReview: 0,
-              approved: 0,
-              rejected: 0,
-            }
+        (data && "stats" in data ? data.stats : undefined) ?? {
+          total: 0,
+          pending: 0,
+          underReview: 0,
+          approved: 0,
+          rejected: 0,
+        }
       }
     />
   );
