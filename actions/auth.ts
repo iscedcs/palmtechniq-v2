@@ -2,6 +2,7 @@
 
 import { signIn } from "@/auth";
 import { db } from "@/lib/db";
+import { headers } from "next/headers";
 
 import {
   forgotPasswordSchema,
@@ -21,6 +22,12 @@ import {
   generatePasswordResetToken,
   generateverificationToken,
 } from "@/lib/token";
+import {
+  checkIPRateLimit,
+  recordLoginAttempt,
+  getClientIp,
+  IP_RATE_LIMIT_CONFIG,
+} from "@/lib/ip-rate-limit";
 import { DEFAULT_LOGIN_REDIRECT } from "@/routes";
 import { AuthError } from "next-auth";
 import z from "zod";
@@ -64,7 +71,7 @@ export async function signup(data: z.infer<typeof signupSchema>) {
     // Send verification email
     await sendVerificationEmail(
       verificationToken.email,
-      verificationToken.token
+      verificationToken.token,
     );
 
     return { success: "Confirmation email sent!" };
@@ -82,70 +89,215 @@ export async function signup(data: z.infer<typeof signupSchema>) {
  */
 export async function login(
   values: z.infer<typeof loginSchema>,
-  callbackUrl?: string | null
+  callbackUrl?: string | null,
 ) {
   try {
-    await rateLimiter({
-      key: `login:${values.email}`,
-      limit: 3,
-      window: 60,
-    });
-    // Validate input
-    const validated = loginSchema.safeParse(values);
+    // Get client IP address
+    const headersList = await headers();
+    const ipAddress = getClientIp(headersList);
+    const userAgent = headersList.get("user-agent") || undefined;
 
+    // Validate input first
+    const validated = loginSchema.safeParse(values);
     if (!validated.success) {
       return { error: "Invalid fields!" };
     }
 
     const { email, password } = validated.data;
 
-    const existingUser = await getUserByEmail(email);
+    // Check IP-based rate limiting BEFORE checking database
+    const ipRateLimitCheck = await checkIPRateLimit({
+      ipAddress,
+      email,
+      userAgent,
+      maxAttempts: IP_RATE_LIMIT_CONFIG.MAX_ATTEMPTS_PER_IP,
+      windowMs: IP_RATE_LIMIT_CONFIG.WINDOW_MS,
+    });
 
-    if (!existingUser) {
-      return { error: "Email does not exist!" };
+    if (ipRateLimitCheck.isBlocked) {
+      // Record the attempt
+      await recordLoginAttempt({
+        ipAddress,
+        email,
+        userAgent,
+        success: false,
+      });
+
+      console.warn(
+        `Login attempt blocked - IP: ${ipAddress}, Email: ${email}, Reason: Too many attempts`,
+      );
+
+      return {
+        error:
+          ipRateLimitCheck.reason ||
+          "Too many login attempts. Please try again later.",
+      };
     }
 
+    // Check if user exists
+    const existingUser = await getUserByEmail(email);
+
+    // If user doesn't exist, still record the attempt to prevent enumeration
+    if (!existingUser) {
+      await recordLoginAttempt({
+        ipAddress,
+        email,
+        userAgent,
+        success: false,
+      });
+
+      // Don't reveal if email exists or not (security best practice)
+      return { error: "Invalid email or password" };
+    }
+
+    // Check if user account is locked due to too many failed login attempts
+    if (
+      existingUser.accountLockedUntil &&
+      new Date() < existingUser.accountLockedUntil
+    ) {
+      const minutesRemaining = Math.ceil(
+        (existingUser.accountLockedUntil.getTime() - Date.now()) / 60000,
+      );
+
+      await recordLoginAttempt({
+        ipAddress,
+        email,
+        userAgent,
+        success: false,
+      });
+
+      console.warn(
+        `Account locked - Email: ${email}, Locked until: ${existingUser.accountLockedUntil}`,
+      );
+
+      return {
+        error: `Account temporarily locked due to multiple failed login attempts. Please try again in ${minutesRemaining} minute${minutesRemaining === 1 ? "" : "s"}.`,
+      };
+    }
+
+    // Check if email is verified
     if (
       !existingUser.emailVerified ||
       !existingUser.email ||
       !existingUser.password
     ) {
       const verificationToken = await generateverificationToken(email);
-
       const { sendVerificationEmail } = await import("@/lib/mail");
 
       try {
         await sendVerificationEmail(
           verificationToken.email,
-          verificationToken.token
+          verificationToken.token,
         );
+
+        await recordLoginAttempt({
+          ipAddress,
+          email,
+          userAgent,
+          success: false,
+        });
       } catch (mailError) {
         console.error("Verification email failed:", mailError);
         return {
-          error:
-            "Unable to send verification email. Please try again later.",
+          error: "Unable to send verification email. Please try again later.",
         };
       }
+
       return {
         success: "Confirmation email sent! Please check your inbox.",
       };
     }
 
-    await signIn("credentials", {
-      email,
-      password,
-      redirect: false,
-    });
-    return {
-      success: "Successfully Signed in!",
-      redirectUrl: callbackUrl || DEFAULT_LOGIN_REDIRECT,
-    };
+    // Attempt to sign in
+    try {
+      await signIn("credentials", {
+        email,
+        password,
+        redirect: false,
+      });
+
+      // Record successful login
+      await recordLoginAttempt({
+        ipAddress,
+        email,
+        userAgent,
+        success: true,
+      });
+
+      // Reset failed login attempts on successful login
+      await db.user.update({
+        where: { id: existingUser.id },
+        data: {
+          failedLoginAttempts: 0,
+          accountLockedUntil: null,
+          lastLoginAt: new Date(),
+          lastLoginIp: ipAddress,
+        },
+      });
+
+      return {
+        success: "Successfully Signed in!",
+        redirectUrl: callbackUrl || DEFAULT_LOGIN_REDIRECT,
+      };
+    } catch (signInError) {
+      // Login failed - increment failed attempts
+      const failedAttempts = (existingUser.failedLoginAttempts || 0) + 1;
+      let shouldLock = false;
+      let lockUntil: Date | null = null;
+
+      // Lock account after 5 failed attempts within window
+      if (failedAttempts >= IP_RATE_LIMIT_CONFIG.MAX_ATTEMPTS_PER_EMAIL) {
+        shouldLock = true;
+        lockUntil = new Date(Date.now() + 15 * 60 * 1000); // 15 minute lockout
+      }
+
+      // Update user with failed attempt info
+      await db.user.update({
+        where: { id: existingUser.id },
+        data: {
+          failedLoginAttempts: failedAttempts,
+          accountLockedUntil: lockUntil,
+          lastFailedLoginAt: new Date(),
+          lastFailedLoginIp: ipAddress,
+        },
+      });
+
+      // Record failed login attempt
+      await recordLoginAttempt({
+        ipAddress,
+        email,
+        userAgent,
+        success: false,
+      });
+
+      console.warn(
+        `Failed login - Email: ${email}, IP: ${ipAddress}, Attempts: ${failedAttempts}${shouldLock ? " [ACCOUNT LOCKED]" : ""}`,
+      );
+
+      if (shouldLock) {
+        return {
+          error: `Too many failed login attempts. Your account has been locked for security. Please try again in 15 minutes or reset your password.`,
+        };
+      }
+
+      if (signInError instanceof AuthError) {
+        switch (signInError.type) {
+          case "CredentialsSignin":
+            return { error: "Invalid email or password" };
+          default:
+            return { error: "Failed to login!" };
+        }
+      }
+
+      throw signInError;
+    }
   } catch (error) {
     console.error("Login error:", error);
+
     if (error instanceof AuthError) {
       switch (error.type) {
         case "CredentialsSignin":
-          return { error: "Incorrect email or password" };
+          return { error: "Invalid email or password" };
         default:
           return { error: "Failed to login!" };
       }
@@ -162,7 +314,7 @@ export async function login(
 
 // Forgot Password Action
 export async function forgotPassword(
-  data: z.infer<typeof forgotPasswordSchema>
+  data: z.infer<typeof forgotPasswordSchema>,
 ) {
   try {
     // Validate input
@@ -185,12 +337,8 @@ export async function forgotPassword(
     const { sendPasswordResetToken } = await import("@/lib/mail");
 
     await sendPasswordResetToken(
-      (
-        await resetToken
-      ).email,
-      (
-        await resetToken
-      ).token
+      (await resetToken).email,
+      (await resetToken).token,
     );
 
     return { success: "Reset email sent!" };
@@ -203,7 +351,7 @@ export async function forgotPassword(
 // Reset Password Action
 export async function resetPassword(
   data: z.infer<typeof resetPasswordSchema>,
-  token?: string | null
+  token?: string | null,
 ) {
   try {
     if (!token) {
@@ -287,7 +435,7 @@ export async function verifyEmail(token: string) {
     } else {
       if (process.env.NODE_ENV !== "production") {
         console.error(
-          "User email or name not found, cannot send onboarding email"
+          "User email or name not found, cannot send onboarding email",
         );
       }
     }

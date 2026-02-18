@@ -94,7 +94,12 @@ export default async function MainRootLayout({
 }: {
   children: React.ReactNode;
 }) {
-  const session = await auth();
+  let session = null;
+  try {
+    session = await auth();
+  } catch {
+    // During build (e.g. DATABASE_URL unset), auth() can throw; use null session so build completes.
+  }
   const organizationJsonLd = {
     "@context": "https://schema.org",
     "@type": "Organization",

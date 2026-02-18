@@ -24,6 +24,12 @@ import {
   Trash2,
   Plus,
   FileText,
+  Lock,
+  Unlock,
+  X,
+  Copy,
+  Clock,
+  Globe,
 } from "lucide-react";
 import { NairaSign } from "@/components/shared/naira-sign-icon";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
@@ -55,6 +61,16 @@ import {
   updateUserRole,
   updateUserStatus,
 } from "@/actions/admin-dashboard";
+import {
+  getSecurityDashboardSummary,
+  getBlockedIPs,
+  getLockedAccounts,
+  manuallyBlockIP,
+  manuallyUnblockIP,
+  unlockUserAccount,
+  getSuspiciousActivityReport,
+  getLoginAttempts,
+} from "@/actions/security-admin";
 import { toast } from "sonner";
 import {
   Dialog,
@@ -161,14 +177,26 @@ export default function AdminDashboard() {
   const [coursesTable, setCoursesTable] = useState<CourseTableRow[]>([]);
   const [loading, setLoading] = useState(true);
   const [updatingId, setUpdatingId] = useState<string | null>(null);
+
+  // Security state
+  const [securityDashboard, setSecurityDashboard] = useState<any>(null);
+  const [blockedIPs, setBlockedIPs] = useState<any[]>([]);
+  const [lockedAccounts, setLockedAccounts] = useState<any[]>([]);
+  const [suspiciousActivity, setSuspiciousActivity] = useState<any>(null);
+  const [securityLoading, setSecurityLoading] = useState(false);
+  const [blockingIP, setBlockingIP] = useState<string | null>(null);
+  const [unblockingIP, setUnblockingIP] = useState<string | null>(null);
+  const [unblockingUser, setUnblockingUser] = useState<string | null>(null);
+  const [newBlockIP, setNewBlockIP] = useState("");
+  const [blockReason, setBlockReason] = useState("");
+  const [blockIPDialogOpen, setBlockIPDialogOpen] = useState(false);
+
   const normalizedSearch = searchTerm.trim().toLowerCase();
   const filteredUsers = normalizedSearch
     ? usersTable.filter((user) =>
         [user.name, user.email, user.role]
           .filter(Boolean)
-          .some((value) =>
-            value.toLowerCase().includes(normalizedSearch)
-          )
+          .some((value) => value.toLowerCase().includes(normalizedSearch)),
       )
     : usersTable;
 
@@ -178,6 +206,30 @@ export default function AdminDashboard() {
       currency: "NGN",
       maximumFractionDigits: 0,
     }).format(amount);
+
+  const loadSecurityData = async () => {
+    try {
+      setSecurityLoading(true);
+      const [dashboard, blocked, locked, suspicious] = await Promise.all([
+        getSecurityDashboardSummary(),
+        getBlockedIPs(),
+        getLockedAccounts(),
+        getSuspiciousActivityReport(),
+      ]);
+
+      if (dashboard && "data" in dashboard)
+        setSecurityDashboard(dashboard.data);
+      if (blocked && "data" in blocked) setBlockedIPs(blocked.data || []);
+      if (locked && "data" in locked) setLockedAccounts(locked.data || []);
+      if (suspicious && "data" in suspicious)
+        setSuspiciousActivity(suspicious.data);
+    } catch (error) {
+      console.error("Error loading security data:", error);
+      toast.error("Failed to load security data");
+    } finally {
+      setSecurityLoading(false);
+    }
+  };
 
   useEffect(() => {
     let mounted = true;
@@ -194,6 +246,8 @@ export default function AdminDashboard() {
           setUsersTable(res.usersTable || []);
           setCoursesTable(res.courses || []);
         }
+        // Also load security data
+        await loadSecurityData();
       } finally {
         if (mounted) setLoading(false);
       }
@@ -281,7 +335,7 @@ export default function AdminDashboard() {
     const res = await createUserByAdmin({
       name: newUserName.trim(),
       email: newUserEmail.trim(),
-      role: newUserRole as "USER" | "STUDENT" | "TUTOR" | "ADMIN",
+      role: newUserRole as "USER" | "STUDENT" | "MENTOR" | "TUTOR" | "ADMIN",
     });
     if ("error" in res) {
       toast.error(res.error);
@@ -295,6 +349,50 @@ export default function AdminDashboard() {
     setAddUserOpen(false);
     await refreshDashboard();
     setCreatingUser(false);
+  };
+
+  // Security handlers
+  const handleBlockIP = async () => {
+    if (!newBlockIP.trim()) {
+      toast.error("IP address is required");
+      return;
+    }
+    setBlockingIP(newBlockIP);
+    const res = await manuallyBlockIP(newBlockIP, blockReason || "Admin block");
+    setBlockingIP(null);
+    if ("error" in res) {
+      toast.error(res.error);
+      return;
+    }
+    toast.success(`IP ${newBlockIP} has been blocked`);
+    setNewBlockIP("");
+    setBlockReason("");
+    setBlockIPDialogOpen(false);
+    await loadSecurityData();
+  };
+
+  const handleUnblockIP = async (ip: string) => {
+    setUnblockingIP(ip);
+    const res = await manuallyUnblockIP(ip);
+    setUnblockingIP(null);
+    if ("error" in res) {
+      toast.error(res.error);
+      return;
+    }
+    toast.success(`IP ${ip} has been unblocked`);
+    await loadSecurityData();
+  };
+
+  const handleUnlockUser = async (userId: string) => {
+    setUnblockingUser(userId);
+    const res = await unlockUserAccount(userId);
+    setUnblockingUser(null);
+    if ("error" in res) {
+      toast.error(res.error);
+      return;
+    }
+    toast.success("User account has been unlocked");
+    await loadSecurityData();
   };
 
   return (
@@ -368,6 +466,7 @@ export default function AdminDashboard() {
                 <SelectContent className="glass-card border-white/10">
                   <SelectItem value="USER">User</SelectItem>
                   <SelectItem value="STUDENT">Student</SelectItem>
+                  <SelectItem value="MENTOR">Mentor</SelectItem>
                   <SelectItem value="TUTOR">Tutor</SelectItem>
                   <SelectItem value="ADMIN">Admin</SelectItem>
                 </SelectContent>
@@ -487,6 +586,12 @@ export default function AdminDashboard() {
                 <Settings className="w-4 h-4 mr-2" />
                 Settings
               </TabsTrigger>
+              <TabsTrigger
+                value="security"
+                className="data-[state=active]:bg-neon-blue/20">
+                <Shield className="w-4 h-4 mr-2" />
+                Security
+              </TabsTrigger>
             </TabsList>
 
             {/* Overview Tab */}
@@ -516,63 +621,63 @@ export default function AdminDashboard() {
                           </p>
                         ) : (
                           recentUsers.map((user) => (
-                          <div
-                            key={user.id}
-                            className="flex items-center justify-between p-3 rounded-lg hover:bg-white/5 transition-colors">
-                            <div className="flex items-center gap-3">
-                              <Avatar className="w-10 h-10">
-                                <AvatarImage
-                                  src={user.avatar || generateRandomAvatar()}
-                                  alt={user.name}
-                                />
-                                <AvatarFallback className="bg-gradient-to-r from-neon-blue to-neon-purple text-white">
-                                  {user.name.charAt(0)}
-                                </AvatarFallback>
-                              </Avatar>
-                              <div>
-                                <p className="font-medium text-white">
-                                  {user.name}
-                                </p>
-                                <p className="text-sm text-gray-400">
-                                  {user.email}
-                                </p>
+                            <div
+                              key={user.id}
+                              className="flex items-center justify-between p-3 rounded-lg hover:bg-white/5 transition-colors">
+                              <div className="flex items-center gap-3">
+                                <Avatar className="w-10 h-10">
+                                  <AvatarImage
+                                    src={user.avatar || generateRandomAvatar()}
+                                    alt={user.name}
+                                  />
+                                  <AvatarFallback className="bg-gradient-to-r from-neon-blue to-neon-purple text-white">
+                                    {user.name.charAt(0)}
+                                  </AvatarFallback>
+                                </Avatar>
+                                <div>
+                                  <p className="font-medium text-white">
+                                    {user.name}
+                                  </p>
+                                  <p className="text-sm text-gray-400">
+                                    {user.email}
+                                  </p>
+                                </div>
+                              </div>
+                              <div className="flex items-center gap-2">
+                                <Badge className={getRoleColor(user.role)}>
+                                  {user.role}
+                                </Badge>
+                                <Badge className={getStatusColor(user.status)}>
+                                  {user.status}
+                                </Badge>
+                                <DropdownMenu>
+                                  <DropdownMenuTrigger asChild>
+                                    <Button
+                                      variant="ghost"
+                                      size="icon"
+                                      className="w-8 h-8">
+                                      <MoreVertical className="w-4 h-4" />
+                                    </Button>
+                                  </DropdownMenuTrigger>
+                                  <DropdownMenuContent
+                                    align="end"
+                                    className="glass-card border-white/10">
+                                    <DropdownMenuItem>
+                                      <Eye className="w-4 h-4 mr-2" />
+                                      View Profile
+                                    </DropdownMenuItem>
+                                    <DropdownMenuItem>
+                                      <Edit className="w-4 h-4 mr-2" />
+                                      Edit User
+                                    </DropdownMenuItem>
+                                    <DropdownMenuItem className="text-red-400">
+                                      <Trash2 className="w-4 h-4 mr-2" />
+                                      Delete User
+                                    </DropdownMenuItem>
+                                  </DropdownMenuContent>
+                                </DropdownMenu>
                               </div>
                             </div>
-                            <div className="flex items-center gap-2">
-                              <Badge className={getRoleColor(user.role)}>
-                                {user.role}
-                              </Badge>
-                              <Badge className={getStatusColor(user.status)}>
-                                {user.status}
-                              </Badge>
-                              <DropdownMenu>
-                                <DropdownMenuTrigger asChild>
-                                  <Button
-                                    variant="ghost"
-                                    size="icon"
-                                    className="w-8 h-8">
-                                    <MoreVertical className="w-4 h-4" />
-                                  </Button>
-                                </DropdownMenuTrigger>
-                                <DropdownMenuContent
-                                  align="end"
-                                  className="glass-card border-white/10">
-                                  <DropdownMenuItem>
-                                    <Eye className="w-4 h-4 mr-2" />
-                                    View Profile
-                                  </DropdownMenuItem>
-                                  <DropdownMenuItem>
-                                    <Edit className="w-4 h-4 mr-2" />
-                                    Edit User
-                                  </DropdownMenuItem>
-                                  <DropdownMenuItem className="text-red-400">
-                                    <Trash2 className="w-4 h-4 mr-2" />
-                                    Delete User
-                                  </DropdownMenuItem>
-                                </DropdownMenuContent>
-                              </DropdownMenu>
-                            </div>
-                          </div>
                           ))
                         )}
                       </div>
@@ -597,24 +702,24 @@ export default function AdminDashboard() {
                           </p>
                         ) : (
                           systemAlerts.map((alert) => (
-                          <div
-                            key={alert.id}
-                            className="p-3 rounded-lg border border-white/10 hover:bg-white/5 transition-colors">
-                            <div className="flex items-start gap-3">
-                              {getAlertIcon(alert.type)}
-                              <div className="flex-1 min-w-0">
-                                <p className="font-medium text-white text-sm">
-                                  {alert.title}
-                                </p>
-                                <p className="text-gray-400 text-xs mt-1">
-                                  {alert.message}
-                                </p>
-                                <p className="text-gray-500 text-xs mt-2">
-                                  {alert.timestamp}
-                                </p>
+                            <div
+                              key={alert.id}
+                              className="p-3 rounded-lg border border-white/10 hover:bg-white/5 transition-colors">
+                              <div className="flex items-start gap-3">
+                                {getAlertIcon(alert.type)}
+                                <div className="flex-1 min-w-0">
+                                  <p className="font-medium text-white text-sm">
+                                    {alert.title}
+                                  </p>
+                                  <p className="text-gray-400 text-xs mt-1">
+                                    {alert.message}
+                                  </p>
+                                  <p className="text-gray-500 text-xs mt-2">
+                                    {alert.timestamp}
+                                  </p>
+                                </div>
                               </div>
                             </div>
-                          </div>
                           ))
                         )}
                       </div>
@@ -669,65 +774,65 @@ export default function AdminDashboard() {
                           </TableRow>
                         ) : (
                           topCourses.map((course) => (
-                          <TableRow
-                            key={course.id}
-                            className="border-white/10 hover:bg-white/5">
-                            <TableCell className="font-medium text-white">
-                              {course.title}
-                            </TableCell>
-                            <TableCell className="text-gray-300">
-                              {course.instructor}
-                            </TableCell>
-                            <TableCell className="text-gray-300">
-                              {course.students.toLocaleString()}
-                            </TableCell>
-                            <TableCell className="text-green-400 font-medium">
-                              {course.revenue}
-                            </TableCell>
-                            <TableCell>
-                              <div className="flex items-center gap-1">
-                                <Star className="w-4 h-4 text-yellow-400 fill-current" />
-                                <span className="text-gray-300">
-                                  {course.rating}
-                                </span>
-                              </div>
-                            </TableCell>
-                            <TableCell>
-                              <div className="flex items-center gap-2">
-                                <Progress
-                                  value={course.completion}
-                                  className="w-16 h-2"
-                                />
-                                <span className="text-gray-300 text-sm">
-                                  {course.completion}%
-                                </span>
-                              </div>
-                            </TableCell>
-                            <TableCell>
-                              <DropdownMenu>
-                                <DropdownMenuTrigger asChild>
-                                  <Button
-                                    variant="ghost"
-                                    size="icon"
-                                    className="w-8 h-8">
-                                    <MoreVertical className="w-4 h-4" />
-                                  </Button>
-                                </DropdownMenuTrigger>
-                                <DropdownMenuContent
-                                  align="end"
-                                  className="glass-card border-white/10">
-                                  <DropdownMenuItem>
-                                    <Eye className="w-4 h-4 mr-2" />
-                                    View Details
-                                  </DropdownMenuItem>
-                                  <DropdownMenuItem className="text-red-400">
-                                    <Trash2 className="w-4 h-4 mr-2" />
-                                    Archive Course
-                                  </DropdownMenuItem>
-                                </DropdownMenuContent>
-                              </DropdownMenu>
-                            </TableCell>
-                          </TableRow>
+                            <TableRow
+                              key={course.id}
+                              className="border-white/10 hover:bg-white/5">
+                              <TableCell className="font-medium text-white">
+                                {course.title}
+                              </TableCell>
+                              <TableCell className="text-gray-300">
+                                {course.instructor}
+                              </TableCell>
+                              <TableCell className="text-gray-300">
+                                {course.students.toLocaleString()}
+                              </TableCell>
+                              <TableCell className="text-green-400 font-medium">
+                                {course.revenue}
+                              </TableCell>
+                              <TableCell>
+                                <div className="flex items-center gap-1">
+                                  <Star className="w-4 h-4 text-yellow-400 fill-current" />
+                                  <span className="text-gray-300">
+                                    {course.rating}
+                                  </span>
+                                </div>
+                              </TableCell>
+                              <TableCell>
+                                <div className="flex items-center gap-2">
+                                  <Progress
+                                    value={course.completion}
+                                    className="w-16 h-2"
+                                  />
+                                  <span className="text-gray-300 text-sm">
+                                    {course.completion}%
+                                  </span>
+                                </div>
+                              </TableCell>
+                              <TableCell>
+                                <DropdownMenu>
+                                  <DropdownMenuTrigger asChild>
+                                    <Button
+                                      variant="ghost"
+                                      size="icon"
+                                      className="w-8 h-8">
+                                      <MoreVertical className="w-4 h-4" />
+                                    </Button>
+                                  </DropdownMenuTrigger>
+                                  <DropdownMenuContent
+                                    align="end"
+                                    className="glass-card border-white/10">
+                                    <DropdownMenuItem>
+                                      <Eye className="w-4 h-4 mr-2" />
+                                      View Details
+                                    </DropdownMenuItem>
+                                    <DropdownMenuItem className="text-red-400">
+                                      <Trash2 className="w-4 h-4 mr-2" />
+                                      Archive Course
+                                    </DropdownMenuItem>
+                                  </DropdownMenuContent>
+                                </DropdownMenu>
+                              </TableCell>
+                            </TableRow>
                           ))
                         )}
                       </TableBody>
@@ -771,9 +876,15 @@ export default function AdminDashboard() {
                         <TableRow className="border-white/10">
                           <TableHead className="text-gray-400">User</TableHead>
                           <TableHead className="text-gray-400">Role</TableHead>
-                          <TableHead className="text-gray-400">Status</TableHead>
-                          <TableHead className="text-gray-400">Joined</TableHead>
-                          <TableHead className="text-gray-400">Actions</TableHead>
+                          <TableHead className="text-gray-400">
+                            Status
+                          </TableHead>
+                          <TableHead className="text-gray-400">
+                            Joined
+                          </TableHead>
+                          <TableHead className="text-gray-400">
+                            Actions
+                          </TableHead>
                         </TableRow>
                       </TableHeader>
                       <TableBody>
@@ -794,7 +905,9 @@ export default function AdminDashboard() {
                                 <div className="flex items-center gap-3">
                                   <Avatar className="w-9 h-9">
                                     <AvatarImage
-                                      src={user.avatar || generateRandomAvatar()}
+                                      src={
+                                        user.avatar || generateRandomAvatar()
+                                      }
                                       alt={user.name}
                                     />
                                     <AvatarFallback className="bg-gradient-to-r from-neon-blue to-neon-purple text-white">
@@ -839,132 +952,132 @@ export default function AdminDashboard() {
                                       <Eye className="w-4 h-4 mr-2" />
                                       View Profile
                                     </DropdownMenuItem>
-                                  <DropdownMenuItem
-                                    disabled={updatingId === user.id}
-                                    onClick={async () => {
-                                      const action =
-                                        user.status === "active"
-                                          ? "suspend"
-                                          : "activate";
-                                      const confirmed = window.confirm(
-                                        `Are you sure you want to ${action} ${user.name}?`
-                                      );
-                                      if (!confirmed) return;
-                                      setUpdatingId(user.id);
-                                      const res = await updateUserStatus({
-                                        userId: user.id,
-                                        isActive: user.status !== "active",
-                                      });
-                                      if ("error" in res) {
-                                        toast.error(res.error);
+                                    <DropdownMenuItem
+                                      disabled={updatingId === user.id}
+                                      onClick={async () => {
+                                        const action =
+                                          user.status === "active"
+                                            ? "suspend"
+                                            : "activate";
+                                        const confirmed = window.confirm(
+                                          `Are you sure you want to ${action} ${user.name}?`,
+                                        );
+                                        if (!confirmed) return;
+                                        setUpdatingId(user.id);
+                                        const res = await updateUserStatus({
+                                          userId: user.id,
+                                          isActive: user.status !== "active",
+                                        });
+                                        if ("error" in res) {
+                                          toast.error(res.error);
+                                          setUpdatingId(null);
+                                          return;
+                                        }
+                                        toast.success("User status updated");
+                                        await refreshDashboard();
                                         setUpdatingId(null);
-                                        return;
-                                      }
-                                      toast.success("User status updated");
-                                      await refreshDashboard();
-                                      setUpdatingId(null);
-                                    }}>
-                                    <Edit className="w-4 h-4 mr-2" />
-                                    {user.status === "active"
-                                      ? "Suspend User"
-                                      : "Activate User"}
-                                  </DropdownMenuItem>
-                                  <DropdownMenuItem
-                                    disabled={updatingId === user.id}
-                                    onClick={async () => {
-                                      const confirmed = window.confirm(
-                                        `Set ${user.name} as USER?`
-                                      );
-                                      if (!confirmed) return;
-                                      setUpdatingId(user.id);
-                                      const res = await updateUserRole({
-                                        userId: user.id,
-                                        role: "USER",
-                                      });
-                                      if ("error" in res) {
-                                        toast.error(res.error);
+                                      }}>
+                                      <Edit className="w-4 h-4 mr-2" />
+                                      {user.status === "active"
+                                        ? "Suspend User"
+                                        : "Activate User"}
+                                    </DropdownMenuItem>
+                                    <DropdownMenuItem
+                                      disabled={updatingId === user.id}
+                                      onClick={async () => {
+                                        const confirmed = window.confirm(
+                                          `Set ${user.name} as USER?`,
+                                        );
+                                        if (!confirmed) return;
+                                        setUpdatingId(user.id);
+                                        const res = await updateUserRole({
+                                          userId: user.id,
+                                          role: "USER",
+                                        });
+                                        if ("error" in res) {
+                                          toast.error(res.error);
+                                          setUpdatingId(null);
+                                          return;
+                                        }
+                                        toast.success("Role updated");
+                                        await refreshDashboard();
                                         setUpdatingId(null);
-                                        return;
-                                      }
-                                      toast.success("Role updated");
-                                      await refreshDashboard();
-                                      setUpdatingId(null);
-                                    }}>
-                                    <Edit className="w-4 h-4 mr-2" />
-                                    Make USER
-                                  </DropdownMenuItem>
-                                  <DropdownMenuItem
-                                    disabled={updatingId === user.id}
-                                    onClick={async () => {
-                                      const confirmed = window.confirm(
-                                        `Promote ${user.name} to STUDENT?`
-                                      );
-                                      if (!confirmed) return;
-                                      setUpdatingId(user.id);
-                                      const res = await updateUserRole({
-                                        userId: user.id,
-                                        role: "STUDENT",
-                                      });
-                                      if ("error" in res) {
-                                        toast.error(res.error);
+                                      }}>
+                                      <Edit className="w-4 h-4 mr-2" />
+                                      Make USER
+                                    </DropdownMenuItem>
+                                    <DropdownMenuItem
+                                      disabled={updatingId === user.id}
+                                      onClick={async () => {
+                                        const confirmed = window.confirm(
+                                          `Promote ${user.name} to STUDENT?`,
+                                        );
+                                        if (!confirmed) return;
+                                        setUpdatingId(user.id);
+                                        const res = await updateUserRole({
+                                          userId: user.id,
+                                          role: "STUDENT",
+                                        });
+                                        if ("error" in res) {
+                                          toast.error(res.error);
+                                          setUpdatingId(null);
+                                          return;
+                                        }
+                                        toast.success("Role updated");
+                                        await refreshDashboard();
                                         setUpdatingId(null);
-                                        return;
-                                      }
-                                      toast.success("Role updated");
-                                      await refreshDashboard();
-                                      setUpdatingId(null);
-                                    }}>
-                                    <Edit className="w-4 h-4 mr-2" />
-                                    Make STUDENT
-                                  </DropdownMenuItem>
-                                  <DropdownMenuItem
-                                    disabled={updatingId === user.id}
-                                    onClick={async () => {
-                                      const confirmed = window.confirm(
-                                        `Promote ${user.name} to TUTOR?`
-                                      );
-                                      if (!confirmed) return;
-                                      setUpdatingId(user.id);
-                                      const res = await updateUserRole({
-                                        userId: user.id,
-                                        role: "TUTOR",
-                                      });
-                                      if ("error" in res) {
-                                        toast.error(res.error);
+                                      }}>
+                                      <Edit className="w-4 h-4 mr-2" />
+                                      Make STUDENT
+                                    </DropdownMenuItem>
+                                    <DropdownMenuItem
+                                      disabled={updatingId === user.id}
+                                      onClick={async () => {
+                                        const confirmed = window.confirm(
+                                          `Promote ${user.name} to TUTOR?`,
+                                        );
+                                        if (!confirmed) return;
+                                        setUpdatingId(user.id);
+                                        const res = await updateUserRole({
+                                          userId: user.id,
+                                          role: "TUTOR",
+                                        });
+                                        if ("error" in res) {
+                                          toast.error(res.error);
+                                          setUpdatingId(null);
+                                          return;
+                                        }
+                                        toast.success("Role updated");
+                                        await refreshDashboard();
                                         setUpdatingId(null);
-                                        return;
-                                      }
-                                      toast.success("Role updated");
-                                      await refreshDashboard();
-                                      setUpdatingId(null);
-                                    }}>
-                                    <Edit className="w-4 h-4 mr-2" />
-                                    Make TUTOR
-                                  </DropdownMenuItem>
-                                  <DropdownMenuItem
-                                    disabled={updatingId === user.id}
-                                    onClick={async () => {
-                                      const confirmed = window.confirm(
-                                        `Promote ${user.name} to ADMIN?`
-                                      );
-                                      if (!confirmed) return;
-                                      setUpdatingId(user.id);
-                                      const res = await updateUserRole({
-                                        userId: user.id,
-                                        role: "ADMIN",
-                                      });
-                                      if ("error" in res) {
-                                        toast.error(res.error);
+                                      }}>
+                                      <Edit className="w-4 h-4 mr-2" />
+                                      Make TUTOR
+                                    </DropdownMenuItem>
+                                    <DropdownMenuItem
+                                      disabled={updatingId === user.id}
+                                      onClick={async () => {
+                                        const confirmed = window.confirm(
+                                          `Promote ${user.name} to ADMIN?`,
+                                        );
+                                        if (!confirmed) return;
+                                        setUpdatingId(user.id);
+                                        const res = await updateUserRole({
+                                          userId: user.id,
+                                          role: "ADMIN",
+                                        });
+                                        if ("error" in res) {
+                                          toast.error(res.error);
+                                          setUpdatingId(null);
+                                          return;
+                                        }
+                                        toast.success("Role updated");
+                                        await refreshDashboard();
                                         setUpdatingId(null);
-                                        return;
-                                      }
-                                      toast.success("Role updated");
-                                      await refreshDashboard();
-                                      setUpdatingId(null);
-                                    }}>
-                                    <Edit className="w-4 h-4 mr-2" />
-                                    Make ADMIN
-                                  </DropdownMenuItem>
+                                      }}>
+                                      <Edit className="w-4 h-4 mr-2" />
+                                      Make ADMIN
+                                    </DropdownMenuItem>
                                   </DropdownMenuContent>
                                 </DropdownMenu>
                               </TableCell>
@@ -991,16 +1104,26 @@ export default function AdminDashboard() {
                     <Table>
                       <TableHeader>
                         <TableRow className="border-white/10">
-                          <TableHead className="text-gray-400">Course</TableHead>
+                          <TableHead className="text-gray-400">
+                            Course
+                          </TableHead>
                           <TableHead className="text-gray-400">Tutor</TableHead>
-                          <TableHead className="text-gray-400">Status</TableHead>
+                          <TableHead className="text-gray-400">
+                            Status
+                          </TableHead>
                           <TableHead className="text-gray-400">Price</TableHead>
                           <TableHead className="text-gray-400">
                             Enrollments
                           </TableHead>
-                          <TableHead className="text-gray-400">Revenue</TableHead>
-                          <TableHead className="text-gray-400">Created</TableHead>
-                          <TableHead className="text-gray-400">Actions</TableHead>
+                          <TableHead className="text-gray-400">
+                            Revenue
+                          </TableHead>
+                          <TableHead className="text-gray-400">
+                            Created
+                          </TableHead>
+                          <TableHead className="text-gray-400">
+                            Actions
+                          </TableHead>
                         </TableRow>
                       </TableHeader>
                       <TableBody>
@@ -1024,7 +1147,8 @@ export default function AdminDashboard() {
                                 {course.tutor}
                               </TableCell>
                               <TableCell>
-                                <Badge className={getStatusColor(course.status)}>
+                                <Badge
+                                  className={getStatusColor(course.status)}>
                                   {course.status}
                                 </Badge>
                               </TableCell>
@@ -1061,7 +1185,7 @@ export default function AdminDashboard() {
                                             ? "archive"
                                             : "publish";
                                         const confirmed = window.confirm(
-                                          `Are you sure you want to ${action} "${course.title}"?`
+                                          `Are you sure you want to ${action} "${course.title}"?`,
                                         );
                                         if (!confirmed) return;
                                         setUpdatingId(course.id);
@@ -1073,11 +1197,11 @@ export default function AdminDashboard() {
                                               : "PUBLISHED",
                                         });
                                         if ("error" in res) {
-                                        toast.error(res.error);
+                                          toast.error(res.error);
                                           setUpdatingId(null);
                                           return;
                                         }
-                                      toast.success("Course status updated");
+                                        toast.success("Course status updated");
                                         await refreshDashboard();
                                         setUpdatingId(null);
                                       }}>
@@ -1093,7 +1217,7 @@ export default function AdminDashboard() {
                                       }
                                       onClick={async () => {
                                         const confirmed = window.confirm(
-                                          `Suspend "${course.title}"?`
+                                          `Suspend "${course.title}"?`,
                                         );
                                         if (!confirmed) return;
                                         setUpdatingId(course.id);
@@ -1102,11 +1226,11 @@ export default function AdminDashboard() {
                                           status: "SUSPENDED",
                                         });
                                         if ("error" in res) {
-                                        toast.error(res.error);
+                                          toast.error(res.error);
                                           setUpdatingId(null);
                                           return;
                                         }
-                                      toast.success("Course suspended");
+                                        toast.success("Course suspended");
                                         await refreshDashboard();
                                         setUpdatingId(null);
                                       }}>
@@ -1167,18 +1291,14 @@ export default function AdminDashboard() {
                   <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                     <div className="rounded-lg border border-white/10 p-4">
                       <p className="text-sm text-gray-400">Payout Mode</p>
-                      <p className="text-white font-medium">
-                        Manual approval
-                      </p>
+                      <p className="text-white font-medium">Manual approval</p>
                       <p className="text-xs text-gray-500 mt-1">
                         Admins approve payouts from /admin/finance
                       </p>
                     </div>
                     <div className="rounded-lg border border-white/10 p-4">
                       <p className="text-sm text-gray-400">Admin Naming</p>
-                      <p className="text-white font-medium">
-                        PTQ-ADMIN-XXXXXX
-                      </p>
+                      <p className="text-white font-medium">PTQ-ADMIN-XXXXXX</p>
                       <p className="text-xs text-gray-500 mt-1">
                         Applied automatically on admin login
                       </p>
@@ -1186,6 +1306,343 @@ export default function AdminDashboard() {
                   </div>
                 </CardContent>
               </Card>
+            </TabsContent>
+
+            {/* Security Tab */}
+            <TabsContent value="security" className="space-y-6">
+              {securityLoading && !securityDashboard ? (
+                <Card className="glass-card border-white/10">
+                  <CardContent className="p-6 text-gray-400">
+                    Loading security data...
+                  </CardContent>
+                </Card>
+              ) : (
+                <>
+                  {/* Security Dashboard Summary */}
+                  {securityDashboard && (
+                    <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
+                      <Card className="glass-card border-white/10">
+                        <CardContent className="p-4">
+                          <p className="text-sm text-gray-400">
+                            Failed Login Attempts (24h)
+                          </p>
+                          <p className="text-2xl font-bold text-red-400">
+                            {securityDashboard.last24h?.failedAttempts || 0}
+                          </p>
+                        </CardContent>
+                      </Card>
+                      <Card className="glass-card border-white/10">
+                        <CardContent className="p-4">
+                          <p className="text-sm text-gray-400">
+                            Unique IP Addresses (24h)
+                          </p>
+                          <p className="text-2xl font-bold text-orange-400">
+                            {securityDashboard.last24h?.uniqueIPAddresses || 0}
+                          </p>
+                        </CardContent>
+                      </Card>
+                      <Card className="glass-card border-white/10">
+                        <CardContent className="p-4">
+                          <p className="text-sm text-gray-400">
+                            Blocked IPs (Active)
+                          </p>
+                          <p className="text-2xl font-bold text-yellow-400">
+                            {securityDashboard.current?.activelyBlockedIPs || 0}
+                          </p>
+                        </CardContent>
+                      </Card>
+                      <Card className="glass-card border-white/10">
+                        <CardContent className="p-4">
+                          <p className="text-sm text-gray-400">
+                            Locked Accounts
+                          </p>
+                          <p className="text-2xl font-bold text-purple-400">
+                            {securityDashboard.current?.lockedUserAccounts || 0}
+                          </p>
+                        </CardContent>
+                      </Card>
+                    </div>
+                  )}
+
+                  {/* Block IP Dialog */}
+                  <Dialog
+                    open={blockIPDialogOpen}
+                    onOpenChange={setBlockIPDialogOpen}>
+                    <DialogContent className="glass-card border-white/10">
+                      <DialogHeader>
+                        <DialogTitle className="text-white">
+                          Block IP Address
+                        </DialogTitle>
+                        <DialogDescription className="text-gray-400">
+                          Enter the IP address to block temporarily
+                        </DialogDescription>
+                      </DialogHeader>
+                      <div className="space-y-4">
+                        <Input
+                          placeholder="IP Address (e.g., 192.168.1.1)"
+                          value={newBlockIP}
+                          onChange={(e) => setNewBlockIP(e.target.value)}
+                          className="glass-card border-white/20"
+                        />
+                        <Input
+                          placeholder="Reason for blocking (optional)"
+                          value={blockReason}
+                          onChange={(e) => setBlockReason(e.target.value)}
+                          className="glass-card border-white/20"
+                        />
+                      </div>
+                      <DialogFooter>
+                        <Button
+                          variant="outline"
+                          className="border-white/10 bg-transparent"
+                          onClick={() => setBlockIPDialogOpen(false)}
+                          disabled={blockingIP !== null}>
+                          Cancel
+                        </Button>
+                        <Button
+                          onClick={handleBlockIP}
+                          disabled={blockingIP !== null}
+                          className="bg-gradient-to-r from-red-600 to-red-700">
+                          {blockingIP ? "Blocking..." : "Block IP"}
+                        </Button>
+                      </DialogFooter>
+                    </DialogContent>
+                  </Dialog>
+
+                  {/* Blocked IPs Section */}
+                  <Card className="glass-card border-white/10">
+                    <CardHeader>
+                      <div className="flex items-center justify-between">
+                        <div className="flex items-center gap-2">
+                          <Lock className="w-5 h-5 text-red-400" />
+                          <CardTitle className="text-white">
+                            Blocked IP Addresses
+                          </CardTitle>
+                        </div>
+                        <Button
+                          onClick={() => setBlockIPDialogOpen(true)}
+                          size="sm"
+                          className="bg-gradient-to-r from-red-600 to-red-700">
+                          <Plus className="w-4 h-4 mr-2" />
+                          Block IP
+                        </Button>
+                      </div>
+                    </CardHeader>
+                    <CardContent>
+                      {blockedIPs.length === 0 ? (
+                        <p className="text-gray-400 text-sm">
+                          No blocked IPs at this time
+                        </p>
+                      ) : (
+                        <div className="space-y-3">
+                          {blockedIPs.map((ip) => (
+                            <div
+                              key={ip.id}
+                              className="flex items-center justify-between p-3 rounded-lg border border-white/10 bg-red-500/5">
+                              <div className="flex items-center gap-3">
+                                <Globe className="w-4 h-4 text-red-400" />
+                                <div>
+                                  <p className="text-white font-mono text-sm">
+                                    {ip.ipAddress}
+                                  </p>
+                                  <p className="text-xs text-gray-500">
+                                    {ip.reason || "No reason provided"}
+                                  </p>
+                                </div>
+                              </div>
+                              <Button
+                                size="sm"
+                                variant="outline"
+                                className="border-green-500/50 text-green-400 hover:bg-green-500/10"
+                                onClick={() => handleUnblockIP(ip.ipAddress)}
+                                disabled={unblockingIP === ip.ipAddress}>
+                                <Unlock className="w-4 h-4 mr-1" />
+                                {unblockingIP === ip.ipAddress
+                                  ? "Unblocking..."
+                                  : "Unblock"}
+                              </Button>
+                            </div>
+                          ))}
+                        </div>
+                      )}
+                    </CardContent>
+                  </Card>
+
+                  {/* Locked Accounts Section */}
+                  <Card className="glass-card border-white/10">
+                    <CardHeader>
+                      <div className="flex items-center gap-2">
+                        <Lock className="w-5 h-5 text-yellow-400" />
+                        <CardTitle className="text-white">
+                          Locked User Accounts
+                        </CardTitle>
+                      </div>
+                    </CardHeader>
+                    <CardContent>
+                      {lockedAccounts.length === 0 ? (
+                        <p className="text-gray-400 text-sm">
+                          No locked accounts at this time
+                        </p>
+                      ) : (
+                        <div className="space-y-3">
+                          {lockedAccounts.map((account) => (
+                            <div
+                              key={account.id}
+                              className="flex items-center justify-between p-3 rounded-lg border border-white/10 bg-yellow-500/5">
+                              <div className="flex-1">
+                                <p className="text-white font-medium">
+                                  {account.email}
+                                </p>
+                                <p className="text-xs text-gray-500">
+                                  {account.failedLoginAttempts} failed attempts
+                                </p>
+                                <p className="text-xs text-gray-500 flex items-center gap-1 mt-1">
+                                  <Clock className="w-3 h-3" />
+                                  Unlocks at{" "}
+                                  {new Date(
+                                    account.accountLockedUntil,
+                                  ).toLocaleTimeString()}
+                                </p>
+                              </div>
+                              <Button
+                                size="sm"
+                                variant="outline"
+                                className="border-green-500/50 text-green-400 hover:bg-green-500/10"
+                                onClick={() => handleUnlockUser(account.id)}
+                                disabled={unblockingUser === account.id}>
+                                <Unlock className="w-4 h-4 mr-1" />
+                                {unblockingUser === account.id
+                                  ? "Unlocking..."
+                                  : "Unlock"}
+                              </Button>
+                            </div>
+                          ))}
+                        </div>
+                      )}
+                    </CardContent>
+                  </Card>
+
+                  {/* Suspicious Activity Report */}
+                  {suspiciousActivity && (
+                    <Card className="glass-card border-white/10">
+                      <CardHeader>
+                        <div className="flex items-center gap-2">
+                          <AlertTriangle className="w-5 h-5 text-orange-400" />
+                          <CardTitle className="text-white">
+                            Suspicious Activity Report (Last 7 Days)
+                          </CardTitle>
+                        </div>
+                      </CardHeader>
+                      <CardContent className="space-y-6">
+                        <div>
+                          <h4 className="text-white font-medium mb-3">
+                            Top IPs by Failed Attempts
+                          </h4>
+                          {suspiciousActivity.topIPsByFailedAttempts &&
+                          suspiciousActivity.topIPsByFailedAttempts.length >
+                            0 ? (
+                            <div className="space-y-2">
+                              {suspiciousActivity.topIPsByFailedAttempts
+                                .slice(0, 5)
+                                .map((item: any, idx: number) => (
+                                  <div
+                                    key={idx}
+                                    className="flex items-center justify-between p-2 rounded bg-black/20">
+                                    <span className="text-sm text-gray-300 font-mono">
+                                      {item.ipAddress}
+                                    </span>
+                                    <Badge variant="destructive">
+                                      {item.failedAttempts} attempts
+                                    </Badge>
+                                  </div>
+                                ))}
+                            </div>
+                          ) : (
+                            <p className="text-sm text-gray-500">
+                              No suspicious activity
+                            </p>
+                          )}
+                        </div>
+
+                        {suspiciousActivity.topEmailsByFailedAttempts &&
+                          suspiciousActivity.topEmailsByFailedAttempts.length >
+                            0 && (
+                            <div>
+                              <h4 className="text-white font-medium mb-3">
+                                Top Targeted Email Accounts
+                              </h4>
+                              <div className="space-y-2">
+                                {suspiciousActivity.topEmailsByFailedAttempts
+                                  .slice(0, 5)
+                                  .map((item: any, idx: number) => (
+                                    <div
+                                      key={idx}
+                                      className="flex items-center justify-between p-2 rounded bg-black/20">
+                                      <span className="text-sm text-gray-300 truncate">
+                                        {item.email}
+                                      </span>
+                                      <Badge variant="destructive">
+                                        {item.failedAttempts} attempts
+                                      </Badge>
+                                    </div>
+                                  ))}
+                              </div>
+                            </div>
+                          )}
+                      </CardContent>
+                    </Card>
+                  )}
+
+                  {/* Configuration Info */}
+                  {securityDashboard?.config && (
+                    <Card className="glass-card border-white/10">
+                      <CardHeader>
+                        <CardTitle className="text-white">
+                          Security Configuration
+                        </CardTitle>
+                      </CardHeader>
+                      <CardContent>
+                        <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                          <div className="rounded-lg border border-white/10 p-4">
+                            <p className="text-sm text-gray-400">
+                              Max Attempts Per IP
+                            </p>
+                            <p className="text-white font-medium">
+                              {securityDashboard.config.maxAttemptsPerIP}
+                            </p>
+                          </div>
+                          <div className="rounded-lg border border-white/10 p-4">
+                            <p className="text-sm text-gray-400">
+                              Max Attempts Per Email
+                            </p>
+                            <p className="text-white font-medium">
+                              {securityDashboard.config.maxAttemptsPerEmail}
+                            </p>
+                          </div>
+                          <div className="rounded-lg border border-white/10 p-4">
+                            <p className="text-sm text-gray-400">
+                              Rate Limit Window
+                            </p>
+                            <p className="text-white font-medium">
+                              {securityDashboard.config.rateLimitWindowMinutes}{" "}
+                              minutes
+                            </p>
+                          </div>
+                          <div className="rounded-lg border border-white/10 p-4">
+                            <p className="text-sm text-gray-400">
+                              IP Block Duration
+                            </p>
+                            <p className="text-white font-medium">
+                              {securityDashboard.config.blockDurationMinutes}{" "}
+                              minutes
+                            </p>
+                          </div>
+                        </div>
+                      </CardContent>
+                    </Card>
+                  )}
+                </>
+              )}
             </TabsContent>
           </Tabs>
         </motion.div>

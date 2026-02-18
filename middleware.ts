@@ -87,7 +87,12 @@ export default auth((req) => {
       return Response.redirect(new URL("/courses", nextUrl));
     }
 
-    if (isTutorRoute && userRole !== "TUTOR" && userRole !== "ADMIN") {
+    if (
+      isTutorRoute &&
+      userRole !== "TUTOR" &&
+      userRole !== "MENTOR" &&
+      userRole !== "ADMIN"
+    ) {
       return Response.redirect(new URL("/courses", nextUrl));
     }
 

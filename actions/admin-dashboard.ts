@@ -196,17 +196,17 @@ export async function getAdminDashboardData() {
   });
   const tutorByUserId = new Map(tutorProfiles.map((t) => [t.userId, t.id]));
   const courseCountByTutor = new Map(
-    tutorCourseCounts.map((entry) => [entry.tutorId, entry._count._all])
+    tutorCourseCounts.map((entry) => [entry.tutorId, entry._count._all]),
   );
   const enrollmentCountByUser = new Map(
-    studentEnrollmentCounts.map((entry) => [entry.userId, entry._count._all])
+    studentEnrollmentCounts.map((entry) => [entry.userId, entry._count._all]),
   );
 
   const recentUsers = users.map((user) => {
     let courses = 0;
     if (user.role === "TUTOR") {
       const tutorId = tutorByUserId.get(user.id);
-      courses = tutorId ? courseCountByTutor.get(tutorId) ?? 0 : 0;
+      courses = tutorId ? (courseCountByTutor.get(tutorId) ?? 0) : 0;
     } else if (user.role === "STUDENT") {
       courses = enrollmentCountByUser.get(user.id) ?? 0;
     }
@@ -235,10 +235,13 @@ export async function getAdminDashboardData() {
     : [];
 
   const reviewByCourse = new Map(
-    reviewAgg.map((entry) => [entry.courseId, entry._avg.rating ?? 0])
+    reviewAgg.map((entry) => [entry.courseId, entry._avg.rating ?? 0]),
   );
 
-  const enrollmentByCourse = new Map<string, { total: number; completed: number }>();
+  const enrollmentByCourse = new Map<
+    string,
+    { total: number; completed: number }
+  >();
   courseEnrollmentAgg.forEach((entry) => {
     const current = enrollmentByCourse.get(entry.courseId) || {
       total: 0,
@@ -276,7 +279,7 @@ export async function getAdminDashboardData() {
   });
 
   const roleCountMap = new Map(
-    roleCounts.map((entry) => [entry.role, entry._count._all])
+    roleCounts.map((entry) => [entry.role, entry._count._all]),
   );
   const systemAlerts = [];
   if (draftCourses > 0) {
@@ -338,20 +341,19 @@ export async function getAdminDashboardData() {
   ];
 
   const enrollmentCountByCourse = new Map(
-    courseEnrollmentCounts.map((entry) => [entry.courseId, entry._count._all])
+    courseEnrollmentCounts.map((entry) => [entry.courseId, entry._count._all]),
   );
   const revenueByCourse = new Map(
     courseRevenueAgg.map((entry) => [
       entry.courseId,
       entry._sum.totalAmount ?? 0,
-    ])
+    ]),
   );
   const courses = courseRows.map((course) => ({
     id: course.id,
     title: course.title,
     status: course.status,
-    price:
-      course.currentPrice ?? course.basePrice ?? course.price ?? 0,
+    price: course.currentPrice ?? course.basePrice ?? course.price ?? 0,
     revenue: (revenueByCourse.get(course.id) ?? 0) / 100,
     enrollments: enrollmentCountByCourse.get(course.id) ?? 0,
     tutor: course.tutor?.user?.name || "Tutor",
@@ -400,7 +402,7 @@ export async function getAdminUsersPageData(params?: {
       : 20;
   const requestedPage =
     typeof params?.page === "number" && params.page > 0 ? params.page : 1;
-  const roleValues = ["USER", "STUDENT", "TUTOR", "ADMIN"] as const;
+  const roleValues = ["USER", "STUDENT", "MENTOR", "TUTOR", "ADMIN"] as const;
   const normalizedRole = roleValues.includes(params?.role as UserRole)
     ? (params?.role as UserRole)
     : undefined;
@@ -484,14 +486,14 @@ export async function getAdminUsersPageData(params?: {
   ]);
 
   const courseCountByTutor = new Map(
-    courseCounts.map((entry) => [entry.tutorId, entry._count._all])
+    courseCounts.map((entry) => [entry.tutorId, entry._count._all]),
   );
   const enrollmentCountByUser = new Map(
-    enrollmentCounts.map((entry) => [entry.userId, entry._count._all])
+    enrollmentCounts.map((entry) => [entry.userId, entry._count._all]),
   );
 
   const roleCountMap = new Map(
-    roleCounts.map((entry) => [entry.role, entry._count._all])
+    roleCounts.map((entry) => [entry.role, entry._count._all]),
   );
 
   const usersTable = users.map((user) => {
@@ -504,7 +506,7 @@ export async function getAdminUsersPageData(params?: {
       avatar: user.avatar,
       status: user.isActive ? "active" : "suspended",
       joinDate: formatDate(user.createdAt),
-      courses: tutorId ? courseCountByTutor.get(tutorId) ?? 0 : 0,
+      courses: tutorId ? (courseCountByTutor.get(tutorId) ?? 0) : 0,
       enrollments: enrollmentCountByUser.get(user.id) ?? 0,
     };
   });
@@ -516,6 +518,7 @@ export async function getAdminUsersPageData(params?: {
       activeUsers,
       suspendedUsers,
       admins: roleCountMap.get("ADMIN") ?? 0,
+      mentors: roleCountMap.get("MENTOR") ?? 0,
       tutors: roleCountMap.get("TUTOR") ?? 0,
       students: roleCountMap.get("STUDENT") ?? 0,
     },
@@ -616,7 +619,7 @@ export async function getAdminCoursesPageData(params?: {
     typeof params?.page === "number" && params.page > 0 ? params.page : 1;
   const statusValues = ["DRAFT", "PUBLISHED", "ARCHIVED", "SUSPENDED"] as const;
   const normalizedStatus = statusValues.includes(
-    params?.status as (typeof statusValues)[number]
+    params?.status as (typeof statusValues)[number],
   )
     ? (params?.status as (typeof statusValues)[number])
     : undefined;
@@ -680,10 +683,10 @@ export async function getAdminCoursesPageData(params?: {
   ]);
 
   const enrollmentCountByCourse = new Map(
-    enrollmentCounts.map((entry) => [entry.courseId, entry._count._all])
+    enrollmentCounts.map((entry) => [entry.courseId, entry._count._all]),
   );
   const revenueByCourse = new Map(
-    revenueAgg.map((entry) => [entry.courseId, entry._sum.totalAmount ?? 0])
+    revenueAgg.map((entry) => [entry.courseId, entry._sum.totalAmount ?? 0]),
   );
 
   const coursesTable = courses.map((course) => ({
@@ -699,7 +702,7 @@ export async function getAdminCoursesPageData(params?: {
   }));
 
   const statusCountMap = new Map(
-    statusCounts.map((entry) => [entry.status, entry._count._all])
+    statusCounts.map((entry) => [entry.status, entry._count._all]),
   );
 
   return {
@@ -726,12 +729,14 @@ export async function updateUserRole({
   role,
 }: {
   userId: string;
-  role: "USER" | "STUDENT" | "TUTOR" | "ADMIN";
+  role: "USER" | "STUDENT" | "MENTOR" | "TUTOR" | "ADMIN";
 }) {
   const session = await auth();
+
   if (!session?.user?.id) {
     return { error: "Unauthorized" };
   }
+
   if (session.user.role !== "ADMIN") {
     return { error: "Forbidden" };
   }
@@ -740,8 +745,22 @@ export async function updateUserRole({
     return { error: "Invalid request" };
   }
 
-  if (role !== "ADMIN") {
-    const adminCount = await db.user.count({ where: { role: "ADMIN" } });
+  // Get the current user
+  const existingUser = await db.user.findUnique({
+    where: { id: userId },
+    select: { role: true },
+  });
+
+  if (!existingUser) {
+    return { error: "User not found" };
+  }
+
+  // Only check admin count if you're removing ADMIN from an admin
+  if (existingUser.role === "ADMIN" && role !== "ADMIN") {
+    const adminCount = await db.user.count({
+      where: { role: "ADMIN" },
+    });
+
     if (adminCount <= 1) {
       return { error: "Cannot remove the last admin" };
     }
@@ -751,9 +770,64 @@ export async function updateUserRole({
     where: { id: userId },
     data: { role },
   });
+  console.log("Updating role to:", role);
 
   return { success: true };
 }
+
+// export async function updateUserRole({
+//   userId,
+//   role,
+// }: {
+//   userId: string;
+//   role: "USER" | "STUDENT" | "MENTOR" | "TUTOR" | "ADMIN";
+// }) {
+//   const session = await auth();
+//   if (!session?.user?.id) {
+//     return { error: "Unauthorized" };
+//   }
+//   if (session.user.role !== "ADMIN") {
+//     return { error: "Forbidden" };
+//   }
+
+//   if (!userId || !role) {
+//     return { error: "Invalid request" };
+//   }
+
+//   if (role !== "ADMIN") {
+//     const adminCount = await db.user.count({ where: { role: "ADMIN" } });
+//     if (adminCount <= 1) {
+//       return { error: "Cannot remove the last admin" };
+//     }
+//   }
+
+//   const existingUser = await db.user.findUnique({
+//     where: { id: userId },
+//     select: { role: true },
+//   });
+
+//   if (!existingUser) {
+//     return { error: "User not found" };
+//   }
+
+//   // Only check admin count if you're removing ADMIN from an admin
+//   if (existingUser.role === "ADMIN" && role !== "ADMIN") {
+//     const adminCount = await db.user.count({
+//       where: { role: "ADMIN" },
+//     });
+
+//     if (adminCount <= 1) {
+//       return { error: "Cannot remove the last admin" };
+//     }
+//   }
+
+//   await db.user.update({
+//     where: { id: userId },
+//     data: { role },
+//   });
+
+//   return { success: true };
+// }
 
 export async function createUserByAdmin({
   name,
@@ -762,7 +836,7 @@ export async function createUserByAdmin({
 }: {
   name: string;
   email: string;
-  role: "USER" | "STUDENT" | "TUTOR" | "ADMIN";
+  role: "USER" | "STUDENT" | "MENTOR" | "TUTOR" | "ADMIN";
 }) {
   const session = await auth();
   if (!session?.user?.id) {

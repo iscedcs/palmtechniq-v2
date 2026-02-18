@@ -1,4 +1,4 @@
-export type UserRole = "USER" | "STUDENT" | "TUTOR" | "ADMIN";
+export type UserRole = "USER" | "STUDENT" | "MENTOR" | "TUTOR" | "ADMIN";
 
 export interface User {
   id: string;
@@ -26,6 +26,15 @@ export interface Tutor extends User {
   courses: string[];
   rating: number;
   totalStudents: number;
+  bio: string;
+  hourlyRate: number;
+}
+
+export interface Mentor extends User {
+  role: "MENTOR";
+  expertise: string[];
+  rating: number;
+  totalSessions: number;
   bio: string;
   hourlyRate: number;
 }

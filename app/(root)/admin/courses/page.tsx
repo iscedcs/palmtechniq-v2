@@ -1,6 +1,7 @@
 import { getAdminCoursesPageData } from "@/actions/admin-dashboard";
 import AdminCoursesClient from "./courses-client";
 
+export const dynamic = "force-dynamic";
 export default async function AdminCoursesPage() {
   const res = await getAdminCoursesPageData();
 

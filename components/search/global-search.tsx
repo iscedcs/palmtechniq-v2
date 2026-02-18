@@ -11,6 +11,7 @@ import {
   User,
   ArrowRight,
 } from "lucide-react";
+import Image from "next/image";
 import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
@@ -262,10 +263,13 @@ export function GlobalSearch() {
                             </AvatarFallback>
                           </Avatar>
                         ) : result.type === "course" ? (
-                          <img
+                          <Image
                             src={result.image || generateRandomAvatar()}
                             alt={result.title}
+                            width={48}
+                            height={32}
                             className="w-12 h-8 rounded object-cover"
+                            unoptimized
                           />
                         ) : (
                           <div className="w-10 h-10 rounded-lg bg-gradient-to-r from-neon-blue to-neon-purple flex items-center justify-center">

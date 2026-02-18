@@ -21,20 +21,21 @@ export default function ContactPage() {
     {
       icon: Mail,
       title: "Email",
-      value: "support@cyberlearn.com",
+      value: "support@palmtechniq.com",
       description: "We'll respond within 24 hours",
     },
     {
       icon: Phone,
       title: "Phone",
-      value: "+1 (555) 123-4567",
-      description: "Available 9 AM - 6 PM PST",
+      value: "+234 (807) 956-8910",
+      description: "Available 9 AM - 6 PM WAT",
     },
     {
       icon: MapPin,
       title: "Office",
-      value: "San Francisco, CA",
-      description: "123 Tech Avenue, SF 94105",
+      value: "Lagos, NG",
+      description:
+        "1st Floor, (Festac Tower) Chicken Republic Building, 22Rd ,Festac Town, Lagos, Nigeria.",
     },
   ];
 

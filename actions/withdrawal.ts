@@ -314,7 +314,7 @@ export async function saveBankPaymentMethod({
       }).then((data) => data.recipient_code));
 
     const subaccountCode =
-      user.role === "TUTOR" && !user.subaccountCode
+      (user.role === "TUTOR" || user.role === "MENTOR") && !user.subaccountCode
         ? await paystackCreateSubaccount({
             businessName: user.name ? `${user.name} Tutor` : "Tutor",
             settlementBank: bankCode,

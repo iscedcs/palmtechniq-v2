@@ -21,7 +21,10 @@ export async function finalizePaystackByReference(reference: string) {
   if (v.status !== "success") {
     await db.transaction.update({
       where: { id: tx.id },
-      data: { status: "FAILED", metadata: { verify: v } },
+      data: {
+        status: "FAILED",
+        metadata: { ...((tx.metadata as any) || {}), verify: v },
+      },
     });
     return { ok: false, reason: "failed" };
   }
@@ -37,11 +40,41 @@ export async function finalizePaystackByReference(reference: string) {
         status: "COMPLETED",
         paymentId: v.reference,
         paymentDate: new Date(v.paid_at),
-        metadata: { verify: v },
+        metadata: { ...((tx.metadata as any) || {}), verify: v },
       },
     });
 
     const metadata = (v.metadata || tx.metadata || {}) as any;
+    const isMentorshipPayment = metadata?.productType === "MENTORSHIP";
+    if (isMentorshipPayment) {
+      const mentorshipSessionId = metadata?.mentorshipSessionId as string | undefined;
+      if (mentorshipSessionId) {
+        await px.mentorshipSession.update({
+          where: { id: mentorshipSessionId },
+          data: {
+            status: "SCHEDULED",
+            notes: `PAYMENT_CONFIRMED | ${new Date(v.paid_at).toISOString()}`,
+          },
+        });
+      }
+
+      const tutorId = metadata?.tutorUserId as string | undefined;
+      const tutorShare =
+        tx.tutorShareAmount ??
+        Number(((tx.amount || 0) * 0.7).toFixed(2));
+      if (tutorId && tutorShare > 0) {
+        await px.user.update({
+          where: { id: tutorId },
+          data: {
+            walletBalance: {
+              increment: tutorShare,
+            },
+          },
+        });
+      }
+      return;
+    }
+
     const groupPurchaseId = metadata.groupPurchaseId ?? tx.groupPurchaseId;
 
     const isGroupPurchase = Boolean(groupPurchaseId);
@@ -241,6 +274,30 @@ export async function finalizePaystackByReference(reference: string) {
   });
 
   const metadata = (v.metadata || tx.metadata || {}) as any;
+  if (metadata?.productType === "MENTORSHIP") {
+    await notify.user(tx.userId, {
+      type: "success",
+      title: "Mentorship Booking Confirmed",
+      message:
+        "Payment successful. Your mentorship booking is now confirmed.",
+      actionUrl: "/student/mentorship",
+      actionLabel: "View Sessions",
+      metadata: { category: "mentorship_payment_success", reference },
+    });
+
+    if (metadata?.tutorUserId) {
+      await notify.user(metadata.tutorUserId, {
+        type: "payment",
+        title: "New Mentorship Booking",
+        message: "A new mentorship session has been paid and scheduled.",
+        actionUrl: "/tutor/mentorship",
+        actionLabel: "Manage Sessions",
+        metadata: { category: "mentorship_booking_paid", reference },
+      });
+    }
+    return { ok: true, mentorshipSessionId: metadata?.mentorshipSessionId };
+  }
+
   const groupPurchaseId = metadata.groupPurchaseId ?? tx.groupPurchaseId;
   if (groupPurchaseId) {
     const groupPurchase = await db.groupPurchase.findUnique({

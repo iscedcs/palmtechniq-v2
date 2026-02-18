@@ -32,10 +32,10 @@ export default function AboutPage() {
   ];
 
   const stats = [
-    { number: "500K+", label: "Active Learners" },
-    { number: "1000+", label: "Expert Tutors" },
-    { number: "300+", label: "Courses Available" },
-    { number: "95%", label: "Success Rate" },
+    { number: "200+", label: "Active Learners" },
+    { number: "50+", label: "Expert Tutors" },
+    { number: "50+", label: "Courses Available" },
+    { number: "85%", label: "Success Rate" },
   ];
 
   return (
@@ -55,14 +55,15 @@ export default function AboutPage() {
             transition={{ duration: 0.8 }}
             className="text-center max-w-4xl mx-auto">
             <h1 className="text-5xl md:text-6xl font-bold mb-6">
-              <span className="text-white">Transforming Education</span>
+              <span className="text-white">Empowering Education</span>
               <br />
               <span className="text-gradient">One Learner at a Time</span>
             </h1>
             <p className="text-xl text-gray-300 mb-8">
-              Since 2020, CyberLearn has been revolutionizing how people learn
-              by combining AI-powered technology with expert mentorship. We
-              believe everyone deserves access to world-class education.
+              Since 2024, PalmTechnIQ has been changing how people learn. And we
+              stepped in to make it better by combining AI-powered technology
+              with expert mentorship and a community of learners. We believe
+              everyone deserves access to world-class education.
             </p>
             <Button className="bg-gradient-to-r from-neon-blue to-neon-purple hover:from-neon-blue/80 hover:to-neon-purple/80 text-white hover-glow">
               Watch Our Story

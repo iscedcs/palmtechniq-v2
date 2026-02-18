@@ -63,7 +63,12 @@ const applicationSchema = z.object({
     resumeFileName: z.string().trim().max(200).optional().default(""),
     resumeUrl: z.string().trim().url().max(2000),
     resumeMimeType: z.string().trim().max(120).optional().default(""),
-    resumeFileSize: z.number().int().min(0).max(20 * 1024 * 1024).optional(),
+    resumeFileSize: z
+      .number()
+      .int()
+      .min(0)
+      .max(20 * 1024 * 1024)
+      .optional(),
   }),
   teaching: z.object({
     subjects: z.array(z.string().trim().min(1).max(100)).min(1).max(40),
@@ -75,8 +80,16 @@ const applicationSchema = z.object({
     certifications: z.array(z.string().trim().min(1).max(120)).max(30),
   }),
   motivation: z.object({
-    why: z.string().trim().min(20).max(2500),
-    goals: z.string().trim().min(20).max(2500),
+    why: z
+      .string()
+      .trim()
+      .min(20, "Please explain your motivation in at least 20 characters")
+      .max(2500),
+    goals: z
+      .string()
+      .trim()
+      .min(20, "Please describe your goals properly (min 20 characters)")
+      .max(2500),
     commitment: z.string().trim().min(1).max(80),
     references: z.string().trim().max(2500).optional().default(""),
   }),
@@ -86,14 +99,23 @@ export async function POST(req: NextRequest) {
   if (isRateLimited(getClientKey(req))) {
     return NextResponse.json(
       { error: "Too many submissions. Please try again later." },
-      { status: 429 }
+      { status: 429 },
     );
   }
 
   const body = await req.json().catch(() => ({}));
   const parsed = applicationSchema.safeParse(body);
+  // console.log(parsed);
   if (!parsed.success) {
-    return NextResponse.json({ error: "Invalid application data." }, { status: 400 });
+    return NextResponse.json(
+      {
+        errors: parsed.error.issues.map((err) => ({
+          field: err.path.join("."),
+          message: err.message,
+        })),
+      },
+      { status: 400 },
+    );
   }
 
   try {
@@ -101,7 +123,7 @@ export async function POST(req: NextRequest) {
     if (!session?.user?.id || !session.user.email) {
       return NextResponse.json(
         { error: "You must be signed in to submit an application." },
-        { status: 401 }
+        { status: 401 },
       );
     }
 
@@ -113,7 +135,7 @@ export async function POST(req: NextRequest) {
     if (session.user.role === "ADMIN") {
       return NextResponse.json(
         { error: "You are not allowed to submit this application." },
-        { status: 403 }
+        { status: 403 },
       );
     }
 
@@ -121,14 +143,14 @@ export async function POST(req: NextRequest) {
     if (session.user.role === "STUDENT" && isSameEmail) {
       return NextResponse.json(
         { error: "Unable to process application with this email address." },
-        { status: 403 }
+        { status: 403 },
       );
     }
 
     if (session.user.role !== "STUDENT" && !isSameEmail) {
       return NextResponse.json(
         { error: "Application email must match your signed-in account email." },
-        { status: 400 }
+        { status: 400 },
       );
     }
 
@@ -142,13 +164,11 @@ export async function POST(req: NextRequest) {
     const details = {
       ...payload,
       status: "PENDING" as const,
-      adminReview: null as
-        | null
-        | {
-            note: string;
-            reviewedByUserId: string;
-            reviewedAt: string;
-          },
+      adminReview: null as null | {
+        note: string;
+        reviewedByUserId: string;
+        reviewedAt: string;
+      },
       submittedByUserId: session?.user?.id ?? null,
       submittedAt: new Date().toISOString(),
     };
@@ -194,7 +214,7 @@ export async function POST(req: NextRequest) {
     console.error("Failed to submit tutor/mentor application:", error);
     return NextResponse.json(
       { error: "Unable to submit application right now." },
-      { status: 500 }
+      { status: 500 },
     );
   }
 }

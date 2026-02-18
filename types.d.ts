@@ -51,3 +51,44 @@ type CourseItem = {
   flashSaleEnd?: Date | null;
   isFlashSale?: boolean;
 };
+
+interface ApplicationData {
+  applicationType: "tutor" | "mentor" | "";
+  personalInfo: {
+    firstName: string;
+    lastName: string;
+    email: string;
+    phone: string;
+    location: string;
+    timezone: string;
+    linkedin: string;
+    website: string;
+    bio: string;
+  };
+  professional: {
+    currentRole: string;
+    company: string;
+    experience: string;
+    industry: string;
+    skills: string[];
+    achievements: string[];
+    resume: File | null;
+    resumeUrl: string;
+    portfolio: string;
+  };
+  teaching: {
+    subjects: string[];
+    experience: string;
+    approach: string;
+    availability: string[];
+    hourlyRate: number;
+    languages: string[];
+    certifications: string[];
+  };
+  motivation: {
+    why: string;
+    goals: string;
+    commitment: string;
+    references: string;
+  };
+}

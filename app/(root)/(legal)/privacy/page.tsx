@@ -482,7 +482,7 @@ export default function PrivacyPolicy() {
                             <p className="text-gray-300 text-sm">
                               <strong>Email:</strong> dpo@palmtechniq.com
                               <br />
-                              <strong>Phone:</strong> +1 (555) 123-4567
+                              <strong>Phone:</strong> +234 (807) 956-8910
                             </p>
                           </div>
                         </div>
@@ -492,9 +492,10 @@ export default function PrivacyPolicy() {
                             <br />
                             PalmTechnIQ Privacy Team
                             <br />
-                            123 Learning Street
+                            1st Floor, (Festac Tower) Chicken Republic Building,
+                            22Rd ,Festac Town, Lagos, Nigeria.
                             <br />
-                            Education City, EC 12345
+                            Lagos, NG
                           </p>
                         </div>
                       </div>

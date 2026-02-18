@@ -52,9 +52,18 @@ type Totals = {
 export default function AdminFinanceClient({
   initialRequests,
   initialTotals,
+  mentorshipSummary,
 }: {
   initialRequests: WithdrawalRow[];
   initialTotals: Totals[];
+  mentorshipSummary: {
+    completedCount: number;
+    pendingCount: number;
+    grossRevenue: number;
+    platformRevenue: number;
+    tutorPayouts: number;
+    pendingRevenue: number;
+  } | null;
 }) {
   const [requests, setRequests] = useState(initialRequests);
   const [totals, setTotals] = useState(initialTotals);
@@ -148,6 +157,43 @@ export default function AdminFinanceClient({
             })}
           </CardContent>
         </Card>
+
+        {mentorshipSummary && (
+          <Card className="glass-card border-white/10">
+            <CardHeader>
+              <CardTitle className="text-white">Mentorship Finance</CardTitle>
+            </CardHeader>
+            <CardContent className="grid grid-cols-1 md:grid-cols-3 gap-4">
+              <div className="rounded-lg border border-white/10 p-4">
+                <p className="text-sm text-gray-400">Gross Revenue</p>
+                <p className="text-xl font-semibold text-white">
+                  ₦{mentorshipSummary.grossRevenue.toLocaleString()}
+                </p>
+                <p className="text-xs text-gray-500">
+                  {mentorshipSummary.completedCount} completed payments
+                </p>
+              </div>
+              <div className="rounded-lg border border-white/10 p-4">
+                <p className="text-sm text-gray-400">Platform Revenue</p>
+                <p className="text-xl font-semibold text-white">
+                  ₦{mentorshipSummary.platformRevenue.toLocaleString()}
+                </p>
+                <p className="text-xs text-gray-500">
+                  Tutor payouts: ₦{mentorshipSummary.tutorPayouts.toLocaleString()}
+                </p>
+              </div>
+              <div className="rounded-lg border border-white/10 p-4">
+                <p className="text-sm text-gray-400">Pending Revenue</p>
+                <p className="text-xl font-semibold text-white">
+                  ₦{mentorshipSummary.pendingRevenue.toLocaleString()}
+                </p>
+                <p className="text-xs text-gray-500">
+                  {mentorshipSummary.pendingCount} pending payments
+                </p>
+              </div>
+            </CardContent>
+          </Card>
+        )}
 
         <Card className="glass-card border-white/10">
           <CardHeader>

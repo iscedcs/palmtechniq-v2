@@ -70,7 +70,7 @@ export function StatsSection() {
   const stats = [
     {
       icon: Users,
-      value: 1000,
+      value: 200,
       label: "Active Learners",
       suffix: "+",
       color: "from-neon-blue to-cyan-400",
@@ -91,7 +91,7 @@ export function StatsSection() {
     },
     {
       icon: Star,
-      value: 4.9,
+      value: 4.5,
       label: "Average Rating",
       suffix: "/5",
       color: "from-neon-orange to-yellow-400",

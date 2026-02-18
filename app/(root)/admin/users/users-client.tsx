@@ -55,6 +55,7 @@ type UserStats = {
   activeUsers: number;
   suspendedUsers: number;
   admins: number;
+  mentors: number;
   tutors: number;
   students: number;
 };
@@ -140,6 +141,8 @@ export default function AdminUsersClient({
     switch (role) {
       case "ADMIN":
         return "border-red-500 text-red-400 bg-red-500/10";
+      case "MENTOR":
+        return "border-amber-500 text-amber-400 bg-amber-500/10";
       case "TUTOR":
         return "border-purple-500 text-purple-400 bg-purple-500/10";
       case "STUDENT":
@@ -231,7 +234,7 @@ export default function AdminUsersClient({
       const role = bulkAction.replace("ROLE_", "");
       const res = await updateUserRole({
         userId,
-        role: role as "USER" | "STUDENT" | "TUTOR" | "ADMIN",
+        role: role as "USER" | "STUDENT" | "MENTOR" | "TUTOR" | "ADMIN",
       });
       if ("error" in res) {
         errors.push(res.error ?? "Action failed");
@@ -273,6 +276,11 @@ export default function AdminUsersClient({
       label: "Admins",
       value: stats.admins.toLocaleString("en-NG"),
       icon: Shield,
+    },
+    {
+      label: "Mentors",
+      value: stats.mentors.toLocaleString("en-NG"),
+      icon: Users,
     },
     {
       label: "Tutors",
@@ -359,6 +367,7 @@ export default function AdminUsersClient({
                   <SelectContent className="glass-card border-white/10">
                     <SelectItem value="ALL">All roles</SelectItem>
                     <SelectItem value="ADMIN">Admins</SelectItem>
+                  <SelectItem value="MENTOR">Mentors</SelectItem>
                     <SelectItem value="TUTOR">Tutors</SelectItem>
                     <SelectItem value="STUDENT">Students</SelectItem>
                     <SelectItem value="USER">Users</SelectItem>
@@ -383,6 +392,7 @@ export default function AdminUsersClient({
                     <SelectItem value="SUSPEND">Suspend users</SelectItem>
                     <SelectItem value="ROLE_USER">Make USER</SelectItem>
                     <SelectItem value="ROLE_STUDENT">Make STUDENT</SelectItem>
+                    <SelectItem value="ROLE_MENTOR">Make MENTOR</SelectItem>
                     <SelectItem value="ROLE_TUTOR">Make TUTOR</SelectItem>
                     <SelectItem value="ROLE_ADMIN">Make ADMIN</SelectItem>
                   </SelectContent>
@@ -582,6 +592,30 @@ export default function AdminUsersClient({
                                 }}>
                                 <Edit className="w-4 h-4 mr-2" />
                                 Make STUDENT
+                              </DropdownMenuItem>
+                              <DropdownMenuItem
+                                disabled={updatingId === user.id}
+                                onClick={async () => {
+                                  const confirmed = window.confirm(
+                                    `Promote ${user.name} to MENTOR?`
+                                  );
+                                  if (!confirmed) return;
+                                  setUpdatingId(user.id);
+                                  const res = await updateUserRole({
+                                    userId: user.id,
+                                    role: "MENTOR",
+                                  });
+                                  if ("error" in res) {
+                                    toast.error(res.error);
+                                    setUpdatingId(null);
+                                    return;
+                                  }
+                                  toast.success("Role updated");
+                                  await refreshUsers();
+                                  setUpdatingId(null);
+                                }}>
+                                <Edit className="w-4 h-4 mr-2" />
+                                Make MENTOR
                               </DropdownMenuItem>
                               <DropdownMenuItem
                                 disabled={updatingId === user.id}

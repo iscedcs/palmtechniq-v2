@@ -35,47 +35,6 @@ import {
 } from "lucide-react";
 import { toast } from "sonner";
 
-interface ApplicationData {
-  applicationType: "tutor" | "mentor" | "";
-  personalInfo: {
-    firstName: string;
-    lastName: string;
-    email: string;
-    phone: string;
-    location: string;
-    timezone: string;
-    linkedin: string;
-    website: string;
-    bio: string;
-  };
-  professional: {
-    currentRole: string;
-    company: string;
-    experience: string;
-    industry: string;
-    skills: string[];
-    achievements: string[];
-    resume: File | null;
-    resumeUrl: string;
-    portfolio: string;
-  };
-  teaching: {
-    subjects: string[];
-    experience: string;
-    approach: string;
-    availability: string[];
-    hourlyRate: number;
-    languages: string[];
-    certifications: string[];
-  };
-  motivation: {
-    why: string;
-    goals: string;
-    commitment: string;
-    references: string;
-  };
-}
-
 export default function ApplicationPage() {
   const router = useRouter();
   const { data: session } = useSession();
@@ -389,8 +348,18 @@ export default function ApplicationPage() {
       });
 
       const result = await response.json().catch(() => null);
-      if (!response.ok || !result?.ok) {
-        throw new Error(result?.error || "Failed to submit application");
+      if (!response.ok) {
+        if (result?.errors) {
+          result.errors.forEach((err: { message: string }) => {
+            toast.error(err.message);
+          });
+        } else if (result?.error) {
+          toast.error(result.error);
+        } else {
+          toast.error("Something went wrong.");
+        }
+
+        return;
       }
 
       toast.success(
@@ -425,7 +394,7 @@ export default function ApplicationPage() {
             <div className="grid grid-cols-1 md:grid-cols-2 gap-8 max-w-4xl mx-auto">
               <motion.div
                 whileHover={{ scale: 1.02, y: -5 }}
-                className={`cursor-pointer ₦{
+                className={`cursor-pointer ${
                   applicationData.applicationType === "tutor"
                     ? "ring-2 ring-neon-blue"
                     : ""
@@ -480,7 +449,7 @@ export default function ApplicationPage() {
 
               <motion.div
                 whileHover={{ scale: 1.02, y: -5 }}
-                className={`cursor-pointer ₦{
+                className={`cursor-pointer ${
                   applicationData.applicationType === "mentor"
                     ? "ring-2 ring-neon-purple"
                     : ""

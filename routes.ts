@@ -19,6 +19,8 @@ export const publicRoutes = [
   "/faq",
   "/podcast",
   "/awareness-program",
+  "/features/ai-interview",
+  "/features/mentorship",
 ];
 
 /**
@@ -65,6 +67,7 @@ export const protectedRoutes = [
   "/admin/courses",
   "/admin/advisor",
   "/admin/applications",
+  "/admin/mentorship",
   "/admin/settings",
   "/settings",
 ];
@@ -81,6 +84,7 @@ export const adminRoutes = [
   "/admin/courses",
   "/admin/advisor",
   "/admin/applications",
+  "/admin/mentorship",
   "/admin/settings",
 ];
 
@@ -132,11 +136,12 @@ export const apiAuthPrefix = "/api/auth";
  * The default redirect path after logging in based on user role
  * @type {Record<string, string>}
  */
-export type UserRole = "STUDENT" | "TUTOR" | "ADMIN" | "USER";
+export type UserRole = "STUDENT" | "MENTOR" | "TUTOR" | "ADMIN" | "USER";
 export const DEFAULT_LOGIN_REDIRECTS: Record<UserRole, string> & {
   USER: string;
 } = {
   STUDENT: "/student",
+  MENTOR: "/tutor/mentorship",
   TUTOR: "/tutor",
   ADMIN: "/admin",
   USER: "/courses",

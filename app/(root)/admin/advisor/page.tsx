@@ -22,11 +22,14 @@ const formatDateTime = (date: Date) =>
   });
 
 function getStatusClass(status: string) {
-  if (status === "NEW") return "border-yellow-500 text-yellow-400 bg-yellow-500/10";
+  if (status === "NEW")
+    return "border-yellow-500 text-yellow-400 bg-yellow-500/10";
   if (status === "CONTACTED")
     return "border-blue-500 text-blue-400 bg-blue-500/10";
   return "border-green-500 text-green-400 bg-green-500/10";
 }
+
+export const dynamic = "force-dynamic";
 
 export default async function AdminAdvisorPage() {
   const session = await auth();
@@ -93,10 +96,10 @@ export default async function AdminAdvisorPage() {
 
   const courseById = new Map(courses.map((course) => [course.id, course]));
   const categoryById = new Map(
-    categories.map((category) => [category.id, category])
+    categories.map((category) => [category.id, category]),
   );
   const statusMap = new Map(
-    followUpStatusCounts.map((entry) => [entry.status, entry._count._all])
+    followUpStatusCounts.map((entry) => [entry.status, entry._count._all]),
   );
 
   return (
@@ -107,7 +110,8 @@ export default async function AdminAdvisorPage() {
             AI Advisor Leads
           </h1>
           <p className="text-gray-400">
-            Track follow-up requests and demand trends from course advisor chats.
+            Track follow-up requests and demand trends from course advisor
+            chats.
           </p>
         </div>
 
@@ -151,12 +155,16 @@ export default async function AdminAdvisorPage() {
         <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
           <Card className="glass-card border-white/10">
             <CardHeader>
-              <CardTitle className="text-white">Top Requested Courses</CardTitle>
+              <CardTitle className="text-white">
+                Top Requested Courses
+              </CardTitle>
             </CardHeader>
             <CardContent>
               <div className="space-y-3">
                 {topCourseDemand.length === 0 ? (
-                  <p className="text-sm text-gray-400">No course demand data yet.</p>
+                  <p className="text-sm text-gray-400">
+                    No course demand data yet.
+                  </p>
                 ) : (
                   topCourseDemand.map((entry) => {
                     const course = entry.courseId
@@ -164,7 +172,9 @@ export default async function AdminAdvisorPage() {
                       : null;
                     return (
                       <div
-                        key={entry.courseId || `course-null-${entry._count._all}`}
+                        key={
+                          entry.courseId || `course-null-${entry._count._all}`
+                        }
                         className="flex items-center justify-between border border-white/10 rounded-lg px-3 py-2">
                         <div>
                           <p className="text-white text-sm font-medium">
@@ -187,7 +197,9 @@ export default async function AdminAdvisorPage() {
 
           <Card className="glass-card border-white/10">
             <CardHeader>
-              <CardTitle className="text-white">Top Requested Categories</CardTitle>
+              <CardTitle className="text-white">
+                Top Requested Categories
+              </CardTitle>
             </CardHeader>
             <CardContent>
               <div className="space-y-3">
@@ -203,7 +215,8 @@ export default async function AdminAdvisorPage() {
                     return (
                       <div
                         key={
-                          entry.categoryId || `category-null-${entry._count._all}`
+                          entry.categoryId ||
+                          `category-null-${entry._count._all}`
                         }
                         className="flex items-center justify-between border border-white/10 rounded-lg px-3 py-2">
                         <p className="text-white text-sm font-medium">
@@ -233,7 +246,9 @@ export default async function AdminAdvisorPage() {
                     <TableHead className="text-gray-400">Created</TableHead>
                     <TableHead className="text-gray-400">Lead</TableHead>
                     <TableHead className="text-gray-400">Status</TableHead>
-                    <TableHead className="text-gray-400">Message Intent</TableHead>
+                    <TableHead className="text-gray-400">
+                      Message Intent
+                    </TableHead>
                     <TableHead className="text-gray-400">Note</TableHead>
                   </TableRow>
                 </TableHeader>
@@ -251,7 +266,9 @@ export default async function AdminAdvisorPage() {
                           {formatDateTime(row.createdAt)}
                         </TableCell>
                         <TableCell>
-                          <p className="text-white text-sm font-medium">{row.name}</p>
+                          <p className="text-white text-sm font-medium">
+                            {row.name}
+                          </p>
                           <p className="text-gray-400 text-xs">{row.email}</p>
                           {row.user?.name ? (
                             <p className="text-gray-500 text-xs mt-1">
