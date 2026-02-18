@@ -195,28 +195,29 @@ export default async function MainRootLayout({
             defaultTheme="dark"
             enableSystem
             disableTransitionOnChange>
-            <AnalyticsProvider>
-              <WebSocketProvider>
-                <SocketInitializer />
-                <ToploaderProvider
-                  color="linear-gradient(90deg, #00D4FF 0%, #8B5CF6 50%, #F472B6 100%)"
-                  height={4}
-                  showSpinner={false}
-                  crawlSpeed={150}
-                  speed={300}>
-                  <Suspense fallback={null}>
+            {/* ensure hooks like useSearchParams are inside a suspense boundary */}
+            <Suspense fallback={null}>
+              <AnalyticsProvider>
+                <WebSocketProvider>
+                  <SocketInitializer />
+                  <ToploaderProvider
+                    color="linear-gradient(90deg, #00343d 0%, #27ba55 50%, #000000 100%)"
+                    height={4}
+                    showSpinner={false}
+                    crawlSpeed={150}
+                    speed={300}>
                     <div className="flex flex-col min-h-screen">
                       <Navigation />
                       <main className="flex-1">{children}</main>
 
                       <MobileBottomNav />
                     </div>
-                  </Suspense>
+                  </ToploaderProvider>
                   <Toaster richColors />
-                </ToploaderProvider>
-              </WebSocketProvider>
-            </AnalyticsProvider>
-          </ThemeProvider>
+                </WebSocketProvider>
+              </AnalyticsProvider>
+            </Suspense>
+            </ThemeProvider>
         </body>
       </html>
     </SessionProvider>

@@ -1,10 +1,11 @@
 "use client";
 
-import type React from "react";
+import React, { Suspense } from "react";
+import type { ReactNode } from "react";
 import { CyberToploader } from "../ui/top-loader";
 
 interface ToploaderProviderProps {
-  children: React.ReactNode;
+  children: ReactNode;
   color?: string;
   height?: number;
   showSpinner?: boolean;
@@ -14,7 +15,7 @@ interface ToploaderProviderProps {
 
 export function ToploaderProvider({
   children,
-  color = "linear-gradient(90deg, #00D4FF 0%, #8B5CF6 50%, #F472B6 100%)",
+  color = "linear-gradient(90deg, #00343d 0%, #27ba55 50%, #000000 100%)",
   height = 4,
   showSpinner = true,
   crawlSpeed = 200,
@@ -22,13 +23,16 @@ export function ToploaderProvider({
 }: ToploaderProviderProps) {
   return (
     <>
-      <CyberToploader
-        color={color}
-        height={height}
-        showSpinner={showSpinner}
-        crawlSpeed={crawlSpeed}
-        speed={speed}
-      />
+      {/* CyberToploader uses useSearchParams under the hood; wrap in Suspense */}
+      <Suspense fallback={null}>
+        <CyberToploader
+          color={color}
+          height={height}
+          showSpinner={showSpinner}
+          crawlSpeed={crawlSpeed}
+          speed={speed}
+        />
+      </Suspense>
       {children}
     </>
   );
