@@ -52,11 +52,14 @@ jobs:
       - name: Dependency Audit
         run: pnpm audit --registry=https://registry.npmjs.org --audit-level=high
 
-      - name: Secret Scan (Gitleaks)
+      - name: Run gitleaks
+        if: ${{ secrets.GITLEAKS_LICENSE != '' }}
         uses: gitleaks/gitleaks-action@v2
+        with:
+          args: --path=.
         env:
-          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-
+          GITLEAKS_LICENSE: ${{ secrets.GITLEAKS_LICENSE }}
+          
       - name: Static Security Scan (Semgrep)
         uses: returntocorp/semgrep-action@v1
         with:
