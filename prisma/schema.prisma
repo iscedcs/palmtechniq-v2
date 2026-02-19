@@ -1500,3 +1500,20 @@ enum Language {
   FR
   DE
 }
+enum CertificateType {
+  CertificateOfCompletion
+  ProfessionalCertification
+  MicroCredentials
+}
+
+enum PaymentStatus {
+  SUCCESSFUL
+  FAILED
+  PENDING
+}
+
+enum ProgramType {
+  CRASH_COURSE
+  THREE_MONTHS
+  SIX_MONTHS
+}
