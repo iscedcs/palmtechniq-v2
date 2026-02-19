@@ -27,6 +27,10 @@ jobs:
       AWS_ACCESS_KEY_ID: ci-placeholder
       AWS_SECRET_ACCESS_KEY: ci-placeholder
       AWS_BUCKET_NAME: ci-placeholder
+      # Expose Gitleaks license (if present) to the job as an env var so the
+      # step conditional can reference it without using the `secrets` context
+      # directly in an `if` expression (which can cause parsing errors).
+      GITLEAKS_LICENSE: ${{ secrets.GITLEAKS_LICENSE }}
 
     steps:
       - name: Checkout
@@ -53,12 +57,12 @@ jobs:
         run: pnpm audit --registry=https://registry.npmjs.org --audit-level=high
 
       - name: Run gitleaks
-        if: ${{ secrets.GITLEAKS_LICENSE != '' }}
+        if: ${{ env.GITLEAKS_LICENSE != '' }}
         uses: gitleaks/gitleaks-action@v2
         with:
           args: --path=.
         env:
-          GITLEAKS_LICENSE: ${{ secrets.GITLEAKS_LICENSE }}
+          GITLEAKS_LICENSE: ${{ env.GITLEAKS_LICENSE }}
           
       - name: Static Security Scan (Semgrep)
         uses: returntocorp/semgrep-action@v1
