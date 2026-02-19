@@ -3,7 +3,6 @@
 import { Suspense } from "react";
 import { AuthLayout } from "@/components/auth/auth-layout";
 import { NewPasswordForm } from "@/components/component/forms/new-password-form";
-import { useSearchParams } from "next/navigation";
 
 function NewPasswordContent() {
   return (
@@ -18,9 +17,6 @@ function NewPasswordContent() {
 }
 
 function NewPasswordFormWrapper() {
-  const searchParams = useSearchParams();
-  const token = searchParams.get("token");
-
   return <NewPasswordForm />;
 }
 

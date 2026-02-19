@@ -13,20 +13,25 @@ declare global {
 
 export function initIO(server: HttpServer) {
   if (!global._io) {
-    const allowedOrigin = [
-      process.env.NEXT_PUBLIC_URL!,
-      "http://localhost:2026",
-    ].filter(Boolean) as string[];
+    const isProd = process.env.NODE_ENV === "production";
+    const configuredOrigins = (process.env.SOCKET_ALLOWED_ORIGINS ?? "")
+      .split(",")
+      .map((origin) => origin.trim())
+      .filter(Boolean);
+    const allowedOrigin = Array.from(
+      new Set([
+        process.env.NEXT_PUBLIC_URL,
+        ...configuredOrigins,
+        ...(isProd ? [] : ["http://localhost:2026"]),
+      ].filter(Boolean))
+    ) as string[];
 
     const io = new IOServer(server, {
       path: "/api/socket",
       cors: {
         origin: (origin, cb) => {
           if (!origin) return cb(null, true);
-          if (
-            allowedOrigin.includes(origin) ||
-            /\.vercel\.app$/.test(new URL(origin).host)
-          ) {
+          if (allowedOrigin.includes(origin)) {
             return cb(null, true);
           }
           cb(new Error("Not allowed by CORS"));
@@ -75,14 +80,9 @@ export function initIO(server: HttpServer) {
       } catch (e) {
         console.warn("Failed to join course rooms for", userId, e);
       }
-      console.log(
-        "✅ Client connected:",
-        socket.id,
-        "user:",
-        userId,
-        "role:",
-        role
-      );
+      if (!isProd) {
+        console.log("Socket connected:", socket.id, "user:", userId, "role:", role);
+      }
 
       socket.emit("notification", {
         type: "info",
@@ -91,12 +91,16 @@ export function initIO(server: HttpServer) {
       });
 
       socket.on("disconnect", () => {
-        console.log("❌ Client disconnected:", socket.id);
+        if (!isProd) {
+          console.log("Socket disconnected:", socket.id);
+        }
       });
     });
 
     global._io = io;
-    console.log("🚀 Socket.IO initialized globally");
+    if (!isProd) {
+      console.log("Socket.IO initialized globally");
+    }
   }
 
   return global._io!;

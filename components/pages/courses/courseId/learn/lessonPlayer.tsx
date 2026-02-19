@@ -15,19 +15,23 @@ import {
 } from "lucide-react";
 import { isYoutubeUrl, toYoutubeEmbedUrl } from "@/lib/youtube";
 
+export interface VideoPlayerProps {
+  src: string;
+  poster?: string;
+  autoPlay?: boolean;
+  markLessonComplete: () => void | Promise<void>;
+  goToNextLesson?: () => void;
+  onDurationChange?: (duration: number) => void;
+}
+
 export default function VideoPlayer({
   src,
   poster,
   autoPlay = false,
   markLessonComplete,
+  goToNextLesson,
   onDurationChange,
-}: {
-  src: string;
-  poster?: string;
-  autoPlay?: boolean;
-  markLessonComplete: () => void;
-  onDurationChange?: (duration: number) => void;
-}) {
+}: VideoPlayerProps) {
   const videoRef = useRef<HTMLVideoElement>(null);
   const youtubeContainerRef = useRef<HTMLDivElement>(null);
   const youtubePlayerRef = useRef<any>(null);
@@ -67,6 +71,7 @@ export default function VideoPlayer({
   // When video ends → mark complete & auto-advance
   const handleVideoEnded = () => {
     markLessonComplete();
+    goToNextLesson?.();
   };
 
   // Play/pause toggle
@@ -144,6 +149,7 @@ export default function VideoPlayer({
             onStateChange: (event: any) => {
               if (event?.data === (window as any).YT?.PlayerState?.ENDED) {
                 markLessonComplete();
+                goToNextLesson?.();
               }
             },
           },
@@ -179,7 +185,7 @@ export default function VideoPlayer({
         youtubePlayerRef.current = null;
       }
     };
-  }, [isYoutube, youtubeVideoId, autoPlay, markLessonComplete, onDurationChange]);
+  }, [isYoutube, youtubeVideoId, autoPlay, markLessonComplete, goToNextLesson, onDurationChange]);
 
   if (isYoutube) {
     return (

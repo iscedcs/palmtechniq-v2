@@ -75,6 +75,10 @@ export async function getStudentProjectsOverview() {
       const allCourseLessonIds = course.modules.flatMap((module) =>
         module.lessons.map((lesson) => lesson.id)
       );
+      const moduleLessonIds = course.modules.map((module) => ({
+        moduleId: module.id,
+        lessonIds: module.lessons.map((lesson) => lesson.id),
+      }));
       const completedModulesCount = moduleLessonIds.filter((module) => {
         if (module.lessonIds.length === 0) return true;
         return module.lessonIds.every((lessonId) =>

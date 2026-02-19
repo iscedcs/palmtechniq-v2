@@ -37,21 +37,21 @@ const navigationItems: NavItem[] = [
     label: "Home",
     icon: Home,
     href: "/",
-    roles: ["USER", "STUDENT", "TUTOR", "ADMIN"],
+    roles: ["USER", "STUDENT", "MENTOR", "TUTOR", "ADMIN"],
   },
   {
     id: "courses",
     label: "Courses",
     icon: BookOpen,
     href: "/courses",
-    roles: ["USER", "STUDENT", "TUTOR", "ADMIN"],
+    roles: ["USER", "STUDENT", "MENTOR", "TUTOR", "ADMIN"],
   },
   {
     id: "search",
     label: "Search",
     icon: Search,
     href: "/search",
-    roles: ["USER", "STUDENT", "TUTOR", "ADMIN"],
+    roles: ["USER", "STUDENT", "MENTOR", "TUTOR", "ADMIN"],
   },
   {
     id: "dashboard",
@@ -65,7 +65,7 @@ const navigationItems: NavItem[] = [
     label: "Dashboard",
     icon: Users,
     href: "/tutor",
-    roles: ["TUTOR"],
+    roles: ["MENTOR", "TUTOR"],
   },
   {
     id: "admin-dashboard",
@@ -79,7 +79,7 @@ const navigationItems: NavItem[] = [
     label: "Profile",
     icon: User,
     href: "/profile",
-    roles: ["USER", "STUDENT", "TUTOR", "ADMIN"],
+    roles: ["USER", "STUDENT", "MENTOR", "TUTOR", "ADMIN"],
   },
 ];
 

@@ -135,7 +135,7 @@ export async function POST(req: NextRequest) {
   });
 
   if (userId && (recommendedCourses.length > 0 || recommendedCategories.length > 0)) {
-    await db.aiRecommendation.createMany({
+    await db.aIRecommendation.createMany({
       data: [
         ...recommendedCourses.map((course) => ({
           userId,

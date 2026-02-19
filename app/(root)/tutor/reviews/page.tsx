@@ -195,7 +195,7 @@ export default function TutorReviewsPage() {
         matchesMinRating &&
         matchesTab &&
         matchesFrom &&
-        matchesTok
+        matchesTo
       );
     })
     .sort((a, b) => {

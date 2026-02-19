@@ -298,7 +298,7 @@ export async function updateTutorProfile(
         bio: data.bio || null,
         location: data.location || null,
         timezone: data.timezone || null,
-        language: data.language || null,
+        language: data.language || "en",
         website: socialLinks.website || null,
         socialLinks,
         preferences: mergedPreferences,

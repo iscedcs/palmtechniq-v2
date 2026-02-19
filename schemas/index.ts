@@ -108,11 +108,10 @@ export const courseSchema = z.object({
         id: z.string().optional(),
         size: z.number().int().min(2, "Group size must be at least 2"),
         groupPrice: z.number().min(0, "Group price must be non-negative"),
-        cashbackPercent: z.number().min(0).max(1).optional().default(0),
-        isActive: z.boolean().optional().default(true),
+        cashbackPercent: z.number().min(0).max(1).default(0),
+        isActive: z.boolean().default(true),
       })
     )
-    .optional()
     .default([]),
   targetAudience: z
     .array(z.string().min(1, "Audience entry cannot be empty"))

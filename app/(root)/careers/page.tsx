@@ -12,37 +12,37 @@ export default function CareersPage() {
     {
       title: "Senior Product Manager",
       department: "Product",
-      location: "San Francisco, CA",
-      type: "Full-time",
+      location: "Hybrid (Lagos, NG)",
+      type: "Part-time",
       description: "Lead product strategy for our AI learning platform",
     },
     {
       title: "Machine Learning Engineer",
       department: "Engineering",
-      location: "Remote",
-      type: "Full-time",
+      location: "Hybrid (Lagos, NG)",
+      type: "Part-time",
       description: "Build AI models that personalize learning experiences",
     },
     {
       title: "Content Strategist",
       department: "Content",
-      location: "New York, NY",
+      location: "Hybrid (Lagos, NG)",
       type: "Full-time",
       description: "Create and curate world-class learning content",
     },
     {
       title: "Community Manager",
       department: "Marketing",
-      location: "London, UK",
+      location: "Hybrid (Lagos, NG)",
       type: "Full-time",
       description: "Build and engage our global learning community",
     },
   ];
 
   const benefits = [
-    "Competitive salary & equity",
-    "Health insurance & wellness",
-    "Unlimited PTO",
+    "Competitive salary",
+    // "Health insurance & wellness",
+    // "Unlimited PTO",
     "Professional development",
     "Remote-friendly culture",
     "Learning stipend",
@@ -71,9 +71,9 @@ export default function CareersPage() {
               <span className="text-gradient">Amazing Team</span>
             </h1>
             <p className="text-xl text-gray-300 mb-8">
-              Help us revolutionize education and change lives around the world.
-              We're looking for talented individuals who are passionate about
-              learning and making a difference.
+              Help us improve education and change lives around the world. We're
+              looking for talented individuals who are passionate about learning
+              and making a difference.
             </p>
           </motion.div>
         </div>
@@ -90,7 +90,7 @@ export default function CareersPage() {
             className="text-center mb-16">
             <h2 className="text-4xl md:text-5xl font-bold mb-4">
               <span className="text-white">Why Join</span>{" "}
-              <span className="text-gradient">CyberLearn</span>
+              <span className="text-gradient">PalmTechnIQ</span>
             </h2>
           </motion.div>
 

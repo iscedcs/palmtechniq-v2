@@ -1,7 +1,16 @@
 export const runtime = "nodejs";
 
+import { auth } from "@/auth";
+import { z } from "zod";
+
 const YOUTUBE_UPLOAD_URL =
   "https://www.googleapis.com/upload/youtube/v3/videos?uploadType=resumable&part=snippet,status";
+const MAX_UPLOAD_SIZE_BYTES = 2 * 1024 * 1024 * 1024; // 2GB
+
+const metadataSchema = z.object({
+  title: z.string().trim().max(180).optional(),
+  description: z.string().trim().max(5000).optional(),
+});
 
 const getAccessToken = async () => {
   const clientId = process.env.YOUTUBE_CLIENT_ID ?? "";
@@ -39,11 +48,24 @@ const getAccessToken = async () => {
 };
 
 export async function POST(request: Request) {
+  const session = await auth();
+  if (!session?.user?.id) {
+    return Response.json({ success: false, error: "Unauthorized" }, { status: 401 });
+  }
+  if (session.user.role !== "TUTOR" && session.user.role !== "ADMIN") {
+    return Response.json({ success: false, error: "Forbidden" }, { status: 403 });
+  }
+
   try {
     const formData = await request.formData();
     const file = formData.get("file") as File | null;
-    const title = (formData.get("title") as string | null) ?? "";
-    const description = (formData.get("description") as string | null) ?? "";
+    const metadataParsed = metadataSchema.safeParse({
+      title: (formData.get("title") as string | null) ?? undefined,
+      description: (formData.get("description") as string | null) ?? undefined,
+    });
+    if (!metadataParsed.success) {
+      return Response.json({ success: false, error: "Invalid upload metadata" }, { status: 400 });
+    }
 
     if (!file) {
       return Response.json({ success: false, error: "No file provided" }, { status: 400 });
@@ -55,12 +77,21 @@ export async function POST(request: Request) {
         { status: 400 }
       );
     }
+    if (file.size <= 0 || file.size > MAX_UPLOAD_SIZE_BYTES) {
+      return Response.json(
+        {
+          success: false,
+          error: "Video file is too large. Maximum allowed size is 2GB.",
+        },
+        { status: 400 }
+      );
+    }
 
     const accessToken = await getAccessToken();
     const metadata = {
       snippet: {
-        title: title || file.name,
-        description,
+        title: metadataParsed.data.title || file.name,
+        description: metadataParsed.data.description ?? "",
       },
       status: {
         privacyStatus: process.env.YOUTUBE_PRIVACY_STATUS ?? "unlisted",

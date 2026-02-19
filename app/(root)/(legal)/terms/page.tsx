@@ -398,10 +398,11 @@ export default function TermsOfService() {
                         <p className="text-gray-300">
                           <strong>Email:</strong> legal@palmtechniq.com
                           <br />
-                          <strong>Address:</strong> 123 Learning Street,
-                          Education City, EC 12345
+                          <strong>Address:</strong> 1st Floor, (Festac Tower)
+                          Chicken Republic Building, 22Rd ,Festac Town, Lagos,
+                          Nigeria.
                           <br />
-                          <strong>Phone:</strong> +1 (555) 123-4567
+                          <strong>Phone:</strong> +234 (807) 956-8910
                         </p>
                       </div>
                     </div>

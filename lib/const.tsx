@@ -17,6 +17,7 @@ import {
   Crown,
   Flame,
   NotebookIcon,
+  FileText,
 } from "lucide-react";
 
 export const courseTypes = [
@@ -62,8 +63,8 @@ export const roleNavItems = {
   USER: [
     { icon: Home, label: "Home", href: "/" },
     { icon: BookOpen, label: "Courses", href: "/courses" },
-    { icon: ShoppingCart, label: "Cart", href: "/cart" },
-    { icon: User, label: "Profile", href: "/profile" },
+    // { icon: ShoppingCart, label: "Cart", href: "/cart" },
+    // { icon: User, label: "Profile", href: "/profile" },
     // { icon: Shield, label: "Mentorship", href: "/mentorship" },
   ],
   STUDENT: [
@@ -74,6 +75,12 @@ export const roleNavItems = {
     // { icon: Brain, label: "AI Interview", href: "/student/ai-interview" },
     { icon: NotebookIcon, label: "Assignments", href: "/student/assignments" },
     { icon: MessageSquare, label: "Projects", href: "/student/projects" },
+  ],
+  MENTOR: [
+    { icon: Home, label: "Dashboard", href: "/tutor/mentorship" },
+    { icon: Calendar, label: "Mentorship", href: "/tutor/mentorship" },
+    { icon: Wallet, label: "Earnings", href: "/tutor/wallet" },
+    { icon: User, label: "Profile", href: "/tutor/profile" },
   ],
   TUTOR: [
     { icon: Home, label: "Dashboard", href: "/tutor" },
@@ -89,8 +96,10 @@ export const roleNavItems = {
     { icon: Users, label: "Users", href: "/admin/users" },
     { icon: BookOpen, label: "Courses", href: "/admin/courses" },
     { icon: Brain, label: "AI Leads", href: "/admin/advisor" },
+    { icon: FileText, label: "Applications", href: "/admin/applications" },
+    { icon: Calendar, label: "Mentorship", href: "/admin/mentorship" },
     { icon: Wallet, label: "Finance", href: "/admin/finance" },
-    { icon: Settings, label: "Settings", href: "/admin/settings" },
+    // { icon: Settings, label: "Settings", href: "/admin/settings" },
   ],
 };
 
@@ -109,6 +118,11 @@ export const roleMenuItems = {
     { icon: NotebookIcon, label: "Tasks", href: "/student/assignments" },
     // { icon: Settings, label: "Settings", href: "/student/settings" },
   ],
+  MENTOR: [
+    { icon: User, label: "Profile", href: "/tutor/profile" },
+    { icon: Calendar, label: "Mentorship", href: "/tutor/mentorship" },
+    { icon: Wallet, label: "Earnings", href: "/tutor/wallet" },
+  ],
   TUTOR: [
     { icon: User, label: "Profile", href: "/tutor/profile" },
     { icon: BookOpen, label: "My Courses", href: "/tutor/courses" },
@@ -123,6 +137,8 @@ export const roleMenuItems = {
     { icon: Users, label: "User Management", href: "/admin/users" },
     { icon: BookOpen, label: "Course Management", href: "/admin/courses" },
     { icon: Brain, label: "AI Leads", href: "/admin/advisor" },
+    { icon: FileText, label: "Applications", href: "/admin/applications" },
+    { icon: Calendar, label: "Mentorship Ops", href: "/admin/mentorship" },
     { icon: Wallet, label: "Financial Reports", href: "/admin/finance" },
     { icon: Settings, label: "System Settings", href: "/admin/settings" },
   ],

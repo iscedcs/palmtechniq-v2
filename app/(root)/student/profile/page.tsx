@@ -307,6 +307,7 @@ export default function StudentProfile() {
         body: JSON.stringify({
           filename: file.name,
           contentType: file.type,
+          visibility: "public",
         }),
       });
 

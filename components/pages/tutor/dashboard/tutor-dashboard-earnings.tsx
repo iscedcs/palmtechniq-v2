@@ -46,7 +46,7 @@ export function TutorDashboardEarnings({
       ? Math.round(
           ((data[data.length - 1].amount - data[data.length - 2].amount) /
             data[data.length - 2].amount) *
-            100
+            100,
         )
       : 0;
 
@@ -59,7 +59,7 @@ export function TutorDashboardEarnings({
     const yMean = y.reduce((a, b) => a + b, 0) / n;
     const num = x.reduce(
       (sum, xi, i) => sum + (xi - xMean) * (y[i] - yMean),
-      0
+      0,
     );
     const den = x.reduce((sum, xi) => sum + Math.pow(xi - xMean, 2), 0);
     const slope = num / den;
@@ -98,7 +98,7 @@ export function TutorDashboardEarnings({
                 "border-green-500/30",
                 growth >= 0
                   ? "bg-green-500/20 text-green-400"
-                  : "bg-red-500/20 text-red-400 border-red-500/30"
+                  : "bg-red-500/20 text-red-400 border-red-500/30",
               )}>
               {growth >= 0 ? "+" : ""}
               {growth}% from last month
@@ -138,9 +138,9 @@ export function TutorDashboardEarnings({
                     borderRadius: "8px",
                     color: "white",
                   }}
-                  formatter={(value: number, name: string, props: any) => [
-                    `₦${value.toLocaleString()}`,
-                    props.payload.forecast ? "Projected" : "Earnings",
+                  formatter={(value, name, props) => [
+                    `₦${(value ?? 0).toLocaleString()}`,
+                    props?.payload?.forecast ? "Projected" : "Earnings",
                   ]}
                 />
 
@@ -179,8 +179,8 @@ export function TutorDashboardEarnings({
                     growth > 0
                       ? "bg-green-500/20 text-green-400"
                       : growth < 0
-                      ? "bg-red-500/20 text-red-400 border-red-500/30"
-                      : "bg-gray-500/20 text-gray-300 border-gray-500/30"
+                        ? "bg-red-500/20 text-red-400 border-red-500/30"
+                        : "bg-gray-500/20 text-gray-300 border-gray-500/30",
                   )}>
                   {growth >= 0 ? "+" : ""}
                   {growth}% from last month

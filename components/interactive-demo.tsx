@@ -19,7 +19,7 @@ import { Badge } from "@/components/ui/badge";
 
 const demoContent = {
   title: "React Hooks Mastery",
-  instructor: "Sarah Chen",
+  instructor: "Pheobe Princess ",
   duration: "2h 30m",
   students: "12,450",
   lessons: [

@@ -57,7 +57,6 @@ export default auth((req) => {
             userRole as keyof typeof DEFAULT_LOGIN_REDIRECTS
           ]
         : DEFAULT_LOGIN_REDIRECT;
-      console.log("Redirecting from auth route to:", redirectPath);
 
       return Response.redirect(new URL(redirectPath, nextUrl));
     }
@@ -88,7 +87,12 @@ export default auth((req) => {
       return Response.redirect(new URL("/courses", nextUrl));
     }
 
-    if (isTutorRoute && userRole !== "TUTOR" && userRole !== "ADMIN") {
+    if (
+      isTutorRoute &&
+      userRole !== "TUTOR" &&
+      userRole !== "MENTOR" &&
+      userRole !== "ADMIN"
+    ) {
       return Response.redirect(new URL("/courses", nextUrl));
     }
 

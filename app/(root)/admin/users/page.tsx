@@ -1,6 +1,7 @@
 import { getAdminUsersPageData } from "@/actions/admin-dashboard";
 import AdminUsersClient from "@/app/(root)/admin/users/users-client";
 
+export const dynamic = "force-dynamic";
 export default async function AdminUsersPage() {
   const res = await getAdminUsersPageData();
 
@@ -13,6 +14,7 @@ export default async function AdminUsersPage() {
               activeUsers: 0,
               suspendedUsers: 0,
               admins: 0,
+              mentors: 0,
               tutors: 0,
               students: 0,
             })
@@ -21,6 +23,7 @@ export default async function AdminUsersPage() {
               activeUsers: 0,
               suspendedUsers: 0,
               admins: 0,
+              mentors: 0,
               tutors: 0,
               students: 0,
             }

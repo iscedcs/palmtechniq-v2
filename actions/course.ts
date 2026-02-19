@@ -176,7 +176,7 @@ export async function updateCourse(
       };
       const validatedModule = shouldValidateContent
         ? moduleSchema.safeParse(modulePayload)
-        : { success: true, data: modulePayload };
+        : ({ success: true, data: modulePayload } as const);
       if (!validatedModule.success) {
         return { error: validatedModule.error.issues[0].message };
       }
@@ -246,7 +246,7 @@ export async function updateCourse(
         };
         const validatedLesson = shouldValidateContent
           ? lessonSchema.safeParse(lessonPayload)
-          : { success: true, data: lessonPayload };
+          : ({ success: true, data: lessonPayload } as const);
         // console.log("📦 Raw lesson from payload:", lesson);
 
         if (!validatedLesson.success) {

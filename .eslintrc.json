@@ -1,4 +1,7 @@
 {
+  "ignorePatterns": [
+    "app/prisma/seed.js"
+  ],
   "extends": "next/core-web-vitals",
   "rules": {
     "react/jsx-sort-props": "off",
@@ -54,6 +57,7 @@
       "react/no-unescaped-entities": "off", //temp
       "@typescript-eslint/no-unsafe-function-type": "off", //temp
       "@typescript-eslint/no-wrapper-object-types": "off", //temp
-      "@typescript-eslint/no-unnecessary-type-constraint": "off"
+      "@typescript-eslint/no-unnecessary-type-constraint": "off",
+      "@next/next/no-assign-module-variable": "off"
       }
 }

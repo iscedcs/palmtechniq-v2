@@ -32,10 +32,11 @@ export default async function LessonLayout(props: {
     .filter((lesson) => lesson.id !== currentLesson.id) // mark previous lessons as completed
     .map((lesson) => lesson.id);
 
-  // 2️⃣ Map modules with isCompleted fields
+  // 2️⃣ Map modules with isCompleted fields (normalize description for LessonSidebar's Lesson type)
   const modulesWithCompletion = course.modules.map((module) => {
     const lessons = module.lessons.map((lesson) => ({
       ...lesson,
+      description: lesson.description ?? "",
       isCompleted: completedLessonIds.includes(lesson.id),
     }));
 
@@ -64,7 +65,7 @@ export default async function LessonLayout(props: {
 
   function goToNextLesson(): void {
     const currentIndex = allLessons.findIndex(
-      (lesson) => lesson.id === currentLesson.id
+      (lesson) => lesson.id === currentLesson.id,
     );
     const nextLesson = allLessons[currentIndex + 1];
 
@@ -90,9 +91,11 @@ export default async function LessonLayout(props: {
             goToNextLesson={goToNextLesson}
           />
           <LessonTabs
+            // completedLessons={completedLessonIds.length}
+            // totalLessons={allLessons.length}
             description={currentLesson.description || ""}
-            resources={[]}
-            initialNotes={currentLesson.content || ""}
+            lessonResources={[]}
+            moduleResources={[]}
           />
         </div>
 
@@ -102,13 +105,11 @@ export default async function LessonLayout(props: {
             courseTitle={course.title}
             progress={Math.round(
               (allLessons.findIndex(
-                (lesson) => lesson.id === currentLesson.id
+                (lesson) => lesson.id === currentLesson.id,
               ) /
                 allLessons.length) *
-                100
+                100,
             )}
-            completedLessons={completedLessonIds.length}
-            totalLessons={allLessons.length}
             modules={modulesWithCompletion}
             currentLessonId={currentLesson.id}
             onChangeLesson={(lesson) => {

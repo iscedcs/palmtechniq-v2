@@ -89,13 +89,13 @@ export function HeroSection() {
                 </Button>
               </Link>
 
-              <Button
+              {/* <Button
                 variant="outline"
                 size="lg"
                 className="border-2 border-white/20 hover:border-neon-blue/50 text-white hover:text-neon-blue px-8 py-4 text-lg font-semibold rounded-2xl hover-glow group backdrop-blur-sm">
                 <Play className="mr-2 w-5 h-5 group-hover:scale-110 transition-transform" />
                 Watch Demo
-              </Button>
+              </Button> */}
             </motion.div>
 
             {/* Feature Highlights */}
