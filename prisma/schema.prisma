@@ -214,6 +214,7 @@ model Course {
   transactions           Transaction[]
   tutorEarnings          TutorEarning[]
   wishlist               Wishlist[]
+  mentorshipSessions     MentorshipSession[]
 
   @@map("courses")
 }
@@ -636,14 +637,20 @@ model MentorshipSession {
   endedAt         DateTime?
   studentId       String
   tutorId         String
+  courseId        String?
   createdAt       DateTime                @default(now())
   updatedAt       DateTime                @updatedAt
   bookingMode     MentorshipBookingMode   @default(INSTANT)
   packageName     String?
   packageSessions Int?
   paymentStatus   MentorshipPaymentStatus @default(PENDING)
+  approvalNotes   String?
+  rejectedAt      DateTime?
+  approvalDeadline DateTime?
+  isOffering      Boolean                 @default(false)
   student         User                    @relation("StudentSessions", fields: [studentId], references: [id], onDelete: Cascade)
   tutor           User                    @relation("TutorSessions", fields: [tutorId], references: [id], onDelete: Cascade)
+  course          Course?                 @relation(fields: [courseId], references: [id], onDelete: SetNull)
   transactions    Transaction[]
 
   @@map("mentorship_sessions")
@@ -1400,11 +1407,13 @@ enum SubmissionStatus {
 }
 
 enum SessionStatus {
+  PENDING_MENTOR_REVIEW
   SCHEDULED
   IN_PROGRESS
   COMPLETED
   CANCELLED
   NO_SHOW
+  REJECTED
 }
 
 enum MentorshipBookingMode {

@@ -4,6 +4,7 @@ import { randomUUID } from "crypto";
 import { auth } from "@/auth";
 import { paystackInitialize } from "@/actions/paystack";
 import { db } from "@/lib/db";
+import { notify } from "@/lib/notify";
 
 type BookingMode = "INSTANT" | "REQUEST";
 type PackageCode = "NONE" | "STARTER_3" | "GROWTH_5";
@@ -160,14 +161,18 @@ export async function beginMentorshipCheckout(input: {
       description: input.description?.trim() || null,
       duration,
       price: totalAmount,
-      status: "SCHEDULED",
+      status: input.bookingMode === "REQUEST" ? "PENDING_MENTOR_REVIEW" : "SCHEDULED",
       scheduledAt,
       studentId: session.user.id,
       tutorId: tutor.id,
+      bookingMode: input.bookingMode,
       notes:
         input.bookingMode === "REQUEST"
           ? "REQUEST_FIRST_BOOKING"
           : `INSTANT_BOOKING${packageEntry ? ` | ${packageEntry.label}` : ""}`,
+      approvalDeadline: input.bookingMode === "REQUEST" 
+        ? new Date(Date.now() + 72 * 60 * 60 * 1000) 
+        : null,
     },
   });
 
@@ -197,7 +202,7 @@ export async function beginMentorshipCheckout(input: {
     },
   });
 
-  const callbackBase = process.env.NEXT_PUBLIC_URL || "http://localhost:3000";
+  const callbackBase = process.env.NEXT_PUBLIC_URL || "http://localhost:2026";
   const pay = await paystackInitialize({
     email: session.user.email,
     amountKobo: Math.round(tx.amount * 100),
@@ -382,3 +387,387 @@ export async function getMentorshipFinanceSummary() {
     },
   };
 }
+/**
+ * Mentor approves a REQUEST mode booking
+ * Updates session status to SCHEDULED and notifies student to proceed with payment
+ */
+export async function approveMentorshipRequest(sessionId: string) {
+  const session = await auth();
+  if (!session?.user?.id) {
+    return { error: "Unauthorized" };
+  }
+
+  const mentorshipSession = await db.mentorshipSession.findUnique({
+    where: { id: sessionId },
+  });
+
+  if (!mentorshipSession) {
+    return { error: "Session not found" };
+  }
+
+  if (mentorshipSession.tutorId !== session.user.id) {
+    return { error: "You can only approve your own sessions" };
+  }
+
+  if (mentorshipSession.status !== "PENDING_MENTOR_REVIEW") {
+    return { error: "This session is not pending approval" };
+  }
+
+  const updated = await db.mentorshipSession.update({
+    where: { id: sessionId },
+    data: {
+      status: "SCHEDULED",
+      notes: "APPROVED_BY_MENTOR",
+    },
+  });
+
+  // Notify student that their request was approved
+  notify.user(updated.studentId, {
+    type: "success",
+    title: "Mentorship Request Approved",
+    message: `Your mentorship request for "${updated.title}" has been approved! Proceed to payment to confirm the booking.`,
+    actionUrl: `/student/mentorship?approved=${sessionId}`,
+    actionLabel: "View Session",
+  });
+
+  return { ok: true, session: updated };
+}
+
+/**
+ * Mentor rejects a REQUEST mode booking
+ * Updates session status to REJECTED and stores rejection reason
+ */
+export async function rejectMentorshipRequest(sessionId: string, reason: string) {
+  const session = await auth();
+  if (!session?.user?.id) {
+    return { error: "Unauthorized" };
+  }
+
+  const mentorshipSession = await db.mentorshipSession.findUnique({
+    where: { id: sessionId },
+  });
+
+  if (!mentorshipSession) {
+    return { error: "Session not found" };
+  }
+
+  if (mentorshipSession.tutorId !== session.user.id) {
+    return { error: "You can only reject your own sessions" };
+  }
+
+  if (mentorshipSession.status !== "PENDING_MENTOR_REVIEW") {
+    return { error: "This session is not pending approval" };
+  }
+
+  const updated = await db.mentorshipSession.update({
+    where: { id: sessionId },
+    data: {
+      status: "REJECTED",
+      approvalNotes: reason || null,
+      rejectedAt: new Date(),
+    },
+  });
+
+  // Notify student that their request was rejected
+  notify.user(updated.studentId, {
+    type: "warning",
+    title: "Mentorship Request Declined",
+    message: `Your mentorship request for "${updated.title}" was declined${
+      reason ? ` with feedback: "${reason}"` : "."
+    } You can request with another mentor.`,
+    actionUrl: `/student/mentorship`,
+    actionLabel: "Browse Mentors",
+  });
+
+  return { ok: true, session: updated };
+}
+
+/**
+ * Process payment for an approved REQUEST mode booking
+ * Creates transaction and initiates Paystack payment
+ */
+export async function proceedWithApprovedBookingPayment(sessionId: string) {
+  const session = await auth();
+  if (!session?.user?.id || !session.user.email) {
+    return { error: "Unauthorized" };
+  }
+
+  const mentorshipSession = await db.mentorshipSession.findUnique({
+    where: { id: sessionId },
+    include: {
+      tutor: { select: { id: true, name: true } },
+    },
+  });
+
+  if (!mentorshipSession) {
+    return { error: "Session not found" };
+  }
+
+  if (mentorshipSession.studentId !== session.user.id) {
+    return { error: "You can only pay for your own sessions" };
+  }
+
+  if (mentorshipSession.status !== "SCHEDULED" || mentorshipSession.bookingMode !== "REQUEST") {
+    return { error: "This session is not ready for payment" };
+  }
+
+  if (mentorshipSession.paymentStatus === "PAID") {
+    return { error: "This session has already been paid for" };
+  }
+
+  const tutorShareAmount = Number((mentorshipSession.price * 0.7).toFixed(2));
+  const platformShareAmount = Number((mentorshipSession.price * 0.3).toFixed(2));
+
+  const reference = `mentorship_${randomUUID()}`;
+  const tx = await db.transaction.create({
+    data: {
+      amount: mentorshipSession.price,
+      status: "PENDING",
+      paymentMethod: "paystack",
+      description: `Mentorship with ${mentorshipSession.tutor.name}`,
+      userId: session.user.id,
+      transactionId: reference,
+      tutorShareAmount,
+      platformShareAmount,
+      metadata: {
+        productType: "MENTORSHIP",
+        mentorshipKind: "REQUEST_APPROVED",
+        mentorshipSessionId: mentorshipSession.id,
+        tutorUserId: mentorshipSession.tutor.id,
+      },
+    },
+  });
+
+  const callbackBase = process.env.NEXT_PUBLIC_URL || "http://localhost:3000";
+  const pay = await paystackInitialize({
+    email: session.user.email,
+    amountKobo: Math.round(tx.amount * 100),
+    reference,
+    callback_url: `${callbackBase}/mentorship/verify-payment?reference=${reference}`,
+    metadata: tx.metadata as Record<string, unknown>,
+  });
+
+  return {
+    ok: true,
+    mode: "REQUEST_APPROVED_PAYMENT",
+    authorizationUrl: pay.authorization_url,
+    mentorshipSessionId: mentorshipSession.id,
+  };
+}
+
+/**
+ * Get pending mentorship approvals for a tutor
+ */
+export async function getTutorPendingApprovals() {
+  const session = await auth();
+  if (!session?.user?.id) {
+    return { error: "Unauthorized" };
+  }
+
+  const sessions = await db.mentorshipSession.findMany({
+    where: {
+      tutorId: session.user.id,
+      status: "PENDING_MENTOR_REVIEW",
+    },
+    orderBy: { createdAt: "desc" },
+    include: {
+      student: {
+        select: { id: true, name: true, image: true, avatar: true, email: true },
+      },
+    },
+  });
+
+  return { sessions };
+}
+
+/**
+ * Get approved REQUEST sessions ready for student payment
+ */
+export async function getApprovedSessionsReadyForPayment() {
+  const session = await auth();
+  if (!session?.user?.id) {
+    return { error: "Unauthorized" };
+  }
+
+  const sessions = await db.mentorshipSession.findMany({
+    where: {
+      studentId: session.user.id,
+      status: "SCHEDULED",
+      bookingMode: "REQUEST",
+      paymentStatus: "PENDING",
+    },
+    orderBy: { createdAt: "desc" },
+    include: {
+      tutor: {
+        select: { 
+          id: true, 
+          name: true, 
+          image: true, 
+          avatar: true, 
+          email: true 
+        },
+      },
+    },
+  });
+
+  return { sessions };
+}
+
+/**
+ * Create a mentorship offering (pre-scheduled availability for students to book)
+ */
+export async function createMentorshipOffering(data: {
+  title: string;
+  description?: string;
+  duration: number;
+  price: number;
+  courseId?: string | null;
+}) {
+  const session = await auth();
+  if (!session?.user?.id) {
+    throw new Error("Unauthorized");
+  }
+
+  // Verify user is a tutor
+  const user = await db.user.findUnique({
+    where: { id: session.user.id },
+    select: { role: true },
+  });
+
+  if (!user || (user.role !== "TUTOR" && user.role !== "MENTOR")) {
+    throw new Error("Only tutors/mentors can create mentorship offerings");
+  }
+
+  // If courseId provided, verify the tutor owns the course
+  if (data.courseId) {
+    const course = await db.course.findUnique({
+      where: { id: data.courseId },
+      select: { tutorId: true, creatorId: true },
+    });
+
+    if (!course || (course.tutorId !== session.user.id && course.creatorId !== session.user.id)) {
+      throw new Error("Course not found or you don't have permission to link to it");
+    }
+  }
+
+  const offering = await db.mentorshipSession.create({
+    data: {
+      title: data.title,
+      description: data.description,
+      duration: data.duration,
+      price: data.price,
+      courseId: data.courseId || null,
+      tutorId: session.user.id,
+      studentId: session.user.id, // Placeholder: tutor is both student and tutor for offerings
+      status: "SCHEDULED",
+      bookingMode: "INSTANT",
+      paymentStatus: "PENDING",
+      scheduledAt: new Date(),
+      isOffering: true, // Mark this as an offering, not an actual booking
+    },
+    include: {
+      course: {
+        select: {
+          id: true,
+          title: true,
+          slug: true,
+        },
+      },
+    },
+  });
+
+  return offering;
+}
+
+/**
+ * Get all mentorship offerings created by the tutor
+ */
+export async function getTutorMentorshipOfferings() {
+  const session = await auth();
+  if (!session?.user?.id) {
+    throw new Error("Unauthorized");
+  }
+
+  const offerings = await db.mentorshipSession.findMany({
+    where: {
+      tutorId: session.user.id,
+      isOffering: true, // Only get offerings, not bookings
+      status: "SCHEDULED",
+    },
+    include: {
+      course: {
+        select: {
+          id: true,
+          title: true,
+          slug: true,
+        },
+      },
+    },
+    orderBy: { createdAt: "desc" },
+  });
+
+  return offerings;
+}
+
+/**
+ * Get all courses created/taught by the tutor (for linking mentorship)
+ */
+export async function getTutorCourses() {
+  const session = await auth();
+  if (!session?.user?.id) {
+    throw new Error("Unauthorized");
+  }
+
+  const courses = await db.course.findMany({
+    where: {
+      OR: [
+        { tutorId: session.user.id },
+        { creatorId: session.user.id },
+      ],
+    },
+    select: {
+      id: true,
+      title: true,
+      slug: true,
+      price: true,
+      thumbnail: true,
+    },
+    orderBy: { createdAt: "desc" },
+  });
+
+  return courses;
+}
+
+/**
+ * Delete a mentorship offering
+ */
+export async function deleteMentorshipOffering(offeringId: string) {
+  const session = await auth();
+  if (!session?.user?.id) {
+    throw new Error("Unauthorized");
+  }
+
+  const offering = await db.mentorshipSession.findUnique({
+    where: { id: offeringId },
+    select: { tutorId: true, isOffering: true },
+  });
+
+  if (!offering) {
+    throw new Error("Offering not found");
+  }
+
+  if (offering.tutorId !== session.user.id) {
+    throw new Error("You don't have permission to delete this offering");
+  }
+
+  if (!offering.isOffering) {
+    throw new Error("Can only delete offerings, not actual bookings");
+  }
+
+  await db.mentorshipSession.delete({
+    where: { id: offeringId },
+  });
+
+  return { success: true };
+}
+

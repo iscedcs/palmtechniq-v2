@@ -1,21 +1,25 @@
 "use client";
 
 import { useEffect, useMemo, useState } from "react";
+import Link from "next/link";
 import { motion } from "framer-motion";
 import { toast } from "sonner";
+import { Calendar } from "lucide-react";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import {
   getTutorMentorshipSessions,
+  getTutorPendingApprovals,
   updateTutorMentorshipSessionStatus,
 } from "@/actions/mentorship-revenue";
+import { MentorshipPendingApprovals } from "@/components/pages/tutor/mentorship-pending-approvals";
 
 type SessionItem = {
   id: string;
   title: string;
-  status: "SCHEDULED" | "IN_PROGRESS" | "COMPLETED" | "CANCELLED" | "NO_SHOW";
+  status: "SCHEDULED" | "IN_PROGRESS" | "COMPLETED" | "CANCELLED" | "NO_SHOW" | "PENDING_MENTOR_REVIEW" | "REJECTED";
   scheduledAt: Date;
   duration: number;
   price: number;
@@ -23,27 +27,58 @@ type SessionItem = {
   student: { name: string; email: string };
 };
 
+type PendingApprovalSession = {
+  id: string;
+  title: string;
+  description: string | null;
+  duration: number;
+  price: number;
+  scheduledAt: Date;
+  createdAt: Date;
+  student: {
+    id: string;
+    name: string;
+    email: string;
+    image: string | null;
+    avatar: string | null;
+  };
+};
+
 export default function TutorMentorshipPage() {
   const [sessions, setSessions] = useState<SessionItem[]>([]);
+  const [pendingApprovals, setPendingApprovals] = useState<PendingApprovalSession[]>([]);
   const [loading, setLoading] = useState(true);
   const [updatingId, setUpdatingId] = useState<string | null>(null);
 
-  useEffect(() => {
-    let mounted = true;
-    (async () => {
-      const result = await getTutorMentorshipSessions();
-      if (!mounted) return;
-      if ("error" in result) {
-        toast.error(result.error);
-        setLoading(false);
-        return;
+  const loadData = async () => {
+    setLoading(true);
+    try {
+      const [sessionsResult, approvalsResult] = await Promise.all([
+        getTutorMentorshipSessions(),
+        getTutorPendingApprovals(),
+      ]);
+
+      if ("error" in sessionsResult) {
+        toast.error(sessionsResult.error);
+      } else {
+        setSessions((sessionsResult.sessions || []) as SessionItem[]);
       }
-      setSessions((result.sessions || []) as SessionItem[]);
+
+      if ("error" in approvalsResult) {
+        console.log("No pending approvals");
+      } else {
+        setPendingApprovals((approvalsResult.sessions || []) as PendingApprovalSession[]);
+      }
+    } catch (error) {
+      toast.error("Failed to load data");
+      console.error(error);
+    } finally {
       setLoading(false);
-    })();
-    return () => {
-      mounted = false;
-    };
+    }
+  };
+
+  useEffect(() => {
+    loadData();
   }, []);
 
   const pending = useMemo(
@@ -134,12 +169,26 @@ export default function TutorMentorshipPage() {
   return (
     <div className="min-h-screen bg-background pt-24 pb-12">
       <div className="container mx-auto px-6 space-y-8">
-        <motion.div initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }}>
-          <h1 className="text-4xl font-bold text-gradient mb-2">Tutor Mentorship Ops</h1>
-          <p className="text-gray-300">Manage request-first and paid sessions from one queue.</p>
+        <motion.div initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} className="flex items-start justify-between">
+          <div>
+            <h1 className="text-4xl font-bold text-gradient mb-2">Tutor Mentorship Ops</h1>
+            <p className="text-gray-300">Manage request-first and paid sessions from one queue.</p>
+          </div>
+          <Link href="/tutor/mentorship/schedule">
+            <Button className="gap-2">
+              <Calendar className="h-4 w-4" />
+              Create Offering
+            </Button>
+          </Link>
         </motion.div>
 
-        <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
+        <div className="grid grid-cols-1 md:grid-cols-5 gap-4">
+          <Card className="glass-card border-white/10">
+            <CardContent className="p-5">
+              <p className="text-gray-400 text-sm">Pending Approvals</p>
+              <p className="text-2xl text-white">{pendingApprovals.length}</p>
+            </CardContent>
+          </Card>
           <Card className="glass-card border-white/10">
             <CardContent className="p-5">
               <p className="text-gray-400 text-sm">Pending</p>
@@ -166,12 +215,28 @@ export default function TutorMentorshipPage() {
           </Card>
         </div>
 
-        <Tabs defaultValue="pending" className="space-y-6">
-          <TabsList className="grid w-full grid-cols-3 bg-white/10 border border-white/20">
+        <Tabs defaultValue="approvals" className="space-y-6">
+          <TabsList className="grid w-full grid-cols-5 bg-white/10 border border-white/20">
+            <TabsTrigger value="approvals" className="relative">
+              Approvals
+              {pendingApprovals.length > 0 && (
+                <span className="absolute top-1 right-1 w-2 h-2 bg-yellow-400 rounded-full"></span>
+              )}
+            </TabsTrigger>
             <TabsTrigger value="pending">Pending</TabsTrigger>
             <TabsTrigger value="active">Active</TabsTrigger>
             <TabsTrigger value="completed">Completed</TabsTrigger>
           </TabsList>
+          <TabsContent value="approvals" className="space-y-4">
+            {loading ? (
+              <p className="text-gray-300">Loading approvals...</p>
+            ) : (
+              <MentorshipPendingApprovals
+                initialSessions={pendingApprovals}
+                onSessionUpdated={loadData}
+              />
+            )}
+          </TabsContent>
           <TabsContent value="pending" className="space-y-4">
             {loading ? (
               <p className="text-gray-300">Loading sessions...</p>
