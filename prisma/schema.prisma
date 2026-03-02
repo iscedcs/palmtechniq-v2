@@ -648,9 +648,14 @@ model MentorshipSession {
   rejectedAt      DateTime?
   approvalDeadline DateTime?
   isOffering      Boolean                 @default(false)
+  offeringSessionId String?               // Reference to original offering if this is a booking
+  bookingStartTime DateTime?              // When student selected to start within offering
+  bookingEndTime   DateTime?              // When student selected to end (for time slot booking)
   student         User                    @relation("StudentSessions", fields: [studentId], references: [id], onDelete: Cascade)
   tutor           User                    @relation("TutorSessions", fields: [tutorId], references: [id], onDelete: Cascade)
   course          Course?                 @relation(fields: [courseId], references: [id], onDelete: SetNull)
+  offering        MentorshipSession?      @relation("OfferingBookings", fields: [offeringSessionId], references: [id], onDelete: Cascade)
+  bookings        MentorshipSession[]     @relation("OfferingBookings")
   transactions    Transaction[]
 
   @@map("mentorship_sessions")

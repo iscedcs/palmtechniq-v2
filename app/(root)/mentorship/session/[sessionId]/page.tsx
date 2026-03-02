@@ -6,7 +6,20 @@ import { toast } from "sonner";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
-import { Loader2, Video, Clock, User, MapPin, Copy } from "lucide-react";
+import {
+  Loader2,
+  Video,
+  Clock,
+  User,
+  MapPin,
+  Copy,
+  AlertCircle,
+} from "lucide-react";
+import {
+  generateZoomSignature,
+  extractMeetingNumberFromUrl,
+  loadZoomSDK,
+} from "@/lib/zoom-web-sdk";
 
 interface SessionDetails {
   id: string;
@@ -35,6 +48,12 @@ interface SessionDetails {
   paymentStatus: string;
 }
 
+declare global {
+  interface Window {
+    ZoomSDK: any;
+  }
+}
+
 export default function MentorshipSessionPage() {
   const params = useParams();
   const router = useRouter();
@@ -45,6 +64,25 @@ export default function MentorshipSessionPage() {
   const [error, setError] = useState<string | null>(null);
   const [isSessionLive, setIsSessionLive] = useState(false);
   const [copied, setCopied] = useState(false);
+  const [sdkLoaded, setSdkLoaded] = useState(false);
+  const [zoomLoading, setZoomLoading] = useState(false);
+  const [isJoined, setIsJoined] = useState(false);
+  const [userRole, setUserRole] = useState<"mentor" | "student" | null>(null);
+
+  // Load Zoom SDK on mount
+  useEffect(() => {
+    const initZoomSDK = async () => {
+      try {
+        await loadZoomSDK();
+        setSdkLoaded(true);
+      } catch (err) {
+        console.error("[Zoom SDK] Failed to load:", err);
+        // Don't block the UI, user can still use fallback link
+      }
+    };
+
+    initZoomSDK();
+  }, []);
 
   useEffect(() => {
     const loadSession = async () => {
@@ -60,13 +98,22 @@ export default function MentorshipSessionPage() {
 
         const data = await response.json();
         setSession(data.session);
+        setUserRole(data.userRole);
 
         // Check if session is live
+        // Session is live if:
+        // 1. Status is IN_PROGRESS (host has started the meeting), OR
+        // 2. Current time is between scheduled time and end time
         const scheduledTime = new Date(data.session.scheduledAt);
-        const endTime = new Date(scheduledTime.getTime() + data.session.duration * 60000);
+        const endTime = new Date(
+          scheduledTime.getTime() + data.session.duration * 60000,
+        );
         const now = new Date();
 
-        setIsSessionLive(now >= scheduledTime && now <= endTime);
+        const isLiveByStatus = data.session.status === "IN_PROGRESS";
+        const isLiveByTime = now >= scheduledTime && now <= endTime;
+        
+        setIsSessionLive(isLiveByStatus || isLiveByTime);
       } catch (err) {
         setError(err instanceof Error ? err.message : "An error occurred");
         toast.error("Failed to load session");
@@ -77,6 +124,11 @@ export default function MentorshipSessionPage() {
 
     if (sessionId) {
       loadSession();
+      
+      // Poll for session status updates every 5 seconds
+      // This allows students to see when the tutor starts the meeting
+      const pollInterval = setInterval(loadSession, 5000);
+      return () => clearInterval(pollInterval);
     }
   }, [sessionId]);
 
@@ -89,9 +141,89 @@ export default function MentorshipSessionPage() {
     }
   };
 
-  const handleJoinMeeting = () => {
-    if (session?.meetingUrl) {
-      window.open(session.meetingUrl, "_blank", "noopener,noreferrer");
+  const handleJoinMeeting = async () => {
+    if (!session?.meetingUrl || !sdkLoaded) {
+      setError("Zoom SDK not ready. Please refresh the page.");
+      return;
+    }
+
+    try {
+      setZoomLoading(true);
+      console.log("[Zoom Join] Preparing to join meeting...");
+
+      const meetingNumber = extractMeetingNumberFromUrl(session.meetingUrl);
+      console.log(`[Zoom Join] Meeting number: ${meetingNumber}`);
+
+      // Host role for mentor, participant role for student
+      const signature = generateZoomSignature(
+        meetingNumber,
+        userRole === "mentor" ? 1 : 0,
+      );
+
+      const userName =
+        userRole === "mentor"
+          ? `${session.tutor?.name || "Mentor"} (Host)`
+          : `${session.student?.name || "Student"}`;
+
+      const userEmail =
+        userRole === "mentor"
+          ? session.tutor?.email || ""
+          : session.student?.email || "";
+
+      console.log(
+        `[Zoom Join] Joining as ${userRole}: ${userName} (${userEmail})`,
+      );
+
+      if (window.ZoomSDK) {
+        window.ZoomSDK.init({
+          leaveUrl: `/mentorship/session/${sessionId}`,
+          isSupportAV: true,
+          success: () => {
+            console.log("[Zoom SDK] Initialized");
+            window.ZoomSDK.join({
+              meetingNumber: meetingNumber,
+              userName: userName,
+              signature: signature,
+              userEmail: userEmail,
+              onMeetingStatus(status: any) {
+                console.log("[Zoom Event] Status:", status);
+                if (status === "connected") {
+                  setIsJoined(true);
+                  console.log("[Zoom Event] Connected to meeting");
+                } else if (status === "closed" || status === "disconnected") {
+                  setIsJoined(false);
+                  console.log("[Zoom Event] Disconnected from meeting");
+                }
+              },
+              success: () => {
+                console.log("[Zoom Join] Successfully joined");
+                setIsJoined(true);
+                toast.success("Joined meeting successfully");
+              },
+              error: (error: any) => {
+                console.error("[Zoom Join] Error:", error);
+                setError(`Failed to join meeting: ${error.message}`);
+                toast.error("Failed to join meeting");
+                setZoomLoading(false);
+              },
+            });
+          },
+          error: (error: any) => {
+            console.error("[Zoom SDK] Init error:", error);
+            setError("Failed to initialize Zoom. Using fallback link...");
+            window.open(session.meetingUrl!, "_blank", "noopener,noreferrer");
+            setZoomLoading(false);
+          },
+        });
+      }
+    } catch (err: any) {
+      console.error("[Zoom Join] Error:", err);
+      setError(`Error: ${err.message}`);
+      // Fallback to external link
+      if (session?.meetingUrl) {
+        window.open(session.meetingUrl, "_blank", "noopener,noreferrer");
+      }
+      setZoomLoading(false);
     }
   };
 
@@ -109,7 +241,9 @@ export default function MentorshipSessionPage() {
         <div className="container mx-auto px-6">
           <Card className="glass-card border-red-500/30 bg-red-900/10">
             <CardContent className="p-8 text-center">
-              <p className="text-red-400 mb-4">{error || "Session not found"}</p>
+              <p className="text-red-400 mb-4">
+                {error || "Session not found"}
+              </p>
               <Button onClick={() => router.back()} variant="outline">
                 Go Back
               </Button>
@@ -123,13 +257,19 @@ export default function MentorshipSessionPage() {
   const scheduledTime = new Date(session.scheduledAt);
   const timeUntilSession = scheduledTime.getTime() - new Date().getTime();
   const hoursUntil = Math.floor(timeUntilSession / (1000 * 60 * 60));
-  const minutesUntil = Math.floor((timeUntilSession % (1000 * 60 * 60)) / (1000 * 60));
+  const minutesUntil = Math.floor(
+    (timeUntilSession % (1000 * 60 * 60)) / (1000 * 60),
+  );
 
   const getStatusColor = (status: string) => {
-    if (status === "SCHEDULED") return "bg-blue-900/20 text-blue-400 border-blue-500/30";
-    if (status === "IN_PROGRESS") return "bg-green-900/20 text-green-400 border-green-500/30";
-    if (status === "COMPLETED") return "bg-gray-900/20 text-gray-400 border-gray-500/30";
-    if (status === "CANCELLED") return "bg-red-900/20 text-red-400 border-red-500/30";
+    if (status === "SCHEDULED")
+      return "bg-blue-900/20 text-blue-400 border-blue-500/30";
+    if (status === "IN_PROGRESS")
+      return "bg-green-900/20 text-green-400 border-green-500/30";
+    if (status === "COMPLETED")
+      return "bg-gray-900/20 text-gray-400 border-gray-500/30";
+    if (status === "CANCELLED")
+      return "bg-red-900/20 text-red-400 border-red-500/30";
     return "bg-white/10";
   };
 
@@ -149,7 +289,9 @@ export default function MentorshipSessionPage() {
               {session.status !== "IN_PROGRESS" && session.status}
             </Badge>
           </div>
-          <h1 className="text-4xl font-bold text-gradient mb-2">{session.title}</h1>
+          <h1 className="text-4xl font-bold text-gradient mb-2">
+            {session.title}
+          </h1>
           {session.description && (
             <p className="text-gray-300 text-lg">{session.description}</p>
           )}
@@ -159,7 +301,7 @@ export default function MentorshipSessionPage() {
           {/* Left Column - Session Info */}
           <div className="lg:col-span-2 space-y-6">
             {/* Meeting Section */}
-            {session.meetingUrl ? (
+            {session.meetingUrl && session.status !== "COMPLETED" ? (
               <Card className="glass-card border-white/10">
                 <CardHeader>
                   <CardTitle className="flex items-center gap-2">
@@ -181,8 +323,7 @@ export default function MentorshipSessionPage() {
                         size="sm"
                         variant="outline"
                         onClick={handleCopyMeetingUrl}
-                        className="border-white/20"
-                      >
+                        className="border-white/20">
                         <Copy className="w-4 h-4" />
                       </Button>
                     </div>
@@ -191,17 +332,28 @@ export default function MentorshipSessionPage() {
                   {isSessionLive ? (
                     <Button
                       onClick={handleJoinMeeting}
-                      className="w-full bg-green-600 hover:bg-green-700 text-white py-2 rounded-lg font-semibold"
-                    >
-                      <Video className="w-4 h-4 mr-2" />
-                      Join Meeting Now
+                      disabled={zoomLoading || !sdkLoaded}
+                      className="w-full bg-green-600 hover:bg-green-700 text-white py-2 rounded-lg font-semibold">
+                      {zoomLoading ? (
+                        <>
+                          <Loader2 className="w-4 h-4 mr-2 animate-spin" />
+                          Joining...
+                        </>
+                      ) : (
+                        <>
+                          <Video className="w-4 h-4 mr-2" />
+                          Join Meeting Now
+                        </>
+                      )}
                     </Button>
                   ) : (
                     <div className="bg-blue-900/20 border border-blue-500/30 rounded-lg p-4 text-center">
                       <p className="text-blue-200 text-sm">
                         {hoursUntil > 0 || minutesUntil > 0 ? (
                           <>
-                            Session starts in {hoursUntil > 0 ? `${hoursUntil}h ` : ""}{minutesUntil}m
+                            Session starts in{" "}
+                            {hoursUntil > 0 ? `${hoursUntil}h ` : ""}
+                            {minutesUntil}m
                           </>
                         ) : (
                           "Session is upcoming"
@@ -211,11 +363,20 @@ export default function MentorshipSessionPage() {
                   )}
                 </CardContent>
               </Card>
+            ) : session.status === "COMPLETED" ? (
+              <Card className="glass-card border-green-500/30 bg-green-900/10">
+                <CardContent className="p-6">
+                  <p className="text-green-400 text-sm">
+                    ✓ This session has been completed. Thank you for attending!
+                  </p>
+                </CardContent>
+              </Card>
             ) : (
               <Card className="glass-card border-yellow-500/30 bg-yellow-900/10">
                 <CardContent className="p-6">
                   <p className="text-yellow-400 text-sm">
-                    Meeting link is being prepared. The tutor will add the meeting URL soon.
+                    Meeting link is being prepared. The tutor will add the
+                    meeting URL soon.
                     <br />
                     Please check back shortly.
                   </p>
@@ -247,7 +408,9 @@ export default function MentorshipSessionPage() {
                     <Video className="w-5 h-5 text-gray-400 mt-1 flex-shrink-0" />
                     <div>
                       <p className="text-sm text-gray-400">Duration</p>
-                      <p className="text-white font-medium">{session.duration} minutes</p>
+                      <p className="text-white font-medium">
+                        {session.duration} minutes
+                      </p>
                     </div>
                   </div>
                 </div>
@@ -257,7 +420,9 @@ export default function MentorshipSessionPage() {
                     <MapPin className="w-5 h-5 text-gray-400 mt-1 flex-shrink-0" />
                     <div>
                       <p className="text-sm text-gray-400">Price</p>
-                      <p className="text-white font-medium">₦{session.price.toLocaleString()}</p>
+                      <p className="text-white font-medium">
+                        ₦{session.price.toLocaleString()}
+                      </p>
                       <span className="text-xs text-gray-400">
                         Payment Status: {session.paymentStatus}
                       </span>
@@ -291,22 +456,34 @@ export default function MentorshipSessionPage() {
                   />
                   <div className="flex-1">
                     <p className="text-sm text-gray-400">Student</p>
-                    <p className="font-medium text-white">{session.student.name}</p>
-                    <p className="text-xs text-gray-400">{session.student.email}</p>
+                    <p className="font-medium text-white">
+                      {session.student.name}
+                    </p>
+                    <p className="text-xs text-gray-400">
+                      {session.student.email}
+                    </p>
                   </div>
                 </div>
 
                 {/* Tutor */}
                 <div className="flex items-center gap-3">
                   <img
-                    src={session.tutor.image || session.tutor.avatar || "/default-avatar.png"}
+                    src={
+                      session.tutor.image ||
+                      session.tutor.avatar ||
+                      "/default-avatar.png"
+                    }
                     alt={session.tutor.name}
                     className="w-10 h-10 rounded-full"
                   />
                   <div className="flex-1">
                     <p className="text-sm text-gray-400">Mentor</p>
-                    <p className="font-medium text-white">{session.tutor.name}</p>
-                    <p className="text-xs text-gray-400">{session.tutor.email}</p>
+                    <p className="font-medium text-white">
+                      {session.tutor.name}
+                    </p>
+                    <p className="text-xs text-gray-400">
+                      {session.tutor.email}
+                    </p>
                   </div>
                 </div>
               </CardContent>

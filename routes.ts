@@ -57,6 +57,11 @@ export const protectedRoutes = [
   "/tutor/profile",
   "/tutor/wallet",
   "/tutor/reviews",
+  "/mentor",
+  "/mentor/mentorship",
+  "/mentor/mentorship/schedule",
+  "/mentor/profile",
+  "/mentor/wallet",
   "/courses/[courseId]/checkout",
   "/courses/[courseId]/learn",
   "/courses/[courseId]/quiz",
@@ -105,6 +110,18 @@ export const tutorRoutes = [
 ];
 
 /**
+ * Mentor-only routes
+ * @type {string[]}
+ */
+export const mentorRoutes = [
+  "/mentor",
+  "/mentor/mentorship",
+  "/mentor/mentorship/schedule",
+  "/mentor/profile",
+  "/mentor/wallet",
+];
+
+/**
  * Student-only routes
  * @type {string[]}
  */
@@ -141,7 +158,7 @@ export const DEFAULT_LOGIN_REDIRECTS: Record<UserRole, string> & {
   USER: string;
 } = {
   STUDENT: "/student",
-  MENTOR: "/tutor/mentorship",
+  MENTOR: "/mentor/mentorship",
   TUTOR: "/tutor",
   ADMIN: "/admin",
   USER: "/courses",

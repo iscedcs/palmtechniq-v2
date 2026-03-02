@@ -77,10 +77,14 @@ export const roleNavItems = {
     { icon: MessageSquare, label: "Projects", href: "/student/projects" },
   ],
   MENTOR: [
-    { icon: Home, label: "Dashboard", href: "/tutor/mentorship" },
-    { icon: Calendar, label: "Mentorship", href: "/tutor/mentorship" },
-    { icon: Wallet, label: "Earnings", href: "/tutor/wallet" },
-    { icon: User, label: "Profile", href: "/tutor/profile" },
+    { icon: Home, label: "Dashboard", href: "/mentor/mentorship" },
+    {
+      icon: Calendar,
+      label: "Mentorship",
+      href: "/mentor/mentorship/schedule",
+    },
+    { icon: Wallet, label: "Earnings", href: "/mentor/wallet" },
+    { icon: User, label: "Profile", href: "/mentor/profile" },
   ],
   TUTOR: [
     { icon: Home, label: "Dashboard", href: "/tutor" },
@@ -113,15 +117,20 @@ export const roleMenuItems = {
     { icon: User, label: "Profile", href: "/student/profile" },
     { icon: BookOpen, label: "My Courses", href: "/student/courses" },
     { icon: Trophy, label: "Progress", href: "/student/progress" },
-    // { icon: Calendar, label: "Mentorship", href: "/student/mentorship" },
+    { icon: Calendar, label: "Book Mentorship Offerings", href: "/mentorship" },
+    { icon: Calendar, label: "Manage Mentorship", href: "/student/mentorship" },
     { icon: MessageSquare, label: "Projects", href: "/student/projects" },
     { icon: NotebookIcon, label: "Tasks", href: "/student/assignments" },
     // { icon: Settings, label: "Settings", href: "/student/settings" },
   ],
   MENTOR: [
-    { icon: User, label: "Profile", href: "/tutor/profile" },
-    { icon: Calendar, label: "Mentorship", href: "/tutor/mentorship" },
-    { icon: Wallet, label: "Earnings", href: "/tutor/wallet" },
+    { icon: User, label: "Profile", href: "/mentor/profile" },
+    {
+      icon: Calendar,
+      label: "Mentorship",
+      href: "/mentor/mentorship/schedule",
+    },
+    { icon: Wallet, label: "Earnings", href: "/mentor/wallet" },
   ],
   TUTOR: [
     { icon: User, label: "Profile", href: "/tutor/profile" },
@@ -129,7 +138,7 @@ export const roleMenuItems = {
     { icon: Users, label: "Students", href: "/tutor/students" },
     { icon: Wallet, label: "Earnings", href: "/tutor/wallet" },
     { icon: Star, label: "Reviews", href: "/tutor/reviews" },
-    // { icon: Calendar, label: "Schedule", href: "/tutor/schedule" },
+    { icon: Calendar, label: "Mentorship", href: "/tutor/mentorship" },
     // { icon: Settings, label: "Settings", href: "/tutor/settings" },
   ],
   ADMIN: [

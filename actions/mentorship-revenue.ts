@@ -67,7 +67,7 @@ export async function getMentorshipMarketplaceData() {
 
   const mentorMap = new Map<string, any>();
 
-  mentors.forEach((mentor) => {
+  mentors.forEach((mentor: any) => {
     mentorMap.set(mentor.user.id, {
       tutorUserId: mentor.user.id,
       name: mentor.user.name,
@@ -78,13 +78,14 @@ export async function getMentorshipMarketplaceData() {
       hourlyRate: mentor.hourlyRate || 0,
       location: mentor.user.location || "Remote",
       timezone: mentor.timezone || mentor.user.timezone || "UTC",
-      bio: mentor.user.bio || "Experienced mentor helping learners grow faster.",
+      bio:
+        mentor.user.bio || "Experienced mentor helping learners grow faster.",
       specialties: mentor.expertise?.slice(0, 5) || [],
       sessions: mentor.totalStudents,
     });
   });
 
-  platformMentors.forEach((mentor) => {
+  platformMentors.forEach((mentor: any) => {
     if (mentorMap.has(mentor.id)) return;
     mentorMap.set(mentor.id, {
       tutorUserId: mentor.id,
@@ -97,8 +98,13 @@ export async function getMentorshipMarketplaceData() {
       location: mentor.location || "Remote",
       timezone: mentor.timezone || "UTC",
       bio: mentor.bio || "Experienced mentor helping learners grow faster.",
-      specialties: mentor.tutorProfile?.expertise?.slice(0, 5) || ["Mentorship"],
-      sessions: mentor.tutorProfile?.totalStudents || mentor.tutoredSessions.length || 0,
+      specialties: mentor.tutorProfile?.expertise?.slice(0, 5) || [
+        "Mentorship",
+      ],
+      sessions:
+        mentor.tutorProfile?.totalStudents ||
+        mentor.tutoredSessions.length ||
+        0,
     });
   });
 
@@ -147,10 +153,13 @@ export async function beginMentorshipCheckout(input: {
 
   const packageCode: PackageCode = input.packageCode || "NONE";
   const packageEntry =
-    packageCode === "NONE" ? null : packageConfig[packageCode as "STARTER_3" | "GROWTH_5"];
+    packageCode === "NONE"
+      ? null
+      : packageConfig[packageCode as "STARTER_3" | "GROWTH_5"];
   const sessionsCount = packageEntry?.sessions || 1;
   const discountPercent = packageEntry?.discountPercent || 0;
-  const discountedTotal = basePrice * sessionsCount * (1 - discountPercent / 100);
+  const discountedTotal =
+    basePrice * sessionsCount * (1 - discountPercent / 100);
   const totalAmount = Number(discountedTotal.toFixed(2));
   const tutorShareAmount = Number((totalAmount * 0.7).toFixed(2));
   const platformShareAmount = Number((totalAmount * 0.3).toFixed(2));
@@ -161,7 +170,8 @@ export async function beginMentorshipCheckout(input: {
       description: input.description?.trim() || null,
       duration,
       price: totalAmount,
-      status: input.bookingMode === "REQUEST" ? "PENDING_MENTOR_REVIEW" : "SCHEDULED",
+      status:
+        input.bookingMode === "REQUEST" ? "PENDING_MENTOR_REVIEW" : "SCHEDULED",
       scheduledAt,
       studentId: session.user.id,
       tutorId: tutor.id,
@@ -170,14 +180,19 @@ export async function beginMentorshipCheckout(input: {
         input.bookingMode === "REQUEST"
           ? "REQUEST_FIRST_BOOKING"
           : `INSTANT_BOOKING${packageEntry ? ` | ${packageEntry.label}` : ""}`,
-      approvalDeadline: input.bookingMode === "REQUEST" 
-        ? new Date(Date.now() + 72 * 60 * 60 * 1000) 
-        : null,
+      approvalDeadline:
+        input.bookingMode === "REQUEST"
+          ? new Date(Date.now() + 72 * 60 * 60 * 1000)
+          : null,
     },
   });
 
   if (input.bookingMode === "REQUEST") {
-    return { ok: true, mode: "REQUEST", mentorshipSessionId: mentorshipSession.id };
+    return {
+      ok: true,
+      mode: "REQUEST",
+      mentorshipSessionId: mentorshipSession.id,
+    };
   }
 
   const reference = `mentorship_${randomUUID()}`;
@@ -228,7 +243,13 @@ export async function getStudentMentorshipSessions() {
     orderBy: { scheduledAt: "asc" },
     include: {
       tutor: {
-        select: { id: true, name: true, image: true, avatar: true, email: true },
+        select: {
+          id: true,
+          name: true,
+          image: true,
+          avatar: true,
+          email: true,
+        },
       },
     },
     take: 100,
@@ -242,13 +263,31 @@ export async function getTutorMentorshipSessions() {
   if (!session?.user?.id) return { error: "Unauthorized" };
 
   const sessions = await db.mentorshipSession.findMany({
-    where: { tutorId: session.user.id },
-    orderBy: { scheduledAt: "asc" },
-    include: {
+    where: { 
+      tutorId: session.user.id,
+      paymentStatus: "PAID", // Only show sessions where payment is confirmed
+    },
+    select: {
+      id: true,
+      title: true,
+      status: true,
+      scheduledAt: true,
+      duration: true,
+      price: true,
+      notes: true,
+      paymentStatus: true,
+      meetingUrl: true,
       student: {
-        select: { id: true, name: true, image: true, avatar: true, email: true },
+        select: {
+          id: true,
+          name: true,
+          image: true,
+          avatar: true,
+          email: true,
+        },
       },
     },
+    orderBy: { scheduledAt: "asc" },
     take: 100,
   });
 
@@ -257,17 +296,97 @@ export async function getTutorMentorshipSessions() {
 
 export async function updateTutorMentorshipSessionStatus(input: {
   mentorshipSessionId: string;
-  status: "SCHEDULED" | "IN_PROGRESS" | "COMPLETED" | "CANCELLED" | "NO_SHOW";
+  status:
+    | "SCHEDULED"
+    | "IN_PROGRESS"
+    | "COMPLETED"
+    | "CANCELLED"
+    | "NO_SHOW"
+    | "PENDING_MENTOR_REVIEW"
+    | "REJECTED";
 }) {
   const session = await auth();
   if (!session?.user?.id) return { error: "Unauthorized" };
 
   const existing = await db.mentorshipSession.findFirst({
     where: { id: input.mentorshipSessionId, tutorId: session.user.id },
-    select: { id: true },
+    select: {
+      id: true,
+      title: true,
+      description: true,
+      duration: true,
+      scheduledAt: true,
+      meetingUrl: true,
+      student: {
+        select: { email: true, name: true },
+      },
+      tutor: {
+        select: { email: true, name: true },
+      },
+    },
   });
   if (!existing) return { error: "Session not found." };
 
+  // If starting the session and no meeting URL exists, create Zoom meeting
+  if (input.status === "IN_PROGRESS" && !existing.meetingUrl) {
+    try {
+      const { createZoomMeeting } = await import("@/lib/zoom-integration");
+
+      console.log(
+        `[Meeting Creation] Starting for session ${input.mentorshipSessionId}`,
+      );
+      console.log(
+        `[Meeting Details] Title: ${existing.title}, Duration: ${existing.duration}min, Scheduled: ${existing.scheduledAt}`,
+      );
+
+      const zoomMeeting = await createZoomMeeting({
+        topic: existing.title,
+        startTime: existing.scheduledAt.toISOString(),
+        duration: existing.duration,
+        mentorEmail: existing.tutor.email,
+        studentEmail: existing.student.email,
+        description: existing.description || undefined,
+      });
+
+      console.log(
+        `[Meeting Created Successfully] Session: ${input.mentorshipSessionId}, Meeting ID: ${zoomMeeting.meetingId}, Join URL: ${zoomMeeting.joinUrl}`,
+      );
+
+      await db.mentorshipSession.update({
+        where: { id: input.mentorshipSessionId },
+        data: {
+          status: input.status as any,
+          startedAt: input.status === "IN_PROGRESS" ? new Date() : undefined,
+          meetingUrl: zoomMeeting.joinUrl,
+          notes: `MEETING_CREATED | ${zoomMeeting.meetingId}`,
+        },
+      });
+
+      return { success: true, meetingUrl: zoomMeeting.joinUrl };
+    } catch (error) {
+      console.error(
+        `[Meeting Creation Failed] Session: ${input.mentorshipSessionId}, Error:`,
+        error,
+      );
+      console.error(
+        `[Error Details] ${error instanceof Error ? error.message : JSON.stringify(error)}`,
+      );
+
+      // Prevent status update if meeting creation fails - return error to toast on frontend
+      const errorMessage =
+        error instanceof Error
+          ? error.message
+          : "Failed to create Zoom meeting";
+
+      return {
+        success: false,
+        error: `Cannot start session: ${errorMessage}. Please check your Zoom app scopes or contact support.`,
+      };
+    }
+  }
+
+  // If meeting already exists, proceed with status update
+  // Normal status update without meeting creation
   await db.mentorshipSession.update({
     where: { id: input.mentorshipSessionId },
     data: {
@@ -286,30 +405,39 @@ export async function getMentorshipAdminOverview() {
     return { error: "Forbidden" };
   }
 
-  const [sessions, mentorshipRevenueAgg, mentorshipTxCount] = await Promise.all([
-    db.mentorshipSession.findMany({
-      orderBy: { createdAt: "desc" },
-      take: 200,
-      include: {
-        tutor: { select: { id: true, name: true, email: true } },
-        student: { select: { id: true, name: true, email: true } },
-      },
-    }),
-    db.transaction.aggregate({
-      where: { metadata: { path: ["productType"], equals: "MENTORSHIP" } as any, status: "COMPLETED" },
-      _sum: { amount: true },
-    }),
-    db.transaction.count({
-      where: { metadata: { path: ["productType"], equals: "MENTORSHIP" } as any },
-    }),
-  ]);
+  const [sessions, mentorshipRevenueAgg, mentorshipTxCount] = await Promise.all(
+    [
+      db.mentorshipSession.findMany({
+        orderBy: { createdAt: "desc" },
+        take: 200,
+        include: {
+          tutor: { select: { id: true, name: true, email: true } },
+          student: { select: { id: true, name: true, email: true } },
+        },
+      }),
+      db.transaction.aggregate({
+        where: {
+          metadata: { path: ["productType"], equals: "MENTORSHIP" } as any,
+          status: "COMPLETED",
+        },
+        _sum: { amount: true },
+      }),
+      db.transaction.count({
+        where: {
+          metadata: { path: ["productType"], equals: "MENTORSHIP" } as any,
+        },
+      }),
+    ],
+  );
 
   return {
     sessions,
     stats: {
       totalSessions: sessions.length,
-      completedSessions: sessions.filter((s) => s.status === "COMPLETED").length,
-      pendingSessions: sessions.filter((s) => s.status === "SCHEDULED").length,
+      completedSessions: sessions.filter((s: any) => s.status === "COMPLETED")
+        .length,
+      pendingSessions: sessions.filter((s: any) => s.status === "SCHEDULED")
+        .length,
       mentorshipRevenue: mentorshipRevenueAgg._sum.amount || 0,
       mentorshipTransactions: mentorshipTxCount,
     },
@@ -336,7 +464,9 @@ export async function updateAdminMentorshipSessionStatus(input: {
     where: { id: input.mentorshipSessionId },
     data: {
       status: input.status as any,
-      notes: input.note ? `${record.notes || ""}\nADMIN: ${input.note}`.trim() : record.notes,
+      notes: input.note
+        ? `${record.notes || ""}\nADMIN: ${input.note}`.trim()
+        : record.notes,
     },
   });
 
@@ -437,7 +567,10 @@ export async function approveMentorshipRequest(sessionId: string) {
  * Mentor rejects a REQUEST mode booking
  * Updates session status to REJECTED and stores rejection reason
  */
-export async function rejectMentorshipRequest(sessionId: string, reason: string) {
+export async function rejectMentorshipRequest(
+  sessionId: string,
+  reason: string,
+) {
   const session = await auth();
   if (!session?.user?.id) {
     return { error: "Unauthorized" };
@@ -507,7 +640,10 @@ export async function proceedWithApprovedBookingPayment(sessionId: string) {
     return { error: "You can only pay for your own sessions" };
   }
 
-  if (mentorshipSession.status !== "SCHEDULED" || mentorshipSession.bookingMode !== "REQUEST") {
+  if (
+    mentorshipSession.status !== "SCHEDULED" ||
+    mentorshipSession.bookingMode !== "REQUEST"
+  ) {
     return { error: "This session is not ready for payment" };
   }
 
@@ -516,7 +652,9 @@ export async function proceedWithApprovedBookingPayment(sessionId: string) {
   }
 
   const tutorShareAmount = Number((mentorshipSession.price * 0.7).toFixed(2));
-  const platformShareAmount = Number((mentorshipSession.price * 0.3).toFixed(2));
+  const platformShareAmount = Number(
+    (mentorshipSession.price * 0.3).toFixed(2),
+  );
 
   const reference = `mentorship_${randomUUID()}`;
   const tx = await db.transaction.create({
@@ -572,7 +710,13 @@ export async function getTutorPendingApprovals() {
     orderBy: { createdAt: "desc" },
     include: {
       student: {
-        select: { id: true, name: true, image: true, avatar: true, email: true },
+        select: {
+          id: true,
+          name: true,
+          image: true,
+          avatar: true,
+          email: true,
+        },
       },
     },
   });
@@ -599,12 +743,12 @@ export async function getApprovedSessionsReadyForPayment() {
     orderBy: { createdAt: "desc" },
     include: {
       tutor: {
-        select: { 
-          id: true, 
-          name: true, 
-          image: true, 
-          avatar: true, 
-          email: true 
+        select: {
+          id: true,
+          name: true,
+          image: true,
+          avatar: true,
+          email: true,
         },
       },
     },
@@ -645,8 +789,14 @@ export async function createMentorshipOffering(data: {
       select: { tutorId: true, creatorId: true },
     });
 
-    if (!course || (course.tutorId !== session.user.id && course.creatorId !== session.user.id)) {
-      throw new Error("Course not found or you don't have permission to link to it");
+    if (
+      !course ||
+      (course.tutorId !== session.user.id &&
+        course.creatorId !== session.user.id)
+    ) {
+      throw new Error(
+        "Course not found or you don't have permission to link to it",
+      );
     }
   }
 
@@ -720,10 +870,7 @@ export async function getTutorCourses() {
 
   const courses = await db.course.findMany({
     where: {
-      OR: [
-        { tutorId: session.user.id },
-        { creatorId: session.user.id },
-      ],
+      OR: [{ tutorId: session.user.id }, { creatorId: session.user.id }],
     },
     select: {
       id: true,
@@ -771,3 +918,162 @@ export async function deleteMentorshipOffering(offeringId: string) {
   return { success: true };
 }
 
+/**
+ * Book a mentorship offering and initialize payment (server action)
+ */
+export async function beginOfferingCheckout(
+  offeringId: string,
+  bookingMode: BookingMode = "INSTANT",
+  bookingStartTime?: string, // ISO date string for when student wants to start
+) {
+  const session = await auth();
+  if (!session?.user?.id || !session.user.email) {
+    return { error: "You need to be logged in to book mentorship" };
+  }
+
+  if (session.user.role === "ADMIN") {
+    return { error: "Admins cannot book mentorship sessions" };
+  }
+
+  try {
+    // Fetch the offering
+    const offering = await db.mentorshipSession.findUnique({
+      where: { id: offeringId },
+      select: {
+        id: true,
+        title: true,
+        description: true,
+        duration: true,
+        price: true,
+        tutorId: true,
+        courseId: true,
+        isOffering: true,
+        scheduledAt: true,
+      },
+    });
+
+    if (!offering) {
+      return { error: "Mentorship offering not found" };
+    }
+
+    if (!offering.isOffering) {
+      return { error: "This is already a booking, not an offering" };
+    }
+
+    // Prevent booking own offering
+    if (offering.tutorId === session.user.id) {
+      return { error: "You cannot book your own offering" };
+    }
+
+    // Calculate time slot if provided
+    const bookingStartDate = bookingStartTime
+      ? new Date(bookingStartTime)
+      : offering.scheduledAt;
+    const bookingEndDate = new Date(
+      bookingStartDate.getTime() + offering.duration * 60 * 1000,
+    );
+
+    // Create actual booking session (isOffering = false)
+    const booking = await db.mentorshipSession.create({
+      data: {
+        title: offering.title,
+        description: offering.description,
+        duration: offering.duration,
+        price: offering.price,
+        studentId: session.user.id,
+        tutorId: offering.tutorId,
+        courseId: offering.courseId,
+        offeringSessionId: offering.id, // Link to the offering template
+        status:
+          bookingMode === "REQUEST" ? "PENDING_MENTOR_REVIEW" : "SCHEDULED",
+        bookingMode: bookingMode,
+        paymentStatus: "PENDING",
+        isOffering: false,
+        scheduledAt: bookingStartDate, // Student's selected start time
+        bookingStartTime: bookingStartDate, // Track exact slot start
+        bookingEndTime: bookingEndDate, // Track exact slot end
+        approvalDeadline:
+          bookingMode === "REQUEST"
+            ? new Date(Date.now() + 72 * 60 * 60 * 1000)
+            : null,
+      },
+    });
+
+    // If REQUEST mode, just return success
+    if (bookingMode === "REQUEST") {
+      // Send notification to tutor
+      try {
+        const { notify } = await import("@/lib/notify");
+        await notify.user(offering.tutorId, {
+          type: "info",
+          title: "New Mentorship Request",
+          message: `${session.user.name} requested a mentorship session: "${offering.title}"`,
+          actionUrl: `/tutor/mentorship?tab=approvals`,
+          actionLabel: "Review Request",
+          metadata: {
+            sessionId: booking.id,
+            studentId: session.user.id,
+          },
+        });
+      } catch (error) {
+        console.error("Error sending notification:", error);
+      }
+
+      return {
+        ok: true,
+        mode: "REQUEST",
+        mentorshipSessionId: booking.id,
+      };
+    }
+
+    // For INSTANT mode, create transaction and initialize payment
+    const tutorShareAmount = Number((offering.price * 0.7).toFixed(2));
+    const platformShareAmount = Number((offering.price * 0.3).toFixed(2));
+    const reference = `mentorship_${booking.id}_${Date.now()}`;
+
+    // Create transaction record for payment tracking
+    const tx = await db.transaction.create({
+      data: {
+        amount: offering.price,
+        status: "PENDING",
+        paymentMethod: "paystack",
+        description: `Mentorship: ${offering.title}`,
+        userId: session.user.id,
+        transactionId: reference,
+        tutorShareAmount,
+        platformShareAmount,
+        metadata: {
+          productType: "MENTORSHIP",
+          mentorshipKind: "OFFERING_INSTANT",
+          mentorshipSessionId: booking.id,
+          offeringId: offering.id,
+          tutorUserId: offering.tutorId,
+        },
+      },
+    });
+
+    const callbackBase =
+      process.env.NEXT_PUBLIC_APP_URL || "http://localhost:2026";
+
+    const pay = await paystackInitialize({
+      email: session.user.email,
+      amountKobo: Math.round(tx.amount * 100),
+      reference,
+      callback_url: `${callbackBase}/mentorship/verify-payment?reference=${reference}`,
+      metadata: tx.metadata as Record<string, unknown>,
+    });
+
+    return {
+      ok: true,
+      mode: "INSTANT",
+      authorizationUrl: pay.authorization_url,
+      mentorshipSessionId: booking.id,
+    };
+  } catch (error) {
+    console.error("Error processing offering booking:", error);
+    return {
+      error:
+        error instanceof Error ? error.message : "Failed to process booking",
+    };
+  }
+}

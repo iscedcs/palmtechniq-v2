@@ -9,6 +9,7 @@ import {
   protectedRoutes,
   adminRoutes,
   tutorRoutes,
+  mentorRoutes,
   studentRoutes,
   paymentRoutes,
 } from "@/routes";
@@ -40,6 +41,7 @@ export default auth((req) => {
   const isProtectedRoute = matchesRoute(nextUrl.pathname, protectedRoutes);
   const isAdminRoute = matchesRoute(nextUrl.pathname, adminRoutes);
   const isTutorRoute = matchesRoute(nextUrl.pathname, tutorRoutes);
+  const isMentorRoute = matchesRoute(nextUrl.pathname, mentorRoutes);
   const isStudentRoute = matchesRoute(nextUrl.pathname, studentRoutes);
   const isPaymentRoute = matchesRoute(nextUrl.pathname, paymentRoutes);
 
@@ -96,6 +98,15 @@ export default auth((req) => {
       return Response.redirect(new URL("/courses", nextUrl));
     }
 
+    if (
+      isMentorRoute &&
+      userRole !== "MENTOR" &&
+      userRole !== "TUTOR" &&
+      userRole !== "ADMIN"
+    ) {
+      return Response.redirect(new URL("/courses", nextUrl));
+    }
+
     if (isStudentRoute && userRole !== "STUDENT" && userRole !== "ADMIN") {
       return Response.redirect(new URL("/courses", nextUrl));
     }
@@ -132,6 +143,7 @@ export const config = {
     // Specifically match protected route patterns
     "/student/:path*",
     "/tutor/:path*",
+    "/mentor/:path*",
     "/admin/:path*",
     "/courses/:path*/learn",
     "/settings/:path*",

@@ -1,15 +1,15 @@
-import { NextRequest, NextResponse } from 'next/server';
-import { auth } from '@/auth';
-import { db } from '@/lib/db';
+import { NextRequest, NextResponse } from "next/server";
+import { auth } from "@/auth";
+import { db } from "@/lib/db";
 
 export async function GET(req: NextRequest) {
   try {
-    const courseId = req.nextUrl.searchParams.get('courseId');
+    const courseId = req.nextUrl.searchParams.get("courseId");
 
     if (!courseId) {
       return NextResponse.json(
-        { error: 'courseId is required' },
-        { status: 400 }
+        { error: "courseId is required" },
+        { status: 400 },
       );
     }
 
@@ -18,7 +18,7 @@ export async function GET(req: NextRequest) {
       where: {
         courseId: courseId,
         isOffering: true,
-        status: 'SCHEDULED',
+        status: "SCHEDULED",
       },
       select: {
         id: true,
@@ -34,16 +34,16 @@ export async function GET(req: NextRequest) {
           },
         },
       },
-      orderBy: { createdAt: 'desc' },
+      orderBy: { createdAt: "desc" },
       take: 5, // Limit to 5 suggestions
     });
 
     // Transform tutor name for display
-    const transformedSuggestions = suggestions.map((s) => ({
+    const transformedSuggestions = suggestions.map((s: any) => ({
       ...s,
       tutor: {
         ...s.tutor,
-        name: s.tutor.name || 'Mentor',
+        name: s.tutor.name || "Mentor",
       },
     }));
 
@@ -52,10 +52,10 @@ export async function GET(req: NextRequest) {
       total: transformedSuggestions.length,
     });
   } catch (error) {
-    console.error('Error fetching mentorship suggestions:', error);
+    console.error("Error fetching mentorship suggestions:", error);
     return NextResponse.json(
-      { error: 'Failed to fetch mentorship suggestions' },
-      { status: 500 }
+      { error: "Failed to fetch mentorship suggestions" },
+      { status: 500 },
     );
   }
 }
