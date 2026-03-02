@@ -17,7 +17,7 @@
   "pnpm": {
     "overrides": {
       "@auth/core": "0.40.0",
-      "minimatch": "10.2.1"
+      "minimatch": "10.2.3"
     }
   },
   "dependencies": {
