@@ -69,6 +69,11 @@ const nextConfig = {
     }
     return config;
   },
+  api: {
+    bodyParser: {
+      sizeLimit: '500mb', // Allow up to 500MB for API request bodies (e.g., video uploads)
+    },
+  },
 };
 
 export default nextConfig;
