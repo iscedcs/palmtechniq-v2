@@ -48,6 +48,13 @@ const getAccessToken = async () => {
   return data.access_token;
 };
 
+interface InitializeUploadRequest {
+  title?: string;
+  description?: string;
+  fileSize: number;
+  fileType: string;
+}
+
 export async function POST(request: Request) {
   const session = await auth();
   if (!session?.user?.id) {
@@ -64,12 +71,13 @@ export async function POST(request: Request) {
   }
 
   try {
-    const formData = await request.formData();
-    const file = formData.get("file") as File | null;
+    const body = (await request.json()) as InitializeUploadRequest;
+
     const metadataParsed = metadataSchema.safeParse({
-      title: (formData.get("title") as string | null) ?? undefined,
-      description: (formData.get("description") as string | null) ?? undefined,
+      title: body.title,
+      description: body.description,
     });
+
     if (!metadataParsed.success) {
       return Response.json(
         { success: false, error: "Invalid upload metadata" },
@@ -77,22 +85,16 @@ export async function POST(request: Request) {
       );
     }
 
-    if (!file) {
+    if (!body.fileSize || body.fileSize <= 0) {
       return Response.json(
-        { success: false, error: "No file provided" },
+        { success: false, error: "Invalid file size" },
         { status: 400 },
       );
     }
 
-    if (!file.type.startsWith("video/")) {
+    if (!body.fileType || !body.fileType.startsWith("video/")) {
       return Response.json(
         { success: false, error: "Only video uploads are supported" },
-        { status: 400 },
-      );
-    }
-    if (file.size <= 0) {
-      return Response.json(
-        { success: false, error: "Invalid file size" },
         { status: 400 },
       );
     }
@@ -100,7 +102,7 @@ export async function POST(request: Request) {
     const accessToken = await getAccessToken();
     const metadata = {
       snippet: {
-        title: metadataParsed.data.title || file.name,
+        title: metadataParsed.data.title || "Untitled Video",
         description: metadataParsed.data.description ?? "",
       },
       status: {
@@ -113,8 +115,8 @@ export async function POST(request: Request) {
       headers: {
         Authorization: `Bearer ${accessToken}`,
         "Content-Type": "application/json; charset=UTF-8",
-        "X-Upload-Content-Type": file.type,
-        "X-Upload-Content-Length": file.size.toString(),
+        "X-Upload-Content-Type": body.fileType,
+        "X-Upload-Content-Length": body.fileSize.toString(),
       },
       body: JSON.stringify(metadata),
     });
@@ -135,45 +137,15 @@ export async function POST(request: Request) {
       );
     }
 
-    const buffer = Buffer.from(await file.arrayBuffer());
-    const uploadResponse = await fetch(uploadUrl, {
-      method: "PUT",
-      headers: {
-        "Content-Length": file.size.toString(),
-        "Content-Type": file.type,
-      },
-      body: buffer,
-    });
-
-    if (!uploadResponse.ok) {
-      const message = await uploadResponse.text();
-      return Response.json(
-        { success: false, error: `YouTube upload error: ${message}` },
-        { status: 500 },
-      );
-    }
-
-    const result = (await uploadResponse.json()) as { id?: string };
-    if (!result.id) {
-      return Response.json(
-        { success: false, error: "YouTube response missing video ID" },
-        { status: 500 },
-      );
-    }
-
-    const embedUrl = `https://www.youtube.com/embed/${result.id}`;
-    const watchUrl = `https://www.youtube.com/watch?v=${result.id}`;
-
     return Response.json({
       success: true,
-      videoId: result.id,
-      embedUrl,
-      watchUrl,
+      uploadUrl,
+      expiresIn: 24 * 60 * 60, // YouTube resumable sessions expire in 24 hours
     });
   } catch (error) {
-    console.error("YouTube Upload Error:", error);
+    console.error("YouTube Upload Initialization Error:", error);
     return Response.json(
-      { success: false, error: "Unknown YouTube upload error occurred" },
+      { success: false, error: "Failed to initialize upload session" },
       { status: 500 },
     );
   }
