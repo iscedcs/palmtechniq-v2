@@ -4,6 +4,7 @@ import { Loader2 } from "lucide-react";
 import React, { Dispatch, SetStateAction, useState } from "react";
 import { Button } from "../ui/button";
 import { toast } from "sonner";
+import { uploadVideoToYouTube } from "@/lib/youtube-upload";
 
 interface LessonUploadFileProps {
   onUploadSuccess: (url: string) => void;
@@ -33,7 +34,7 @@ export default function LessonUploadFile({
         const isPortrait = video.videoHeight > video.videoWidth;
         if (isPortrait) {
           toast.error(
-            "Please upload a landscape (16:9) video. Portrait videos become Shorts."
+            "Please upload a landscape (16:9) video. Portrait videos become Shorts.",
           );
           setFile(null);
           e.target.value = "";
@@ -59,27 +60,20 @@ export default function LessonUploadFile({
     setUploading(true);
 
     try {
-      const formData = new FormData();
-      formData.append("file", file);
-      formData.append("title", file.name);
-
-      const response = await fetch("/api/youtube/upload", {
-        method: "POST",
-        body: formData,
+      const { embedUrl } = await uploadVideoToYouTube(file, {
+        title: file.name,
       });
 
-      const data = await response.json();
-      if (!response.ok || !data.success) {
-        toast.error(data.error || "Server error");
-        return;
-      }
-
-      onUploadSuccess(data.embedUrl);
+      onUploadSuccess(embedUrl);
       toast.success("Lesson video uploaded successfully!");
       setFile(null);
     } catch (error) {
-      console.error("Unexpected Error:", error);
-      toast.error("An unexpected error occurred.");
+      console.error("YouTube Upload Error:", error);
+      const message =
+        error instanceof Error
+          ? error.message
+          : "An unexpected error occurred.";
+      toast.error(message);
     } finally {
       setUploading(false);
     }

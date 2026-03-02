@@ -7,6 +7,7 @@ import { UseFormSetValue } from "react-hook-form";
 import { toast } from "sonner";
 import z from "zod";
 import { Button } from "../ui/button";
+import { uploadVideoToYouTube } from "@/lib/youtube-upload";
 
 type CourseFormValues = z.infer<typeof courseSchema>;
 
@@ -128,24 +129,11 @@ export default function UploadFile({
         return;
       }
 
-      const formData = new FormData();
-      formData.append("file", file);
-      formData.append("title", file.name);
-
-      const response = await fetch("/api/youtube/upload", {
-        method: "POST",
-        body: formData,
+      const { embedUrl } = await uploadVideoToYouTube(file, {
+        title: file.name,
       });
 
-      const data = await response.json();
-
-      if (!response.ok || !data.success) {
-        toast.error(data.error || "Server error");
-        console.error("Server Error:", data.error);
-        return;
-      }
-
-      setValue(fieldName, data.embedUrl, { shouldDirty: true });
+      setValue(fieldName, embedUrl, { shouldDirty: true });
       toast.success("Video uploaded successfully!");
       setFile(null);
     } catch (error) {
