@@ -7,7 +7,6 @@ import { z } from "zod";
 
 const YOUTUBE_UPLOAD_URL =
   "https://www.googleapis.com/upload/youtube/v3/videos?uploadType=resumable&part=snippet,status";
-const MAX_UPLOAD_SIZE_BYTES = 2 * 1024 * 1024 * 1024; // 2GB
 
 const metadataSchema = z.object({
   title: z.string().trim().max(180).optional(),
@@ -91,12 +90,9 @@ export async function POST(request: Request) {
         { status: 400 },
       );
     }
-    if (file.size <= 0 || file.size > MAX_UPLOAD_SIZE_BYTES) {
+    if (file.size <= 0) {
       return Response.json(
-        {
-          success: false,
-          error: "Video file is too large. Maximum allowed size is 2GB.",
-        },
+        { success: false, error: "Invalid file size" },
         { status: 400 },
       );
     }
