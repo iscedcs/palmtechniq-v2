@@ -73,7 +73,9 @@ export function CourseEditClient({
   const [lessonUploading, setLessonUploading] = useState(false);
 
   const form = useForm<z.infer<typeof courseSchema>>({
-    resolver: zodResolver(courseSchema) as Resolver<z.infer<typeof courseSchema>>,
+    resolver: zodResolver(courseSchema) as Resolver<
+      z.infer<typeof courseSchema>
+    >,
     defaultValues: {
       ...course,
       isPublished: course.isPublished ?? false,
@@ -107,7 +109,7 @@ export function CourseEditClient({
   const removeTag = (tagToRemove: string) => {
     form.setValue(
       "tags",
-      form.getValues("tags").filter((tag) => tag !== tagToRemove)
+      form.getValues("tags").filter((tag) => tag !== tagToRemove),
     );
   };
 
@@ -127,7 +129,7 @@ export function CourseEditClient({
   const removeRequirement = (index: number) => {
     form.setValue(
       "requirements",
-      form.getValues("requirements").filter((_, i) => i !== index)
+      form.getValues("requirements").filter((_, i) => i !== index),
     );
   };
 
@@ -147,7 +149,7 @@ export function CourseEditClient({
   const removeLearningOutcome = (index: number) => {
     form.setValue(
       "outcomes",
-      form.getValues("outcomes").filter((_, i) => i !== index)
+      form.getValues("outcomes").filter((_, i) => i !== index),
     );
   };
 
@@ -260,10 +262,10 @@ export function CourseEditClient({
 
   const updateModule = (
     moduleId: string,
-    updates: Partial<(typeof modules)[0]>
+    updates: Partial<(typeof modules)[0]>,
   ) => {
     setModules(
-      modules.map((m: any) => (m.id === moduleId ? { ...m, ...updates } : m))
+      modules.map((m: any) => (m.id === moduleId ? { ...m, ...updates } : m)),
     );
   };
   const addLesson = async (moduleId: string) => {
@@ -303,8 +305,8 @@ export function CourseEditClient({
                     videoUrl: "",
                   }, // ✅ server id
                 ],
-              }
-        )
+              },
+        ),
       );
     } catch (e) {
       console.error(e);
@@ -315,7 +317,7 @@ export function CourseEditClient({
   const removeLesson = async (
     e: React.MouseEvent,
     moduleId: string,
-    lessonId: string
+    lessonId: string,
   ) => {
     e.preventDefault();
 
@@ -323,7 +325,7 @@ export function CourseEditClient({
     if (modIndex < 0) return;
 
     const lessonIndex = modules[modIndex].lessons.findIndex(
-      (l: any) => l.id === lessonId
+      (l: any) => l.id === lessonId,
     );
     if (lessonIndex < 0) return;
 
@@ -381,25 +383,25 @@ export function CourseEditClient({
   const updateLesson = (
     moduleId: string,
     lessonId: string,
-    updates: Partial<any>
+    updates: Partial<any>,
   ) => {
     setModules((prev: any) =>
       prev.map((m: any) => {
         if (m.id !== moduleId) return m;
         const updatedLessons = m.lessons.map((l: any) =>
-          l.id === lessonId ? { ...l, ...updates } : l
+          l.id === lessonId ? { ...l, ...updates } : l,
         );
         const moduleDuration = updatedLessons.reduce(
           (sum: number, l: any) => sum + (l.duration || 0),
-          0
+          0,
         );
         return { ...m, lessons: updatedLessons, duration: moduleDuration };
-      })
+      }),
     );
   };
   const onSubmit = (
     values: z.infer<typeof courseSchema>,
-    isPublished: boolean
+    isPublished: boolean,
   ) => {
     startTransition(async () => {
       try {
@@ -413,7 +415,7 @@ export function CourseEditClient({
             toast.success("Course submitted for approval");
           } else {
             toast.success(
-              isPublished ? "Course published!" : "Course saved as draft"
+              isPublished ? "Course published!" : "Course saved as draft",
             );
           }
           console.log("✅ Course updated:", res);
@@ -547,7 +549,7 @@ export function CourseEditClient({
                     <Button
                       type="button"
                       onClick={form.handleSubmit((data) =>
-                        onSubmit(data, true)
+                        onSubmit(data, true),
                       )}
                       className="w-full sm:w-auto bg-gradient-to-r from-neon-green to-emerald-400">
                       Update Course
