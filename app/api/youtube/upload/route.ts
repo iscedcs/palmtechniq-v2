@@ -19,7 +19,14 @@ const getAccessToken = async () => {
   const refreshToken = process.env.YOUTUBE_REFRESH_TOKEN ?? "";
 
   if (!clientId || !clientSecret || !refreshToken) {
-    throw new Error("Missing YouTube OAuth credentials");
+    const missing = [
+      !clientId && "YOUTUBE_CLIENT_ID",
+      !clientSecret && "YOUTUBE_CLIENT_SECRET",
+      !refreshToken && "YOUTUBE_REFRESH_TOKEN",
+    ]
+      .filter(Boolean)
+      .join(", ");
+    throw new Error(`Missing YouTube OAuth credentials: ${missing}`);
   }
 
   const params = new URLSearchParams({
@@ -29,23 +36,28 @@ const getAccessToken = async () => {
     grant_type: "refresh_token",
   });
 
-  const response = await fetch("https://oauth2.googleapis.com/token", {
-    method: "POST",
-    headers: { "Content-Type": "application/x-www-form-urlencoded" },
-    body: params.toString(),
-  });
+  try {
+    const response = await fetch("https://oauth2.googleapis.com/token", {
+      method: "POST",
+      headers: { "Content-Type": "application/x-www-form-urlencoded" },
+      body: params.toString(),
+    });
 
-  if (!response.ok) {
-    const message = await response.text();
-    throw new Error(`YouTube token error: ${message}`);
+    if (!response.ok) {
+      const message = await response.text();
+      throw new Error(`YouTube token error (${response.status}): ${message}`);
+    }
+
+    const data = (await response.json()) as { access_token?: string };
+    if (!data.access_token) {
+      throw new Error("YouTube token error: missing access token in response");
+    }
+
+    return data.access_token;
+  } catch (error) {
+    const message = error instanceof Error ? error.message : String(error);
+    throw new Error(`Failed to get YouTube access token: ${message}`);
   }
-
-  const data = (await response.json()) as { access_token?: string };
-  if (!data.access_token) {
-    throw new Error("YouTube token error: missing access token");
-  }
-
-  return data.access_token;
 };
 
 interface InitializeUploadRequest {
@@ -143,9 +155,19 @@ export async function POST(request: Request) {
       expiresIn: 24 * 60 * 60, // YouTube resumable sessions expire in 24 hours
     });
   } catch (error) {
-    console.error("YouTube Upload Initialization Error:", error);
+    const errorMessage = error instanceof Error ? error.message : String(error);
+    console.error("YouTube Upload Initialization Error:", errorMessage);
+    console.error("Full error:", error);
+
     return Response.json(
-      { success: false, error: "Failed to initialize upload session" },
+      {
+        success: false,
+        error: errorMessage || "Failed to initialize upload session",
+        // Include more details in development
+        ...(process.env.NODE_ENV === "development" && {
+          details: error instanceof Error ? error.stack : undefined,
+        }),
+      },
       { status: 500 },
     );
   }

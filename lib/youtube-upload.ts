@@ -1,27 +1,40 @@
 /**
- * YouTube Resumable Upload Utility
+ * YouTube Chunked Upload Utility
  *
- * Architecture: Client uploads directly to YouTube via resumable upload URL
- * Server only handles OAuth token generation and session initialization
+ * Architecture: Client uploads chunks through our server to bypass CORS
+ * Server proxies chunks to YouTube using resumable upload protocol
+ *
+ * Flow:
+ * 1. Initialize upload session (get YouTube resumable URL)
+ * 2. Upload file in chunks through our server (/api/youtube/upload/chunk)
+ * 3. Server forwards each chunk to YouTube
+ * 4. Return video ID when complete
  */
+
+// Chunk size: 4MB to stay under Vercel's 4.5MB request limit
+const CHUNK_SIZE = 4 * 1024 * 1024;
 
 interface InitializeUploadResponse {
   success: boolean;
   uploadUrl?: string;
   expiresIn?: number;
   error?: string;
+  details?: string;
 }
 
-interface YouTubeUploadResponse {
-  id?: string;
-  error?: {
-    errors: Array<{ message: string }>;
-  };
+interface ChunkUploadResponse {
+  success: boolean;
+  complete?: boolean;
+  bytesReceived?: number;
+  videoId?: string;
+  embedUrl?: string;
+  watchUrl?: string;
+  error?: string;
 }
 
 /**
  * Step 1: Get a resumable upload session from your server
- * This returns the YouTube upload URL that the client can upload directly to
+ * This returns the YouTube upload URL that we'll use for chunked uploads
  */
 export async function initializeYouTubeUpload(
   file: File,
@@ -41,10 +54,17 @@ export async function initializeYouTubeUpload(
     }),
   });
 
-  const data = (await response.json()) as InitializeUploadResponse;
+  let data: InitializeUploadResponse;
+  try {
+    data = (await response.json()) as InitializeUploadResponse;
+  } catch {
+    throw new Error(`Server error: ${response.status} ${response.statusText}`);
+  }
 
   if (!response.ok || !data.success || !data.uploadUrl) {
-    throw new Error(data.error || "Failed to initialize upload session");
+    const errorMsg = data.error || "Failed to initialize upload session";
+    const details = data.details ? `\n${data.details}` : "";
+    throw new Error(`${errorMsg}${details}`);
   }
 
   return {
@@ -54,42 +74,80 @@ export async function initializeYouTubeUpload(
 }
 
 /**
- * Step 2: Upload the file directly to YouTube using the resumable upload URL
- * This runs entirely on the client - no file passes through your server
+ * Step 2: Upload a single chunk through our server
+ */
+async function uploadChunk(
+  chunk: Blob,
+  uploadUrl: string,
+  start: number,
+  end: number,
+  total: number,
+  contentType: string,
+): Promise<ChunkUploadResponse> {
+  const formData = new FormData();
+  formData.append("chunk", chunk);
+  formData.append("uploadUrl", uploadUrl);
+  formData.append("start", start.toString());
+  formData.append("end", end.toString());
+  formData.append("total", total.toString());
+  formData.append("contentType", contentType);
+
+  const response = await fetch("/api/youtube/upload/chunk", {
+    method: "POST",
+    body: formData,
+  });
+
+  const data = (await response.json()) as ChunkUploadResponse;
+
+  if (!response.ok || !data.success) {
+    throw new Error(data.error || "Chunk upload failed");
+  }
+
+  return data;
+}
+
+/**
+ * Step 3: Upload file in chunks through our server to YouTube
  */
 export async function uploadToYouTube(
   file: File,
   uploadUrl: string,
   onProgress?: (progress: number) => void,
 ): Promise<string> {
-  // Convert file to buffer for upload
-  const buffer = await file.arrayBuffer();
+  const totalSize = file.size;
+  let uploadedBytes = 0;
 
-  const response = await fetch(uploadUrl, {
-    method: "PUT",
-    headers: {
-      "Content-Length": file.size.toString(),
-      "Content-Type": file.type,
-    },
-    body: buffer,
-  });
+  while (uploadedBytes < totalSize) {
+    const start = uploadedBytes;
+    const end = Math.min(start + CHUNK_SIZE, totalSize) - 1;
+    const chunk = file.slice(start, end + 1);
 
-  if (!response.ok) {
-    const error = await response.text();
-    throw new Error(`YouTube upload failed: ${error}`);
+    const result = await uploadChunk(
+      chunk,
+      uploadUrl,
+      start,
+      end,
+      totalSize,
+      file.type,
+    );
+
+    if (result.complete && result.videoId) {
+      // Upload finished!
+      onProgress?.(100);
+      return result.videoId;
+    }
+
+    // Update progress
+    uploadedBytes = result.bytesReceived || end + 1;
+    const progress = Math.round((uploadedBytes / totalSize) * 100);
+    onProgress?.(progress);
   }
 
-  const data = (await response.json()) as YouTubeUploadResponse;
-
-  if (!data.id) {
-    throw new Error("YouTube response missing video ID");
-  }
-
-  return data.id;
+  throw new Error("Upload completed but no video ID received");
 }
 
 /**
- * Complete flow: Initialize session and upload file
+ * Complete flow: Initialize session and upload file in chunks
  * Returns video ID and URLs
  */
 export async function uploadVideoToYouTube(
@@ -107,7 +165,7 @@ export async function uploadVideoToYouTube(
   // Step 1: Initialize upload session
   const { uploadUrl } = await initializeYouTubeUpload(file, metadata);
 
-  // Step 2: Upload file directly to YouTube
+  // Step 2: Upload file in chunks through our server
   const videoId = await uploadToYouTube(file, uploadUrl, onProgress);
 
   return {

@@ -416,7 +416,7 @@ export function CourseBasicForm({
               </div>
               <ul className="list-disc pl-5 text-sm text-gray-300 space-y-2">
                 {form
-                  .getValues("learningOutcomes")
+                  .getValues("outcomes")
                   ?.map((outcome: string, index: number) => (
                     <li
                       key={index}
