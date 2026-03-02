@@ -22,6 +22,7 @@ import {
   getMentorshipMarketplaceData,
 } from "@/actions/mentorship-revenue";
 import { Calendar, Search, Sparkles } from "lucide-react";
+import MentorshipOfferingsGrid from "@/components/mentorship-offerings-grid";
 
 type Mentor = {
   tutorUserId: string;
@@ -148,11 +149,16 @@ export default function MentorshipPage() {
 
       <section className="pb-20">
         <div className="container mx-auto px-6">
-          <Tabs defaultValue="mentors" className="space-y-8">
-            <TabsList className="grid w-full grid-cols-2 bg-white/10 border border-white/20">
+          <Tabs defaultValue="offerings" className="space-y-8">
+            <TabsList className="grid w-full grid-cols-3 bg-white/10 border border-white/20">
+              <TabsTrigger value="offerings">Available Offerings</TabsTrigger>
               <TabsTrigger value="mentors">Available Mentors</TabsTrigger>
               <TabsTrigger value="pricing">Pricing Model</TabsTrigger>
             </TabsList>
+
+            <TabsContent value="offerings" className="space-y-6">
+              <MentorshipOfferingsGrid />
+            </TabsContent>
 
             <TabsContent value="mentors" className="space-y-6">
               {loading ? (

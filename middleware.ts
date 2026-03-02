@@ -9,9 +9,11 @@ import {
   protectedRoutes,
   adminRoutes,
   tutorRoutes,
+  mentorRoutes,
   studentRoutes,
   paymentRoutes,
 } from "@/routes";
+import { NextResponse } from "next/server";
 
 // Initialize authentication with the provided configuration
 const { auth } = NextAuth(authConfig);
@@ -40,12 +42,42 @@ export default auth((req) => {
   const isProtectedRoute = matchesRoute(nextUrl.pathname, protectedRoutes);
   const isAdminRoute = matchesRoute(nextUrl.pathname, adminRoutes);
   const isTutorRoute = matchesRoute(nextUrl.pathname, tutorRoutes);
+  const isMentorRoute = matchesRoute(nextUrl.pathname, mentorRoutes);
   const isStudentRoute = matchesRoute(nextUrl.pathname, studentRoutes);
   const isPaymentRoute = matchesRoute(nextUrl.pathname, paymentRoutes);
 
   // Allow API authentication routes to proceed
   if (isApiAuthRoute) {
     return;
+  }
+
+  function addSecurityHeaders(response: NextResponse): NextResponse {
+    const csp = `
+    default-src 'self';
+    script-src 'self' 'unsafe-inline' 'unsafe-eval' https:;
+    style-src 'self' 'unsafe-inline' https:;
+    img-src 'self' data: blob: https:;
+    media-src 'self' blob: https:;
+    font-src 'self' data: https:;
+    connect-src 'self' https: wss:;
+    frame-src 'self' https://www.youtube.com https://www.youtube-nocookie.com;
+    form-action 'self' https://www.facebook.com;
+    object-src 'none';
+    frame-ancestors 'none';
+    base-uri 'self';
+  `.replace(/\n/g, "");
+
+    response.headers.set("Content-Security-Policy", csp);
+    response.headers.set("X-DNS-Prefetch-Control", "on");
+    response.headers.set(
+      "Strict-Transport-Security",
+      "max-age=63072000; includeSubDomains; preload",
+    );
+    response.headers.set("X-Frame-Options", "SAMEORIGIN");
+    response.headers.set("X-Content-Type-Options", "nosniff");
+    response.headers.set("Referrer-Policy", "strict-origin-when-cross-origin");
+
+    return response;
   }
 
   // Handle authentication routes
@@ -78,7 +110,7 @@ export default auth((req) => {
       }
       const encodedCallbackUrl = encodeURIComponent(callbackUrl);
       return Response.redirect(
-        new URL(`/login?callbackUrl=${encodedCallbackUrl}`, nextUrl)
+        new URL(`/login?callbackUrl=${encodedCallbackUrl}`, nextUrl),
       );
     }
 
@@ -91,6 +123,15 @@ export default auth((req) => {
       isTutorRoute &&
       userRole !== "TUTOR" &&
       userRole !== "MENTOR" &&
+      userRole !== "ADMIN"
+    ) {
+      return Response.redirect(new URL("/courses", nextUrl));
+    }
+
+    if (
+      isMentorRoute &&
+      userRole !== "MENTOR" &&
+      userRole !== "TUTOR" &&
       userRole !== "ADMIN"
     ) {
       return Response.redirect(new URL("/courses", nextUrl));
@@ -132,6 +173,7 @@ export const config = {
     // Specifically match protected route patterns
     "/student/:path*",
     "/tutor/:path*",
+    "/mentor/:path*",
     "/admin/:path*",
     "/courses/:path*/learn",
     "/settings/:path*",

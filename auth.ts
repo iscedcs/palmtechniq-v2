@@ -21,10 +21,12 @@ const nodeConfig: NextAuthConfig = {
     Google({
       clientId: process.env.GOOGLE_CLIENT_ID!,
       clientSecret: process.env.GOOGLE_CLIENT_SECRET!,
+      allowDangerousEmailAccountLinking: true,
     }),
     Github({
       clientId: process.env.GITHUB_CLIENT_ID!,
       clientSecret: process.env.GITHUB_CLIENT_SECRET!,
+      allowDangerousEmailAccountLinking: true,
     }),
     Credentials({
       async authorize(credentials) {
@@ -45,10 +47,14 @@ const nodeConfig: NextAuthConfig = {
 
   events: {
     async linkAccount({ user }) {
-      await db.user.update({
-        where: { id: user.id },
-        data: { emailVerified: new Date() },
-      });
+      try {
+        await db.user.update({
+          where: { id: user.id },
+          data: { emailVerified: new Date() },
+        });
+      } catch (error) {
+        console.error("Error linking account:", error);
+      }
     },
   },
 
@@ -56,14 +62,37 @@ const nodeConfig: NextAuthConfig = {
     ...baseConfig.callbacks, // keep the edge-safe bits
 
     // Node-only signIn logic (can hit DB and send mail)
-    async signIn({ user, account }) {
+    async signIn({ user, account, profile }) {
+      // For OAuth providers, link accounts by email
       if (account?.provider !== "credentials") {
-        const existingUser = await getUserByEmail(user.email!);
-        if (!existingUser) {
-          const { onBoardingMail } = await import("./lib/mail");
-          await onBoardingMail(user.email!, user.name || "");
+        try {
+          const existingUser = await db.user.findUnique({
+            where: { email: user.email! },
+          });
+          
+          // If user doesn't exist, create them
+          if (!existingUser) {
+            const { onBoardingMail } = await import("./lib/mail");
+            await onBoardingMail(user.email!, user.name || "");
+          } else {
+            // If user exists, link the OAuth account by updating the account
+            await db.account.updateMany({
+              where: {
+                userId: existingUser.id!,
+                provider: account?.provider,
+              },
+              data: {
+                access_token: account?.access_token,
+                refresh_token: account?.refresh_token,
+                expires_at: account?.expires_at,
+              },
+            });
+          }
+          return true;
+        } catch (error) {
+          console.error(`Error during ${account?.provider} sign-in:`, error);
+          return true; // Still allow sign-in, let adapter handle the rest
         }
-        return true;
       }
 
       const existingUser = await getUserById(user.id!);

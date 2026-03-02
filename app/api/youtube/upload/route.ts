@@ -1,4 +1,6 @@
 export const runtime = "nodejs";
+export const maxDuration = 300; // 5 minutes for large uploads
+export const preferredRegion = "auto";
 
 import { auth } from "@/auth";
 import { z } from "zod";
@@ -50,10 +52,16 @@ const getAccessToken = async () => {
 export async function POST(request: Request) {
   const session = await auth();
   if (!session?.user?.id) {
-    return Response.json({ success: false, error: "Unauthorized" }, { status: 401 });
+    return Response.json(
+      { success: false, error: "Unauthorized" },
+      { status: 401 },
+    );
   }
   if (session.user.role !== "TUTOR" && session.user.role !== "ADMIN") {
-    return Response.json({ success: false, error: "Forbidden" }, { status: 403 });
+    return Response.json(
+      { success: false, error: "Forbidden" },
+      { status: 403 },
+    );
   }
 
   try {
@@ -64,17 +72,23 @@ export async function POST(request: Request) {
       description: (formData.get("description") as string | null) ?? undefined,
     });
     if (!metadataParsed.success) {
-      return Response.json({ success: false, error: "Invalid upload metadata" }, { status: 400 });
+      return Response.json(
+        { success: false, error: "Invalid upload metadata" },
+        { status: 400 },
+      );
     }
 
     if (!file) {
-      return Response.json({ success: false, error: "No file provided" }, { status: 400 });
+      return Response.json(
+        { success: false, error: "No file provided" },
+        { status: 400 },
+      );
     }
 
     if (!file.type.startsWith("video/")) {
       return Response.json(
         { success: false, error: "Only video uploads are supported" },
-        { status: 400 }
+        { status: 400 },
       );
     }
     if (file.size <= 0 || file.size > MAX_UPLOAD_SIZE_BYTES) {
@@ -83,7 +97,7 @@ export async function POST(request: Request) {
           success: false,
           error: "Video file is too large. Maximum allowed size is 2GB.",
         },
-        { status: 400 }
+        { status: 400 },
       );
     }
 
@@ -113,7 +127,7 @@ export async function POST(request: Request) {
       const message = await initResponse.text();
       return Response.json(
         { success: false, error: `YouTube init error: ${message}` },
-        { status: 500 }
+        { status: 500 },
       );
     }
 
@@ -121,7 +135,7 @@ export async function POST(request: Request) {
     if (!uploadUrl) {
       return Response.json(
         { success: false, error: "YouTube upload URL not returned" },
-        { status: 500 }
+        { status: 500 },
       );
     }
 
@@ -139,7 +153,7 @@ export async function POST(request: Request) {
       const message = await uploadResponse.text();
       return Response.json(
         { success: false, error: `YouTube upload error: ${message}` },
-        { status: 500 }
+        { status: 500 },
       );
     }
 
@@ -147,7 +161,7 @@ export async function POST(request: Request) {
     if (!result.id) {
       return Response.json(
         { success: false, error: "YouTube response missing video ID" },
-        { status: 500 }
+        { status: 500 },
       );
     }
 
@@ -164,7 +178,7 @@ export async function POST(request: Request) {
     console.error("YouTube Upload Error:", error);
     return Response.json(
       { success: false, error: "Unknown YouTube upload error occurred" },
-      { status: 500 }
+      { status: 500 },
     );
   }
 }

@@ -25,6 +25,8 @@ type SessionItem = {
   duration: number;
   price: number;
   notes: string | null;
+  bookingMode: string;
+  paymentStatus: string;
   tutor: {
     name: string;
     image: string | null;
@@ -76,13 +78,34 @@ export default function StudentMentorshipPage() {
 
   const upcoming = useMemo(
     () =>
-      sessions.filter((s) => new Date(s.scheduledAt).getTime() >= Date.now()),
-    [sessions],
+      sessions.filter(
+        (s) =>
+          s.status !== "PENDING_MENTOR_REVIEW" &&
+          s.status !== "REJECTED" &&
+          new Date(s.scheduledAt).getTime() >= Date.now()
+      ),
+    [sessions]
   );
+
+  const pendingApprovals = useMemo(
+    () => sessions.filter((s) => s.status === "PENDING_MENTOR_REVIEW"),
+    [sessions]
+  );
+
+  const rejected = useMemo(
+    () => sessions.filter((s) => s.status === "REJECTED"),
+    [sessions]
+  );
+
   const history = useMemo(
     () =>
-      sessions.filter((s) => new Date(s.scheduledAt).getTime() < Date.now()),
-    [sessions],
+      sessions.filter(
+        (s) =>
+          s.status !== "PENDING_MENTOR_REVIEW" &&
+          s.status !== "REJECTED" &&
+          new Date(s.scheduledAt).getTime() < Date.now()
+      ),
+    [sessions]
   );
 
   const handleBook = async (mentor: Mentor) => {
@@ -129,25 +152,28 @@ export default function StudentMentorshipPage() {
           </p>
         </motion.div>
 
-        <Tabs defaultValue="upcoming" className="space-y-6">
-          <TabsList className="grid w-full grid-cols-3 bg-white/10 border border-white/20">
-            <TabsTrigger value="upcoming">
-              Upcoming ({upcoming.length})
+        <Tabs defaultValue="pending" className="space-y-6">
+          <TabsList className="grid w-full grid-cols-5 bg-white/10 border border-white/20">
+            <TabsTrigger value="pending" className="relative">
+              Awaiting Approval
+              {pendingApprovals.length > 0 && (
+                <span className="absolute top-1 right-1 w-2 h-2 bg-yellow-400 rounded-full"></span>
+              )}
             </TabsTrigger>
-            <TabsTrigger value="history">
-              History ({history.length})
-            </TabsTrigger>
+            <TabsTrigger value="upcoming">Upcoming ({upcoming.length})</TabsTrigger>
+            <TabsTrigger value="history">History ({history.length})</TabsTrigger>
+            <TabsTrigger value="rejected">Rejected ({rejected.length})</TabsTrigger>
             <TabsTrigger value="book">Book Mentor</TabsTrigger>
           </TabsList>
 
-          <TabsContent value="upcoming">
+          <TabsContent value="pending">
             <div className="grid gap-4">
               {loading ? (
                 <p className="text-gray-300">Loading sessions...</p>
-              ) : upcoming.length === 0 ? (
-                <p className="text-gray-300">No upcoming sessions.</p>
+              ) : pendingApprovals.length === 0 ? (
+                <p className="text-gray-300">No pending mentor approvals.</p>
               ) : (
-                upcoming.map((s) => (
+                pendingApprovals.map((s) => (
                   <Card key={s.id} className="glass-card border-white/10">
                     <CardContent className="p-5">
                       <div className="flex items-center justify-between">
@@ -190,6 +216,40 @@ export default function StudentMentorshipPage() {
                         {new Date(s.scheduledAt).toLocaleString()} ·{" "}
                         {s.duration} mins
                       </p>
+                    </CardContent>
+                  </Card>
+                ))
+              )}
+            </div>
+          </TabsContent>
+
+          <TabsContent value="rejected">
+            <div className="grid gap-4">
+              {rejected.length === 0 ? (
+                <p className="text-gray-300">No rejected requests.</p>
+              ) : (
+                rejected.map((s) => (
+                  <Card key={s.id} className="glass-card border-red-500/30 bg-red-900/10">
+                    <CardContent className="p-5">
+                      <div className="flex items-center justify-between">
+                        <div>
+                          <p className="text-white font-semibold">{s.title}</p>
+                          <p className="text-gray-400 text-sm">
+                            {new Date(s.scheduledAt).toLocaleString()} ·{" "}
+                            {s.duration} mins
+                          </p>
+                          <p className="text-red-400 text-sm mt-1">
+                            Mentor declined this request
+                          </p>
+                        </div>
+                        <Button
+                          onClick={() => setBookingMode("REQUEST")}
+                          variant="outline"
+                          className="border-red-500/30"
+                        >
+                          Request Again
+                        </Button>
+                      </div>
                     </CardContent>
                   </Card>
                 ))

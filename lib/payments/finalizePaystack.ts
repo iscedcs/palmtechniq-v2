@@ -3,6 +3,7 @@ import { db } from "@/lib/db";
 import { notify } from "@/lib/notify";
 import { getIO } from "@/lib/socket";
 import { computeCheckoutTotals, DEFAULT_VAT_RATE } from "@/lib/payments/pricing";
+import { createZoomMeeting } from "@/lib/zoom-integration";
 
 export async function finalizePaystackByReference(reference: string) {
   const tx = await db.transaction.findFirst({
@@ -49,13 +50,72 @@ export async function finalizePaystackByReference(reference: string) {
     if (isMentorshipPayment) {
       const mentorshipSessionId = metadata?.mentorshipSessionId as string | undefined;
       if (mentorshipSessionId) {
-        await px.mentorshipSession.update({
+        const session = await px.mentorshipSession.findUnique({
           where: { id: mentorshipSessionId },
-          data: {
-            status: "SCHEDULED",
-            notes: `PAYMENT_CONFIRMED | ${new Date(v.paid_at).toISOString()}`,
+          include: {
+            student: { select: { email: true, name: true } },
+            tutor: { select: { email: true, name: true } },
           },
         });
+
+        if (session) {
+          let meetingUrl = session.meetingUrl;
+
+          // Create Zoom meeting if not already created
+          if (!meetingUrl) {
+            try {
+              const zoomMeeting = await createZoomMeeting({
+                topic: session.title,
+                startTime: session.scheduledAt.toISOString(),
+                duration: session.duration,
+                mentorEmail: session.tutor.email,
+                studentEmail: session.student.email,
+                description: session.description || undefined,
+              });
+              meetingUrl = zoomMeeting.joinUrl;
+              
+              // Log Zoom creation for troubleshooting
+              console.log(`[Zoom Meeting Created] Session: ${mentorshipSessionId}, Meeting ID: ${zoomMeeting.meetingId}`);
+            } catch (error) {
+              // Fallback to manual meeting URL - log error but don't fail the payment
+              console.error(`[Zoom Meeting Creation Failed] Session: ${mentorshipSessionId}, Error: ${error}`);
+              meetingUrl = null; // Will prompt tutor to add manually
+            }
+          }
+
+          await px.mentorshipSession.update({
+            where: { id: mentorshipSessionId },
+            data: {
+              status: "SCHEDULED",
+              meetingUrl: meetingUrl || undefined,
+              paymentStatus: "PAID",
+              notes: `PAYMENT_CONFIRMED | ${new Date(v.paid_at).toISOString()}`,
+            },
+          });
+
+          // Emit notifications to both student and tutor
+          const io = getIO();
+          const tutorShare =
+            tx.tutorShareAmount ??
+            Number(((tx.amount || 0) * 0.7).toFixed(2));
+          if (io) {
+            notify.user(session.studentId, {
+              type: "payment",
+              title: "Mentorship Booking Confirmed",
+              message: `Your mentorship session "${session.title}" has been paid. The meeting will start at the scheduled time.`,
+              actionUrl: `/mentorship/session/${mentorshipSessionId}`,
+              actionLabel: "View Session",
+            });
+            
+            notify.user(session.tutorId, {
+              type: "payment",
+              title: "Mentorship Payment Received",
+              message: `Payment received for "${session.title}". You've earned ₦${tutorShare.toLocaleString()}.`,
+              actionUrl: `/tutor/mentorship`,
+              actionLabel: "View Sessions",
+            });
+          }
+        }
       }
 
       const tutorId = metadata?.tutorUserId as string | undefined;
