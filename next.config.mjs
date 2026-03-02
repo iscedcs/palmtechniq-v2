@@ -9,11 +9,6 @@ const nextConfig = {
   images: {
     unoptimized: true,
   },
-  api: {
-    bodyParser: {
-      sizeLimit: "1000mb",
-    },
-  },
   async headers() {
     const csp = [
       "default-src 'self'",

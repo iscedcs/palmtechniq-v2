@@ -13,6 +13,7 @@ import {
   studentRoutes,
   paymentRoutes,
 } from "@/routes";
+import { NextResponse } from "next/server";
 
 // Initialize authentication with the provided configuration
 const { auth } = NextAuth(authConfig);
@@ -50,6 +51,35 @@ export default auth((req) => {
     return;
   }
 
+  function addSecurityHeaders(response: NextResponse): NextResponse {
+    const csp = `
+    default-src 'self';
+    script-src 'self' 'unsafe-inline' 'unsafe-eval' https:;
+    style-src 'self' 'unsafe-inline' https:;
+    img-src 'self' data: blob: https:;
+    media-src 'self' blob: https:;
+    font-src 'self' data: https:;
+    connect-src 'self' https: wss:;
+    frame-src 'self' https://www.youtube.com https://www.youtube-nocookie.com;
+    form-action 'self' https://www.facebook.com;
+    object-src 'none';
+    frame-ancestors 'none';
+    base-uri 'self';
+  `.replace(/\n/g, "");
+
+    response.headers.set("Content-Security-Policy", csp);
+    response.headers.set("X-DNS-Prefetch-Control", "on");
+    response.headers.set(
+      "Strict-Transport-Security",
+      "max-age=63072000; includeSubDomains; preload",
+    );
+    response.headers.set("X-Frame-Options", "SAMEORIGIN");
+    response.headers.set("X-Content-Type-Options", "nosniff");
+    response.headers.set("Referrer-Policy", "strict-origin-when-cross-origin");
+
+    return response;
+  }
+
   // Handle authentication routes
   if (isAuthRoute) {
     if (isLoggedIn) {
@@ -80,7 +110,7 @@ export default auth((req) => {
       }
       const encodedCallbackUrl = encodeURIComponent(callbackUrl);
       return Response.redirect(
-        new URL(`/login?callbackUrl=${encodedCallbackUrl}`, nextUrl)
+        new URL(`/login?callbackUrl=${encodedCallbackUrl}`, nextUrl),
       );
     }
 
