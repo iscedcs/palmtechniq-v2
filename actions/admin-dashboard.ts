@@ -693,7 +693,9 @@ export async function getAdminCoursesPageData(params?: {
     id: course.id,
     title: course.title,
     status: course.status,
-    price: course.currentPrice ?? course.basePrice ?? course.price ?? 0,
+    price: (course.currentPrice && course.currentPrice > 0) 
+      ? course.currentPrice 
+      : (course.basePrice ?? course.price ?? 0),
     revenue: (revenueByCourse.get(course.id) ?? 0) / 100,
     enrollments: enrollmentCountByCourse.get(course.id) ?? 0,
     tutor: course.tutor?.user?.name || "Tutor",

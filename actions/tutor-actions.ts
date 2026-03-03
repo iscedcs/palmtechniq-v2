@@ -5,7 +5,12 @@ import { auth } from "@/auth";
 import { db } from "@/lib/db";
 import slugify from "slugify";
 
-import { courseSchema, courseDraftSchema, lessonSchema, moduleSchema } from "@/schemas";
+import {
+  courseSchema,
+  courseDraftSchema,
+  lessonSchema,
+  moduleSchema,
+} from "@/schemas";
 import { z } from "zod";
 import { toSlug } from "@/lib/utils";
 import { notify } from "@/lib/notify";
@@ -24,7 +29,7 @@ export async function createCourse(data: any, modulesData: any[] = []) {
     // Use relaxed validation for drafts, strict validation for publishing
     const isPublishing = Boolean(data.isPublished);
     const schemaToUse = isPublishing ? courseSchema : courseDraftSchema;
-    
+
     const validatedData = schemaToUse.safeParse({
       ...data,
       level: data.level?.toUpperCase().replace(" ", "_") || "BEGINNER",
@@ -51,12 +56,15 @@ export async function createCourse(data: any, modulesData: any[] = []) {
 
     if (!tutor) {
       throw new Error(
-        "Tutor profile not found for this user. Please contact support."
+        "Tutor profile not found for this user. Please contact support.",
       );
     }
 
     // Category is required for course creation
-    if (!validatedData.data.category || validatedData.data.category.trim() === "") {
+    if (
+      !validatedData.data.category ||
+      validatedData.data.category.trim() === ""
+    ) {
       return { error: "Please select a category for your course" };
     }
 
@@ -66,8 +74,8 @@ export async function createCourse(data: any, modulesData: any[] = []) {
           typeof validatedData.data.basePrice === "number"
             ? validatedData.data.basePrice
             : typeof validatedData.data.currentPrice === "number"
-            ? validatedData.data.currentPrice
-            : validatedData.data.price ?? 0;
+              ? validatedData.data.currentPrice
+              : (validatedData.data.price ?? 0);
         const resolvedCurrentPrice =
           typeof validatedData.data.currentPrice === "number"
             ? validatedData.data.currentPrice
@@ -95,8 +103,8 @@ export async function createCourse(data: any, modulesData: any[] = []) {
                 ? resolvedCurrentPrice < resolvedBasePrice * 0.7
                   ? "high"
                   : resolvedCurrentPrice < resolvedBasePrice * 0.9
-                  ? "medium"
-                  : "low"
+                    ? "medium"
+                    : "low"
                 : undefined,
             requirements: validatedData.data.requirements,
             outcomes: validatedData.data.outcomes,
@@ -178,7 +186,8 @@ export async function createCourse(data: any, modulesData: any[] = []) {
             const lessonPayload = {
               title: lesson.title ?? "",
               lessonType: lesson.lessonType ?? "VIDEO",
-              duration: typeof lesson.duration === "number" ? lesson.duration : 0,
+              duration:
+                typeof lesson.duration === "number" ? lesson.duration : 0,
               content: lesson.content ?? "",
               description: lesson.description ?? "",
               videoUrl: lesson.videoUrl ?? "",
@@ -213,7 +222,7 @@ export async function createCourse(data: any, modulesData: any[] = []) {
 
         return course;
       },
-      { timeout: 30000 }
+      { timeout: 30000 },
     );
 
     const requestedPublish = Boolean(validatedData.data.isPublished);
@@ -246,25 +255,29 @@ export async function createCourse(data: any, modulesData: any[] = []) {
     };
   } catch (error: any) {
     console.error("Error creating course:", error);
-    
+
     // Provide more specific error messages
     let errorMessage = "Failed to create course";
-    
+
     if (error instanceof z.ZodError) {
       errorMessage = error.issues[0].message;
     } else if (error instanceof Error) {
       // Handle specific Prisma/database errors
       if (error.message.includes("Unique constraint")) {
         errorMessage = "A course with this title already exists";
-      } else if (error.message.includes("Foreign key constraint") || error.message.includes("Record to connect not found")) {
-        errorMessage = "Invalid category selected. Please select a valid category.";
+      } else if (
+        error.message.includes("Foreign key constraint") ||
+        error.message.includes("Record to connect not found")
+      ) {
+        errorMessage =
+          "Invalid category selected. Please select a valid category.";
       } else if (error.message.includes("Tutor profile not found")) {
         errorMessage = error.message;
       } else {
         errorMessage = error.message || "Failed to create course";
       }
     }
-    
+
     return { error: errorMessage };
   }
 }
@@ -285,7 +298,8 @@ export async function addModuleToCourse(courseId: string, moduleData: any) {
       title: moduleData.title ?? "",
       description: moduleData.description ?? "",
       content: moduleData.content ?? "",
-      duration: typeof moduleData.duration === "number" ? moduleData.duration : 0,
+      duration:
+        typeof moduleData.duration === "number" ? moduleData.duration : 0,
       sortOrder:
         typeof moduleData.sortOrder === "number" ? moduleData.sortOrder : 0,
       isPublished: Boolean(moduleData.isPublished),
@@ -307,7 +321,7 @@ export async function addModuleToCourse(courseId: string, moduleData: any) {
     if (io) {
       const sockets = await io.in(`course:${courseId}`).allSockets();
       console.log(
-        `course:${courseId} ${newModule.id} sockets = ${sockets.size}`
+        `course:${courseId} ${newModule.id} sockets = ${sockets.size}`,
       );
     }
     await notify.course(courseId, {
@@ -328,7 +342,7 @@ export async function addModuleToCourse(courseId: string, moduleData: any) {
 
 export async function removeModuleFromCourse(
   courseId: string,
-  moduleId: string
+  moduleId: string,
 ) {
   const session = await auth();
   if (!session?.user?.id) {
@@ -365,7 +379,7 @@ export async function removeModuleFromCourse(
 export async function addLessonToModule(
   courseId: string,
   moduleId: string,
-  lessonData: any
+  lessonData: any,
 ) {
   const session = await auth();
   if (!session?.user?.id) {
@@ -384,7 +398,8 @@ export async function addLessonToModule(
     const lessonPayload = {
       title: lessonData.title ?? "",
       lessonType: lessonData.lessonType ?? "VIDEO",
-      duration: typeof lessonData.duration === "number" ? lessonData.duration : 0,
+      duration:
+        typeof lessonData.duration === "number" ? lessonData.duration : 0,
       content: lessonData.content ?? "",
       description: lessonData.description ?? "",
       videoUrl: lessonData.videoUrl ?? "",
@@ -412,7 +427,7 @@ export async function addLessonToModule(
     if (io) {
       const sockets = await io.in(`course:${courseId}`).allSockets();
       console.log(
-        `course:${courseId},${newLesson.id} sockets = ${sockets.size}`
+        `course:${courseId},${newLesson.id} sockets = ${sockets.size}`,
       );
     }
     await notify.course(courseId, {
@@ -439,7 +454,7 @@ export async function addLessonToModule(
 export async function updateLessonVideo(
   lessonId: string,
   videoUrl: string,
-  duration?: number
+  duration?: number,
 ) {
   const session = await auth();
   if (!session?.user?.id) {
@@ -478,7 +493,7 @@ export async function updateLessonVideo(
 export async function removeLessonFromModule(
   courseId: string,
   moduleId: string,
-  lessonId: string
+  lessonId: string,
 ) {
   const session = await auth();
   if (!session?.user?.id) {
@@ -516,7 +531,7 @@ export async function removeLessonFromModule(
 
 export async function uploadCourseFile(
   formData: FormData,
-  type: "thumbnail" | "video"
+  type: "thumbnail" | "video",
 ) {
   const session = await auth();
   if (!session?.user?.id || session.user.role !== "TUTOR") {
@@ -550,7 +565,7 @@ export async function uploadCourseFile(
 
     const uploadFormData = new FormData();
     Object.entries(fields).forEach(([key, value]) =>
-      uploadFormData.append(key, value as string)
+      uploadFormData.append(key, value as string),
     );
     uploadFormData.append("file", file);
 
