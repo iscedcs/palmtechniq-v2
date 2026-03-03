@@ -54,7 +54,9 @@ export default function CheckoutCoursePage({
   pricing,
   groupTier,
   onProceed,
-}: CheckoutCoursePageProps & { onProceed: (promoCode?: string) => Promise<void> }) {
+}: CheckoutCoursePageProps & {
+  onProceed: (promoCode?: string) => Promise<void>;
+}) {
   const router = useRouter();
   const [applyingCode, setApplyingCode] = useState(false);
   const [coupon, setCoupon] = useState("");
@@ -68,18 +70,21 @@ export default function CheckoutCoursePage({
       const base = Math.max(0, pricingState.basePrice || 0);
       const current = Math.max(0, pricingState.currentPrice || 0);
 
-      // If discount % not provided, derive from base/current
-      const derivedPct =
-        base > 0 && current < base
-          ? Math.round(((base - current) / base) * 100)
-          : 0;
+      // Only calculate discount if currentPrice is explicitly set (> 0) and less than basePrice
+      // A currentPrice of 0 means no discount was set, not a 100% discount
+      const hasDiscount = current > 0 && current < base;
+      const derivedPct = hasDiscount
+        ? Math.round(((base - current) / base) * 100)
+        : 0;
 
       const pct =
         pricingState.discountPercent ?? (derivedPct > 0 ? derivedPct : 0);
-      const discountAmt =
-        base > current ? base - current : Math.round((base * pct) / 100);
+      const discountAmt = hasDiscount
+        ? base - current
+        : Math.round((base * pct) / 100);
 
-      const subtotal = current; // the price user pays before VAT (if you charge VAT)
+      // If no discount, use base price as the subtotal
+      const subtotal = hasDiscount ? current : base;
       const vatRate = pricingState.vatRate ?? 0;
       const vatAmt = Math.round(subtotal * vatRate);
       const total = subtotal + vatAmt;
@@ -215,7 +220,7 @@ export default function CheckoutCoursePage({
                     <div className="flex items-center justify-center space-x-2 p-3 bg-green-500/10 border border-green-500/30 rounded-lg">
                       <Shield className="w-5 h-5 text-green-400" />
                       <span className="text-green-400 text-sm font-semibold">
-                        30-day money-back guarantee
+                        We guarantee value for your money!
                       </span>
                     </div>
                   </CardContent>
@@ -311,7 +316,9 @@ export default function CheckoutCoursePage({
                         />
                         <Button
                           variant="outline"
-                          disabled={!coupon || applyingCode || Boolean(groupTier)}
+                          disabled={
+                            !coupon || applyingCode || Boolean(groupTier)
+                          }
                           onClick={async () => {
                             if (!courseId) return;
                             setPromoError(null);
@@ -339,7 +346,9 @@ export default function CheckoutCoursePage({
                                 setAppliedPromo(coupon.trim().toUpperCase());
                               }
                             } catch (error: any) {
-                              setPromoError("Promo code is invalid or expired.");
+                              setPromoError(
+                                "Promo code is invalid or expired.",
+                              );
                               setAppliedPromo(null);
                             } finally {
                               setApplyingCode(false);
