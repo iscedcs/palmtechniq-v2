@@ -92,6 +92,7 @@ export default function CreateCourse() {
     hasCategory: false,
     hasModules: false,
     hasThreeLessons: false,
+    hasLessonTitles: false,
     hasThumbnail: false,
     hasPrice: false,
   });
@@ -163,6 +164,9 @@ export default function CreateCourse() {
       ...prev,
       hasModules: modules.length > 0,
       hasThreeLessons: modules.length > 0 && modules.every((mod) => mod.lessons.length >= 3),
+      hasLessonTitles: modules.length > 0 && modules.every((mod) => 
+        mod.lessons.length > 0 && mod.lessons.every((lesson) => lesson.title?.trim())
+      ),
     }));
   }, [modules, form]);
 
@@ -183,6 +187,9 @@ export default function CreateCourse() {
         hasCategory: Boolean(values.category && values.category.trim()),
         hasModules: modulesRef.current.length > 0,
         hasThreeLessons: modulesRef.current.length > 0 && modulesRef.current.every((mod) => mod.lessons.length >= 3),
+        hasLessonTitles: modulesRef.current.length > 0 && modulesRef.current.every((mod) => 
+          mod.lessons.length > 0 && mod.lessons.every((lesson) => lesson.title?.trim())
+        ),
         hasThumbnail: Boolean(values.thumbnail),
         hasPrice: typeof values.price === "number" && values.price >= 0,
       });
@@ -426,6 +433,7 @@ export default function CreateCourse() {
                             !publishReady.hasCategory ||
                             !publishReady.hasModules ||
                             !publishReady.hasThreeLessons ||
+                            !publishReady.hasLessonTitles ||
                             !publishReady.hasThumbnail
                           }>
                           {isPending ? (
@@ -463,6 +471,9 @@ export default function CreateCourse() {
                         </li>
                         <li className={`flex items-center gap-2 ${publishReady.hasThreeLessons ? "text-green-400" : "text-red-400"}`}>
                           {publishReady.hasThreeLessons ? "✓" : "✗"} At least 3 lessons per module
+                        </li>
+                        <li className={`flex items-center gap-2 ${publishReady.hasLessonTitles ? "text-green-400" : "text-red-400"}`}>
+                          {publishReady.hasLessonTitles ? "✓" : "✗"} All lessons have titles
                         </li>
                         <li className={`flex items-center gap-2 ${publishReady.hasThumbnail ? "text-green-400" : "text-red-400"}`}>
                           {publishReady.hasThumbnail ? "✓" : "✗"} Course thumbnail uploaded

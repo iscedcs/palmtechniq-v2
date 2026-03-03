@@ -97,12 +97,17 @@ export function CourseEditClient({
   const watchedValues = form.watch();
   
   // Calculate if all publishing requirements are met
+  const allLessonsHaveTitles = modules.length > 0 && modules.every((mod: any) => 
+    mod.lessons?.length > 0 && mod.lessons.every((lesson: any) => lesson.title?.trim())
+  );
+  
   const canPublish = 
     Boolean(watchedValues.title?.trim()) &&
     Boolean(watchedValues.description?.trim()) &&
     Boolean(watchedValues.category?.trim()) &&
     modules.length > 0 &&
     modules.every((mod: any) => mod.lessons?.length >= 3) &&
+    allLessonsHaveTitles &&
     Boolean(watchedValues.thumbnail) &&
     typeof watchedValues.basePrice === "number" && watchedValues.basePrice >= 0;
 

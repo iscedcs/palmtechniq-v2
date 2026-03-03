@@ -48,6 +48,12 @@ export default function CourseSettingsForm({
       complete: modules.length > 0 && modules.every((mod) => mod.lessons?.length >= 3),
     },
     {
+      label: "All lessons have titles",
+      complete: modules.length > 0 && modules.every((mod: any) => 
+        mod.lessons?.length > 0 && mod.lessons.every((lesson: any) => lesson.title?.trim())
+      ),
+    },
+    {
       label: "Course thumbnail uploaded",
       complete: Boolean(watchedValues.thumbnail),
     },

@@ -108,32 +108,44 @@ export function LessonQuizEditor({
       />
 
       {/* Numeric Inputs */}
-      <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
-        <Input
-          type="number"
-          min={1}
-          value={timeLimit}
-          onChange={(e) => setTimeLimit(Number(e.target.value))}
-          placeholder="Time Limit (mins)"
-          className="bg-white/10 border-white/20 text-white"
-        />
-        <Input
-          type="number"
-          min={0}
-          max={100}
-          value={passingScore}
-          onChange={(e) => setPassingScore(Number(e.target.value))}
-          placeholder="Passing Score (%)"
-          className="bg-white/10 border-white/20 text-white"
-        />
-        <Input
-          type="number"
-          min={1}
-          value={maxAttempts}
-          onChange={(e) => setMaxAttempts(Number(e.target.value))}
-          placeholder="Max Attempts"
-          className="bg-white/10 border-white/20 text-white"
-        />
+      <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
+        <div className="space-y-2">
+          <label className="text-sm font-medium text-white/80">Time Limit (minutes)</label>
+          <Input
+            type="number"
+            min={1}
+            value={timeLimit}
+            onChange={(e) => setTimeLimit(Number(e.target.value))}
+            placeholder="e.g. 10"
+            className="bg-white/10 border-white/20 text-white"
+          />
+          <p className="text-xs text-white/50">How long students have to complete the quiz</p>
+        </div>
+        <div className="space-y-2">
+          <label className="text-sm font-medium text-white/80">Passing Score (%)</label>
+          <Input
+            type="number"
+            min={0}
+            max={100}
+            value={passingScore}
+            onChange={(e) => setPassingScore(Number(e.target.value))}
+            placeholder="e.g. 70"
+            className="bg-white/10 border-white/20 text-white"
+          />
+          <p className="text-xs text-white/50">Minimum percentage required to pass</p>
+        </div>
+        <div className="space-y-2">
+          <label className="text-sm font-medium text-white/80">Max Attempts</label>
+          <Input
+            type="number"
+            min={1}
+            value={maxAttempts}
+            onChange={(e) => setMaxAttempts(Number(e.target.value))}
+            placeholder="e.g. 3"
+            className="bg-white/10 border-white/20 text-white"
+          />
+          <p className="text-xs text-white/50">Number of times students can retake the quiz</p>
+        </div>
       </div>
 
       {/* Questions */}
