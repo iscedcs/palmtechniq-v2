@@ -14,7 +14,7 @@ export async function getPublicCourses() {
         include: { user: true },
       },
     },
-    orderBy: { createdAt: "desc" },
+    orderBy: [{ publishedAt: "desc" }, { createdAt: "desc" }],
   });
 
   return courses.map((course) => {

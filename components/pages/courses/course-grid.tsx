@@ -72,13 +72,17 @@ export default function CoursesGrid({
       return matchesSearch && matchesCategory;
     })
     .sort((a, b) => {
+      // Helper to get display price (currentPrice if > 0, else basePrice)
+      const getDisplayPrice = (course: CourseItem) => 
+        course.currentPrice && course.currentPrice > 0 ? course.currentPrice : course.basePrice ?? course.price ?? 0;
+      
       switch (sortBy) {
         case "rating":
           return b.averageRating! - a.averageRating!;
         case "price-low":
-          return (a.currentPrice ?? a.price) - (b.currentPrice ?? b.price);
+          return getDisplayPrice(a) - getDisplayPrice(b);
         case "price-high":
-          return (b.currentPrice ?? b.price) - (a.currentPrice ?? a.price);
+          return getDisplayPrice(b) - getDisplayPrice(a);
         case "popular":
         default:
           return b.totalStudents! - a.totalStudents!;

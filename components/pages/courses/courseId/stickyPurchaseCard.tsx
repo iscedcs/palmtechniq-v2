@@ -23,6 +23,9 @@ export default function StickyPurchaseCard({
   isEnrolled,
   isInCart,
   courseId,
+  courseTitle,
+  courseDescription,
+  courseThumbnail,
 }: {
   currentPrice: number;
   originalPrice?: number;
@@ -35,6 +38,9 @@ export default function StickyPurchaseCard({
   isEnrolled: boolean;
   isInCart: boolean;
   courseId: string;
+  courseTitle?: string;
+  courseDescription?: string;
+  courseThumbnail?: string;
 }) {
   const { status } = useSession();
   const [isWishlisted, setIsWishlisted] = useState(false);
@@ -73,12 +79,25 @@ export default function StickyPurchaseCard({
 
   const handleShare = async () => {
     const shareUrl = `${window.location.origin}/courses/${courseId}`;
+    const shareTitle = courseTitle || "Check out this course!";
+    const shareText = courseDescription 
+      ? `${courseTitle} - ${courseDescription.slice(0, 100)}${courseDescription.length > 100 ? '...' : ''}`
+      : `I found this amazing course on PalmTechnIQ — check it out!`;
+    
     if (navigator.share) {
-      await navigator.share({
-        title: "Check out this course!",
-        text: "I found this amazing course on PalmTechnIQ — check it out!",
-        url: shareUrl,
-      });
+      try {
+        await navigator.share({
+          title: shareTitle,
+          text: shareText,
+          url: shareUrl,
+        });
+      } catch (err) {
+        // User cancelled or share failed
+        if ((err as Error).name !== 'AbortError') {
+          await navigator.clipboard.writeText(shareUrl);
+          toast.success("Course link copied to clipboard!");
+        }
+      }
     } else {
       await navigator.clipboard.writeText(shareUrl);
       toast.success("Course link copied to clipboard!");

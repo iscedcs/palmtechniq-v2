@@ -12,6 +12,51 @@ import CourseNotFoundSkeleton from "@/components/shared/skeleton/course-not-foun
 import { GroupBuyingWidget } from "@/components/group-buying";
 import { getMyGroupPurchase } from "@/actions/group-purchase";
 import { getAverageRating } from "@/lib/reviews";
+import type { Metadata } from "next";
+
+export async function generateMetadata(props: {
+  params: Promise<{ courseId: string }>;
+}): Promise<Metadata> {
+  const { courseId } = await props.params;
+  const course = await getCourseById(courseId);
+
+  if (!course) {
+    return {
+      title: "Course Not Found | PalmTechnIQ",
+      description: "The course you're looking for doesn't exist.",
+    };
+  }
+
+  const description =
+    course.description?.slice(0, 160) || "Learn with PalmTechnIQ";
+
+  return {
+    title: `${course.title} | PalmTechnIQ`,
+    description,
+    openGraph: {
+      title: course.title,
+      description,
+      images: course.thumbnail
+        ? [
+            {
+              url: course.thumbnail,
+              width: 1200,
+              height: 630,
+              alt: course.title,
+            },
+          ]
+        : [],
+      type: "website",
+      siteName: "PalmTechnIQ",
+    },
+    twitter: {
+      card: "summary_large_image",
+      title: course.title,
+      description,
+      images: course.thumbnail ? [course.thumbnail] : [],
+    },
+  };
+}
 
 export default async function CourseSlugPage(props: {
   params: Promise<{ courseId: string }>;
@@ -137,15 +182,29 @@ export default async function CourseSlugPage(props: {
               </div>
             ) : null}
             <StickyPurchaseCard
-              currentPrice={course.currentPrice!}
+              currentPrice={
+                course.currentPrice && course.currentPrice > 0
+                  ? course.currentPrice
+                  : (course.basePrice ?? 0)
+              }
               originalPrice={
-                course.groupBuyingDiscount && course.groupBuyingDiscount > 0
-                  ? course.basePrice!
+                course.currentPrice &&
+                course.currentPrice > 0 &&
+                course.basePrice &&
+                course.basePrice > course.currentPrice
+                  ? course.basePrice
                   : undefined
               }
               discount={
-                course.groupBuyingDiscount && course.groupBuyingDiscount > 0
-                  ? course.groupBuyingDiscount
+                course.currentPrice &&
+                course.currentPrice > 0 &&
+                course.basePrice &&
+                course.basePrice > course.currentPrice
+                  ? Math.round(
+                      ((course.basePrice - course.currentPrice) /
+                        course.basePrice) *
+                        100,
+                    )
                   : undefined
               }
               duration={`${totalLessonDuration} mins`}
@@ -156,6 +215,9 @@ export default async function CourseSlugPage(props: {
               isEnrolled={isEnrolled}
               isInCart={false}
               courseId={course.id}
+              courseTitle={course.title}
+              courseDescription={course.description}
+              courseThumbnail={course.thumbnail ?? undefined}
             />
           </div>
         </div>
