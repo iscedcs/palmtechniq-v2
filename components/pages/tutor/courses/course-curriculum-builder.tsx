@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useMemo, useEffect, Dispatch, SetStateAction } from "react";
+import { useState, useMemo, Dispatch, SetStateAction } from "react";
 import { motion, AnimatePresence } from "framer-motion";
 import {
   DndContext,
@@ -73,20 +73,8 @@ export default function CourseCurriculumBuilder({
   const [expandedModule, setExpandedModule] = useState<string | null>(null);
   const [lessonUploading, setLessonUploading] = useState(false);
 
-  // --- Local Draft Persistence
-  useEffect(() => {
-    const subscription = form.watch((values) => {
-      localStorage.setItem("courseBasicInfoDraft", JSON.stringify(values));
-    });
-    return () => subscription.unsubscribe?.();
-  }, [form]);
-
-  useEffect(() => {
-    const saved = localStorage.getItem("courseBasicInfoDraft");
-    if (saved) {
-      form.reset(JSON.parse(saved));
-    }
-  }, []);
+  // Note: Form state is managed by the parent CreateCourse component
+  // Do not reset form here to avoid overwriting other form values
 
   // ✅ Only start dragging when moving >5px — allows clicking
   const sensors = useSensors(

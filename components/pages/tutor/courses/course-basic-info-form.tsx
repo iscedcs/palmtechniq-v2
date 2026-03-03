@@ -22,7 +22,7 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import UploadFile from "@/components/shared/uploader";
 import { Badge } from "@/components/ui/badge";
 import { Plus, X, ChevronDown, ChevronUp } from "lucide-react";
-import { useEffect, useState } from "react";
+import { useState } from "react";
 import { useFormContext } from "react-hook-form";
 import {
   Collapsible,
@@ -56,20 +56,8 @@ export default function CourseBasicInfoForm({
     outcomes: false,
   });
 
-  // --- Local Draft Persistence
-  useEffect(() => {
-    const subscription = form.watch((values) => {
-      localStorage.setItem("courseBasicInfoDraft", JSON.stringify(values));
-    });
-    return () => subscription.unsubscribe?.();
-  }, [form]);
-
-  useEffect(() => {
-    const saved = localStorage.getItem("courseBasicInfoDraft");
-    if (saved) {
-      form.reset(JSON.parse(saved));
-    }
-  }, []);
+  // Note: Form state is managed by the parent CreateCourse component
+  // Do not reset form here to avoid overwriting other form values
 
   // --- Dynamic list handlers
   const addItem = (

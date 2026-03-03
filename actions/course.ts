@@ -13,7 +13,7 @@ export async function updateCourse(
   courseId: string,
   values: z.infer<typeof courseSchema>,
   modules: any[],
-  isPublished: boolean
+  isPublished: boolean,
 ) {
   try {
     const session = await auth();
@@ -48,7 +48,7 @@ export async function updateCourse(
     const connectTags = existingTags.map((tag) => ({ id: tag.id }));
 
     const newTagNames = validatedCourse.data.tags.filter(
-      (tagName) => !existingTags.some((t) => t.name === tagName)
+      (tagName) => !existingTags.some((t) => t.name === tagName),
     );
 
     const createTags = newTagNames.map((name) => ({ name }));
@@ -68,8 +68,8 @@ export async function updateCourse(
       typeof validatedCourse.data.basePrice === "number"
         ? validatedCourse.data.basePrice
         : typeof validatedCourse.data.currentPrice === "number"
-        ? validatedCourse.data.currentPrice
-        : validatedCourse.data.price ?? 0;
+          ? validatedCourse.data.currentPrice
+          : (validatedCourse.data.price ?? 0);
     const resolvedCurrentPrice =
       typeof validatedCourse.data.currentPrice === "number"
         ? validatedCourse.data.currentPrice
@@ -113,7 +113,7 @@ export async function updateCourse(
       });
     } else if (incomingTiers.length > 0) {
       const incomingIds = new Set(
-        incomingTiers.map((tier) => tier.id).filter(Boolean) as string[]
+        incomingTiers.map((tier) => tier.id).filter(Boolean) as string[],
       );
 
       for (const tier of incomingTiers) {
@@ -151,7 +151,7 @@ export async function updateCourse(
         });
         const lockedTierIds = new Set(lockedTiers.map((t) => t.tierId));
         const safeToDisable = tiersToDisable.filter(
-          (id) => !lockedTierIds.has(id)
+          (id) => !lockedTierIds.has(id),
         );
 
         if (safeToDisable.length > 0) {
@@ -183,7 +183,7 @@ export async function updateCourse(
 
       const moduleDuration = (module.lessons || []).reduce(
         (sum: number, lesson: any) => sum + (lesson.duration || 0),
-        0
+        0,
       );
       let savedModule;
 
@@ -348,7 +348,16 @@ export async function publishCourse(courseId: string) {
 
     const courseOwner = await db.course.findUnique({
       where: { id: courseId },
-      select: { id: true, tutor: { select: { userId: true } } },
+      select: {
+        id: true,
+        title: true,
+        description: true,
+        thumbnail: true,
+        basePrice: true,
+        price: true,
+        category: { select: { id: true } },
+        tutor: { select: { userId: true } },
+      },
     });
     if (!courseOwner) return { error: "Course not found" };
     if (
@@ -358,10 +367,53 @@ export async function publishCourse(courseId: string) {
       return { error: "Unauthorized" };
     }
 
+    // Validate publishing requirements
+    const missingRequirements: string[] = [];
+
+    if (!courseOwner.title?.trim()) {
+      missingRequirements.push("Course title is required");
+    }
+    if (!courseOwner.description?.trim()) {
+      missingRequirements.push("Course description is required");
+    }
+    if (!courseOwner.thumbnail) {
+      missingRequirements.push("Course thumbnail is required");
+    }
+    if (!courseOwner.category?.id) {
+      missingRequirements.push("Course category is required");
+    }
+    if (
+      typeof courseOwner.basePrice !== "number" ||
+      courseOwner.basePrice < 0
+    ) {
+      if (typeof courseOwner.price !== "number" || courseOwner.price < 0) {
+        missingRequirements.push("Course price must be set");
+      }
+    }
+
     const modules = await db.courseModule.findMany({
       where: { courseId },
       include: { lessons: true },
     });
+
+    if (modules.length === 0) {
+      missingRequirements.push("At least 1 module is required");
+    }
+
+    for (const module of modules) {
+      if (module.lessons.length < 3) {
+        missingRequirements.push(
+          `Module "${module.title || "Untitled"}" needs at least 3 lessons`,
+        );
+      }
+    }
+
+    if (missingRequirements.length > 0) {
+      return {
+        error: `Cannot publish: ${missingRequirements[0]}`,
+        missingRequirements,
+      };
+    }
 
     for (const module of modules) {
       const validatedModule = moduleSchema.safeParse({
@@ -374,7 +426,10 @@ export async function publishCourse(courseId: string) {
       });
 
       if (!validatedModule.success) {
-        return { success: false, error: validatedModule.error.issues[0].message };
+        return {
+          success: false,
+          error: validatedModule.error.issues[0].message,
+        };
       }
 
       for (const lesson of module.lessons) {
