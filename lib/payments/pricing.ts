@@ -71,10 +71,13 @@ export function computeCheckoutTotals({
   const preliminary = courses.map((course) => {
     const basePrice =
       course.basePrice ??
-      course.currentPrice ??
+      (course.currentPrice && course.currentPrice > 0 ? course.currentPrice : null) ??
       course.price ??
       0;
-    const currentPrice = course.currentPrice ?? course.price ?? basePrice;
+    // Only use currentPrice if it's explicitly set (> 0), otherwise fall back to basePrice
+    const currentPrice = (course.currentPrice && course.currentPrice > 0) 
+      ? course.currentPrice 
+      : (course.price ?? basePrice);
 
     const promoApplies = promoAppliesToCourse(promo, course);
     let promoDiscount = 0;
