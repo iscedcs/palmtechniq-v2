@@ -57,20 +57,8 @@ export default function CoursePricingForm({ form }: CoursePricingFormProps) {
     name: "groupTiers",
   });
 
-  // --- Local Draft Persistence
-  useEffect(() => {
-    const subscription = form.watch((values) => {
-      localStorage.setItem("coursePricingDraft", JSON.stringify(values));
-    });
-    return () => subscription.unsubscribe?.();
-  }, [form]);
-
-  useEffect(() => {
-    const saved = localStorage.getItem("coursePricingDraft");
-    if (saved) {
-      form.reset(JSON.parse(saved));
-    }
-  }, []);
+  // Note: Form state is managed by the parent CreateCourse component
+  // Do not reset form here to avoid overwriting other form values
 
   return (
     <motion.div

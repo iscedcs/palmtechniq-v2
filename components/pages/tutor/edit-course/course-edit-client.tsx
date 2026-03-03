@@ -93,6 +93,19 @@ export function CourseEditClient({
 
   const [modules, setModules] = useState(course.modules || []);
 
+  // Watch form values for reactive publishing requirements
+  const watchedValues = form.watch();
+  
+  // Calculate if all publishing requirements are met
+  const canPublish = 
+    Boolean(watchedValues.title?.trim()) &&
+    Boolean(watchedValues.description?.trim()) &&
+    Boolean(watchedValues.category?.trim()) &&
+    modules.length > 0 &&
+    modules.every((mod: any) => mod.lessons?.length >= 3) &&
+    Boolean(watchedValues.thumbnail) &&
+    typeof watchedValues.basePrice === "number" && watchedValues.basePrice >= 0;
+
   // 📌 Tags
   const [currentTag, setCurrentTag] = useState("");
 
@@ -551,8 +564,9 @@ export function CourseEditClient({
                       onClick={form.handleSubmit((data) =>
                         onSubmit(data, true),
                       )}
-                      className="w-full sm:w-auto bg-gradient-to-r from-neon-green to-emerald-400">
-                      Update Course
+                      disabled={isPending || !canPublish}
+                      className={`w-full sm:w-auto bg-gradient-to-r from-neon-green to-emerald-400 ${!canPublish ? 'opacity-50 cursor-not-allowed' : ''}`}>
+                      {isPending ? "Updating..." : "Update Course"}
                     </Button>
                   </div>
                 </form>
