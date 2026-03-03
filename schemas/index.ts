@@ -61,6 +61,7 @@ export const resetPasswordSchema = z
     path: ["confirmPassword"],
   });
 
+// Base course schema for publishing (strict validation)
 export const courseSchema = z.object({
   title: z.string().min(1, "Title is required"),
   subtitle: z.string().min(1, "Subtitle is required"),
@@ -118,6 +119,18 @@ export const courseSchema = z.object({
     .optional(),
   metaTitle: z.string().optional(),
   metaDescription: z.string().optional(),
+});
+
+// Draft course schema (relaxed validation for saving drafts)
+export const courseDraftSchema = courseSchema.extend({
+  title: z.string().min(1, "Title is required"),
+  subtitle: z.string().optional().default(""),
+  description: z.string().optional().default(""),
+  category: z.string().optional().default(""),
+  thumbnail: z.string().optional().default(""),
+  tags: z.array(z.string()).default([]),
+  requirements: z.array(z.string()).default([]),
+  outcomes: z.array(z.string()).default([]),
 });
 
 export const moduleSchema = z.object({
