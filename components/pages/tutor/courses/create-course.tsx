@@ -85,6 +85,17 @@ export default function CreateCourse() {
   const modulesRef = useRef<CourseModule[]>([]);
   const draftKey = "courseCreateDraft";
 
+  // Track publishing requirements reactively
+  const [publishReady, setPublishReady] = useState({
+    hasTitle: false,
+    hasDescription: false,
+    hasCategory: false,
+    hasModules: false,
+    hasThreeLessons: false,
+    hasThumbnail: false,
+    hasPrice: false,
+  });
+
   const defaultValues: z.infer<typeof courseSchema> = {
     title: "",
     subtitle: "",
@@ -146,7 +157,14 @@ export default function CreateCourse() {
     } catch (err) {
       console.warn("Failed to store course draft", err);
     }
-  }, [modules]);
+    // Update module-related publishing requirements when modules change
+    const values = form.getValues();
+    setPublishReady((prev) => ({
+      ...prev,
+      hasModules: modules.length > 0,
+      hasThreeLessons: modules.length > 0 && modules.every((mod) => mod.lessons.length >= 3),
+    }));
+  }, [modules, form]);
 
   useEffect(() => {
     const subscription = form.watch((values) => {
@@ -158,6 +176,16 @@ export default function CreateCourse() {
       } catch (err) {
         console.warn("Failed to store course draft", err);
       }
+      // Update publishing requirements reactively
+      setPublishReady({
+        hasTitle: Boolean(values.title && values.title.trim()),
+        hasDescription: Boolean(values.description && values.description.trim()),
+        hasCategory: Boolean(values.category && values.category.trim()),
+        hasModules: modulesRef.current.length > 0,
+        hasThreeLessons: modulesRef.current.length > 0 && modulesRef.current.every((mod) => mod.lessons.length >= 3),
+        hasThumbnail: Boolean(values.thumbnail),
+        hasPrice: typeof values.price === "number" && values.price >= 0,
+      });
     });
     return () => subscription.unsubscribe?.();
   }, [form]);
@@ -393,11 +421,12 @@ export default function CreateCourse() {
                           }`}
                           disabled={
                             isPending ||
-                            !form.getValues("title") ||
-                            !form.getValues("description") ||
-                            modules.length === 0 ||
-                            modules.some((mod) => mod.lessons.length < 3) ||
-                            !form.getValues("thumbnail")
+                            !publishReady.hasTitle ||
+                            !publishReady.hasDescription ||
+                            !publishReady.hasCategory ||
+                            !publishReady.hasModules ||
+                            !publishReady.hasThreeLessons ||
+                            !publishReady.hasThumbnail
                           }>
                           {isPending ? (
                             <>
@@ -414,6 +443,33 @@ export default function CreateCourse() {
                       )}
                     </div>
                   </div>
+
+                  {/* Publishing Requirements Checklist */}
+                  {currentStep === 3 && (
+                    <div className="mt-6 p-4 bg-white/5 border border-white/10 rounded-lg">
+                      <h4 className="text-white font-semibold mb-3">Publishing Checklist</h4>
+                      <ul className="space-y-2 text-sm">
+                        <li className={`flex items-center gap-2 ${publishReady.hasTitle ? "text-green-400" : "text-red-400"}`}>
+                          {publishReady.hasTitle ? "✓" : "✗"} Course title
+                        </li>
+                        <li className={`flex items-center gap-2 ${publishReady.hasDescription ? "text-green-400" : "text-red-400"}`}>
+                          {publishReady.hasDescription ? "✓" : "✗"} Course description
+                        </li>
+                        <li className={`flex items-center gap-2 ${publishReady.hasCategory ? "text-green-400" : "text-red-400"}`}>
+                          {publishReady.hasCategory ? "✓" : "✗"} Category selected
+                        </li>
+                        <li className={`flex items-center gap-2 ${publishReady.hasModules ? "text-green-400" : "text-red-400"}`}>
+                          {publishReady.hasModules ? "✓" : "✗"} At least 1 module
+                        </li>
+                        <li className={`flex items-center gap-2 ${publishReady.hasThreeLessons ? "text-green-400" : "text-red-400"}`}>
+                          {publishReady.hasThreeLessons ? "✓" : "✗"} At least 3 lessons per module
+                        </li>
+                        <li className={`flex items-center gap-2 ${publishReady.hasThumbnail ? "text-green-400" : "text-red-400"}`}>
+                          {publishReady.hasThumbnail ? "✓" : "✗"} Course thumbnail uploaded
+                        </li>
+                      </ul>
+                    </div>
+                  )}
                 </CardContent>
               </Card>
             </form>

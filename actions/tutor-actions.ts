@@ -5,7 +5,7 @@ import { auth } from "@/auth";
 import { db } from "@/lib/db";
 import slugify from "slugify";
 
-import { courseSchema, lessonSchema, moduleSchema } from "@/schemas";
+import { courseSchema, courseDraftSchema, lessonSchema, moduleSchema } from "@/schemas";
 import { z } from "zod";
 import { toSlug } from "@/lib/utils";
 import { notify } from "@/lib/notify";
@@ -21,14 +21,20 @@ export async function createCourse(data: any, modulesData: any[] = []) {
   // console.log("Looking for tutor with userId:", session.user.id);
 
   try {
-    const validatedData = courseSchema.safeParse({
+    // Use relaxed validation for drafts, strict validation for publishing
+    const isPublishing = Boolean(data.isPublished);
+    const schemaToUse = isPublishing ? courseSchema : courseDraftSchema;
+    
+    const validatedData = schemaToUse.safeParse({
       ...data,
-      level: data.level.toUpperCase().replace(" ", "_"),
+      level: data.level?.toUpperCase().replace(" ", "_") || "BEGINNER",
       flashSaleEnd: data.flashSaleEnd ? new Date(data.flashSaleEnd) : undefined,
     });
 
     if (!validatedData.success) {
-      return { error: validatedData.error.issues[0].message };
+      const errorMessage = validatedData.error.issues[0].message;
+      console.error("Validation error:", errorMessage);
+      return { error: errorMessage };
     }
 
     // const tutors = await db.tutor.findMany();
@@ -49,6 +55,11 @@ export async function createCourse(data: any, modulesData: any[] = []) {
       );
     }
 
+    // Category is required for course creation
+    if (!validatedData.data.category || validatedData.data.category.trim() === "") {
+      return { error: "Please select a category for your course" };
+    }
+
     const result = await db.$transaction(
       async (tx) => {
         const resolvedBasePrice =
@@ -62,13 +73,17 @@ export async function createCourse(data: any, modulesData: any[] = []) {
             ? validatedData.data.currentPrice
             : resolvedBasePrice;
 
+        const categoryName = validatedData.data.category as string;
         const course = await tx.course.create({
           data: {
             title: validatedData.data.title,
-            subtitle: validatedData.data.subtitle,
-            description: validatedData.data.description,
+            subtitle: validatedData.data.subtitle || "",
+            description: validatedData.data.description || "",
             category: {
-              connect: { name: validatedData.data.category },
+              connectOrCreate: {
+                where: { name: categoryName },
+                create: { name: categoryName, slug: toSlug(categoryName) },
+              },
             },
             level: validatedData.data.level as any,
             language: validatedData.data.language,
@@ -229,14 +244,28 @@ export async function createCourse(data: any, modulesData: any[] = []) {
       courseId: result.id,
       requiresApproval: requestedPublish,
     };
-  } catch (error) {
+  } catch (error: any) {
     console.error("Error creating course:", error);
-    return {
-      error:
-        error instanceof z.ZodError
-          ? error.issues[0].message
-          : "Failed to create course",
-    };
+    
+    // Provide more specific error messages
+    let errorMessage = "Failed to create course";
+    
+    if (error instanceof z.ZodError) {
+      errorMessage = error.issues[0].message;
+    } else if (error instanceof Error) {
+      // Handle specific Prisma/database errors
+      if (error.message.includes("Unique constraint")) {
+        errorMessage = "A course with this title already exists";
+      } else if (error.message.includes("Foreign key constraint") || error.message.includes("Record to connect not found")) {
+        errorMessage = "Invalid category selected. Please select a valid category.";
+      } else if (error.message.includes("Tutor profile not found")) {
+        errorMessage = error.message;
+      } else {
+        errorMessage = error.message || "Failed to create course";
+      }
+    }
+    
+    return { error: errorMessage };
   }
 }
 
