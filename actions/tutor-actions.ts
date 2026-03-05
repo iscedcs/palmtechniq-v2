@@ -14,7 +14,6 @@ import {
 import { z } from "zod";
 import { toSlug } from "@/lib/utils";
 import { notify } from "@/lib/notify";
-import { getIO } from "@/lib/socket";
 import { recomputeCourseDurations } from "@/lib/course-duration";
 
 export async function createCourse(data: any, modulesData: any[] = []) {
@@ -317,13 +316,6 @@ export async function addModuleToCourse(courseId: string, moduleData: any) {
     });
     await recomputeCourseDurations(db, courseId);
 
-    const io = getIO();
-    if (io) {
-      const sockets = await io.in(`course:${courseId}`).allSockets();
-      console.log(
-        `course:${courseId} ${newModule.id} sockets = ${sockets.size}`,
-      );
-    }
     await notify.course(courseId, {
       type: "info",
       title: "New Module Added",
@@ -423,13 +415,6 @@ export async function addLessonToModule(
     });
     await recomputeCourseDurations(db, courseId);
 
-    const io = getIO();
-    if (io) {
-      const sockets = await io.in(`course:${courseId}`).allSockets();
-      console.log(
-        `course:${courseId},${newLesson.id} sockets = ${sockets.size}`,
-      );
-    }
     await notify.course(courseId, {
       type: "info",
       title: "New Lesson Added",

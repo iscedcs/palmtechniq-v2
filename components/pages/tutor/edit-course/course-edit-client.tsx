@@ -21,8 +21,8 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { showUndoToast } from "@/lib/utils/tosst-util";
 import { courseSchema } from "@/schemas";
 import { zodResolver } from "@hookform/resolvers/zod";
-import { BookOpen, FileText, Settings } from "lucide-react";
-import { useState, useTransition } from "react";
+import { BookOpen, FileText, RotateCcw, Settings } from "lucide-react";
+import { useEffect, useRef, useState, useTransition } from "react";
 import { useForm, type Resolver } from "react-hook-form";
 import { toast } from "sonner";
 import { z } from "zod";
@@ -70,7 +70,10 @@ export function CourseEditClient({
     video: false,
   });
 
-  const [lessonUploading, setLessonUploading] = useState(false);
+  // localStorage key for persisting edits
+  const draftKey = `courseEditDraft_${course.id}`;
+  const modulesRef = useRef<any[]>([]);
+  const [hasUnsavedChanges, setHasUnsavedChanges] = useState(false);
 
   const form = useForm<z.infer<typeof courseSchema>>({
     resolver: zodResolver(courseSchema) as Resolver<
@@ -93,15 +96,96 @@ export function CourseEditClient({
 
   const [modules, setModules] = useState(course.modules || []);
 
+  // Restore from localStorage on mount
+  useEffect(() => {
+    try {
+      const saved = localStorage.getItem(draftKey);
+      if (!saved) return;
+      const parsed = JSON.parse(saved) as {
+        values?: z.infer<typeof courseSchema>;
+        modules?: any[];
+      };
+      if (parsed?.values) {
+        // Merge saved values with current form data
+        form.reset({ ...form.getValues(), ...parsed.values });
+        setHasUnsavedChanges(true);
+      }
+      if (parsed?.modules) {
+        setModules(parsed.modules);
+      }
+    } catch (err) {
+      console.warn("Failed to restore course edit draft", err);
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
+
+  // Save modules to localStorage when they change
+  useEffect(() => {
+    modulesRef.current = modules;
+    try {
+      localStorage.setItem(
+        draftKey,
+        JSON.stringify({ values: form.getValues(), modules }),
+      );
+      // Check if modules differ from original
+      if (JSON.stringify(modules) !== JSON.stringify(course.modules)) {
+        setHasUnsavedChanges(true);
+      }
+    } catch (err) {
+      console.warn("Failed to store course edit draft", err);
+    }
+  }, [modules, form, draftKey, course.modules]);
+
+  // Save form values to localStorage when they change
+  useEffect(() => {
+    const subscription = form.watch((values) => {
+      try {
+        localStorage.setItem(
+          draftKey,
+          JSON.stringify({ values, modules: modulesRef.current }),
+        );
+        setHasUnsavedChanges(true);
+      } catch (err) {
+        console.warn("Failed to store course edit draft", err);
+      }
+    });
+    return () => subscription.unsubscribe?.();
+  }, [form, draftKey]);
+
+  // Function to discard unsaved changes
+  const discardChanges = () => {
+    form.reset({
+      ...course,
+      isPublished: course.isPublished ?? false,
+      category: course.category?.id || "",
+      certificateEnabled: course.certificate,
+      tags: course.tags || [],
+      targetAudience: course.targetAudience || [],
+      metaTitle: course.metaTitle || "",
+      metaDescription: course.metaDescription || "",
+      requirements: course.requirements || [],
+      outcomes: course.outcomes || [],
+      groupTiers: course.groupTiers || [],
+    });
+    setModules(course.modules || []);
+    localStorage.removeItem(draftKey);
+    setHasUnsavedChanges(false);
+    toast.success("Changes discarded");
+  };
+
   // Watch form values for reactive publishing requirements
   const watchedValues = form.watch();
-  
+
   // Calculate if all publishing requirements are met
-  const allLessonsHaveTitles = modules.length > 0 && modules.every((mod: any) => 
-    mod.lessons?.length > 0 && mod.lessons.every((lesson: any) => lesson.title?.trim())
-  );
-  
-  const canPublish = 
+  const allLessonsHaveTitles =
+    modules.length > 0 &&
+    modules.every(
+      (mod: any) =>
+        mod.lessons?.length > 0 &&
+        mod.lessons.every((lesson: any) => lesson.title?.trim()),
+    );
+
+  const canPublish =
     Boolean(watchedValues.title?.trim()) &&
     Boolean(watchedValues.description?.trim()) &&
     Boolean(watchedValues.category?.trim()) &&
@@ -109,7 +193,8 @@ export function CourseEditClient({
     modules.every((mod: any) => mod.lessons?.length >= 3) &&
     allLessonsHaveTitles &&
     Boolean(watchedValues.thumbnail) &&
-    typeof watchedValues.basePrice === "number" && watchedValues.basePrice >= 0;
+    typeof watchedValues.basePrice === "number" &&
+    watchedValues.basePrice >= 0;
 
   // 📌 Tags
   const [currentTag, setCurrentTag] = useState("");
@@ -429,6 +514,10 @@ export function CourseEditClient({
           toast.error(res.error);
           console.error("❌ Update failed:", res.error);
         } else {
+          // Clear localStorage on successful save
+          localStorage.removeItem(draftKey);
+          setHasUnsavedChanges(false);
+
           if (isPublished && res.requiresApproval) {
             toast.success("Course submitted for approval");
           } else {
@@ -445,6 +534,16 @@ export function CourseEditClient({
     });
   };
 
+  // Handler for form validation errors
+  const onFormError = (errors: any) => {
+    console.error("❌ Form validation errors:", errors);
+    const errorMessages = Object.entries(errors)
+      .map(([field, error]: [string, any]) => `${field}: ${error?.message}`)
+      .slice(0, 3) // Show first 3 errors
+      .join(", ");
+    toast.error(`Please fix form errors: ${errorMessages}`);
+  };
+
   return (
     <div className="min-h-screen bg-background">
       <section className="pt-24 pb-12 sm:pt-32 sm:pb-16 relative overflow-hidden">
@@ -454,7 +553,10 @@ export function CourseEditClient({
             <CardContent className="p-8 sm:p-8">
               <Form {...form}>
                 <form
-                  onSubmit={form.handleSubmit((data) => onSubmit(data, false))}
+                  onSubmit={form.handleSubmit(
+                    (data) => onSubmit(data, false),
+                    onFormError,
+                  )}
                   className="space-y-8">
                   <Tabs defaultValue="details" className="w-full scroll-smooth">
                     {/* Tab Navigation */}
@@ -523,8 +625,6 @@ export function CourseEditClient({
                           addLesson={addLesson}
                           removeLesson={removeLesson}
                           updateLesson={updateLesson}
-                          lessonUploading={lessonUploading}
-                          setLessonUploading={setLessonUploading}
                         />
                       </motion.div>
                     </TabsContent>
@@ -556,21 +656,35 @@ export function CourseEditClient({
                     </TabsContent>
                   </Tabs>
                   <div className="sticky bottom-0 left-0 w-full bg-neon/40 backdrop-blur-md border-t border-white/10 flex flex-col sm:flex-row justify-end gap-3 px-4 sm:px-6 py-3 sm:py-4">
+                    {hasUnsavedChanges && (
+                      <Button
+                        type="button"
+                        variant="outline"
+                        onClick={discardChanges}
+                        className="w-full sm:w-auto border-red-500/30 text-red-400 hover:bg-red-500/10 bg-transparent">
+                        <RotateCcw className="w-4 h-4 mr-2" />
+                        Discard Changes
+                      </Button>
+                    )}
                     <Button
                       type="submit"
                       onClick={() =>
-                        form.handleSubmit((data) => onSubmit(data, false))()
+                        form.handleSubmit(
+                          (data) => onSubmit(data, false),
+                          onFormError,
+                        )()
                       }
                       className="w-full sm:w-auto bg-gradient-to-r from-gray-600 to-gray-700 hover:from-gray-500 hover:to-gray-600">
                       Save Draft
                     </Button>
                     <Button
                       type="button"
-                      onClick={form.handleSubmit((data) =>
-                        onSubmit(data, true),
+                      onClick={form.handleSubmit(
+                        (data) => onSubmit(data, true),
+                        onFormError,
                       )}
                       disabled={isPending || !canPublish}
-                      className={`w-full sm:w-auto bg-gradient-to-r from-neon-green to-emerald-400 ${!canPublish ? 'opacity-50 cursor-not-allowed' : ''}`}>
+                      className={`w-full sm:w-auto bg-gradient-to-r from-neon-green to-emerald-400 ${!canPublish ? "opacity-50 cursor-not-allowed" : ""}`}>
                       {isPending ? "Updating..." : "Update Course"}
                     </Button>
                   </div>

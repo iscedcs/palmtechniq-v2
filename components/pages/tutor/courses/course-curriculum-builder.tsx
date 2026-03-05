@@ -71,7 +71,6 @@ export default function CourseCurriculumBuilder({
   setModules,
 }: CourseCurriculumBuilderProps) {
   const [expandedModule, setExpandedModule] = useState<string | null>(null);
-  const [lessonUploading, setLessonUploading] = useState(false);
 
   // Note: Form state is managed by the parent CreateCourse component
   // Do not reset form here to avoid overwriting other form values
@@ -80,7 +79,7 @@ export default function CourseCurriculumBuilder({
   const sensors = useSensors(
     useSensor(PointerSensor, {
       activationConstraint: { distance: 8 },
-    })
+    }),
   );
 
   const toggleModuleExpand = (id: string) =>
@@ -113,7 +112,7 @@ export default function CourseCurriculumBuilder({
 
   const updateModule = (id: string, updates: Partial<CourseModule>) => {
     setModules((prev) =>
-      prev.map((m) => (m.id === id ? { ...m, ...updates } : m))
+      prev.map((m) => (m.id === id ? { ...m, ...updates } : m)),
     );
   };
   // const updateModule = (id: string, updates: Partial<CourseModule>) =>
@@ -144,11 +143,7 @@ export default function CourseCurriculumBuilder({
     };
 
     if (courseId) {
-      const result = await addLessonToModule(
-        courseId,
-        moduleId,
-        newLesson
-      );
+      const result = await addLessonToModule(courseId, moduleId, newLesson);
 
       if (result.success) {
         updateModule(moduleId, {
@@ -165,23 +160,23 @@ export default function CourseCurriculumBuilder({
   const updateLesson = (
     moduleId: string,
     lessonId: string,
-    updates: Partial<CourseLesson>
+    updates: Partial<CourseLesson>,
   ) => {
     setModules((prevModules) =>
       prevModules.map((m) => {
         if (m.id !== moduleId) return m;
 
         const updatedLessons = m.lessons.map((l) =>
-          l.id === lessonId ? { ...l, ...updates } : l
+          l.id === lessonId ? { ...l, ...updates } : l,
         );
 
         const totalDuration = updatedLessons.reduce(
           (sum, l) => sum + (l.duration || 0),
-          0
+          0,
         );
 
         return { ...m, lessons: updatedLessons, duration: totalDuration };
-      })
+      }),
     );
   };
 
@@ -221,8 +216,8 @@ export default function CourseCurriculumBuilder({
       prev.map((m) =>
         m.id === moduleId
           ? { ...m, lessons: m.lessons.filter((l) => l.id !== lessonId) }
-          : m
-      )
+          : m,
+      ),
     );
     toast.success("Lesson removed");
   };
@@ -243,9 +238,9 @@ export default function CourseCurriculumBuilder({
       modules.reduce(
         (sum, mod) =>
           sum + mod.lessons.reduce((a, l) => a + (l.duration || 0), 0),
-        0
+        0,
       ),
-    [modules]
+    [modules],
   );
 
   const formatDuration = (mins: number) => {
@@ -354,30 +349,30 @@ export default function CourseCurriculumBuilder({
                                 Module Description
                               </p>
                               <Textarea
-                              value={module.description}
-                              onChange={(e) =>
-                                updateModule(module.id, {
-                                  description: e.target.value,
-                                })
-                              }
-                              placeholder="Enter module description"
-                              className="bg-white/10 placeholder:text-gray-50/35 border-white/20 text-white"
-                            />
+                                value={module.description}
+                                onChange={(e) =>
+                                  updateModule(module.id, {
+                                    description: e.target.value,
+                                  })
+                                }
+                                placeholder="Enter module description"
+                                className="bg-white/10 placeholder:text-gray-50/35 border-white/20 text-white"
+                              />
                             </div>
                             <div>
                               <p className="text-xs text-gray-400 mb-2">
                                 Module Content
                               </p>
                               <Textarea
-                              value={module.content}
-                              onChange={(e) =>
-                                updateModule(module.id, {
-                                  content: e.target.value,
-                                })
-                              }
-                              placeholder="Enter module content"
-                              className="mt-2 bg-white/10 border-white/20 text-white placeholder:text-gray-50/35"
-                            />
+                                value={module.content}
+                                onChange={(e) =>
+                                  updateModule(module.id, {
+                                    content: e.target.value,
+                                  })
+                                }
+                                placeholder="Enter module content"
+                                className="mt-2 bg-white/10 border-white/20 text-white placeholder:text-gray-50/35"
+                              />
                             </div>
                             <div className="mt-2 text-sm text-gray-300">
                               Module duration: {module.duration} min
@@ -456,7 +451,7 @@ export default function CourseCurriculumBuilder({
                                           {isYoutubeUrl(lesson.videoUrl) ? (
                                             <iframe
                                               src={toYoutubeEmbedUrl(
-                                                lesson.videoUrl
+                                                lesson.videoUrl,
                                               )}
                                               title="Lesson video"
                                               allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture"
@@ -522,8 +517,6 @@ export default function CourseCurriculumBuilder({
                                         />
                                       </div>
                                       <LessonUploadFile
-                                        uploading={lessonUploading}
-                                        setUploading={setLessonUploading}
                                         onUploadSuccess={(url) => {
                                           updateLesson(module.id, lesson.id, {
                                             videoUrl: url,
@@ -534,7 +527,7 @@ export default function CourseCurriculumBuilder({
                                             duration: minutes,
                                           });
                                           toast.success(
-                                            `Video uploaded (${minutes} min)`
+                                            `Video uploaded (${minutes} min)`,
                                           );
                                         }}
                                       />

@@ -2,12 +2,18 @@
 import { Input } from "@/components/ui/input";
 import { courseSchema } from "@/schemas";
 import { Loader2 } from "lucide-react";
-import React, { Dispatch, SetStateAction, useState } from "react";
+import React, { Dispatch, SetStateAction, useState, useRef } from "react";
 import { UseFormSetValue } from "react-hook-form";
 import { toast } from "sonner";
 import z from "zod";
 import { Button } from "../ui/button";
-import { uploadVideoToYouTube } from "@/lib/youtube-upload";
+import {
+  uploadVideoToYouTube,
+  hasResumeData,
+  clearUploadResumeData,
+  type UploadProgress,
+} from "@/lib/youtube-upload";
+import { VideoUploadProgress } from "./video-upload-progress";
 
 type CourseFormValues = z.infer<typeof courseSchema>;
 
@@ -25,11 +31,19 @@ export default function UploadFile({
   setUploading,
 }: UploadFileProps) {
   const [file, setFile] = useState<File | null>(null);
+  const [progress, setProgress] = useState<UploadProgress | null>(null);
+  const [canResume, setCanResume] = useState(false);
+  const abortControllerRef = useRef<AbortController | null>(null);
 
   const handleFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     const selectedFile = e.target.files?.[0] || null;
     setFile(selectedFile);
-    if (!selectedFile) return;
+    setProgress(null);
+
+    if (!selectedFile) {
+      setCanResume(false);
+      return;
+    }
 
     if (fieldName === "thumbnail") {
       const url = URL.createObjectURL(selectedFile);
@@ -38,7 +52,7 @@ export default function UploadFile({
         const isPortrait = image.naturalHeight > image.naturalWidth;
         if (isPortrait) {
           toast.error(
-            "Please upload a landscape thumbnail (16:9). Portrait images are not supported."
+            "Please upload a landscape thumbnail (16:9). Portrait images are not supported.",
           );
           setFile(null);
           e.target.value = "";
@@ -49,6 +63,9 @@ export default function UploadFile({
       return;
     }
 
+    // Video file - check for resume data
+    setCanResume(hasResumeData(selectedFile));
+
     const url = URL.createObjectURL(selectedFile);
     const video = document.createElement("video");
     video.preload = "metadata";
@@ -57,13 +74,32 @@ export default function UploadFile({
       const isPortrait = video.videoHeight > video.videoWidth;
       if (isPortrait) {
         toast.error(
-          "Please upload a landscape (16:9) video. Portrait videos become Shorts."
+          "Please upload a landscape (16:9) video. Portrait videos become Shorts.",
         );
         setFile(null);
+        setCanResume(false);
         e.target.value = "";
       }
       URL.revokeObjectURL(url);
     };
+  };
+
+  const handleCancel = () => {
+    if (abortControllerRef.current) {
+      abortControllerRef.current.abort();
+      abortControllerRef.current = null;
+    }
+    setUploading(false);
+    setProgress(null);
+    toast.info("Upload cancelled. You can resume later.");
+  };
+
+  const handleClearResume = () => {
+    if (file) {
+      clearUploadResumeData(file);
+      setCanResume(false);
+      toast.info("Previous upload data cleared. Will start fresh.");
+    }
   };
 
   const handleUpload = async () => {
@@ -73,6 +109,7 @@ export default function UploadFile({
     }
 
     setUploading(true);
+    setProgress(null);
 
     try {
       if (fieldName === "thumbnail") {
@@ -108,7 +145,7 @@ export default function UploadFile({
 
         const formData = new FormData();
         Object.entries(fields).forEach(([key, value]) =>
-          formData.append(key, value as string)
+          formData.append(key, value as string),
         );
         formData.append("file", file);
 
@@ -129,23 +166,40 @@ export default function UploadFile({
         return;
       }
 
-      const { embedUrl } = await uploadVideoToYouTube(file, {
-        title: file.name,
-      });
+      // Video upload with progress tracking
+      abortControllerRef.current = new AbortController();
+
+      const { embedUrl } = await uploadVideoToYouTube(
+        file,
+        { title: file.name },
+        {
+          onProgress: setProgress,
+          signal: abortControllerRef.current.signal,
+          resume: canResume,
+        },
+      );
 
       setValue(fieldName, embedUrl, { shouldDirty: true });
       toast.success("Video uploaded successfully!");
       setFile(null);
+      setProgress(null);
+      setCanResume(false);
     } catch (error) {
+      if (error instanceof Error && error.message === "Upload cancelled") {
+        return;
+      }
       console.error("Unexpected Error:", error);
       toast("An unexpected error occurred.");
     } finally {
       setUploading(false);
+      abortControllerRef.current = null;
     }
   };
 
+  const isVideoUpload = fieldName === "previewVideo";
+
   return (
-    <div className="flex flex-col gap-2">
+    <div className="flex flex-col gap-3">
       <Input
         id={fieldName}
         type="file"
@@ -154,18 +208,50 @@ export default function UploadFile({
         onChange={handleFileChange}
         className="shadow-lg bg-white/10 border-white/20 text-white"
       />
-      {file && (
-        <Button
-          type="button"
-          onClick={handleUpload}
-          disabled={uploading}
-          className="bg-gradient-to-r from-primary to-neon-purple">
-          {uploading ? (
-            <Loader2 className="h-4 w-4 animate-spin" />
-          ) : (
-            `Upload ${fieldName === "thumbnail" ? "Thumbnail" : "Video"}`
+
+      {/* Video upload progress */}
+      {isVideoUpload && (
+        <VideoUploadProgress
+          progress={progress}
+          file={file}
+          isUploading={uploading}
+          onCancel={handleCancel}
+          canResume={canResume}
+        />
+      )}
+
+      {/* Action buttons */}
+      {file && !uploading && (
+        <div className="flex gap-2">
+          <Button
+            type="button"
+            onClick={handleUpload}
+            disabled={uploading}
+            className="flex-1 bg-gradient-to-r from-primary to-neon-purple">
+            {isVideoUpload && canResume
+              ? "Resume Upload"
+              : `Upload ${fieldName === "thumbnail" ? "Thumbnail" : "Video"}`}
+          </Button>
+          {isVideoUpload && canResume && (
+            <Button
+              type="button"
+              variant="outline"
+              onClick={handleClearResume}
+              className="text-white/70 border-white/20 hover:bg-white/10">
+              Start Fresh
+            </Button>
           )}
-        </Button>
+        </div>
+      )}
+
+      {/* Uploading state without progress yet (for thumbnails or initializing) */}
+      {uploading && !progress && (
+        <div className="flex items-center justify-center gap-2 text-white/70">
+          <Loader2 className="h-4 w-4 animate-spin" />
+          <span>
+            {isVideoUpload ? "Initializing upload..." : "Uploading..."}
+          </span>
+        </div>
       )}
     </div>
   );

@@ -43,7 +43,7 @@ export function CourseSettingsForm({
 
   // Watch form values for reactive checklist
   const watchedValues = form.watch();
-  
+
   const publishingChecklist = [
     {
       label: "Course title",
@@ -63,13 +63,18 @@ export function CourseSettingsForm({
     },
     {
       label: "At least 3 lessons per module",
-      complete: modules.length > 0 && modules.every((mod) => mod.lessons?.length >= 3),
+      complete:
+        modules.length > 0 && modules.every((mod) => mod.lessons?.length >= 3),
     },
     {
       label: "All lessons have titles",
-      complete: modules.length > 0 && modules.every((mod: any) => 
-        mod.lessons?.length > 0 && mod.lessons.every((lesson: any) => lesson.title?.trim())
-      ),
+      complete:
+        modules.length > 0 &&
+        modules.every(
+          (mod: any) =>
+            mod.lessons?.length > 0 &&
+            mod.lessons.every((lesson: any) => lesson.title?.trim()),
+        ),
     },
     {
       label: "Course thumbnail uploaded",
@@ -77,11 +82,15 @@ export function CourseSettingsForm({
     },
     {
       label: "Course price set",
-      complete: typeof watchedValues.basePrice === "number" && watchedValues.basePrice >= 0,
+      complete:
+        typeof watchedValues.basePrice === "number" &&
+        watchedValues.basePrice >= 0,
     },
   ];
 
-  const completedCount = publishingChecklist.filter((item) => item.complete).length;
+  const completedCount = publishingChecklist.filter(
+    (item) => item.complete,
+  ).length;
   const totalCount = publishingChecklist.length;
   const allComplete = completedCount === totalCount;
 
@@ -99,8 +108,8 @@ export function CourseSettingsForm({
     form.setValue(
       "targetAudience",
       (form.getValues("targetAudience") || []).filter(
-        (_: string, i: number) => i !== index
-      )
+        (_: string, i: number) => i !== index,
+      ),
     );
   };
 
@@ -251,7 +260,7 @@ export function CourseSettingsForm({
                     onClick={() => removeAudience(index)}
                   />
                 </Badge>
-              )
+              ),
             )}
           </div>
         </CardContent>
@@ -267,18 +276,23 @@ export function CourseSettingsForm({
 
         <CardContent className="space-y-6">
           {/* Dynamic Publishing Checklist */}
-          <div className={`p-4 border rounded-lg ${allComplete ? "bg-green-500/10 border-green-500/20" : "bg-yellow-500/10 border-yellow-500/20"}`}>
+          <div
+            className={`p-4 border rounded-lg ${allComplete ? "bg-green-500/10 border-green-500/20" : "bg-yellow-500/10 border-yellow-500/20"}`}>
             <div className="flex items-center justify-between mb-3">
-              <h4 className={`font-semibold ${allComplete ? "text-green-400" : "text-yellow-400"}`}>
+              <h4
+                className={`font-semibold ${allComplete ? "text-green-400" : "text-yellow-400"}`}>
                 {allComplete ? "Ready to Publish!" : "Before Publishing"}
               </h4>
-              <span className={`text-sm ${allComplete ? "text-green-400" : "text-gray-400"}`}>
+              <span
+                className={`text-sm ${allComplete ? "text-green-400" : "text-gray-400"}`}>
                 {completedCount}/{totalCount} complete
               </span>
             </div>
             <ul className="text-sm space-y-2">
               {publishingChecklist.map((item, index) => (
-                <li key={index} className={`flex items-center gap-2 ${item.complete ? "text-green-400" : "text-red-400"}`}>
+                <li
+                  key={index}
+                  className={`flex items-center gap-2 ${item.complete ? "text-green-400" : "text-red-400"}`}>
                   {item.complete ? (
                     <CheckCircle className="w-4 h-4 flex-shrink-0" />
                   ) : (

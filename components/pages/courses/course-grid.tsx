@@ -61,7 +61,7 @@ export default function CoursesGrid({
         course.title.toLowerCase().includes(searchLower) ||
         course.description.toLowerCase().includes(searchLower) ||
         (course.tags || []).some((tag: string) =>
-          tag.toLowerCase().includes(searchLower)
+          tag.toLowerCase().includes(searchLower),
         ) ||
         (course.tutor?.user?.name || "").toLowerCase().includes(searchLower);
       const matchesCategory =
@@ -73,9 +73,11 @@ export default function CoursesGrid({
     })
     .sort((a, b) => {
       // Helper to get display price (currentPrice if > 0, else basePrice)
-      const getDisplayPrice = (course: CourseItem) => 
-        course.currentPrice && course.currentPrice > 0 ? course.currentPrice : course.basePrice ?? course.price ?? 0;
-      
+      const getDisplayPrice = (course: CourseItem) =>
+        course.currentPrice && course.currentPrice > 0
+          ? course.currentPrice
+          : (course.basePrice ?? course.price ?? 0);
+
       switch (sortBy) {
         case "rating":
           return b.averageRating! - a.averageRating!;
@@ -259,7 +261,7 @@ export default function CoursesGrid({
                                   0,
                                   (new Date(course.flashSaleEnd).getTime() -
                                     Date.now()) /
-                                    60000
+                                    60000,
                                 )
                               : 0
                           }
@@ -278,7 +280,9 @@ export default function CoursesGrid({
                             className="w-full border-yellow-500/30 text-yellow-400 hover:bg-yellow-500/10 bg-transparent"
                             onClick={() =>
                               setShowGroupBuying(
-                                showGroupBuying === course.id ? null : course.id
+                                showGroupBuying === course.id
+                                  ? null
+                                  : course.id,
                               )
                             }>
                             <Users className="w-4 h-4 mr-2" />
@@ -307,7 +311,7 @@ export default function CoursesGrid({
                                 {
                                   description:
                                     "Sign in or create an account to continue.",
-                                }
+                                },
                               );
                               router.push("/login");
                               return;
@@ -321,23 +325,23 @@ export default function CoursesGrid({
                                   {
                                     description:
                                       "View cart or continue shopping.",
-                                  }
+                                  },
                                 );
                                 // Notify other UI (e.g. cart drawer) to refresh
                                 if (typeof window !== "undefined") {
                                   window.dispatchEvent(
-                                    new Event("cart-updated")
+                                    new Event("cart-updated"),
                                   );
                                 }
                               } else {
                                 toast.error(
-                                  res?.message || "Failed to add to cart"
+                                  res?.message || "Failed to add to cart",
                                 );
                               }
                             } catch (err) {
                               console.error(err);
                               toast.error(
-                                "Something went wrong while adding to cart"
+                                "Something went wrong while adding to cart",
                               );
                             }
                           }}

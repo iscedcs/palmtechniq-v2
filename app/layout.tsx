@@ -4,7 +4,7 @@ import { MobileBottomNav } from "@/components/navigation/mobile-bottom-nav";
 import { ThemeProvider } from "@/components/theme-provider";
 import { Toaster } from "sonner";
 import { AnalyticsProvider } from "@/lib/analytics/analytics-provider";
-import { WebSocketProvider } from "@/lib/websocket/websocket-provider";
+import { NotificationProvider } from "@/lib/notifications/notification-provider";
 import type { Metadata } from "next";
 import { SessionProvider } from "next-auth/react";
 import { Inter } from "next/font/google";
@@ -12,7 +12,6 @@ import type React from "react";
 import { Suspense } from "react";
 import "./globals.css";
 import { ToploaderProvider } from "@/components/shared/toploader-provider";
-import { SocketInitializer } from "@/components/shared/web-socket-init";
 
 const inter = Inter({ subsets: ["latin"] });
 
@@ -198,8 +197,7 @@ export default async function MainRootLayout({
             {/* ensure hooks like useSearchParams are inside a suspense boundary */}
             <Suspense fallback={null}>
               <AnalyticsProvider>
-                <WebSocketProvider>
-                  <SocketInitializer />
+                <NotificationProvider>
                   <ToploaderProvider
                     color="linear-gradient(90deg, #00343d 0%, #27ba55 50%, #000000 100%)"
                     height={4}
@@ -214,10 +212,10 @@ export default async function MainRootLayout({
                     </div>
                   </ToploaderProvider>
                   <Toaster richColors />
-                </WebSocketProvider>
+                </NotificationProvider>
               </AnalyticsProvider>
             </Suspense>
-            </ThemeProvider>
+          </ThemeProvider>
         </body>
       </html>
     </SessionProvider>
