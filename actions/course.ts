@@ -58,6 +58,11 @@ export async function updateCourse(
       duration: _duration,
       totalLessons: _totalLessons,
       groupTiers: _groupTiers,
+      // Extract array fields that might be null (Prisma doesn't accept null for arrays)
+      targetAudience,
+      tags: _tags,
+      requirements,
+      outcomes: _outcomes,
       ...safeData
     } = validatedCourse.data;
 
@@ -83,7 +88,9 @@ export async function updateCourse(
         price: resolvedBasePrice,
         basePrice: resolvedBasePrice,
         currentPrice: resolvedCurrentPrice,
-        outcomes: validatedCourse.data.outcomes,
+        outcomes: validatedCourse.data.outcomes ?? [],
+        requirements: requirements ?? [],
+        targetAudience: targetAudience ?? undefined, // Convert null to undefined for Prisma
         certificate: validatedCourse.data.certificate ?? false,
         allowDiscussions: allowDiscussions ?? false,
         status: shouldPublish ? "PUBLISHED" : "DRAFT",

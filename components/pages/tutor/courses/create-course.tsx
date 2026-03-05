@@ -125,7 +125,9 @@ export default function CreateCourse() {
   };
 
   const form = useForm<z.infer<typeof courseSchema>>({
-    resolver: zodResolver(courseSchema) as Resolver<z.infer<typeof courseSchema>>,
+    resolver: zodResolver(courseSchema) as Resolver<
+      z.infer<typeof courseSchema>
+    >,
     defaultValues,
   });
 
@@ -153,7 +155,7 @@ export default function CreateCourse() {
     try {
       localStorage.setItem(
         draftKey,
-        JSON.stringify({ values: form.getValues(), modules })
+        JSON.stringify({ values: form.getValues(), modules }),
       );
     } catch (err) {
       console.warn("Failed to store course draft", err);
@@ -163,10 +165,15 @@ export default function CreateCourse() {
     setPublishReady((prev) => ({
       ...prev,
       hasModules: modules.length > 0,
-      hasThreeLessons: modules.length > 0 && modules.every((mod) => mod.lessons.length >= 3),
-      hasLessonTitles: modules.length > 0 && modules.every((mod) => 
-        mod.lessons.length > 0 && mod.lessons.every((lesson) => lesson.title?.trim())
-      ),
+      hasThreeLessons:
+        modules.length > 0 && modules.every((mod) => mod.lessons.length >= 3),
+      hasLessonTitles:
+        modules.length > 0 &&
+        modules.every(
+          (mod) =>
+            mod.lessons.length > 0 &&
+            mod.lessons.every((lesson) => lesson.title?.trim()),
+        ),
     }));
   }, [modules, form]);
 
@@ -175,7 +182,7 @@ export default function CreateCourse() {
       try {
         localStorage.setItem(
           draftKey,
-          JSON.stringify({ values, modules: modulesRef.current })
+          JSON.stringify({ values, modules: modulesRef.current }),
         );
       } catch (err) {
         console.warn("Failed to store course draft", err);
@@ -183,13 +190,21 @@ export default function CreateCourse() {
       // Update publishing requirements reactively
       setPublishReady({
         hasTitle: Boolean(values.title && values.title.trim()),
-        hasDescription: Boolean(values.description && values.description.trim()),
+        hasDescription: Boolean(
+          values.description && values.description.trim(),
+        ),
         hasCategory: Boolean(values.category && values.category.trim()),
         hasModules: modulesRef.current.length > 0,
-        hasThreeLessons: modulesRef.current.length > 0 && modulesRef.current.every((mod) => mod.lessons.length >= 3),
-        hasLessonTitles: modulesRef.current.length > 0 && modulesRef.current.every((mod) => 
-          mod.lessons.length > 0 && mod.lessons.every((lesson) => lesson.title?.trim())
-        ),
+        hasThreeLessons:
+          modulesRef.current.length > 0 &&
+          modulesRef.current.every((mod) => mod.lessons.length >= 3),
+        hasLessonTitles:
+          modulesRef.current.length > 0 &&
+          modulesRef.current.every(
+            (mod) =>
+              mod.lessons.length > 0 &&
+              mod.lessons.every((lesson) => lesson.title?.trim()),
+          ),
         hasThumbnail: Boolean(values.thumbnail),
         hasPrice: typeof values.price === "number" && values.price >= 0,
       });
@@ -199,15 +214,15 @@ export default function CreateCourse() {
 
   const onSubmit = async (
     values: z.infer<typeof courseSchema>,
-    isPublished: boolean
+    isPublished: boolean,
   ) => {
     if (isPublished) {
       if (modules.length < 1 || modules.some((mod) => mod.lessons.length < 3)) {
         setError(
-          "Course must have at least one module with 3 lessons to publish"
+          "Course must have at least one module with 3 lessons to publish",
         );
         toast.error(
-          "Course must have at least one module with 3 lessons to publish"
+          "Course must have at least one module with 3 lessons to publish",
         );
         return;
       }
@@ -226,8 +241,8 @@ export default function CreateCourse() {
       typeof values.basePrice === "number"
         ? values.basePrice
         : typeof values.currentPrice === "number"
-        ? values.currentPrice
-        : values.price ?? 0;
+          ? values.currentPrice
+          : (values.price ?? 0);
     const resolvedCurrentPrice =
       typeof values.currentPrice === "number"
         ? values.currentPrice
@@ -244,7 +259,7 @@ export default function CreateCourse() {
           basePrice: resolvedBasePrice,
           currentPrice: resolvedCurrentPrice,
         },
-        modules
+        modules,
       )
         .then((data) => {
           if (data && "error" in data) {
@@ -416,7 +431,7 @@ export default function CreateCourse() {
                           type="button"
                           onClick={() =>
                             setCurrentStep(
-                              Math.min(steps.length - 1, currentStep + 1)
+                              Math.min(steps.length - 1, currentStep + 1),
                             )
                           }
                           className="bg-gradient-to-r from-neon-blue to-neon-purple">
@@ -426,13 +441,10 @@ export default function CreateCourse() {
                         <Button
                           type="button"
                           onClick={() =>
-                            form.handleSubmit(
-                              (data) => {
-                                console.log("✅ Validated data:", data);
-                                onSubmit(data, true);
-                              },
-                              onFormError,
-                            )()
+                            form.handleSubmit((data) => {
+                              console.log("✅ Validated data:", data);
+                              onSubmit(data, true);
+                            }, onFormError)()
                           }
                           className={`bg-gradient-to-r from-neon-green to-emerald-400 flex items-center justify-center ${
                             isPending ? "opacity-80 cursor-not-allowed" : ""
@@ -466,28 +478,43 @@ export default function CreateCourse() {
                   {/* Publishing Requirements Checklist */}
                   {currentStep === 3 && (
                     <div className="mt-6 p-4 bg-white/5 border border-white/10 rounded-lg">
-                      <h4 className="text-white font-semibold mb-3">Publishing Checklist</h4>
+                      <h4 className="text-white font-semibold mb-3">
+                        Publishing Checklist
+                      </h4>
                       <ul className="space-y-2 text-sm">
-                        <li className={`flex items-center gap-2 ${publishReady.hasTitle ? "text-green-400" : "text-red-400"}`}>
+                        <li
+                          className={`flex items-center gap-2 ${publishReady.hasTitle ? "text-green-400" : "text-red-400"}`}>
                           {publishReady.hasTitle ? "✓" : "✗"} Course title
                         </li>
-                        <li className={`flex items-center gap-2 ${publishReady.hasDescription ? "text-green-400" : "text-red-400"}`}>
-                          {publishReady.hasDescription ? "✓" : "✗"} Course description
+                        <li
+                          className={`flex items-center gap-2 ${publishReady.hasDescription ? "text-green-400" : "text-red-400"}`}>
+                          {publishReady.hasDescription ? "✓" : "✗"} Course
+                          description
                         </li>
-                        <li className={`flex items-center gap-2 ${publishReady.hasCategory ? "text-green-400" : "text-red-400"}`}>
-                          {publishReady.hasCategory ? "✓" : "✗"} Category selected
+                        <li
+                          className={`flex items-center gap-2 ${publishReady.hasCategory ? "text-green-400" : "text-red-400"}`}>
+                          {publishReady.hasCategory ? "✓" : "✗"} Category
+                          selected
                         </li>
-                        <li className={`flex items-center gap-2 ${publishReady.hasModules ? "text-green-400" : "text-red-400"}`}>
-                          {publishReady.hasModules ? "✓" : "✗"} At least 1 module
+                        <li
+                          className={`flex items-center gap-2 ${publishReady.hasModules ? "text-green-400" : "text-red-400"}`}>
+                          {publishReady.hasModules ? "✓" : "✗"} At least 1
+                          module
                         </li>
-                        <li className={`flex items-center gap-2 ${publishReady.hasThreeLessons ? "text-green-400" : "text-red-400"}`}>
-                          {publishReady.hasThreeLessons ? "✓" : "✗"} At least 3 lessons per module
+                        <li
+                          className={`flex items-center gap-2 ${publishReady.hasThreeLessons ? "text-green-400" : "text-red-400"}`}>
+                          {publishReady.hasThreeLessons ? "✓" : "✗"} At least 3
+                          lessons per module
                         </li>
-                        <li className={`flex items-center gap-2 ${publishReady.hasLessonTitles ? "text-green-400" : "text-red-400"}`}>
-                          {publishReady.hasLessonTitles ? "✓" : "✗"} All lessons have titles
+                        <li
+                          className={`flex items-center gap-2 ${publishReady.hasLessonTitles ? "text-green-400" : "text-red-400"}`}>
+                          {publishReady.hasLessonTitles ? "✓" : "✗"} All lessons
+                          have titles
                         </li>
-                        <li className={`flex items-center gap-2 ${publishReady.hasThumbnail ? "text-green-400" : "text-red-400"}`}>
-                          {publishReady.hasThumbnail ? "✓" : "✗"} Course thumbnail uploaded
+                        <li
+                          className={`flex items-center gap-2 ${publishReady.hasThumbnail ? "text-green-400" : "text-red-400"}`}>
+                          {publishReady.hasThumbnail ? "✓" : "✗"} Course
+                          thumbnail uploaded
                         </li>
                       </ul>
                     </div>
