@@ -62,7 +62,7 @@ export default function CourseBasicInfoForm({
   // --- Dynamic list handlers
   const addItem = (
     field: "tags" | "requirements" | "outcomes",
-    value: string
+    value: string,
   ) => {
     if (!value.trim()) return;
     const current = form.getValues(field);
@@ -76,11 +76,11 @@ export default function CourseBasicInfoForm({
 
   const removeItem = (
     field: "tags" | "requirements" | "outcomes",
-    value: string
+    value: string,
   ) => {
     form.setValue(
       field,
-      form.getValues(field).filter((v: any) => v !== value)
+      form.getValues(field).filter((v: any) => v !== value),
     );
   };
 
@@ -380,7 +380,7 @@ export default function CourseBasicInfoForm({
                                     | "tags"
                                     | "requirements"
                                     | "outcomes",
-                                  section.value
+                                  section.value,
                                 )
                               }
                               className={`bg-gradient-to-r ${section.gradient}`}>
@@ -404,7 +404,7 @@ export default function CourseBasicInfoForm({
                                           | "tags"
                                           | "requirements"
                                           | "outcomes",
-                                        item
+                                        item,
                                       )
                                     }
                                   />

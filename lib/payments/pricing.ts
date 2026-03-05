@@ -43,7 +43,10 @@ type LineItem = {
 
 const roundCurrency = (value: number) => Math.round(value * 100) / 100;
 
-const promoAppliesToCourse = (promo: PromoDetails | null, course: PricingCourse) => {
+const promoAppliesToCourse = (
+  promo: PromoDetails | null,
+  course: PricingCourse,
+) => {
   if (!promo) return false;
   if (promo.courseId && promo.courseId !== course.id) return false;
   if (promo.promoType === "INSTRUCTOR" && promo.creatorId) {
@@ -71,29 +74,44 @@ export function computeCheckoutTotals({
   const preliminary = courses.map((course) => {
     const basePrice =
       course.basePrice ??
-      (course.currentPrice && course.currentPrice > 0 ? course.currentPrice : null) ??
+      (course.currentPrice && course.currentPrice > 0
+        ? course.currentPrice
+        : null) ??
       course.price ??
       0;
     // Only use currentPrice if it's explicitly set (> 0), otherwise fall back to basePrice
-    const currentPrice = (course.currentPrice && course.currentPrice > 0) 
-      ? course.currentPrice 
-      : (course.price ?? basePrice);
+    const currentPrice =
+      course.currentPrice && course.currentPrice > 0
+        ? course.currentPrice
+        : (course.price ?? basePrice);
 
     const promoApplies = promoAppliesToCourse(promo, course);
     let promoDiscount = 0;
     if (promo && promoApplies) {
       if (promo.discountType === "PERCENTAGE") {
-        promoDiscount = roundCurrency((currentPrice * promo.discountValue) / 100);
+        promoDiscount = roundCurrency(
+          (currentPrice * promo.discountValue) / 100,
+        );
       } else {
-        promoDiscount = roundCurrency(Math.min(promo.discountValue, currentPrice));
+        promoDiscount = roundCurrency(
+          Math.min(promo.discountValue, currentPrice),
+        );
       }
     }
 
-    const discountedPrice = Math.max(0, roundCurrency(currentPrice - promoDiscount));
-    const discountAmount = Math.max(0, roundCurrency(basePrice - discountedPrice));
+    const discountedPrice = Math.max(
+      0,
+      roundCurrency(currentPrice - promoDiscount),
+    );
+    const discountAmount = Math.max(
+      0,
+      roundCurrency(basePrice - discountedPrice),
+    );
     const splitPercent = getSplitPercent(promo, promoApplies);
     const tutorShareAmount = roundCurrency(discountedPrice * splitPercent);
-    const platformShareAmount = roundCurrency(discountedPrice - tutorShareAmount);
+    const platformShareAmount = roundCurrency(
+      discountedPrice - tutorShareAmount,
+    );
 
     return {
       courseId: course.id,
@@ -108,7 +126,7 @@ export function computeCheckoutTotals({
   });
 
   const subtotalAmount = roundCurrency(
-    preliminary.reduce((sum, item) => sum + item.discountedPrice, 0)
+    preliminary.reduce((sum, item) => sum + item.discountedPrice, 0),
   );
   const vatAmount = roundCurrency(subtotalAmount * vatRate);
 
@@ -119,7 +137,9 @@ export function computeCheckoutTotals({
       if (index === preliminary.length - 1) {
         vatShare = roundCurrency(vatAmount - allocatedVat);
       } else {
-        vatShare = roundCurrency((item.discountedPrice / subtotalAmount) * vatAmount);
+        vatShare = roundCurrency(
+          (item.discountedPrice / subtotalAmount) * vatAmount,
+        );
         allocatedVat = roundCurrency(allocatedVat + vatShare);
       }
     }
@@ -137,18 +157,20 @@ export function computeCheckoutTotals({
       promoCodeId: promo?.id ?? null,
       promoType: item.promoApplies ? promo?.promoType : undefined,
       promoDiscountType: item.promoApplies ? promo?.discountType : undefined,
-      promoDiscountValue: item.promoApplies ? promo?.discountValue ?? null : null,
+      promoDiscountValue: item.promoApplies
+        ? (promo?.discountValue ?? null)
+        : null,
     };
   });
 
   const discountAmount = roundCurrency(
-    lineItems.reduce((sum, item) => sum + item.discountAmount, 0)
+    lineItems.reduce((sum, item) => sum + item.discountAmount, 0),
   );
   const tutorShareAmount = roundCurrency(
-    lineItems.reduce((sum, item) => sum + item.tutorShareAmount, 0)
+    lineItems.reduce((sum, item) => sum + item.tutorShareAmount, 0),
   );
   const platformShareAmount = roundCurrency(
-    lineItems.reduce((sum, item) => sum + item.platformShareAmount, 0)
+    lineItems.reduce((sum, item) => sum + item.platformShareAmount, 0),
   );
   const totalAmount = roundCurrency(subtotalAmount + vatAmount);
 

@@ -71,12 +71,14 @@ export default async function CheckoutPage({
         pricing={{
           basePrice: groupTier?.groupPrice ?? course.basePrice ?? 0,
           currentPrice:
-            groupTier?.groupPrice ?? 
-            (course.currentPrice && course.currentPrice > 0 ? course.currentPrice : course.basePrice) ?? 0,
+            groupTier?.groupPrice ??
+            (course.currentPrice && course.currentPrice > 0
+              ? course.currentPrice
+              : course.basePrice) ??
+            0,
           discountPercent: groupTier
             ? undefined
-            :
-            course.groupBuyingDiscount && course.groupBuyingDiscount > 0
+            : course.groupBuyingDiscount && course.groupBuyingDiscount > 0
               ? course.groupBuyingDiscount
               : undefined,
           vatRate: 0.075,

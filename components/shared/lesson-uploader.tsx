@@ -1,25 +1,23 @@
 "use client";
 import { Input } from "@/components/ui/input";
-import { Loader2 } from "lucide-react";
-import React, { Dispatch, SetStateAction, useState } from "react";
+import { Upload } from "lucide-react";
+import React, { useState, useRef } from "react";
 import { Button } from "../ui/button";
 import { toast } from "sonner";
-import { uploadVideoToYouTube } from "@/lib/youtube-upload";
+import { useUploadStore } from "@/stores/upload-store";
 
 interface LessonUploadFileProps {
   onUploadSuccess: (url: string) => void;
   onDuration?: (minutes: number) => void;
-  uploading: boolean;
-  setUploading: Dispatch<SetStateAction<boolean>>;
 }
 
 export default function LessonUploadFile({
   onUploadSuccess,
   onDuration,
-  uploading,
-  setUploading,
 }: LessonUploadFileProps) {
   const [file, setFile] = useState<File | null>(null);
+  const inputRef = useRef<HTMLInputElement>(null);
+  const startUpload = useUploadStore((s) => s.startUpload);
 
   const handleFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     const selected = e.target.files?.[0] || null;
@@ -51,56 +49,54 @@ export default function LessonUploadFile({
     }
   };
 
-  const handleUpload = async () => {
+  const handleUpload = () => {
     if (!file) {
       toast.error("Please select a file to upload.");
       return;
     }
 
-    setUploading(true);
+    // Start upload in background via global store
+    startUpload(file, {
+      name: file.name,
+      onComplete: (embedUrl) => {
+        onUploadSuccess(embedUrl);
+        toast.success("Lesson video uploaded successfully!");
+      },
+    });
 
-    try {
-      const { embedUrl } = await uploadVideoToYouTube(file, {
-        title: file.name,
-      });
-
-      onUploadSuccess(embedUrl);
-      toast.success("Lesson video uploaded successfully!");
-      setFile(null);
-    } catch (error) {
-      console.error("YouTube Upload Error:", error);
-      const message =
-        error instanceof Error
-          ? error.message
-          : "An unexpected error occurred.";
-      toast.error(message);
-    } finally {
-      setUploading(false);
+    // Clear the form immediately so user can upload more
+    setFile(null);
+    if (inputRef.current) {
+      inputRef.current.value = "";
     }
+
+    toast.info("Upload started! You can continue adding more lessons.");
   };
 
   return (
-    <div className="flex flex-col gap-2">
+    <div className="flex flex-col gap-3">
       <Input
+        ref={inputRef}
         type="file"
         accept="video/*"
-        disabled={uploading}
         onChange={handleFileChange}
         className="shadow-lg bg-white/10 border-white/20 text-white"
       />
+
       {file && (
         <Button
           type="button"
           onClick={handleUpload}
-          disabled={uploading}
           className="bg-gradient-to-r from-primary to-neon-purple">
-          {uploading ? (
-            <Loader2 className="h-4 w-4 animate-spin" />
-          ) : (
-            "Upload Lesson Video"
-          )}
+          <Upload className="mr-2 h-4 w-4" />
+          Start Upload
         </Button>
       )}
+
+      <p className="text-xs text-white/50">
+        💡 Uploads run in the background. You can upload multiple videos at
+        once.
+      </p>
     </div>
   );
 }

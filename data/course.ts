@@ -21,7 +21,7 @@ export async function getPublicCourses() {
     const discount =
       course.basePrice && course.currentPrice
         ? Math.round(
-            ((course.basePrice - course.currentPrice) / course.basePrice) * 100
+            ((course.basePrice - course.currentPrice) / course.basePrice) * 100,
           )
         : 0;
 
@@ -163,7 +163,9 @@ export async function getCourseWithModules(courseId: string) {
           select: { quizId: true },
         })
       : [];
-    const passedQuizIds = new Set(quizAttempts.map((attempt) => attempt.quizId));
+    const passedQuizIds = new Set(
+      quizAttempts.map((attempt) => attempt.quizId),
+    );
 
     const moduleTasks = session?.user.id
       ? await db.task.findMany({
@@ -207,7 +209,7 @@ export async function getCourseWithModules(courseId: string) {
 
       const pendingTask = tasksForModule.find(
         (task) =>
-          !task.submissions.some((s) => taskSubmissionStatuses.has(s.status))
+          !task.submissions.some((s) => taskSubmissionStatuses.has(s.status)),
       );
       moduleTaskMap.set(module.id, {
         hasTask: true,
@@ -231,7 +233,7 @@ export async function getCourseWithModules(courseId: string) {
     }
 
     const completedLessons = allLessons.filter(
-      (lesson) => lesson.progress?.[0]?.isCompleted
+      (lesson) => lesson.progress?.[0]?.isCompleted,
     ).length;
 
     const totalLessons = allLessons.length;
@@ -246,7 +248,7 @@ export async function getCourseWithModules(courseId: string) {
         const previousCompleted = previousModules.every(
           (m) =>
             m.lessons.every((l) => l.progress?.[0]?.isCompleted) &&
-            m.lessons.every((l) => !l.quiz || passedQuizIds.has(l.quiz.id))
+            m.lessons.every((l) => !l.quiz || passedQuizIds.has(l.quiz.id)),
         );
 
         const isLocked = idx > 0 && !previousCompleted;
@@ -280,7 +282,7 @@ export async function getCourseWithModules(courseId: string) {
             isSubmitted: true,
           },
         };
-      })
+      }),
     );
 
     return {

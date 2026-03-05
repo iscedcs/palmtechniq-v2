@@ -22,7 +22,7 @@ import {
 } from "@/components/ui/select";
 import { Textarea } from "@/components/ui/textarea";
 import { Plus, X, PlayCircle, Clock, BookOpen, Layers } from "lucide-react";
-import { Dispatch, SetStateAction, useMemo, useRef } from "react";
+import { useMemo, useRef } from "react";
 import { updateLessonVideo } from "@/actions/tutor-actions";
 import { isYoutubeUrl, toYoutubeEmbedUrl } from "@/lib/youtube";
 
@@ -66,15 +66,13 @@ interface CourseCurriculumFormProps {
   removeLesson: (
     e: React.MouseEvent,
     moduleId: string,
-    lessonId: string
+    lessonId: string,
   ) => void;
   updateLesson: (
     moduleId: string,
     lessonId: string,
-    updates: Partial<CourseLesson>
+    updates: Partial<CourseLesson>,
   ) => void;
-  lessonUploading: boolean;
-  setLessonUploading: Dispatch<SetStateAction<boolean>>;
 }
 
 export function CourseCurriculumForm({
@@ -85,27 +83,24 @@ export function CourseCurriculumForm({
   addLesson,
   removeLesson,
   updateLesson,
-  lessonUploading,
-  setLessonUploading,
 }: CourseCurriculumFormProps) {
   const durationCache = useRef<Record<string, number>>({});
   // 🧮 Compute quick stats
   const stats = useMemo(() => {
     const totalLessons = modules.reduce(
       (sum, m) => sum + (m.lessons?.length || 0),
-      0
+      0,
     );
     const totalQuizzes = modules.reduce(
       (sum, module) =>
         sum + module.lessons.filter((lesson) => lesson.quiz).length,
-      0
+      0,
     );
     const totalDuration = modules.reduce(
       (sum, m) =>
         sum +
-        (m.duration ||
-          m.lessons.reduce((ls, l) => ls + (l.duration || 0), 0)),
-      0
+        (m.duration || m.lessons.reduce((ls, l) => ls + (l.duration || 0), 0)),
+      0,
     );
     return {
       totalModules: modules.length,
@@ -144,7 +139,8 @@ export function CourseCurriculumForm({
                 <AccordionTrigger className="text-lg font-semibold text-white hover:text-neon-blue transition-colors">
                   <div className="flex items-center gap-2">
                     <PlayCircle className="w-4 h-4 text-neon-green" />
-                    Module {moduleIndex + 1}: {module.title || "Untitled Module"}
+                    Module {moduleIndex + 1}:{" "}
+                    {module.title || "Untitled Module"}
                   </div>
                 </AccordionTrigger>
 
@@ -302,7 +298,7 @@ export function CourseCurriculumForm({
                                       {isYoutubeUrl(lesson.videoUrl) ? (
                                         <iframe
                                           src={toYoutubeEmbedUrl(
-                                            lesson.videoUrl
+                                            lesson.videoUrl,
                                           )}
                                           title="Lesson video"
                                           allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture"
@@ -337,8 +333,6 @@ export function CourseCurriculumForm({
                                     </p>
                                   )}
                                   <LessonUploadFile
-                                    uploading={lessonUploading}
-                                    setUploading={setLessonUploading}
                                     onUploadSuccess={(url) => {
                                       updateLesson(module.id, lesson.id, {
                                         videoUrl: url,
@@ -347,14 +341,15 @@ export function CourseCurriculumForm({
                                         updateLessonVideo(
                                           lesson.id,
                                           url,
-                                          durationCache.current[lesson.id]
+                                          durationCache.current[lesson.id],
                                         ).catch((error) => {
                                           console.error(error);
                                         });
                                       }
                                     }}
                                     onDuration={(minutes) => {
-                                      durationCache.current[lesson.id] = minutes;
+                                      durationCache.current[lesson.id] =
+                                        minutes;
                                       updateLesson(module.id, lesson.id, {
                                         duration: minutes,
                                       });

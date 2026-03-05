@@ -1,8 +1,10 @@
 import { paystackVerify } from "@/actions/paystack";
 import { db } from "@/lib/db";
 import { notify } from "@/lib/notify";
-import { getIO } from "@/lib/socket";
-import { computeCheckoutTotals, DEFAULT_VAT_RATE } from "@/lib/payments/pricing";
+import {
+  computeCheckoutTotals,
+  DEFAULT_VAT_RATE,
+} from "@/lib/payments/pricing";
 import { createZoomMeeting } from "@/lib/zoom-integration";
 
 export async function finalizePaystackByReference(reference: string) {
@@ -48,7 +50,9 @@ export async function finalizePaystackByReference(reference: string) {
     const metadata = (v.metadata || tx.metadata || {}) as any;
     const isMentorshipPayment = metadata?.productType === "MENTORSHIP";
     if (isMentorshipPayment) {
-      const mentorshipSessionId = metadata?.mentorshipSessionId as string | undefined;
+      const mentorshipSessionId = metadata?.mentorshipSessionId as
+        | string
+        | undefined;
       if (mentorshipSessionId) {
         const session = await px.mentorshipSession.findUnique({
           where: { id: mentorshipSessionId },
@@ -73,12 +77,16 @@ export async function finalizePaystackByReference(reference: string) {
                 description: session.description || undefined,
               });
               meetingUrl = zoomMeeting.joinUrl;
-              
+
               // Log Zoom creation for troubleshooting
-              console.log(`[Zoom Meeting Created] Session: ${mentorshipSessionId}, Meeting ID: ${zoomMeeting.meetingId}`);
+              console.log(
+                `[Zoom Meeting Created] Session: ${mentorshipSessionId}, Meeting ID: ${zoomMeeting.meetingId}`,
+              );
             } catch (error) {
               // Fallback to manual meeting URL - log error but don't fail the payment
-              console.error(`[Zoom Meeting Creation Failed] Session: ${mentorshipSessionId}, Error: ${error}`);
+              console.error(
+                `[Zoom Meeting Creation Failed] Session: ${mentorshipSessionId}, Error: ${error}`,
+              );
               meetingUrl = null; // Will prompt tutor to add manually
             }
           }
@@ -94,34 +102,30 @@ export async function finalizePaystackByReference(reference: string) {
           });
 
           // Emit notifications to both student and tutor
-          const io = getIO();
           const tutorShare =
-            tx.tutorShareAmount ??
-            Number(((tx.amount || 0) * 0.7).toFixed(2));
-          if (io) {
-            notify.user(session.studentId, {
-              type: "payment",
-              title: "Mentorship Booking Confirmed",
-              message: `Your mentorship session "${session.title}" has been paid. The meeting will start at the scheduled time.`,
-              actionUrl: `/mentorship/session/${mentorshipSessionId}`,
-              actionLabel: "View Session",
-            });
-            
-            notify.user(session.tutorId, {
-              type: "payment",
-              title: "Mentorship Payment Received",
-              message: `Payment received for "${session.title}". You've earned ₦${tutorShare.toLocaleString()}.`,
-              actionUrl: `/tutor/mentorship`,
-              actionLabel: "View Sessions",
-            });
-          }
+            tx.tutorShareAmount ?? Number(((tx.amount || 0) * 0.7).toFixed(2));
+
+          await notify.user(session.studentId, {
+            type: "payment",
+            title: "Mentorship Booking Confirmed",
+            message: `Your mentorship session "${session.title}" has been paid. The meeting will start at the scheduled time.`,
+            actionUrl: `/mentorship/session/${mentorshipSessionId}`,
+            actionLabel: "View Session",
+          });
+
+          await notify.user(session.tutorId, {
+            type: "payment",
+            title: "Mentorship Payment Received",
+            message: `Payment received for "${session.title}". You've earned ₦${tutorShare.toLocaleString()}.`,
+            actionUrl: `/tutor/mentorship`,
+            actionLabel: "View Sessions",
+          });
         }
       }
 
       const tutorId = metadata?.tutorUserId as string | undefined;
       const tutorShare =
-        tx.tutorShareAmount ??
-        Number(((tx.amount || 0) * 0.7).toFixed(2));
+        tx.tutorShareAmount ?? Number(((tx.amount || 0) * 0.7).toFixed(2));
       if (tutorId && tutorShare > 0) {
         await px.user.update({
           where: { id: tutorId },
@@ -151,8 +155,8 @@ export async function finalizePaystackByReference(reference: string) {
     const courseIds = Array.isArray(metadata.courseIds)
       ? metadata.courseIds
       : tx.courseId
-      ? [tx.courseId]
-      : [];
+        ? [tx.courseId]
+        : [];
 
     let lineItems = tx.lineItems;
     if (!lineItems || lineItems.length === 0) {
@@ -226,8 +230,8 @@ export async function finalizePaystackByReference(reference: string) {
               promoDiscountType: item.promoDiscountType,
               promoDiscountValue: item.promoDiscountValue ?? undefined,
             },
-          })
-        )
+          }),
+        ),
       );
     }
 
@@ -297,8 +301,8 @@ export async function finalizePaystackByReference(reference: string) {
               item.promoType === "PLATFORM"
                 ? 0.2
                 : item.promoType === "INSTRUCTOR"
-                ? 0.7
-                : 0.25,
+                  ? 0.7
+                  : 0.25,
             status: "AVAILABLE",
           },
         });
@@ -338,8 +342,7 @@ export async function finalizePaystackByReference(reference: string) {
     await notify.user(tx.userId, {
       type: "success",
       title: "Mentorship Booking Confirmed",
-      message:
-        "Payment successful. Your mentorship booking is now confirmed.",
+      message: "Payment successful. Your mentorship booking is now confirmed.",
       actionUrl: "/student/mentorship",
       actionLabel: "View Sessions",
       metadata: { category: "mentorship_payment_success", reference },
@@ -377,22 +380,6 @@ export async function finalizePaystackByReference(reference: string) {
       metadata: { category: "group_purchase_started", courseId: tx.courseId },
     });
     return { ok: true, courseId: tx.courseId, groupPurchaseId };
-  }
-
-  try {
-    const io = getIO();
-    if (io) {
-      io.to(`user:${tx.userId}`).emit("auth:refresh");
-
-      const sockets = await io.in(`user:${tx.userId}`).fetchSockets();
-      sockets.forEach((s) => {
-        s.leave(`role:USER`);
-        s.join(`role:STUDENT`);
-        if (tx.courseId) s.join(`course:${tx.courseId}`);
-      });
-    }
-  } catch (error) {
-    console.warn("socket post-finalize error", error);
   }
 
   const course = await db.course.findUnique({

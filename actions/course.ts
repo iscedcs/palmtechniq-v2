@@ -2,7 +2,6 @@
 
 import { db } from "@/lib/db";
 import { auth } from "@/auth";
-import { getIO } from "@/lib/socket";
 
 import { courseSchema, moduleSchema, lessonSchema } from "@/schemas";
 import { z } from "zod";
@@ -295,39 +294,33 @@ export async function updateCourse(
 
     await recomputeCourseDurations(db, courseId);
 
-    try {
-      const io = getIO();
-      if (io) {
-        await notify.role("STUDENT", {
-          type: "info",
-          title: "Course Updated",
-          message: `A Course you purchased "${course.title}" has just been updated!`,
-          actionUrl: `/courses/${courseId}`,
-          actionLabel: "View Course",
-          metadata: { category: "course_update", courseId },
-        });
+    // Send update notifications
+    await notify.role("STUDENT", {
+      type: "info",
+      title: "Course Updated",
+      message: `A Course you purchased "${course.title}" has just been updated!`,
+      actionUrl: `/courses/${courseId}`,
+      actionLabel: "View Course",
+      metadata: { category: "course_update", courseId },
+    });
 
-        await notify.role("TUTOR", {
-          type: "info",
-          title: "Your Course Updated",
-          message: `You updated “${course.title}”.`,
-          actionUrl: `/tutor/courses/${courseId}/edit`,
-          actionLabel: "Open Course",
-          metadata: { category: "course_update", courseId },
-        });
+    await notify.role("TUTOR", {
+      type: "info",
+      title: "Your Course Updated",
+      message: `You updated "${course.title}".`,
+      actionUrl: `/tutor/courses/${courseId}/edit`,
+      actionLabel: "Open Course",
+      metadata: { category: "course_update", courseId },
+    });
 
-        await notify.role("ADMIN", {
-          type: "info",
-          title: "Course Updated",
-          message: `Tutor updated “${course.title}”. Review changes.`,
-          actionUrl: `/courses/${courseId}`,
-          actionLabel: "Review Changes",
-          metadata: { category: "course_update", courseId },
-        });
-      }
-    } catch (e) {
-      console.warn("⚠️ Socket.IO not initialized yet, skipping emit");
-    }
+    await notify.role("ADMIN", {
+      type: "info",
+      title: "Course Updated",
+      message: `Tutor updated "${course.title}". Review changes.`,
+      actionUrl: `/courses/${courseId}`,
+      actionLabel: "Review Changes",
+      metadata: { category: "course_update", courseId },
+    });
 
     return {
       success: true,
@@ -464,20 +457,13 @@ export async function publishCourse(courseId: string) {
 
     if (shouldPublish) {
       // 🔔 Emit notification
-      try {
-        const io = getIO();
-        if (io) {
-          io.emit("notification", {
-            type: "success",
-            title: "Course Published",
-            message: `The course "${updatedCourse.title}" is now live!`,
-            actionUrl: `/courses/${updatedCourse.id}`,
-            actionLabel: "View Course",
-          });
-        }
-      } catch (e) {
-        console.warn("⚠️ Socket.IO not initialized yet, skipping emit");
-      }
+      await notify.role("STUDENT", {
+        type: "success",
+        title: "Course Published",
+        message: `The course "${updatedCourse.title}" is now live!`,
+        actionUrl: `/courses/${updatedCourse.id}`,
+        actionLabel: "View Course",
+      });
     }
 
     return {

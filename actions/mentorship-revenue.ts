@@ -263,7 +263,7 @@ export async function getTutorMentorshipSessions() {
   if (!session?.user?.id) return { error: "Unauthorized" };
 
   const sessions = await db.mentorshipSession.findMany({
-    where: { 
+    where: {
       tutorId: session.user.id,
       paymentStatus: "PAID", // Only show sessions where payment is confirmed
     },
@@ -552,7 +552,7 @@ export async function approveMentorshipRequest(sessionId: string) {
   });
 
   // Notify student that their request was approved
-  notify.user(updated.studentId, {
+  await notify.user(updated.studentId, {
     type: "success",
     title: "Mentorship Request Approved",
     message: `Your mentorship request for "${updated.title}" has been approved! Proceed to payment to confirm the booking.`,
@@ -602,7 +602,7 @@ export async function rejectMentorshipRequest(
   });
 
   // Notify student that their request was rejected
-  notify.user(updated.studentId, {
+  await notify.user(updated.studentId, {
     type: "warning",
     title: "Mentorship Request Declined",
     message: `Your mentorship request for "${updated.title}" was declined${

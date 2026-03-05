@@ -275,6 +275,16 @@ export default function CreateCourse() {
     });
   };
 
+  // Handler for form validation errors
+  const onFormError = (errors: any) => {
+    console.error("❌ Form validation errors:", errors);
+    const errorMessages = Object.entries(errors)
+      .map(([field, error]: [string, any]) => `${field}: ${error?.message}`)
+      .slice(0, 3) // Show first 3 errors
+      .join(", ");
+    toast.error(`Please fix form errors: ${errorMessages}`);
+  };
+
   const steps = [
     { id: 0, title: "Basic Info", icon: BookOpen },
     { id: 1, title: "Curriculum", icon: PlayCircle },
@@ -314,7 +324,10 @@ export default function CreateCourse() {
 
           <Form {...form}>
             <form
-              onSubmit={form.handleSubmit((data) => onSubmit(data, false))}
+              onSubmit={form.handleSubmit(
+                (data) => onSubmit(data, false),
+                onFormError,
+              )}
               className="space-y-8">
               <Card className="glass-card border-white/10 hover-glow">
                 <CardContent className="p-8">
@@ -387,7 +400,10 @@ export default function CreateCourse() {
                     <div className="flex gap-4">
                       <Button
                         onClick={() =>
-                          form.handleSubmit((data) => onSubmit(data, false))()
+                          form.handleSubmit(
+                            (data) => onSubmit(data, false),
+                            onFormError,
+                          )()
                         }
                         type="submit"
                         variant="outline"
@@ -415,12 +431,7 @@ export default function CreateCourse() {
                                 console.log("✅ Validated data:", data);
                                 onSubmit(data, true);
                               },
-                              (errors) => {
-                                console.error("❌ Validation errors:", errors);
-                                toast.error(
-                                  "Validation failed, check console for details"
-                                );
-                              }
+                              onFormError,
                             )()
                           }
                           className={`bg-gradient-to-r from-neon-green to-emerald-400 flex items-center justify-center ${

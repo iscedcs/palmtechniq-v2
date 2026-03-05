@@ -38,7 +38,7 @@ export async function createReview(input: z.infer<typeof reviewSchema>) {
 
   const isEnrolled = await ensureEnrolled(
     session.user.id,
-    validated.data.courseId
+    validated.data.courseId,
   );
   if (!isEnrolled) {
     return { error: "Only enrolled students can leave a review" };
@@ -72,23 +72,19 @@ export async function createReview(input: z.infer<typeof reviewSchema>) {
     },
   });
 
-  try {
-    if (course?.tutor?.userId) {
-      notify.user(course.tutor.userId, {
-        type: "info",
-        title: "New Course Review",
-        message: `You received a ${review.rating}-star review for "${course.title}".`,
-        actionUrl: "/tutor/reviews",
-        actionLabel: "View Reviews",
-        metadata: {
-          category: "course_reviewed",
-          courseId: validated.data.courseId,
-          reviewId: review.id,
-        },
-      });
-    }
-  } catch (error) {
-    console.warn("⚠️ Socket.IO not initialized yet, skipping emit");
+  if (course?.tutor?.userId) {
+    await notify.user(course.tutor.userId, {
+      type: "info",
+      title: "New Course Review",
+      message: `You received a ${review.rating}-star review for "${course.title}".`,
+      actionUrl: "/tutor/reviews",
+      actionLabel: "View Reviews",
+      metadata: {
+        category: "course_reviewed",
+        courseId: validated.data.courseId,
+        reviewId: review.id,
+      },
+    });
   }
 
   return { review };
@@ -204,9 +200,13 @@ export async function getTutorReviewsOverview() {
   const ratingTrends = Array.from({ length: 6 }).map((_, index) => {
     const monthOffset = 5 - index;
     const start = new Date(now.getFullYear(), now.getMonth() - monthOffset, 1);
-    const end = new Date(now.getFullYear(), now.getMonth() - monthOffset + 1, 1);
+    const end = new Date(
+      now.getFullYear(),
+      now.getMonth() - monthOffset + 1,
+      1,
+    );
     const monthlyReviews = reviews.filter(
-      (review) => review.createdAt >= start && review.createdAt < end
+      (review) => review.createdAt >= start && review.createdAt < end,
     );
     return {
       month: start.toLocaleString("default", { month: "short" }),
@@ -219,9 +219,11 @@ export async function getTutorReviewsOverview() {
   const sixtyDaysAgo = new Date();
   sixtyDaysAgo.setDate(sixtyDaysAgo.getDate() - 60);
 
-  const recentCount = reviews.filter((r) => r.createdAt >= thirtyDaysAgo).length;
+  const recentCount = reviews.filter(
+    (r) => r.createdAt >= thirtyDaysAgo,
+  ).length;
   const previousCount = reviews.filter(
-    (r) => r.createdAt >= sixtyDaysAgo && r.createdAt < thirtyDaysAgo
+    (r) => r.createdAt >= sixtyDaysAgo && r.createdAt < thirtyDaysAgo,
   ).length;
 
   const recentGrowth =
@@ -274,7 +276,7 @@ export async function respondToReview(reviewId: string, responseText: string) {
 
 export async function toggleReviewReaction(
   reviewId: string,
-  type: "HELPFUL" | "LIKE" | "REPORT"
+  type: "HELPFUL" | "LIKE" | "REPORT",
 ) {
   const session = await auth();
   if (!session?.user?.id) return { error: "Unauthorized" };
@@ -310,7 +312,9 @@ export async function toggleReviewReaction(
 
   if (existing) {
     await db.reviewReaction.delete({
-      where: { reviewId_userId_type: { reviewId, userId: session.user.id, type } },
+      where: {
+        reviewId_userId_type: { reviewId, userId: session.user.id, type },
+      },
     });
     return { added: false };
   }
@@ -323,43 +327,39 @@ export async function toggleReviewReaction(
     },
   });
 
-  try {
-    const actorId = session.user.id;
-    const actorName = session.user.name || "Someone";
-    if (review.userId && review.userId !== actorId) {
-      notify.user(review.userId, {
-        type: "info",
-        title: "New reaction on your review",
-        message: `${actorName} reacted to your review on "${review.course.title}".`,
-        actionUrl: `/courses/${review.courseId}`,
-        actionLabel: "View Course",
-        metadata: {
-          category: "review_reacted",
-          reviewId,
-          courseId: review.courseId,
-          reactionType: type,
-        },
-      });
-    }
+  const actorId = session.user.id;
+  const actorName = session.user.name || "Someone";
+  if (review.userId && review.userId !== actorId) {
+    await notify.user(review.userId, {
+      type: "info",
+      title: "New reaction on your review",
+      message: `${actorName} reacted to your review on "${review.course.title}".`,
+      actionUrl: `/courses/${review.courseId}`,
+      actionLabel: "View Course",
+      metadata: {
+        category: "review_reacted",
+        reviewId,
+        courseId: review.courseId,
+        reactionType: type,
+      },
+    });
+  }
 
-    const tutorUserId = review.course?.tutor?.userId;
-    if (tutorUserId && tutorUserId !== actorId) {
-      notify.user(tutorUserId, {
-        type: "info",
-        title: "Course review reaction",
-        message: `${actorName} added a ${type.toLowerCase()} reaction to a review for "${review.course.title}".`,
-        actionUrl: `/tutor/reviews?reviewId=${reviewId}`,
-        actionLabel: "View Reviews",
-        metadata: {
-          category: "course_review_reacted",
-          reviewId,
-          courseId: review.courseId,
-          reactionType: type,
-        },
-      });
-    }
-  } catch (error) {
-    console.warn("⚠️ Socket.IO not initialized yet, skipping emit");
+  const tutorUserId = review.course?.tutor?.userId;
+  if (tutorUserId && tutorUserId !== actorId) {
+    await notify.user(tutorUserId, {
+      type: "info",
+      title: "Course review reaction",
+      message: `${actorName} added a ${type.toLowerCase()} reaction to a review for "${review.course.title}".`,
+      actionUrl: `/tutor/reviews?reviewId=${reviewId}`,
+      actionLabel: "View Reviews",
+      metadata: {
+        category: "course_review_reacted",
+        reviewId,
+        courseId: review.courseId,
+        reactionType: type,
+      },
+    });
   }
 
   return { added: true };
