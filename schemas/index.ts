@@ -72,37 +72,38 @@ export const courseSchema = z.object({
   }),
   language: z.string().min(1, "Language is required"),
   price: z.number().min(0, "Price must be non-negative"),
-  basePrice: z.number().min(0, "Base price must be non-negative").optional(),
+  // Use .nullish() for nullable database fields (accepts both null and undefined)
+  basePrice: z.number().min(0, "Base price must be non-negative").nullish(),
   currentPrice: z
     .number()
     .min(0, "Current price must be non-negative")
-    .optional(),
+    .nullish(),
   currency: z.string().min(1, "Currency is required"),
   thumbnail: z.string().min(1, "Thumbnail is required"),
-  previewVideo: z.string().optional(),
+  previewVideo: z.string().nullish(),
   tags: z.array(z.string()),
   requirements: z.array(z.string().min(1, "Requirement cannot be empty")),
   outcomes: z.array(z.string().min(1, "Learning outcome cannot be empty")),
   duration: z.preprocess(
-    (val) => (val !== "" ? Number(val) : undefined),
-    z.number().min(0, "Duration must be non-negative").optional()
-  ) as unknown as z.ZodOptional<z.ZodNumber>,
+    (val) => (val !== "" && val !== null ? Number(val) : undefined),
+    z.number().min(0, "Duration must be non-negative").nullish()
+  ) as unknown as z.ZodNullable<z.ZodOptional<z.ZodNumber>>,
 
   totalLessons: z
     .number()
     .min(0, "Total lessons must be non-negative")
-    .optional(),
+    .nullish(),
   isPublished: z.boolean(),
   allowDiscussions: z.boolean(),
-  certificate: z.boolean().optional(),
+  certificate: z.boolean().nullish(),
   isFlashSale: z.boolean(),
   flashSaleEnd: z.preprocess(
     (val) =>
       typeof val === "string" ? new Date(val).toISOString() : undefined,
-    z.string().datetime().optional()
-  ) as unknown as z.ZodOptional<z.ZodString>,
+    z.string().datetime().nullish()
+  ) as unknown as z.ZodNullable<z.ZodOptional<z.ZodString>>,
   groupBuyingEnabled: z.boolean(),
-  groupBuyingDiscount: z.number().min(0).max(1).optional(),
+  groupBuyingDiscount: z.number().min(0).max(1).nullish(),
   groupTiers: z
     .array(
       z.object({
@@ -116,9 +117,9 @@ export const courseSchema = z.object({
     .default([]),
   targetAudience: z
     .array(z.string().min(1, "Audience entry cannot be empty"))
-    .optional(),
-  metaTitle: z.string().optional(),
-  metaDescription: z.string().optional(),
+    .nullish(),
+  metaTitle: z.string().nullish(),
+  metaDescription: z.string().nullish(),
 });
 
 // Draft course schema (relaxed validation for saving drafts)
@@ -164,25 +165,26 @@ export const updateCourseSchema = z.object({
   level: z.enum(["BEGINNER", "INTERMEDIATE", "ADVANCED"]),
   language: z.string().min(1, "Language is required"),
   price: z.number().min(0),
-  basePrice: z.number().min(0).optional(),
-  currentPrice: z.number().min(0).optional(),
+  // Use .nullish() for nullable database fields (accepts both null and undefined)
+  basePrice: z.number().min(0).nullish(),
+  currentPrice: z.number().min(0).nullish(),
   currency: z.string().min(1),
-  thumbnail: z.string().optional(),
-  previewVideo: z.string().optional(),
-  tags: z.array(z.string()).optional(),
-  requirements: z.array(z.string().min(1)).optional(),
-  learningOutcomes: z.array(z.string().min(1)).optional(),
-  duration: z.number().min(0).optional(),
-  totalLessons: z.number().min(0).optional(),
+  thumbnail: z.string().nullish(),
+  previewVideo: z.string().nullish(),
+  tags: z.array(z.string()).nullish(),
+  requirements: z.array(z.string().min(1)).nullish(),
+  learningOutcomes: z.array(z.string().min(1)).nullish(),
+  duration: z.number().min(0).nullish(),
+  totalLessons: z.number().min(0).nullish(),
 
   // Advanced fields (edit-only)
-  isPublished: z.boolean().optional(),
-  allowDiscussions: z.boolean().optional(),
-  certificateEnabled: z.boolean().optional(),
-  isFlashSale: z.boolean().optional(),
-  flashSaleEnd: z.string().datetime().optional(),
-  groupBuyingEnabled: z.boolean().optional(),
-  groupBuyingDiscount: z.number().min(0).max(1).optional(),
+  isPublished: z.boolean().nullish(),
+  allowDiscussions: z.boolean().nullish(),
+  certificateEnabled: z.boolean().nullish(),
+  isFlashSale: z.boolean().nullish(),
+  flashSaleEnd: z.string().datetime().nullish(),
+  groupBuyingEnabled: z.boolean().nullish(),
+  groupBuyingDiscount: z.number().min(0).max(1).nullish(),
   groupTiers: z
     .array(
       z.object({
@@ -193,14 +195,14 @@ export const updateCourseSchema = z.object({
         isActive: z.boolean().optional().default(true),
       })
     )
-    .optional(),
-  certificate: z.boolean().optional(),
+    .nullish(),
+  certificate: z.boolean().nullish(),
 
   // 🔹 Extra fields for edit
-  targetAudience: z.array(z.string()).optional(),
-  metaTitle: z.string().optional(),
-  metaDescription: z.string().optional(),
-  demandLevel: z.enum(["low", "medium", "high"]).optional(),
+  targetAudience: z.array(z.string()).nullish(),
+  metaTitle: z.string().nullish(),
+  metaDescription: z.string().nullish(),
+  demandLevel: z.enum(["low", "medium", "high"]).nullish(),
 });
 
 // Resource schema for projects
