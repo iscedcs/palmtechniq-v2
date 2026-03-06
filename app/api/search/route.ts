@@ -15,11 +15,6 @@ interface SearchResult {
   url: string;
   relevanceScore?: number;
 }
-
-const openai = new OpenAI({
-  apiKey: process.env.OPENAI_API_KEY,
-});
-
 async function getEmbedding(text: string): Promise<number[]> {
   try {
     const openai = new OpenAI({
@@ -109,7 +104,7 @@ async function searchCourses(
         students: course.enrollments.length,
         price: course.salePrice || course.price,
         level: course.level,
-        url: `/courses/${course.slug || course.id}`,
+        url: `/courses/${course.id}`,
       };
     });
   } catch (error) {
