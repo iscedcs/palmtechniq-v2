@@ -73,16 +73,17 @@ export async function addToCart(courseId: string) {
     });
     revalidatePath("/cart");
     try {
-      await notify.role("STUDENT", {
+      // Notify only the user who added to cart, not all students
+      await notify.user(user.user.id, {
         type: "info",
         title: "Added to your cart",
-        message: `You added  “${course?.title} to your cart ”`,
+        message: `You added "${course?.title}" to your cart`,
         actionUrl: `/courses/${courseId}/checkout`,
-        actionLabel: "Procced to checkout!",
+        actionLabel: "Proceed to checkout!",
         metadata: { category: "cart", courseId },
       });
     } catch (e) {
-      console.warn("⚠️ Socket.IO not initialized yet, skipping emit");
+      console.warn("⚠️ Notification failed, skipping emit");
     }
     return { success: true, message: "Added to cart successfully" };
   } catch (error) {

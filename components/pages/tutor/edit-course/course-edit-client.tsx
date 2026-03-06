@@ -91,6 +91,13 @@ export function CourseEditClient({
       requirements: course.requirements || [],
       outcomes: course.outcomes || [],
       groupTiers: course.groupTiers || [],
+      // Convert nullable numbers to defined values (null not accepted by zod .optional())
+      groupBuyingDiscount: course.groupBuyingDiscount ?? 0,
+      basePrice: course.basePrice ?? 0,
+      currentPrice: course.currentPrice ?? 0,
+      price: course.price ?? 0,
+      duration: course.duration ?? 0,
+      totalLessons: course.totalLessons ?? 0,
     },
   });
 
@@ -166,6 +173,13 @@ export function CourseEditClient({
       requirements: course.requirements || [],
       outcomes: course.outcomes || [],
       groupTiers: course.groupTiers || [],
+      // Convert nullable numbers to defined values (null not accepted by zod .optional())
+      groupBuyingDiscount: course.groupBuyingDiscount ?? 0,
+      basePrice: course.basePrice ?? 0,
+      currentPrice: course.currentPrice ?? 0,
+      price: course.price ?? 0,
+      duration: course.duration ?? 0,
+      totalLessons: course.totalLessons ?? 0,
     });
     setModules(course.modules || []);
     localStorage.removeItem(draftKey);
