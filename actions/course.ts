@@ -302,16 +302,18 @@ export async function updateCourse(
     await recomputeCourseDurations(db, courseId);
 
     // Send update notifications
-    await notify.role("STUDENT", {
+    // Notify only students enrolled in THIS course
+    await notify.course(courseId, {
       type: "info",
       title: "Course Updated",
-      message: `A Course you purchased "${course.title}" has just been updated!`,
+      message: `"${course.title}" has just been updated!`,
       actionUrl: `/courses/${courseId}`,
       actionLabel: "View Course",
       metadata: { category: "course_update", courseId },
     });
 
-    await notify.role("TUTOR", {
+    // Notify only the course owner (current user)
+    await notify.user(session.user.id, {
       type: "info",
       title: "Your Course Updated",
       message: `You updated "${course.title}".`,
@@ -320,11 +322,12 @@ export async function updateCourse(
       metadata: { category: "course_update", courseId },
     });
 
+    // Notify admins to review changes
     await notify.role("ADMIN", {
       type: "info",
       title: "Course Updated",
       message: `Tutor updated "${course.title}". Review changes.`,
-      actionUrl: `/courses/${courseId}`,
+      actionUrl: `/courses/${courseId}/edit`,
       actionLabel: "Review Changes",
       metadata: { category: "course_update", courseId },
     });

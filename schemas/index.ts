@@ -11,7 +11,7 @@ export const passwordSchema = z
   .min(8, "Password must be at least 8 characters")
   .regex(
     /^(?=.*[a-z])(?=.*[A-Z])(?=.*\d)(?=.*[@₦!%*?&])[A-Za-z\d@₦!%*?&]/,
-    "Password must contain at least one uppercase letter, one lowercase letter, one number, and one special character"
+    "Password must contain at least one uppercase letter, one lowercase letter, one number, and one special character",
   );
 
 export const nameSchema = z
@@ -86,7 +86,7 @@ export const courseSchema = z.object({
   outcomes: z.array(z.string().min(1, "Learning outcome cannot be empty")),
   duration: z.preprocess(
     (val) => (val !== "" && val !== null ? Number(val) : undefined),
-    z.number().min(0, "Duration must be non-negative").nullish()
+    z.number().min(0, "Duration must be non-negative").nullish(),
   ) as unknown as z.ZodNullable<z.ZodOptional<z.ZodNumber>>,
 
   totalLessons: z
@@ -100,7 +100,7 @@ export const courseSchema = z.object({
   flashSaleEnd: z.preprocess(
     (val) =>
       typeof val === "string" ? new Date(val).toISOString() : undefined,
-    z.string().datetime().nullish()
+    z.string().datetime().nullish(),
   ) as unknown as z.ZodNullable<z.ZodOptional<z.ZodString>>,
   groupBuyingEnabled: z.boolean(),
   groupBuyingDiscount: z.number().min(0).max(1).nullish(),
@@ -112,7 +112,7 @@ export const courseSchema = z.object({
         groupPrice: z.number().min(0, "Group price must be non-negative"),
         cashbackPercent: z.number().min(0).max(1).default(0),
         isActive: z.boolean().default(true),
-      })
+      }),
     )
     .default([]),
   targetAudience: z
@@ -193,7 +193,7 @@ export const updateCourseSchema = z.object({
         groupPrice: z.number().min(0, "Group price must be non-negative"),
         cashbackPercent: z.number().min(0).max(1).optional().default(0),
         isActive: z.boolean().optional().default(true),
-      })
+      }),
     )
     .nullish(),
   certificate: z.boolean().nullish(),
@@ -230,7 +230,7 @@ export const taskSchema = z.object({
   moduleId: z.string().min(1, "Module is required"),
   dueDate: z.preprocess(
     (val) => (val ? new Date(val as string) : null),
-    z.date().nullable().optional()
+    z.date().nullable().optional(),
   ),
   submissionType: z.enum(["FILE", "GITHUB", "LINK", "TEXT", "QUIZ"], {
     message: "Invalid submission type",
@@ -239,21 +239,20 @@ export const taskSchema = z.object({
 });
 
 // Project schemas
-export const projectSchema = z
-  .object({
-    title: z.string().min(1, "Title is required"),
-    description: z.string().min(1, "Description is required"),
-    requirements: z
-      .array(z.string().min(1, "Requirement cannot be empty"))
-      .min(1, "At least one requirement is required"),
-    difficulty: z.enum(["BEGINNER", "INTERMEDIATE", "ADVANCED"], {
-      message: "Invalid difficulty level",
-    }),
-    points: z.number().int().min(1, "Points must be at least 1").default(100),
-    isActive: z.boolean().default(true),
-    courseId: z.string().min(1, "Course is required"),
-    resources: z.array(projectResourceSchema).optional().default([]),
-  });
+export const projectSchema = z.object({
+  title: z.string().min(1, "Title is required"),
+  description: z.string().min(1, "Description is required"),
+  requirements: z
+    .array(z.string().min(1, "Requirement cannot be empty"))
+    .min(1, "At least one requirement is required"),
+  difficulty: z.enum(["BEGINNER", "INTERMEDIATE", "ADVANCED"], {
+    message: "Invalid difficulty level",
+  }),
+  points: z.number().int().min(1, "Points must be at least 1").default(100),
+  isActive: z.boolean().default(true),
+  courseId: z.string().min(1, "Course is required"),
+  resources: z.array(projectResourceSchema).optional().default([]),
+});
 
 export const gradeSubmissionSchema = z.object({
   submissionId: z.string().min(1, "Submission ID is required"),
@@ -304,7 +303,7 @@ export const studentSubmissionSchema = z
     {
       message: "Provide at least one of GitHub URL, Live URL, notes, or a file",
       path: ["githubUrl"],
-    }
+    },
   );
 
 export type LoginFormData = z.infer<typeof loginSchema>;

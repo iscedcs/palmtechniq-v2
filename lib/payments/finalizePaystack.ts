@@ -386,6 +386,7 @@ export async function finalizePaystackByReference(reference: string) {
     where: { id: tx.courseId! },
     select: {
       title: true,
+      tutor: { select: { userId: true } },
     },
   });
 
@@ -398,12 +399,15 @@ export async function finalizePaystackByReference(reference: string) {
     metadata: { category: "payment_success", courseId: tx.courseId, reference },
   });
 
-  await notify.role("TUTOR", {
-    type: "payment",
-    title: "Course Purchase",
-    message: `Your course ${course?.title} has been purchased`,
-    metadata: { category: "payment_received", courseId: tx.courseId },
-  });
+  // Notify only the course owner (tutor), not all tutors
+  if (course?.tutor?.userId) {
+    await notify.user(course.tutor.userId, {
+      type: "payment",
+      title: "Course Purchase",
+      message: `Your course ${course.title} has been purchased`,
+      metadata: { category: "payment_received", courseId: tx.courseId },
+    });
+  }
 
   return { ok: true, courseId: tx.courseId };
 }
