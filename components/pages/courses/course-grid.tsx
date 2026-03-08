@@ -22,12 +22,14 @@ import { formatDurationMinutes, generateRandomAvatar } from "@/lib/utils";
 import { motion } from "framer-motion";
 import {
   Clock,
+  Filter,
   Play,
   Search,
   ShoppingCart,
   Star,
   TrendingUp,
   Users,
+  X,
 } from "lucide-react";
 import { useSession } from "next-auth/react";
 import Link from "next/link";
@@ -60,8 +62,11 @@ export default function CoursesGrid({
       const matchesSearch =
         course.title.toLowerCase().includes(searchLower) ||
         course.description.toLowerCase().includes(searchLower) ||
-        (course.tags || []).some((tag: string) =>
-          tag.toLowerCase().includes(searchLower),
+        (course.tags || []).some((tag: any) =>
+          (tag?.name || tag || "")
+            .toString()
+            .toLowerCase()
+            .includes(searchLower),
         ) ||
         (course.tutor?.user?.name || "").toLowerCase().includes(searchLower);
       const matchesCategory =
@@ -91,60 +96,146 @@ export default function CoursesGrid({
       }
     });
 
+  const clearFilters = () => {
+    setSearchTerm("");
+    setSelectedCategory("all");
+    setSortBy("popular");
+  };
+
+  const hasActiveFilters =
+    searchTerm || selectedCategory !== "all" || sortBy !== "popular";
+
   return (
-    <div className="">
-      <section className="min-h-screen bg-background">
-        <section className="py-8 border-b border-white/10">
-          <div className="container mx-auto px-6">
-            <div className="flex flex-col lg:flex-row gap-6 items-center">
-              <div className="relative flex-1 max-w-md">
-                <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400 w-5 h-5" />
-                <Input
-                  placeholder="Search courses, instructors, or topics..."
-                  value={searchTerm}
-                  onChange={(e) => setSearchTerm(e.target.value)}
-                  className="pl-10 glass-card border-white/20 focus:border-neon-blue/50"
-                />
-              </div>
+    <div className="min-h-screen bg-background">
+      {/* Hero Section with Search */}
+      <section className="pt-32 pb-8 relative overflow-hidden">
+        <div className="absolute inset-0 cyber-grid opacity-20" />
+        <motion.div
+          className="absolute top-20 left-20 w-72 h-72 bg-neon-blue/10 rounded-full blur-3xl"
+          animate={{
+            scale: [1, 1.2, 1],
+            opacity: [0.3, 0.6, 0.3],
+          }}
+          transition={{
+            duration: 4,
+            repeat: Number.POSITIVE_INFINITY,
+            ease: "easeInOut",
+          }}
+        />
 
-              <div className="flex gap-4">
-                <Select
-                  value={selectedCategory}
-                  onValueChange={setSelectedCategory}>
-                  <SelectTrigger className="w-40 glass-card border-white/20">
-                    <SelectValue placeholder="Category" />
-                  </SelectTrigger>
-                  <SelectContent>
-                    {categories.map((cat) => (
-                      <SelectItem key={cat.id} value={cat.name}>
-                        {cat.name}
-                      </SelectItem>
-                    ))}
-                  </SelectContent>
-                </Select>
+        <div className="container mx-auto px-6 relative z-10">
+          <motion.div
+            initial={{ opacity: 0, y: 30 }}
+            animate={{ opacity: 1, y: 0 }}
+            transition={{ duration: 0.8 }}
+            className="text-center mb-8">
+            <h1 className="text-4xl md:text-6xl font-bold mb-4">
+              <span className="text-gradient">Discover</span>{" "}
+              <span className="text-white">Courses</span>
+            </h1>
+            <p className="text-lg text-gray-300 max-w-2xl mx-auto mb-8">
+              From crash courses to masterclasses - find the perfect learning
+              path for your goals{" "}
+            </p>
 
-                <Select value={sortBy} onValueChange={setSortBy}>
-                  <SelectTrigger className="w-40 glass-card border-white/20">
-                    <SelectValue placeholder="Sort by" />
-                  </SelectTrigger>
-                  <SelectContent>
-                    <SelectItem value="popular">Most Popular</SelectItem>
-                    <SelectItem value="rating">Highest Rated</SelectItem>
-                    <SelectItem value="price-low">Price: Low → High</SelectItem>
-                    <SelectItem value="price-high">
-                      Price: High → Low
-                    </SelectItem>
-                  </SelectContent>
-                </Select>
-              </div>
+            {/* Search Bar - Prominent */}
+            <div className="max-w-2xl mx-auto relative">
+              <Search className="absolute left-4 top-1/2 transform -translate-y-1/2 text-gray-400 w-5 h-5" />
+              <Input
+                placeholder="Search courses, instructors, or topics..."
+                value={searchTerm}
+                onChange={(e) => setSearchTerm(e.target.value)}
+                className="pl-12 pr-4 py-6 text-lg glass-card border-white/20 focus:border-neon-blue/50 rounded-xl"
+              />
+              {searchTerm && (
+                <button
+                  onClick={() => setSearchTerm("")}
+                  className="absolute right-4 top-1/2 transform -translate-y-1/2 text-gray-400 hover:text-white">
+                  <X className="w-5 h-5" />
+                </button>
+              )}
             </div>
-          </div>
-        </section>
+          </motion.div>
+
+          {/* Category Chips */}
+          <motion.div
+            initial={{ opacity: 0, y: 20 }}
+            animate={{ opacity: 1, y: 0 }}
+            transition={{ duration: 0.6, delay: 0.2 }}
+            className="flex flex-wrap justify-center gap-3 mb-6">
+            <button
+              onClick={() => setSelectedCategory("all")}
+              className={`px-4 py-2 rounded-full text-sm font-medium transition-all duration-300 ${
+                selectedCategory === "all"
+                  ? "bg-neon-blue text-white shadow-lg shadow-neon-blue/30"
+                  : "bg-white/10 text-gray-300 hover:bg-white/20 border border-white/10"
+              }`}>
+              All Courses
+            </button>
+            {categories.map((cat) => (
+              <button
+                key={cat.id}
+                onClick={() => setSelectedCategory(cat.name)}
+                className={`px-4 py-2 rounded-full text-sm font-medium transition-all duration-300 ${
+                  selectedCategory === cat.name
+                    ? "bg-neon-blue text-white shadow-lg shadow-neon-blue/30"
+                    : "bg-white/10 text-gray-300 hover:bg-white/20 border border-white/10"
+                }`}>
+                {cat.name}
+              </button>
+            ))}
+          </motion.div>
+
+          {/* Sort & Filter Row */}
+          <motion.div
+            initial={{ opacity: 0 }}
+            animate={{ opacity: 1 }}
+            transition={{ duration: 0.6, delay: 0.3 }}
+            className="flex items-center justify-between max-w-5xl mx-auto">
+            <div className="flex items-center gap-2 text-sm text-gray-400">
+              <span className="font-medium text-white">
+                {filteredCourses.length}
+              </span>
+              <span>courses found</span>
+              {hasActiveFilters && (
+                <button
+                  onClick={clearFilters}
+                  className="ml-2 text-neon-blue hover:underline flex items-center gap-1">
+                  <X className="w-3 h-3" />
+                  Clear filters
+                </button>
+              )}
+            </div>
+            <div className="flex items-center gap-2">
+              <Filter className="w-4 h-4 text-gray-400" />
+              <Select value={sortBy} onValueChange={setSortBy}>
+                <SelectTrigger className="w-44 glass-card border-white/20 text-sm">
+                  <SelectValue placeholder="Sort by" />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="popular">Most Popular</SelectItem>
+                  <SelectItem value="rating">Highest Rated</SelectItem>
+                  <SelectItem value="price-low">Price: Low → High</SelectItem>
+                  <SelectItem value="price-high">Price: High → Low</SelectItem>
+                </SelectContent>
+              </Select>
+            </div>
+          </motion.div>
+        </div>
+      </section>
+
+      {/* Courses Grid */}
+      <section className="pb-20">
         <div className="container mx-auto px-6">
           <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-8">
             {filteredCourses.length === 0 ? (
               <div className="col-span-full text-center text-gray-400 py-16">
-                No courses match your search/filter.
+                <p className="text-lg mb-2">No courses match your search</p>
+                <button
+                  onClick={clearFilters}
+                  className="text-neon-blue hover:underline">
+                  Clear all filters
+                </button>
               </div>
             ) : (
               filteredCourses.map((course, index) => (
@@ -153,7 +244,7 @@ export default function CoursesGrid({
                   initial={{ opacity: 0, y: 50 }}
                   animate={{ opacity: 1, y: 0 }}
                   transition={{ duration: 0.6, delay: index * 0.1 }}
-                  whileHover={{ scale: 1.05, rotateY: 5 }}
+                  whileHover={{ scale: 1.02 }}
                   className="group cursor-pointer">
                   <Card className="glass-card hover-glow h-full border-white/10 overflow-hidden relative">
                     <div className="relative">
@@ -192,9 +283,12 @@ export default function CoursesGrid({
                       </div>
 
                       <div className="absolute top-4 right-4 flex flex-col gap-2 items-end">
-                        {course.isFlashSale && course.flashSaleEnd && (
-                          <FlashSaleTimer endTime={course.flashSaleEnd} />
-                        )}
+                        {course.isFlashSale &&
+                          course.flashSaleEnd &&
+                          new Date(course.flashSaleEnd).getTime() >
+                            Date.now() && (
+                            <FlashSaleTimer endTime={course.flashSaleEnd} />
+                          )}
                       </div>
                     </div>
                     <CardContent className="p-6">
@@ -263,7 +357,7 @@ export default function CoursesGrid({
                                     Date.now()) /
                                     60000,
                                 )
-                              : 0
+                              : null
                           }
                           basePrice={course.basePrice}
                           currentPrice={course.currentPrice}
@@ -296,12 +390,15 @@ export default function CoursesGrid({
                           className="flex-1 bg-gradient-to-r from-neon-blue to-neon-purple text-white mr-2">
                           <Link href={`/courses/${course.id}`}>Enroll Now</Link>
                         </Button>
-                        <Button
-                          variant="outline"
-                          size="icon"
-                          className="border-white/20 text-white hover:bg-white/10 bg-transparent">
-                          <Users className="w-4 h-4" />
-                        </Button>
+                        {course.groupBuyingEnabled && (
+                          <Button
+                            variant="outline"
+                            size="icon"
+                            className="border-yellow-500/30 text-yellow-400 hover:bg-yellow-500/10 bg-transparent"
+                            title="Group buying available">
+                            <Users className="w-4 h-4" />
+                          </Button>
+                        )}
                         <motion.button
                           whileTap={{ scale: 0.9 }}
                           onClick={async () => {

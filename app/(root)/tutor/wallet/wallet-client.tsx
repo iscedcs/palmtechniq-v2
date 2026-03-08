@@ -2,7 +2,6 @@
 
 import { useEffect, useState } from "react";
 import { motion } from "framer-motion";
-import { Navigation } from "@/components/navigation";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -219,7 +218,7 @@ export default function WalletClient({
               method.details && typeof method.details === "object"
                 ? method.details
                 : null,
-          }))
+          })),
         );
         if (refreshed.user) {
           setBankName(refreshed.user.bankName || "");
@@ -296,7 +295,6 @@ export default function WalletClient({
 
   return (
     <div className="min-h-screen bg-background">
-      <Navigation />
       <div className="pt-20">
         {/* Hero Section */}
         <section className="py-12 relative overflow-hidden">

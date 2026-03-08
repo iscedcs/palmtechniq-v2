@@ -693,9 +693,10 @@ export async function getAdminCoursesPageData(params?: {
     id: course.id,
     title: course.title,
     status: course.status,
-    price: (course.currentPrice && course.currentPrice > 0) 
-      ? course.currentPrice 
-      : (course.basePrice ?? course.price ?? 0),
+    price:
+      course.currentPrice && course.currentPrice > 0
+        ? course.currentPrice
+        : (course.basePrice ?? course.price ?? 0),
     revenue: (revenueByCourse.get(course.id) ?? 0) / 100,
     enrollments: enrollmentCountByCourse.get(course.id) ?? 0,
     tutor: course.tutor?.user?.name || "Tutor",
@@ -926,4 +927,160 @@ export async function updateCourseStatus({
   });
 
   return { success: true };
+}
+
+export async function addStudentToCourse(courseId: string, userId: string) {
+  try {
+    const session = await auth();
+    if (!session?.user?.id || session.user.role !== "ADMIN") {
+      return { error: "Unauthorized" };
+    }
+
+    // Check if course exists
+    const course = await db.course.findUnique({
+      where: { id: courseId },
+    });
+
+    if (!course) {
+      return { error: "Course not found" };
+    }
+
+    // Check if user exists
+    const user = await db.user.findUnique({
+      where: { id: userId },
+    });
+
+    if (!user) {
+      return { error: "User not found" };
+    }
+
+    // Check if student is already enrolled
+    const existingEnrollment = await db.enrollment.findFirst({
+      where: {
+        userId,
+        courseId,
+      },
+    });
+
+    if (existingEnrollment) {
+      return { error: "Student is already enrolled in this course" };
+    }
+
+    // Create enrollment
+    const enrollment = await db.enrollment.create({
+      data: {
+        userId,
+        courseId,
+        status: "ACTIVE",
+      },
+    });
+
+    return { success: true, enrollment };
+  } catch (error) {
+    console.error("Error adding student to course:", error);
+    return { error: "Failed to add student to course" };
+  }
+}
+
+export async function bulkAddStudentsToCourse(
+  courseId: string,
+  userIds: string[],
+) {
+  try {
+    const session = await auth();
+    if (!session?.user?.id || session.user.role !== "ADMIN") {
+      return { error: "Unauthorized" };
+    }
+
+    // Check if course exists
+    const course = await db.course.findUnique({
+      where: { id: courseId },
+    });
+
+    if (!course) {
+      return { error: "Course not found" };
+    }
+
+    // Check which users exist
+    const users = await db.user.findMany({
+      where: { id: { in: userIds } },
+      select: { id: true },
+    });
+
+    const validUserIds = users.map((u) => u.id);
+    const invalidUserIds = userIds.filter((id) => !validUserIds.includes(id));
+
+    if (validUserIds.length === 0) {
+      return { error: "No valid users found" };
+    }
+
+    // Get existing enrollments
+    const existingEnrollments = await db.enrollment.findMany({
+      where: {
+        userId: { in: validUserIds },
+        courseId,
+      },
+      select: { userId: true },
+    });
+
+    const enrolledUserIds = existingEnrollments.map((e) => e.userId);
+    const newUserIds = validUserIds.filter(
+      (id) => !enrolledUserIds.includes(id),
+    );
+
+    if (newUserIds.length === 0) {
+      return {
+        error: "All selected students are already enrolled in this course",
+      };
+    }
+
+    // Bulk create enrollments
+    const createdEnrollments = await db.enrollment.createMany({
+      data: newUserIds.map((userId) => ({
+        userId,
+        courseId,
+        status: "ACTIVE",
+      })),
+    });
+
+    return {
+      success: true,
+      enrolledCount: createdEnrollments.count,
+      alreadyEnrolledCount: enrolledUserIds.length,
+      invalidUserCount: invalidUserIds.length,
+    };
+  } catch (error) {
+    console.error("Error bulk adding students to course:", error);
+    return { error: "Failed to bulk add students to course" };
+  }
+}
+
+export async function getCourseEnrollmentsForAdmin(courseId: string) {
+  try {
+    const session = await auth();
+    if (!session?.user?.id || session.user.role !== "ADMIN") {
+      return { error: "Unauthorized" };
+    }
+
+    const enrollments = await db.enrollment.findMany({
+      where: { courseId },
+      include: {
+        user: {
+          select: {
+            id: true,
+            name: true,
+            email: true,
+            avatar: true,
+            createdAt: true,
+          },
+        },
+      },
+      orderBy: { enrolledAt: "desc" },
+    });
+
+    return { success: true, enrollments };
+  } catch (error) {
+    console.error("Error fetching enrollments:", error);
+    return { error: "Failed to fetch enrollments" };
+  }
 }

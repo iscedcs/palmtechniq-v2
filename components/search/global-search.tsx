@@ -307,7 +307,7 @@ export function GlobalSearch() {
                               )}
                               {result.price && (
                                 <span className="text-neon-blue font-medium">
-                                  ${result.price}
+                                  ₦{result.price}
                                 </span>
                               )}
                             </div>

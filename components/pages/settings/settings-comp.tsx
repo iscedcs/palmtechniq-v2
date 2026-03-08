@@ -2,7 +2,6 @@
 
 import { useState } from "react";
 import { motion } from "framer-motion";
-import { Navigation } from "@/components/navigation";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Label } from "@/components/ui/label";
@@ -92,7 +91,7 @@ export default function Settings() {
   const handleDeleteAccount = () => {
     if (
       confirm(
-        "Are you sure you want to delete your account? This action cannot be undone."
+        "Are you sure you want to delete your account? This action cannot be undone.",
       )
     ) {
       console.log("Deleting account...");
@@ -714,7 +713,7 @@ export default function Settings() {
                           onValueChange={(value) =>
                             updateSetting(
                               "sessionTimeout",
-                              Number.parseInt(value)
+                              Number.parseInt(value),
                             )
                           }>
                           <SelectTrigger className="bg-white/10 border-white/20 text-white">

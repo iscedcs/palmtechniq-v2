@@ -96,7 +96,7 @@ export function FlashSaleTimer({ endTime }: { endTime: Date }) {
       if (distance > 0) {
         setTimeLeft({
           hours: Math.floor(
-            (distance % (1000 * 60 * 60 * 24)) / (1000 * 60 * 60)
+            (distance % (1000 * 60 * 60 * 24)) / (1000 * 60 * 60),
           ),
           minutes: Math.floor((distance % (1000 * 60 * 60)) / (1000 * 60)),
           seconds: Math.floor((distance % (1000 * 60)) / 1000),
@@ -190,12 +190,12 @@ export function CoursePreviewModal({
 // Trust Signals Component
 export function TrustSignals() {
   const companies = [
-    "Google",
-    "Apple",
-    "Netflix",
-    "Microsoft",
-    "Amazon",
-    "Meta",
+    "24 MobileMech",
+    "Cadenza",
+    "Axio",
+    "Schoolware",
+    "EasySpend",
+    "ISCE",
   ];
 
   return (
@@ -275,13 +275,13 @@ export function LiveChatWidget() {
   const createBrowserSessionToken = () =>
     (typeof crypto !== "undefined" && "randomUUID" in crypto
       ? crypto.randomUUID()
-      : `${Date.now()}-${Math.random().toString(36).slice(2)}`)
-      .replace(/[^a-zA-Z0-9_-]/g, "");
+      : `${Date.now()}-${Math.random().toString(36).slice(2)}`
+    ).replace(/[^a-zA-Z0-9_-]/g, "");
 
   const [isOpen, setIsOpen] = useState(false);
   const [advisorSessionToken, setAdvisorSessionToken] = useState("");
   const [latestAdvisorTurnId, setLatestAdvisorTurnId] = useState<string | null>(
-    null
+    null,
   );
   const [messageInput, setMessageInput] = useState("");
   const [isSending, setIsSending] = useState(false);
@@ -376,7 +376,9 @@ export function LiveChatWidget() {
 
       const data = await res.json().catch(() => ({}));
       if (!res.ok) {
-        throw new Error(data?.error || "Unable to get advisor response right now.");
+        throw new Error(
+          data?.error || "Unable to get advisor response right now.",
+        );
       }
 
       const assistantMessage: ChatMessage = {
@@ -398,7 +400,10 @@ export function LiveChatWidget() {
       if (typeof data.sessionToken === "string" && data.sessionToken) {
         setAdvisorSessionToken(data.sessionToken);
         if (typeof window !== "undefined") {
-          window.localStorage.setItem("advisor-session-token", data.sessionToken);
+          window.localStorage.setItem(
+            "advisor-session-token",
+            data.sessionToken,
+          );
         }
       }
       if (typeof data.advisorTurnId === "string" && data.advisorTurnId) {
@@ -583,7 +588,9 @@ export function LiveChatWidget() {
                         onClick={submitLead}
                         disabled={isSubmittingLead}
                         className="w-full bg-gradient-to-r from-neon-blue to-neon-purple text-white">
-                        {isSubmittingLead ? "Submitting..." : "Request Follow-up"}
+                        {isSubmittingLead
+                          ? "Submitting..."
+                          : "Request Follow-up"}
                       </Button>
                     </div>
                   )}
@@ -605,7 +612,9 @@ export function LiveChatWidget() {
                         onClick={() => sendMessage(prompt)}
                         disabled={isSending}
                         className="text-[11px] px-2 py-1 rounded-full border border-white/20 text-gray-300 hover:bg-white/10 disabled:opacity-60">
-                        {prompt.length > 34 ? `${prompt.slice(0, 34)}...` : prompt}
+                        {prompt.length > 34
+                          ? `${prompt.slice(0, 34)}...`
+                          : prompt}
                       </button>
                     ))}
                   </div>
