@@ -10,12 +10,12 @@ import { generateRandomAvatar } from "@/lib/utils";
 const testimonials = [
   {
     name: "Sarah Chen",
-    role: "AdTech Specialist at Google",
+    role: "Specialist at Google",
     company: "Google",
     avatar: generateRandomAvatar(),
     rating: 5,
-    text: "PalmTechnIQ prepared me perfectly for my AdTech role. The hands-on projects and AI coach made all the difference in landing at Google.",
-    course: "AdTech Fundamentals",
+    text: "PalmTechnIQ prepared me perfectly for my role. The hands-on projects and AI coach made all the difference in landing at Google.",
+    course: "Fundamentals",
     gradient: "from-neon-blue to-cyan-400",
   },
   {
@@ -24,7 +24,7 @@ const testimonials = [
     company: "Meta",
     avatar: generateRandomAvatar(),
     rating: 5,
-    text: "The program's focus on real-world AdTech tools and platform optimization helped me excel from day one in my role.",
+    text: "The program's focus on real-world tools and platform optimization helped me excel from day one in my role.",
     course: "Performance Marketing Mastery",
     gradient: "from-neon-purple to-pink-400",
   },
@@ -35,7 +35,7 @@ const testimonials = [
     avatar: generateRandomAvatar(),
     rating: 5,
     text: "The advanced analytics curriculum and project-based learning gave me the exact skills I needed for my analytics role at The Trade Desk.",
-    course: "AdTech Analytics Pro",
+    course: "Analytics Pro",
     gradient: "from-neon-green to-emerald-400",
   },
   {
@@ -44,8 +44,8 @@ const testimonials = [
     company: "AppNexus",
     avatar: generateRandomAvatar(),
     rating: 5,
-    text: "The mentorship from industry leaders helped me understand the AdTech ecosystem deeply. My career advancement has been incredible.",
-    course: "AdTech Sales Mastery",
+    text: "The mentorship from industry leaders helped me understand the ecosystem deeply. My career advancement has been incredible.",
+    course: "Sales Mastery",
     gradient: "from-neon-orange to-yellow-400",
   },
   {
@@ -54,8 +54,8 @@ const testimonials = [
     company: "Criteo",
     avatar: generateRandomAvatar(),
     rating: 5,
-    text: "The product management track for AdTech was incredibly comprehensive. It prepared me for all aspects of AdTech product development.",
-    course: "AdTech Product Management",
+    text: "The product management track for was incredibly comprehensive. It prepared me for all aspects of product development.",
+    course: "Product Management",
     gradient: "from-red-400 to-pink-400",
   },
   {
@@ -64,8 +64,8 @@ const testimonials = [
     company: "PubMatic",
     avatar: generateRandomAvatar(),
     rating: 5,
-    text: "As an engineer, I appreciated the technical depth combined with real AdTech industry context. A game-changer for my career.",
-    course: "AdTech Engineering Fundamentals",
+    text: "As an engineer, I appreciated the technical depth combined with real industry context. A game-changer for my career.",
+    course: "Engineering Fundamentals",
     gradient: "from-indigo-400 to-purple-400",
   },
 ];
