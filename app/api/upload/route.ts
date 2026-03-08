@@ -28,7 +28,7 @@ function getUploadFolder(mime: string) {
 function getObjectAcl(
   role: string | null | undefined,
   requestedVisibility: "public" | "private" | undefined,
-  folder: string
+  folder: string,
 ) {
   void role;
   if (folder === "project-submissions") return "private";
@@ -41,7 +41,10 @@ function getObjectAcl(
 export async function POST(request: Request) {
   const session = await auth();
   if (!session?.user?.id) {
-    return Response.json({ success: false, error: "Unauthorized" }, { status: 401 });
+    return Response.json(
+      { success: false, error: "Unauthorized" },
+      { status: 401 },
+    );
   }
 
   try {
@@ -54,9 +57,17 @@ export async function POST(request: Request) {
     const body = await request.json().catch(() => ({}));
     const parsed = requestSchema.safeParse(body);
     if (!parsed.success) {
-      return Response.json({ success: false, error: "Invalid upload payload" }, { status: 400 });
+      return Response.json(
+        { success: false, error: "Invalid upload payload" },
+        { status: 400 },
+      );
     }
-    const { filename, contentType, folder: requestedFolder, visibility } = parsed.data;
+    const {
+      filename,
+      contentType,
+      folder: requestedFolder,
+      visibility,
+    } = parsed.data;
 
     const allowedFolders = new Set(["project-submissions"]);
     const requestedFolderSafe = requestedFolder ?? "";
@@ -72,7 +83,7 @@ export async function POST(request: Request) {
     if (!accessKeyId || !secretAccessKey || !bucketName) {
       return Response.json(
         { success: false, error: "Upload service is not configured" },
-        { status: 500 }
+        { status: 500 },
       );
     }
 
@@ -96,16 +107,19 @@ export async function POST(request: Request) {
       },
       Expires: 600,
     });
-
+    console.log(fields);
     return Response.json({ success: true, url, fields });
   } catch (error) {
     if (error instanceof RateLimitError) {
-      return Response.json({ success: false, error: error.message }, { status: 429 });
+      return Response.json(
+        { success: false, error: error.message },
+        { status: 429 },
+      );
     }
     console.error("Upload Error:", error);
     return Response.json(
       { success: false, error: "Unknown upload error occurred" },
-      { status: 500 }
+      { status: 500 },
     );
   }
 }

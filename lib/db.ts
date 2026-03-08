@@ -11,7 +11,10 @@ const globalForPrisma = globalThis as unknown as {
 function createPrismaClient() {
   const connectionString = process.env.DATABASE_URL;
   if (!connectionString) {
-    throw new Error("DATABASE_URL environment variable is not set");
+    throw new Error(
+      "DATABASE_URL environment variable is not set. " +
+        "Make sure your .env file contains DATABASE_URL before running the application.",
+    );
   }
 
   const adapter = new PrismaNeon({ connectionString });

@@ -112,22 +112,27 @@ export function DynamicPriceDisplay({
         )}
       </div>
 
-      {/* Demand Indicator */}
-      <div
-        className={`flex items-center space-x-2 p-3 rounded-lg ${demandInfo?.bgColor} border border-white/10`}>
-        <demandInfo.icon className={`w-5 h-5 ${demandInfo?.color}`} />
-        <span className={`font-semibold ${demandInfo?.color}`}>
-          {demandInfo?.text}
-        </span>
-        {demandLevel === "surge" && (
-          <Badge className="bg-red-500/20 text-red-400 border-red-500/30 animate-pulse">
-            SURGE
-          </Badge>
+      {/* Demand Indicator - only show if explicitly set */}
+      {demandLevel &&
+        ["low", "medium", "high", "surge"].includes(
+          demandLevel.toLowerCase(),
+        ) && (
+          <div
+            className={`flex items-center space-x-2 p-3 rounded-lg ${demandInfo?.bgColor} border border-white/10`}>
+            <demandInfo.icon className={`w-5 h-5 ${demandInfo?.color}`} />
+            <span className={`font-semibold ${demandInfo?.color}`}>
+              {demandInfo?.text}
+            </span>
+            {demandLevel === "surge" && (
+              <Badge className="bg-red-500/20 text-red-400 border-red-500/30 animate-pulse">
+                SURGE
+              </Badge>
+            )}
+          </div>
         )}
-      </div>
 
-      {/* Price Change Timer */}
-      {timeLeft > 0 ? (
+      {/* Price Change Timer - only show if there's an active timer */}
+      {priceChangeIn && priceChangeIn > 0 && timeLeft > 0 && (
         <motion.div
           initial={{ opacity: 0, y: 10 }}
           animate={{ opacity: 1, y: 0 }}
@@ -143,15 +148,6 @@ export function DynamicPriceDisplay({
               ? "Price may increase due to high demand"
               : "Limited time pricing"}
           </p>
-        </motion.div>
-      ) : (
-        <motion.div
-          initial={{ opacity: 0 }}
-          animate={{ opacity: 1 }}
-          className="bg-gray-800/50 border border-gray-700 rounded-lg p-3 text-center">
-          <span className="text-gray-300 text-sm font-semibold">
-            ⚡ Flash Sale Ended
-          </span>
         </motion.div>
       )}
     </div>

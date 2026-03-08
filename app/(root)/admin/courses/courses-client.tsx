@@ -487,6 +487,20 @@ export default function AdminCoursesClient({
                                 View Course
                               </DropdownMenuItem>
                               <DropdownMenuItem
+                                onClick={() => {
+                                  router.push(`/admin/courses/${course.id}/enrollments`);
+                                }}>
+                                <Layers className="w-4 h-4 mr-2" />
+                                Manage Enrollments
+                              </DropdownMenuItem>
+                              <DropdownMenuItem
+                                onClick={() => {
+                                  router.push(`/courses/${course.id}/review`);
+                                }}>
+                                <Eye className="w-4 h-4 mr-2" />
+                                Review Changes
+                              </DropdownMenuItem>
+                              <DropdownMenuItem
                                 disabled={updatingId === course.id}
                                 onClick={async () => {
                                   const action =
