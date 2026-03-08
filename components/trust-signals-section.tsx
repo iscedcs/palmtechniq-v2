@@ -6,13 +6,13 @@ import { Award, Users, Briefcase, TrendingUp } from "lucide-react";
 const trustSignals = [
   {
     icon: Users,
-    stat: "2,500+",
+    stat: "50+",
     label: "Students Trained",
-    description: "Across all AdTech disciplines",
+    description: "Across all disciplines",
   },
   {
     icon: Award,
-    stat: "94%",
+    stat: "80%",
     label: "Job Placement Rate",
     description: "Within 3 months of graduation",
   },
@@ -39,7 +39,8 @@ export function TrustSignalsSection() {
             <span className="text-gradient">Proven Results</span>
           </h2>
           <p className="text-gray-400 max-w-2xl mx-auto">
-            Our metrics speak for themselves. Join a community of successful professionals.
+            Our metrics speak for themselves. Join a community of successful
+            professionals.
           </p>
         </div>
 
@@ -54,13 +55,11 @@ export function TrustSignalsSection() {
                 whileInView={{ opacity: 1, y: 0 }}
                 transition={{ duration: 0.6, delay: index * 0.1 }}
                 viewport={{ once: true }}
-                className="group"
-              >
+                className="group">
                 <div className="glass-card p-8 text-center border border-white/10 hover:border-neon-blue/30 transition-all h-full hover:shadow-lg hover:shadow-neon-blue/20">
                   <motion.div
                     whileHover={{ scale: 1.1 }}
-                    className="inline-flex p-3 rounded-lg bg-neon-blue/10 group-hover:bg-neon-blue/20 transition-colors mb-4"
-                  >
+                    className="inline-flex p-3 rounded-lg bg-neon-blue/10 group-hover:bg-neon-blue/20 transition-colors mb-4">
                     <Icon className="w-8 h-8 text-neon-blue" />
                   </motion.div>
 
@@ -72,9 +71,7 @@ export function TrustSignalsSection() {
                     {signal.label}
                   </h3>
 
-                  <p className="text-sm text-gray-400">
-                    {signal.description}
-                  </p>
+                  <p className="text-sm text-gray-400">{signal.description}</p>
                 </div>
               </motion.div>
             );

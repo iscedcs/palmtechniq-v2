@@ -79,7 +79,7 @@ export function HeroSection() {
               transition={{ duration: 0.8, delay: 0.5 }}
               className="text-lg md:text-xl text-gray-400 mb-12 max-w-3xl mx-auto leading-relaxed">
               AI-powered interviews, expert mentorship, real-world projects, and
-              hybrid learning environments designed for the AdTech industry.
+              hybrid learning environments designed for the industry.
             </motion.p>
 
             <motion.div
@@ -117,7 +117,7 @@ export function HeroSection() {
                   icon: Zap,
                   title: "AI Interview Coach",
                   description:
-                    "Practice with adaptive AI simulating real AdTech interview scenarios",
+                    "Practice with adaptive AI simulating real interview scenarios",
                 },
                 {
                   icon: Target,

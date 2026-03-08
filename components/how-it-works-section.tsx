@@ -11,7 +11,7 @@ const steps = [
     icon: BookOpen,
     title: "Choose Your Path",
     description:
-      "Select from our curated AdTech career tracks and learning modules designed for your skill level",
+      "Select from our curated career tracks and learning modules designed for your skill level",
     features: [
       "Structured curriculum",
       "Multiple learning speeds",
@@ -31,7 +31,7 @@ const steps = [
     icon: Zap,
     title: "Build Real Projects",
     description:
-      "Apply your knowledge with real-world AdTech projects, building a portfolio that impresses employers",
+      "Apply your knowledge with real-world projects, building a portfolio that impresses employers",
     features: ["Industry projects", "Portfolio building", "Code reviews"],
   },
   {
@@ -47,7 +47,7 @@ const steps = [
     icon: Trophy,
     title: "Launch Your Career",
     description:
-      "Graduate with certifications, a strong portfolio, and direct connections to top AdTech companies",
+      "Graduate with certifications, a strong portfolio, and direct connections to top companies",
     features: [
       "Professional certification",
       "Job opportunities",
@@ -78,7 +78,7 @@ export function HowItWorksSection() {
           </h2>
           <p className="text-xl text-gray-300 max-w-3xl mx-auto">
             A proven 5-step methodology to take you from beginner to
-            industry-ready AdTech professional
+            industry-ready professional
           </p>
         </motion.div>
 

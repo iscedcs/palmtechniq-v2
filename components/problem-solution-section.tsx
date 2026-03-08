@@ -15,7 +15,7 @@ const problems = [
   {
     icon: AlertCircle,
     title: "Career Uncertainty",
-    description: "No clear path to break into or advance in AdTech roles",
+    description: "No clear path to break into or advance in roles",
     color: "from-red-500 to-red-400",
   },
   {
@@ -42,13 +42,13 @@ const solutions = [
   {
     icon: Award,
     title: "Industry-Relevant Skills",
-    description: "Hands-on projects using real AdTech tools and platforms",
+    description: "Hands-on projects using real tools and platforms",
     color: "from-blue-500 to-blue-400",
   },
   {
     icon: Users,
     title: "Expert Guidance",
-    description: "1-on-1 mentorship from AdTech professionals",
+    description: "1-on-1 mentorship from professionals",
     color: "from-purple-500 to-purple-400",
   },
 ];
@@ -68,14 +68,14 @@ export function ProblemSolutionSection() {
           whileInView={{ opacity: 1, y: 0 }}
           transition={{ duration: 0.6 }}
           viewport={{ once: true }}
-          className="text-center mb-20"
-        >
+          className="text-center mb-20">
           <h2 className="text-5xl md:text-6xl font-bold mb-6">
             <span className="text-gradient">The Challenge.</span>{" "}
             <span className="text-white">The Solution.</span>
           </h2>
           <p className="text-xl text-gray-300 max-w-3xl mx-auto">
-            Breaking into AdTech is challenging. We've designed PalmTechnIQ to address every barrier aspiring professionals face.
+            Breaking into is challenging. We've designed PalmTechnIQ to address
+            every barrier aspiring professionals face.
           </p>
         </motion.div>
 
@@ -86,8 +86,7 @@ export function ProblemSolutionSection() {
             initial={{ opacity: 0, x: -40 }}
             whileInView={{ opacity: 1, x: 0 }}
             transition={{ duration: 0.7 }}
-            viewport={{ once: true }}
-          >
+            viewport={{ once: true }}>
             <h3 className="text-3xl font-bold text-white mb-8 flex items-center">
               <div className="w-14 h-14 rounded-full bg-red-500/20 border border-red-500/40 flex items-center justify-center mr-4">
                 <AlertCircle className="w-7 h-7 text-red-400" />
@@ -105,8 +104,7 @@ export function ProblemSolutionSection() {
                     whileInView={{ opacity: 1, x: 0 }}
                     transition={{ duration: 0.5, delay: index * 0.1 }}
                     viewport={{ once: true }}
-                    className="glass-card p-6 border border-white/10 hover:border-red-500/30 transition-all hover:shadow-lg hover:shadow-red-500/10"
-                  >
+                    className="glass-card p-6 border border-white/10 hover:border-red-500/30 transition-all hover:shadow-lg hover:shadow-red-500/10">
                     <div className="flex items-start gap-4">
                       <Icon className="w-6 h-6 text-red-400 flex-shrink-0 mt-1" />
                       <div>
@@ -127,8 +125,7 @@ export function ProblemSolutionSection() {
             initial={{ opacity: 0, x: 40 }}
             whileInView={{ opacity: 1, x: 0 }}
             transition={{ duration: 0.7 }}
-            viewport={{ once: true }}
-          >
+            viewport={{ once: true }}>
             <h3 className="text-3xl font-bold text-white mb-8 flex items-center">
               <div className="w-14 h-14 rounded-full bg-green-500/20 border border-green-500/40 flex items-center justify-center mr-4">
                 <CheckCircle className="w-7 h-7 text-green-400" />
@@ -146,8 +143,7 @@ export function ProblemSolutionSection() {
                     whileInView={{ opacity: 1, x: 0 }}
                     transition={{ duration: 0.5, delay: index * 0.1 }}
                     viewport={{ once: true }}
-                    className="glass-card p-6 border border-white/10 hover:border-green-500/30 transition-all hover:shadow-lg hover:shadow-green-500/10"
-                  >
+                    className="glass-card p-6 border border-white/10 hover:border-green-500/30 transition-all hover:shadow-lg hover:shadow-green-500/10">
                     <div className="flex items-start gap-4">
                       <Icon className="w-6 h-6 text-green-400 flex-shrink-0 mt-1" />
                       <div>
@@ -170,13 +166,13 @@ export function ProblemSolutionSection() {
           whileInView={{ opacity: 1, y: 0 }}
           transition={{ duration: 0.7 }}
           viewport={{ once: true }}
-          className="glass-card p-12 border border-neon-blue/30 text-center"
-        >
+          className="glass-card p-12 border border-neon-blue/30 text-center">
           <p className="text-2xl font-semibold text-white mb-4">
             From aspiring to leading. That's the PalmTechnIQ difference.
           </p>
           <p className="text-gray-400 text-lg">
-            Our platform doesn't just teach skills—it transforms careers and builds the next generation of AdTech leaders.
+            Our platform doesn't just teach skills—it transforms careers and
+            builds the next generation of leaders.
           </p>
         </motion.div>
       </div>
