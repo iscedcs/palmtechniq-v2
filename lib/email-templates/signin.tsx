@@ -17,7 +17,7 @@ interface SignInProps {
 }
 
 const baseUrl = process.env.VERCEL_URL
-  ? `₦{process.env.VERCEL_URL}`
+  ? `${process.env.VERCEL_URL}`
   : "/static";
 
 const SignIn = ({ fullName = "" }: SignInProps) => {

@@ -92,9 +92,17 @@ export function AuthLayout({
           {/* Mobile Logo */}
           <div className="lg:hidden flex items-center justify-center mb-8">
             <div className="w-12 h-12 rounded-xl bg-gradient-to-r from-neon-blue to-neon-purple flex items-center justify-center mr-3">
-              <Brain className="w-6 h-6 text-white" />
+              <Image
+                src="/assets/standalone.png"
+                alt=""
+                width={100}
+                height={100}
+                className="w-10 h-10"
+              />{" "}
             </div>
-            <span className="text-2xl font-bold text-gradient">PalmTechnIQ</span>
+            <span className="text-2xl font-bold text-gradient">
+              PalmTechnIQ
+            </span>
           </div>
 
           {/* Back Button */}
