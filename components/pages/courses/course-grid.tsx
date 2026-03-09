@@ -4,6 +4,7 @@ import { addToCart } from "@/actions/cart";
 import {
   CoursePreviewModal,
   FlashSaleTimer,
+  TrustSignals,
 } from "@/components/conversion-features";
 import { DynamicPriceDisplay } from "@/components/dynamic-pricing";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
@@ -137,7 +138,7 @@ export default function CoursesGrid({
               From crash courses to masterclasses - find the perfect learning
               path for your goals{" "}
             </p>
-
+            <TrustSignals />
             {/* Search Bar - Prominent */}
             <div className="max-w-2xl mx-auto relative">
               <Search className="absolute left-4 top-1/2 transform -translate-y-1/2 text-gray-400 w-5 h-5" />
