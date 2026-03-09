@@ -124,7 +124,7 @@ export default function AdminCoursesClient({
     });
     if ("courses" in res) {
       setCourses(res.courses || []);
-      setStats(res.stats || initialStats);
+      setStats((res.stats as CourseStats) || initialStats);
       if (res.pagination) {
         setPage(res.pagination.page);
         setTotalPages(res.pagination.totalPages);

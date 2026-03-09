@@ -116,11 +116,11 @@ export default function TutorReviewsPage() {
         return;
       }
 
-      const mappedReviews = result.reviews.map((review) => {
+      const mappedReviews = result.reviews.map((review: any) => {
         const name = review.user?.name || "Student";
         const initials = name
           .split(" ")
-          .map((part) => part[0])
+          .map((part: string) => part[0])
           .join("")
           .slice(0, 2)
           .toUpperCase();
@@ -139,9 +139,11 @@ export default function TutorReviewsPage() {
           createdAt: new Date(review.createdAt),
           date: new Date(review.createdAt).toLocaleDateString(),
           review: review.comment || "",
-          helpful: review.reactions.filter((r) => r.type === "HELPFUL").length,
-          likes: review.reactions.filter((r) => r.type === "LIKE").length,
-          reports: review.reactions.filter((r) => r.type === "REPORT").length,
+          helpful: review.reactions.filter((r: any) => r.type === "HELPFUL")
+            .length,
+          likes: review.reactions.filter((r: any) => r.type === "LIKE").length,
+          reports: review.reactions.filter((r: any) => r.type === "REPORT")
+            .length,
           response: review.responseText
             ? {
                 text: review.responseText,
@@ -235,14 +237,14 @@ export default function TutorReviewsPage() {
                 date: new Date().toLocaleDateString(),
               },
             }
-          : review
-      )
+          : review,
+      ),
     );
     setPendingReplies(newPending);
     setResponseRate(
       totalReviews > 0
         ? Math.round(((totalReviews - newPending) / totalReviews) * 100)
-        : 0
+        : 0,
     );
     setReplyingTo(null);
     setReplyText("");
@@ -251,7 +253,7 @@ export default function TutorReviewsPage() {
 
   const handleReaction = async (
     reviewId: string,
-    type: "HELPFUL" | "LIKE" | "REPORT"
+    type: "HELPFUL" | "LIKE" | "REPORT",
   ) => {
     const result = await toggleReviewReaction(reviewId, type);
     if ("error" in result) {
@@ -270,7 +272,7 @@ export default function TutorReviewsPage() {
           return { ...review, likes: Math.max(0, review.likes + delta) };
         }
         return { ...review, reports: Math.max(0, review.reports + delta) };
-      })
+      }),
     );
 
     toast.success(result.added ? "Updated" : "Removed");
@@ -425,7 +427,9 @@ export default function TutorReviewsPage() {
                         <SelectContent className="bg-black/90 border-white/10">
                           <SelectItem value="newest">Newest</SelectItem>
                           <SelectItem value="oldest">Oldest</SelectItem>
-                          <SelectItem value="highest">Highest rating</SelectItem>
+                          <SelectItem value="highest">
+                            Highest rating
+                          </SelectItem>
                           <SelectItem value="lowest">Lowest rating</SelectItem>
                         </SelectContent>
                       </Select>
@@ -664,156 +668,158 @@ export default function TutorReviewsPage() {
                         </div>
                       ) : (
                         filteredReviews.map((review) => (
-                        <div
-                          key={review.id}
-                          className="bg-white/5 rounded-lg p-6 backdrop-blur-sm">
-                          {/* Review Header */}
-                          <div className="flex items-start justify-between mb-4">
-                            <div className="flex items-center gap-4">
-                              <Avatar>
-                                <AvatarImage
-                                  src={
-                                    review.student.avatar ||
-                                    generateRandomAvatar()
-                                  }
-                                />
-                                <AvatarFallback className="bg-gradient-to-r from-neon-blue to-neon-purple text-white">
-                                  {review.student.initials}
-                                </AvatarFallback>
-                              </Avatar>
-                              <div>
-                                <div className="flex items-center gap-2">
-                                  <h4 className="font-semibold text-white">
-                                    {review.student.name}
-                                  </h4>
-                                  {review.verified && (
-                                    <Badge className="text-xs bg-green-500/20 text-green-400 border-green-500/30">
-                                      <CheckCircle className="w-3 h-3 mr-1" />
-                                      Verified
-                                    </Badge>
-                                  )}
-                                </div>
-                                <p className="text-sm text-gray-400">
-                                  {review.course}
-                                </p>
-                                <div className="flex items-center gap-2 mt-1">
-                                  <div className="flex">
-                                    {renderStars(review.rating)}
-                                  </div>
-                                  <span className="text-sm text-gray-500">
-                                    {review.date}
-                                  </span>
-                                </div>
-                              </div>
-                            </div>
-                            <Button
-                              variant="ghost"
-                              size="sm"
-                              className="text-white hover:bg-white/10">
-                              <MoreHorizontal className="w-4 h-4" />
-                            </Button>
-                          </div>
-
-                          {/* Review Content */}
-                          <div className="mb-4">
-                            <p className="text-gray-300 leading-relaxed">
-                              {review.review}
-                            </p>
-                          </div>
-
-                          {/* Review Actions */}
-                          <div className="flex items-center justify-between mb-4">
-                            <div className="flex items-center gap-4">
-                              <Button
-                                variant="ghost"
-                                size="sm"
-                              onClick={() =>
-                                handleReaction(review.id, "HELPFUL")
-                              }
-                                className="gap-2 text-white hover:bg-white/10">
-                                <ThumbsUp className="w-4 h-4" />
-                                Helpful ({review.helpful})
-                              </Button>
-                              <Button
-                                variant="ghost"
-                                size="sm"
-                              onClick={() => handleReaction(review.id, "LIKE")}
-                                className="gap-2 text-white hover:bg-white/10">
-                                <Heart className="w-4 h-4" />
-                              Like ({review.likes})
-                              </Button>
-                              <Button
-                                variant="ghost"
-                                size="sm"
-                              onClick={() =>
-                                handleReaction(review.id, "REPORT")
-                              }
-                                className="gap-2 text-white hover:bg-white/10">
-                                <Flag className="w-4 h-4" />
-                              Report ({review.reports})
-                              </Button>
-                            </div>
-                            {!review.response && (
-                              <Button
-                                onClick={() => setReplyingTo(review.id)}
-                                className="gap-2 bg-gradient-to-r from-neon-blue to-neon-purple"
-                                size="sm">
-                                <Reply className="w-4 h-4" />
-                                Reply
-                              </Button>
-                            )}
-                          </div>
-
-                          {/* Existing Response */}
-                          {review.response && (
-                            <div className="bg-blue-500/10 border-l-4 border-blue-400 p-4 rounded-r-lg">
-                              <div className="flex items-center gap-2 mb-2">
-                                <Avatar className="w-6 h-6">
-                                  <AvatarFallback className="text-xs bg-gradient-to-r from-neon-blue to-neon-purple text-white">
-                                    SC
+                          <div
+                            key={review.id}
+                            className="bg-white/5 rounded-lg p-6 backdrop-blur-sm">
+                            {/* Review Header */}
+                            <div className="flex items-start justify-between mb-4">
+                              <div className="flex items-center gap-4">
+                                <Avatar>
+                                  <AvatarImage
+                                    src={
+                                      review.student.avatar ||
+                                      generateRandomAvatar()
+                                    }
+                                  />
+                                  <AvatarFallback className="bg-gradient-to-r from-neon-blue to-neon-purple text-white">
+                                    {review.student.initials}
                                   </AvatarFallback>
                                 </Avatar>
-                                <span className="font-medium text-sm text-white">
-                                  Your Response
-                                </span>
-                                <span className="text-xs text-gray-400">
-                                  {review.response.date}
-                                </span>
+                                <div>
+                                  <div className="flex items-center gap-2">
+                                    <h4 className="font-semibold text-white">
+                                      {review.student.name}
+                                    </h4>
+                                    {review.verified && (
+                                      <Badge className="text-xs bg-green-500/20 text-green-400 border-green-500/30">
+                                        <CheckCircle className="w-3 h-3 mr-1" />
+                                        Verified
+                                      </Badge>
+                                    )}
+                                  </div>
+                                  <p className="text-sm text-gray-400">
+                                    {review.course}
+                                  </p>
+                                  <div className="flex items-center gap-2 mt-1">
+                                    <div className="flex">
+                                      {renderStars(review.rating)}
+                                    </div>
+                                    <span className="text-sm text-gray-500">
+                                      {review.date}
+                                    </span>
+                                  </div>
+                                </div>
                               </div>
-                              <p className="text-sm text-gray-300">
-                                {review.response.text}
+                              <Button
+                                variant="ghost"
+                                size="sm"
+                                className="text-white hover:bg-white/10">
+                                <MoreHorizontal className="w-4 h-4" />
+                              </Button>
+                            </div>
+
+                            {/* Review Content */}
+                            <div className="mb-4">
+                              <p className="text-gray-300 leading-relaxed">
+                                {review.review}
                               </p>
                             </div>
-                          )}
 
-                          {/* Reply Form */}
-                          {replyingTo === review.id && (
-                            <div className="mt-4 p-4 bg-white/5 rounded-lg">
-                              <Textarea
-                                placeholder="Write your response..."
-                                value={replyText}
-                                onChange={(e) => setReplyText(e.target.value)}
-                                className="mb-3 bg-white/5 border-white/10 text-white placeholder-gray-400"
-                              />
-                              <div className="flex gap-2">
+                            {/* Review Actions */}
+                            <div className="flex items-center justify-between mb-4">
+                              <div className="flex items-center gap-4">
                                 <Button
-                                  onClick={() => handleReply(review.id)}
-                                  className="gap-2 bg-gradient-to-r from-neon-blue to-neon-purple"
-                                  size="sm">
-                                  <Send className="w-4 h-4" />
-                                  Send Reply
+                                  variant="ghost"
+                                  size="sm"
+                                  onClick={() =>
+                                    handleReaction(review.id, "HELPFUL")
+                                  }
+                                  className="gap-2 text-white hover:bg-white/10">
+                                  <ThumbsUp className="w-4 h-4" />
+                                  Helpful ({review.helpful})
                                 </Button>
                                 <Button
-                                  variant="outline"
-                                  onClick={() => setReplyingTo(null)}
+                                  variant="ghost"
                                   size="sm"
-                                  className="border-white/20 text-white hover:bg-white/10 bg-transparent">
-                                  Cancel
+                                  onClick={() =>
+                                    handleReaction(review.id, "LIKE")
+                                  }
+                                  className="gap-2 text-white hover:bg-white/10">
+                                  <Heart className="w-4 h-4" />
+                                  Like ({review.likes})
+                                </Button>
+                                <Button
+                                  variant="ghost"
+                                  size="sm"
+                                  onClick={() =>
+                                    handleReaction(review.id, "REPORT")
+                                  }
+                                  className="gap-2 text-white hover:bg-white/10">
+                                  <Flag className="w-4 h-4" />
+                                  Report ({review.reports})
                                 </Button>
                               </div>
+                              {!review.response && (
+                                <Button
+                                  onClick={() => setReplyingTo(review.id)}
+                                  className="gap-2 bg-gradient-to-r from-neon-blue to-neon-purple"
+                                  size="sm">
+                                  <Reply className="w-4 h-4" />
+                                  Reply
+                                </Button>
+                              )}
                             </div>
-                          )}
-                        </div>
+
+                            {/* Existing Response */}
+                            {review.response && (
+                              <div className="bg-blue-500/10 border-l-4 border-blue-400 p-4 rounded-r-lg">
+                                <div className="flex items-center gap-2 mb-2">
+                                  <Avatar className="w-6 h-6">
+                                    <AvatarFallback className="text-xs bg-gradient-to-r from-neon-blue to-neon-purple text-white">
+                                      SC
+                                    </AvatarFallback>
+                                  </Avatar>
+                                  <span className="font-medium text-sm text-white">
+                                    Your Response
+                                  </span>
+                                  <span className="text-xs text-gray-400">
+                                    {review.response.date}
+                                  </span>
+                                </div>
+                                <p className="text-sm text-gray-300">
+                                  {review.response.text}
+                                </p>
+                              </div>
+                            )}
+
+                            {/* Reply Form */}
+                            {replyingTo === review.id && (
+                              <div className="mt-4 p-4 bg-white/5 rounded-lg">
+                                <Textarea
+                                  placeholder="Write your response..."
+                                  value={replyText}
+                                  onChange={(e) => setReplyText(e.target.value)}
+                                  className="mb-3 bg-white/5 border-white/10 text-white placeholder-gray-400"
+                                />
+                                <div className="flex gap-2">
+                                  <Button
+                                    onClick={() => handleReply(review.id)}
+                                    className="gap-2 bg-gradient-to-r from-neon-blue to-neon-purple"
+                                    size="sm">
+                                    <Send className="w-4 h-4" />
+                                    Send Reply
+                                  </Button>
+                                  <Button
+                                    variant="outline"
+                                    onClick={() => setReplyingTo(null)}
+                                    size="sm"
+                                    className="border-white/20 text-white hover:bg-white/10 bg-transparent">
+                                    Cancel
+                                  </Button>
+                                </div>
+                              </div>
+                            )}
+                          </div>
                         ))
                       )}
                     </motion.div>

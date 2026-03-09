@@ -34,14 +34,14 @@ export async function getEnrolledCourses() {
 
     const enrollmentsToUpdate: string[] = [];
 
-    const mappedEnrollments = enrollments.map((enrollment) => {
+    const mappedEnrollments = enrollments.map((enrollment: any) => {
       const course = enrollment.course;
       const totalLessons = course.modules.reduce(
-        (sum, m) => sum + m.lessons.length,
-        0
+        (sum: any, m: any) => sum + m.lessons.length,
+        0,
       );
       const completedLessons = enrollment.lessonProgress.filter(
-        (lp) => lp.isCompleted
+        (lp: any) => lp.isCompleted,
       ).length;
       const progress =
         totalLessons > 0 ? (completedLessons / totalLessons) * 100 : 0;
@@ -51,17 +51,20 @@ export async function getEnrolledCourses() {
       }
 
       const computedDuration = course.modules.reduce(
-        (sum, m) => sum + m.lessons.reduce((lsum, l) => lsum + (l.duration || 0), 0),
-        0
+        (sum: any, m: any) =>
+          sum +
+          m.lessons.reduce((lsum: any, l: any) => lsum + (l.duration || 0), 0),
+        0,
       );
-      const totalDuration = course.duration && course.duration > 0
-        ? course.duration
-        : computedDuration;
+      const totalDuration =
+        course.duration && course.duration > 0
+          ? course.duration
+          : computedDuration;
       const remainingDuration = totalDuration * (1 - progress / 100);
       const timeLeft =
         remainingDuration > 0
           ? `${Math.floor(remainingDuration / 60)}h ${Math.round(
-              remainingDuration % 60
+              remainingDuration % 60,
             )}m`
           : "Completed";
 
@@ -73,8 +76,8 @@ export async function getEnrolledCourses() {
       let nextLessonTitle = "All lessons completed";
       const completedLessonIds = new Set(
         enrollment.lessonProgress
-          .filter((lp) => lp.isCompleted)
-          .map((lp) => lp.lessonId)
+          .filter((lp: any) => lp.isCompleted)
+          .map((lp: any) => lp.lessonId),
       );
 
       outerLoop: for (const module of course.modules) {
@@ -145,7 +148,7 @@ export async function getAvailableCourses() {
       select: { courseId: true },
     });
 
-    const enrolledIds = enrolledCourseIds.map((e) => e.courseId);
+    const enrolledIds = enrolledCourseIds.map((e: any) => e.courseId);
 
     const courses = await db.course.findMany({
       where: {
@@ -165,17 +168,19 @@ export async function getAvailableCourses() {
       take: 20,
     });
 
-    return courses.map((course) => {
+    return courses.map((course: any) => {
       const averageRating = getAverageRating(course.reviews);
 
       const computedDuration = course.modules.reduce(
-        (sum, m) => sum + m.lessons.reduce((lsum, l) => lsum + (l.duration || 0), 0),
-        0
+        (sum: any, m: any) =>
+          sum +
+          m.lessons.reduce((lsum: any, l: any) => lsum + (l.duration || 0), 0),
+        0,
       );
 
       const computedLessons = course.modules.reduce(
-        (sum, m) => sum + m.lessons.length,
-        0
+        (sum: any, m: any) => sum + m.lessons.length,
+        0,
       );
 
       return {
@@ -193,9 +198,10 @@ export async function getAvailableCourses() {
           course.duration && course.duration > 0
             ? course.duration
             : computedDuration,
-        lessons: course.totalLessons && course.totalLessons > 0
-          ? course.totalLessons
-          : computedLessons,
+        lessons:
+          course.totalLessons && course.totalLessons > 0
+            ? course.totalLessons
+            : computedLessons,
         category: course.category.name,
         bestseller: course.enrollments.length > 100,
         trending: course.enrollments.length > 50,
@@ -238,7 +244,7 @@ export async function getCompletedCourses() {
       orderBy: { completedAt: "desc" },
     });
 
-    return completedEnrollments.map((enrollment) => {
+    return completedEnrollments.map((enrollment: any) => {
       const course = enrollment.course;
       const averageRating = getAverageRating(course.reviews);
 
@@ -246,12 +252,12 @@ export async function getCompletedCourses() {
         enrollment.progress >= 95
           ? "A+"
           : enrollment.progress >= 90
-          ? "A"
-          : enrollment.progress >= 85
-          ? "B+"
-          : enrollment.progress >= 80
-          ? "B"
-          : "C";
+            ? "A"
+            : enrollment.progress >= 85
+              ? "B+"
+              : enrollment.progress >= 80
+                ? "B"
+                : "C";
 
       return {
         id: course.id,
@@ -282,7 +288,7 @@ export async function getCompletedCourses() {
 
 export async function updateLessonProgress(
   lessonId: string,
-  enrollmentId: string
+  enrollmentId: string,
 ) {
   try {
     const session = await auth();
@@ -342,7 +348,7 @@ export async function updateLessonProgress(
 
 async function updateEnrollmentProgress(
   enrollmentId: string,
-  userId: string
+  userId: string,
 ): Promise<boolean> {
   try {
     // Get enrollment with all lesson progress
@@ -366,11 +372,11 @@ async function updateEnrollmentProgress(
 
     // Calculate progress
     const totalLessons = enrollment.course.modules.reduce(
-      (sum, m) => sum + m.lessons.length,
-      0
+      (sum: any, m: any) => sum + m.lessons.length,
+      0,
     );
     const completedLessons = enrollment.lessonProgress.filter(
-      (lp) => lp.isCompleted
+      (lp: any) => lp.isCompleted,
     ).length;
     const progress =
       totalLessons > 0 ? (completedLessons / totalLessons) * 100 : 0;

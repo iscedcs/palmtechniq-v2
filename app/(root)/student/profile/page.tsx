@@ -91,7 +91,7 @@ export default function StudentProfile() {
   });
 
   const [preferences, setPreferences] = useState<UserPreferences>(
-    defaultUserPreferences
+    defaultUserPreferences,
   );
 
   const [studentStats, setStudentStats] = useState({
@@ -138,7 +138,7 @@ export default function StudentProfile() {
       Star,
       Fire,
     }),
-    []
+    [],
   );
 
   const loadProfile = useCallback(async () => {
@@ -158,6 +158,13 @@ export default function StudentProfile() {
         return;
       }
 
+      if ("error" in progressResult) {
+        const message = progressResult.error || "Unable to load progress data.";
+        setLoadError(message);
+        toast.error(message);
+        return;
+      }
+
       setProfileData({
         ...profileResult.profile,
       });
@@ -170,7 +177,7 @@ export default function StudentProfile() {
           progress: 0,
           target: "Set a target date",
           status: "Planned",
-        }))
+        })),
       );
       setStudentStats((prev) => ({
         ...prev,
@@ -193,7 +200,7 @@ export default function StudentProfile() {
       }));
 
       setAchievements(
-        progressResult.achievements.map((achievement) => ({
+        progressResult.achievements.map((achievement: any) => ({
           id: achievement.id,
           title: achievement.title,
           description: achievement.description,
@@ -201,7 +208,7 @@ export default function StudentProfile() {
           color: achievement.color,
           earned: achievement.unlockedAt,
           rarity: achievement.rarity,
-        }))
+        })),
       );
     } catch (error) {
       console.error("Failed to load student profile:", error);
@@ -269,14 +276,14 @@ export default function StudentProfile() {
         progress: 0,
         target: "Set a target date",
         status: "Planned",
-      }))
+      })),
     );
     setGoalModalOpen(false);
   };
 
   const handlePreferenceChange = async (
     key: keyof UserPreferences,
-    checked: boolean
+    checked: boolean,
   ) => {
     setPreferences((prev) => ({ ...prev, [key]: checked }));
     const result = await updateUserPreferences({ [key]: checked });
@@ -287,7 +294,7 @@ export default function StudentProfile() {
   };
 
   const handleAvatarUpload = async (
-    event: React.ChangeEvent<HTMLInputElement>
+    event: React.ChangeEvent<HTMLInputElement>,
   ) => {
     const file = event.target.files?.[0];
     if (!file) return;
@@ -329,7 +336,7 @@ export default function StudentProfile() {
 
       const formData = new FormData();
       Object.entries(fields).forEach(([key, value]) =>
-        formData.append(key, value as string)
+        formData.append(key, value as string),
       );
       formData.append("file", file);
 
@@ -793,12 +800,12 @@ export default function StudentProfile() {
                                   achievement.rarity === "Legendary"
                                     ? "bg-purple-500/20 text-purple-400 border-purple-500/30"
                                     : achievement.rarity === "Epic"
-                                    ? "bg-orange-500/20 text-orange-400 border-orange-500/30"
-                                    : achievement.rarity === "Rare"
-                                    ? "bg-blue-500/20 text-blue-400 border-blue-500/30"
-                                    : achievement.rarity === "Uncommon"
-                                    ? "bg-green-500/20 text-green-400 border-green-500/30"
-                                    : "bg-gray-500/20 text-gray-400 border-gray-500/30"
+                                      ? "bg-orange-500/20 text-orange-400 border-orange-500/30"
+                                      : achievement.rarity === "Rare"
+                                        ? "bg-blue-500/20 text-blue-400 border-blue-500/30"
+                                        : achievement.rarity === "Uncommon"
+                                          ? "bg-green-500/20 text-green-400 border-green-500/30"
+                                          : "bg-gray-500/20 text-gray-400 border-gray-500/30"
                                 }`}>
                                 {achievement.rarity}
                               </Badge>
@@ -855,8 +862,8 @@ export default function StudentProfile() {
                               goal.status === "In Progress"
                                 ? "bg-blue-500/20 text-blue-400 border-blue-500/30"
                                 : goal.status === "Started"
-                                ? "bg-yellow-500/20 text-yellow-400 border-yellow-500/30"
-                                : "bg-gray-500/20 text-gray-400 border-gray-500/30"
+                                  ? "bg-yellow-500/20 text-yellow-400 border-yellow-500/30"
+                                  : "bg-gray-500/20 text-gray-400 border-gray-500/30"
                             }`}>
                             {goal.status}
                           </Badge>
@@ -906,7 +913,7 @@ export default function StudentProfile() {
                           onCheckedChange={(checked) =>
                             handlePreferenceChange(
                               setting.key as keyof UserPreferences,
-                              checked
+                              checked,
                             )
                           }
                         />
@@ -938,7 +945,7 @@ export default function StudentProfile() {
                           onCheckedChange={(checked) =>
                             handlePreferenceChange(
                               setting.key as keyof UserPreferences,
-                              checked
+                              checked,
                             )
                           }
                         />

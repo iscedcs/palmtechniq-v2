@@ -8,6 +8,12 @@ import Link from "next/link";
 import { LiveChatWidget } from "./conversion-features";
 
 export function HeroSection() {
+  const scrollToDemo = () => {
+    const demoSection = document.getElementById("demo-section");
+    if (demoSection) {
+      demoSection.scrollIntoView({ behavior: "smooth" });
+    }
+  };
   return (
     <div className="min-h-screen bg-background">
       <LiveChatWidget />
@@ -64,20 +70,20 @@ export function HeroSection() {
               <span className="text-gradient">Dominate.</span>
             </motion.h1>
 
-            <motion.p
+            {/* <motion.p
               initial={{ opacity: 0, y: 30 }}
               animate={{ opacity: 1, y: 0 }}
               transition={{ duration: 0.8, delay: 0.4 }}
               className="text-xl md:text-2xl text-gray-300 mb-4 max-w-3xl mx-auto leading-relaxed">
               The most comprehensive platform for aspiring and seasoned
               professionals
-            </motion.p>
+            </motion.p> */}
 
             <motion.p
               initial={{ opacity: 0, y: 20 }}
               animate={{ opacity: 1, y: 0 }}
               transition={{ duration: 0.8, delay: 0.5 }}
-              className="text-lg md:text-xl text-gray-400 mb-12 max-w-3xl mx-auto leading-relaxed">
+              className="text-xl md:text-2xl text-gray-400 mb-12 max-w-3xl mx-auto leading-relaxed">
               AI-powered interviews, expert mentorship, real-world projects, and
               hybrid learning environments designed for the industry.
             </motion.p>
@@ -100,6 +106,7 @@ export function HeroSection() {
               <Button
                 size="lg"
                 variant="outline"
+                onClick={scrollToDemo}
                 className="border-2 border-neon-blue/50 hover:border-neon-blue text-white hover:bg-neon-blue/10 px-8 py-4 text-lg font-semibold rounded-2xl transition-all duration-300 group">
                 <Play className="mr-2 w-5 h-5 group-hover:scale-110 transition-transform" />
                 Watch Demo

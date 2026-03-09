@@ -87,11 +87,12 @@ export function HowItWorksSection() {
           {/* Connecting Line */}
           <div className="hidden lg:block absolute left-1/2 top-0 bottom-0 w-1 bg-gradient-to-b from-neon-blue/50 via-neon-purple/50 to-transparent transform -translate-x-1/2" />
 
-          {/* Steps Grid */}
-          <div className="grid md:grid-cols-2 lg:grid-cols-4 gap-8">
+          {/* Steps Grid - 3 cols on desktop with center alignment for last row */}
+          <div className="grid md:grid-cols-2 lg:grid-cols-3 gap-8">
             {steps.map((step, index) => {
               const Icon = step.icon;
-              const isEven = index % 2 === 1;
+              // For 3-column layout: only first of the last two cards should start at col-2 to center them
+              const shouldCenterLastRow = index === steps.length - 2;
 
               return (
                 <motion.div
@@ -100,11 +101,7 @@ export function HowItWorksSection() {
                   whileInView={{ opacity: 1, y: 0 }}
                   transition={{ duration: 0.6, delay: index * 0.1 }}
                   viewport={{ once: true }}
-                  className={`relative ${
-                    index === steps.length - 1
-                      ? "md:col-span-2 lg:col-span-1"
-                      : ""
-                  }`}>
+                  className={`relative ${shouldCenterLastRow ? "lg:col-start-2" : ""}`}>
                   {/* Step Card */}
                   <div className="glass-card p-8 h-full border border-white/10 hover:border-neon-blue/30 transition-all group hover:shadow-lg hover:shadow-neon-blue/20">
                     {/* Step Number Badge */}
@@ -144,15 +141,15 @@ export function HowItWorksSection() {
                       ))}
                     </ul>
 
-                    {/* Arrow for desktop */}
-                    {index < steps.length - 1 && (
+                    {/* Arrow for desktop - horizontal flow on same row */}
+                    {index < steps.length - 1 && (index + 1) % 3 !== 0 && (
                       <motion.div
-                        initial={{ opacity: 0, x: -20 }}
+                        initial={{ opacity: 0, x: 20 }}
                         whileInView={{ opacity: 1, x: 0 }}
                         transition={{ duration: 0.5, delay: index * 0.1 }}
                         viewport={{ once: true }}
-                        className="hidden lg:flex absolute -bottom-12 left-1/2 transform -translate-x-1/2 z-20">
-                        <ArrowRight className="w-6 h-6 text-neon-blue/50 rotate-90" />
+                        className="hidden lg:flex absolute -right-10 top-1/2 transform -translate-y-1/2 z-20">
+                        <ArrowRight className="w-6 h-6 text-neon-blue/50" />
                       </motion.div>
                     )}
                   </div>

@@ -40,7 +40,7 @@ export async function GET(req: NextRequest) {
     });
 
     // For each offering, get paid bookings separately
-    const offeringIds = offerings.map((o) => o.id);
+    const offeringIds = offerings.map((o: any) => o.id);
 
     // Fetch all paid bookings related to those offerings
     const paidBookings = await db.mentorshipSession.findMany({
@@ -59,7 +59,7 @@ export async function GET(req: NextRequest) {
 
     // Create a map of offerings to their paid bookings
     const bookingsByOfferingId = new Map<string, any[]>();
-    paidBookings.forEach((booking) => {
+    paidBookings.forEach((booking: any) => {
       if (!bookingsByOfferingId.has(booking.offeringSessionId!)) {
         bookingsByOfferingId.set(booking.offeringSessionId!, []);
       }

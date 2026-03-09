@@ -26,7 +26,7 @@ export async function GET(req: NextRequest) {
     });
 
     // Map database notification to frontend format
-    const mapped = notifications.map((n) => ({
+    const mapped = notifications.map((n: any) => ({
       id: n.id,
       type: n.type.toLowerCase() as string,
       title: n.title,

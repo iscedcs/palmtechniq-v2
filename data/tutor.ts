@@ -29,24 +29,27 @@ export async function getTutorCourses() {
       orderBy: { createdAt: "desc" },
     });
 
-    return courses.map((course) => {
+    return courses.map((course: any) => {
       const lessonsCount = course.modules.reduce(
-        (sum, m) => sum + m.lessons.length,
-        0
+        (sum: any, m: any) => sum + m.lessons.length,
+        0,
       );
 
       const duration = course.modules.reduce(
-        (sum, m) =>
-          sum + m.lessons.reduce((lsum, l) => lsum + (l.duration || 0), 0),
-        0
+        (sum: any, m: any) =>
+          sum +
+          m.lessons.reduce((lsum: any, l: any) => lsum + (l.duration || 0), 0),
+        0,
       );
 
       const studentsCount = course.enrollments.length;
       const avgRating = getAverageRating(course.reviews);
 
       const earnings =
-        (course.transactions?.reduce((sum, tx) => sum + (tx.amount || 0), 0) ??
-          0) / 100;
+        (course.transactions?.reduce(
+          (sum: any, tx: any) => sum + (tx.amount || 0),
+          0,
+        ) ?? 0) / 100;
 
       // --- 🧮 Compute growth (month over month) ---
       const now = new Date();
@@ -54,7 +57,7 @@ export async function getTutorCourses() {
       lastMonth.setDate(now.getDate() - 30);
 
       const recentEnrollments = course.enrollments.filter(
-        (e) => e.enrolledAt >= lastMonth
+        (e: any) => e.enrolledAt >= lastMonth,
       ).length;
 
       const previousEnrollments = course.enrollments.length - recentEnrollments;
@@ -64,11 +67,11 @@ export async function getTutorCourses() {
           ? Math.round(
               ((recentEnrollments - previousEnrollments) /
                 previousEnrollments) *
-                100
+                100,
             )
           : recentEnrollments > 0
-          ? 100
-          : 0;
+            ? 100
+            : 0;
 
       // --- 🧮 Compute completion rate ---
       // If your Enrollment model has `progress` or `completedLessons`
@@ -77,9 +80,9 @@ export async function getTutorCourses() {
         course.enrollments.length > 0
           ? Math.round(
               course.enrollments.reduce(
-                (sum, e) => sum + (e.progress || 0),
-                0
-              ) / course.enrollments.length
+                (sum: any, e: any) => sum + (e.progress || 0),
+                0,
+              ) / course.enrollments.length,
             )
           : 0;
 

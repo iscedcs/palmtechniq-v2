@@ -91,7 +91,10 @@ export async function createTask(data: z.infer<typeof taskSchema>) {
   return { success: true, task };
 }
 
-export async function updateTask(taskId: string, data: z.infer<typeof taskSchema>) {
+export async function updateTask(
+  taskId: string,
+  data: z.infer<typeof taskSchema>,
+) {
   const session = await auth();
   if (!session?.user?.id || session.user.role !== "TUTOR") {
     return { error: "Unauthorized" };
@@ -252,7 +255,7 @@ export async function getTaskSubmissions(taskId: string) {
 }
 
 export async function gradeTaskSubmission(
-  data: z.infer<typeof gradeTaskSubmissionSchema>
+  data: z.infer<typeof gradeTaskSubmissionSchema>,
 ) {
   const session = await auth();
   if (!session?.user?.id || session.user.role !== "TUTOR") {
@@ -341,7 +344,7 @@ export async function getStudentTasks() {
     orderBy: { createdAt: "desc" },
   });
 
-  const formatted = tasks.map((task) => {
+  const formatted = tasks.map((task: any) => {
     const submission = task.submissions[0];
     return {
       id: task.id,
@@ -370,11 +373,9 @@ export async function getStudentTasks() {
     };
   });
 
-  const activeTasks = formatted.filter(
-    (task) => task.status !== "GRADED"
-  );
+  const activeTasks = formatted.filter((task: any) => task.status !== "GRADED");
   const completedTasks = formatted.filter(
-    (task) => task.status === "GRADED"
+    (task: any) => task.status === "GRADED",
   );
 
   return { activeTasks, completedTasks };
@@ -402,7 +403,9 @@ export async function submitTaskSubmission({
 
   const task = await db.task.findUnique({
     where: { id: taskId },
-    include: { module: { include: { course: { include: { modules: true } } } } },
+    include: {
+      module: { include: { course: { include: { modules: true } } } },
+    },
   });
   if (!task) return { error: "Task not found" };
 
@@ -498,9 +501,9 @@ export async function submitTaskSubmission({
 
   const module = task.module;
   const courseModules = module.course.modules.sort(
-    (a, b) => a.sortOrder - b.sortOrder
+    (a: any, b: any) => a.sortOrder - b.sortOrder,
   );
-  const currentIndex = courseModules.findIndex((m) => m.id === module.id);
+  const currentIndex = courseModules.findIndex((m: any) => m.id === module.id);
   const nextModule = courseModules[currentIndex + 1];
 
   if (nextModule) {
@@ -513,7 +516,7 @@ export async function submitTaskSubmission({
     const completedLessons = await db.lessonProgress.count({
       where: {
         userId: session.user.id,
-        lessonId: { in: moduleLessons.map((l) => l.id) },
+        lessonId: { in: moduleLessons.map((l: any) => l.id) },
         isCompleted: true,
       },
     });
@@ -522,13 +525,13 @@ export async function submitTaskSubmission({
       moduleLessons.length > 0 && completedLessons === moduleLessons.length;
 
     const lessonQuizzes = await db.quiz.findMany({
-      where: { lessonId: { in: moduleLessons.map((l) => l.id) } },
+      where: { lessonId: { in: moduleLessons.map((l: any) => l.id) } },
       select: { id: true },
     });
 
     const passedQuizCount = await db.quizAttempt.count({
       where: {
-        quizId: { in: lessonQuizzes.map((q) => q.id) },
+        quizId: { in: lessonQuizzes.map((q: any) => q.id) },
         userId: session.user.id,
         passed: true,
       },

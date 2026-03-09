@@ -79,16 +79,19 @@ export async function getTutorDashboardData() {
   });
 
   const totalStudents = courses.reduce(
-    (sum, c) => sum + c.enrollments.length,
-    0
+    (sum: any, c: any) => sum + c.enrollments.length,
+    0,
   );
 
   const totalEarnings =
     courses.reduce(
-      (sum, c) =>
+      (sum: any, c: any) =>
         sum +
-        c.transactions.reduce((txSum, tx) => txSum + (tx.amount || 0), 0),
-      0
+        c.transactions.reduce(
+          (txSum: any, tx: any) => txSum + (tx.amount || 0),
+          0,
+        ),
+      0,
     ) / 100;
 
   const monthlyEarnings = await db.transaction.aggregate({
@@ -102,16 +105,20 @@ export async function getTutorDashboardData() {
     _sum: { amount: true },
   });
 
-  const coursesSold = courses.reduce((sum, c) => sum + c.enrollments.length, 0);
+  const coursesSold = courses.reduce(
+    (sum: any, c: any) => sum + c.enrollments.length,
+    0,
+  );
 
-  const averageRating = getAverageRating(courses.flatMap((c) => c.reviews));
+  const averageRating = getAverageRating(
+    courses.flatMap((c: any) => c.reviews),
+  );
 
   const currentMonthAmount = (currentMonthTx._sum.amount || 0) / 100;
   const lastMonthAmount = (lastMonthTx._sum.amount || 0) / 100;
   const earningsChange =
     lastMonthAmount > 0
-      ? ((currentMonthAmount - lastMonthAmount) / lastMonthAmount) *
-        100
+      ? ((currentMonthAmount - lastMonthAmount) / lastMonthAmount) * 100
       : 0;
 
   const studentsThisMonth = await db.enrollment.count({
@@ -136,13 +143,13 @@ export async function getTutorDashboardData() {
       ? ((studentsThisMonth - studentsLastMonth) / studentsLastMonth) * 100
       : 0;
 
-  const allReviews = courses.flatMap((c) => c.reviews);
+  const allReviews = courses.flatMap((c: any) => c.reviews);
 
   const ratingsThisMonth = allReviews.filter(
-    (r) => r.createdAt >= startOfMonth
+    (r: any) => r.createdAt >= startOfMonth,
   );
   const ratingsLastMonth = allReviews.filter(
-    (r) => r.createdAt >= startOfLastMonth && r.createdAt < startOfMonth
+    (r: any) => r.createdAt >= startOfLastMonth && r.createdAt < startOfMonth,
   );
 
   const ratingChange =
@@ -180,13 +187,16 @@ export async function getTutorDashboardData() {
   }
 
   // --- Courses Summary ---
-  const coursesSummary = courses.map((c) => ({
+  const coursesSummary = courses.map((c: any) => ({
     id: c.id,
     title: c.title,
     students: c.enrollments.length,
     rating: getAverageRating(c.reviews),
     earnings:
-      c.transactions.reduce((txSum, tx) => txSum + (tx.amount || 0), 0) / 100,
+      c.transactions.reduce(
+        (txSum: any, tx: any) => txSum + (tx.amount || 0),
+        0,
+      ) / 100,
     status: c.status.toLowerCase(),
     thumbnail: c.thumbnail,
     lastUpdated: c.updatedAt.toLocaleDateString(),
@@ -196,22 +206,22 @@ export async function getTutorDashboardData() {
   const pendingProjects: any = []; // db.project.findMany(...)
 
   const recentActivity = [
-    ...enrollments.map((e) => ({
+    ...enrollments.map((e: any) => ({
       type: "enrollment" as const,
       message: `${e.user.name} enrolled in your course "${e.course.title}"`,
       time: formatDistanceToNow(e.enrolledAt, { addSuffix: true }),
     })),
-    ...reviews.map((r) => ({
+    ...reviews.map((r: any) => ({
       type: "review" as const,
       message: `${r.user.name} rated "${r.course.title}" ${r.rating}⭐`,
       time: formatDistanceToNow(r.createdAt, { addSuffix: true }),
     })),
-    ...mentorships.map((m) => ({
+    ...mentorships.map((m: any) => ({
       type: "mentorship" as const,
       message: `New mentorship session scheduled: ${m.title}`,
       time: formatDistanceToNow(m.createdAt, { addSuffix: true }),
     })),
-    ...projects.map((p) => ({
+    ...projects.map((p: any) => ({
       type: "project" as const,
       message: `New project submission received.`,
       time: formatDistanceToNow(p.createdAt, { addSuffix: true }),
@@ -228,7 +238,10 @@ export async function getTutorDashboardData() {
       earningsHistory,
       coursesSold,
       averageRating,
-      totalReviews: courses.reduce((sum, c) => sum + c.reviews.length, 0),
+      totalReviews: courses.reduce(
+        (sum: any, c: any) => sum + c.reviews.length,
+        0,
+      ),
       mentorshipSessions: 0,
       projectsGraded: 0,
       change: {

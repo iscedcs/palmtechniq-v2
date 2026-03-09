@@ -52,7 +52,7 @@ export default async function CourseReviewPage(props: {
   }
 
   const totalLessons = course.modules.reduce(
-    (sum, mod) => sum + mod.lessons.length,
+    (sum: number, mod: any) => sum + mod.lessons.length,
     0,
   );
 
@@ -101,14 +101,15 @@ export default async function CourseReviewPage(props: {
               <div>
                 <p className="text-xs text-gray-500 uppercase">Status</p>
                 <Badge
-                  className={`mt-2 border ${getStatusColor(course.status)}`}
-                >
+                  className={`mt-2 border ${getStatusColor(course.status)}`}>
                   {course.status}
                 </Badge>
               </div>
               <div>
                 <p className="text-xs text-gray-500 uppercase">Category</p>
-                <p className="text-sm text-white mt-2">{course.category.name}</p>
+                <p className="text-sm text-white mt-2">
+                  {course.category.name}
+                </p>
               </div>
               <div>
                 <p className="text-xs text-gray-500 uppercase">Price</p>
@@ -151,9 +152,7 @@ export default async function CourseReviewPage(props: {
 
             <div className="pt-4 border-t border-white/10 space-y-2">
               <p className="text-xs text-gray-500 uppercase">Instructor</p>
-              <p className="text-sm text-white">
-                {course.tutor.user.name}
-              </p>
+              <p className="text-sm text-white">{course.tutor.user.name}</p>
             </div>
           </CardContent>
         </Card>
@@ -179,7 +178,7 @@ export default async function CourseReviewPage(props: {
                   Requirements
                 </p>
                 <ul className="space-y-1">
-                  {course.requirements.map((req, idx) => (
+                  {course.requirements.map((req: any, idx: any) => (
                     <li key={idx} className="text-gray-300 text-sm flex gap-2">
                       <span className="text-neon-blue">•</span>
                       <span>{req}</span>
@@ -191,11 +190,9 @@ export default async function CourseReviewPage(props: {
 
             {course.outcomes && course.outcomes.length > 0 && (
               <div>
-                <p className="text-xs text-gray-500 uppercase mb-2">
-                  Outcomes
-                </p>
+                <p className="text-xs text-gray-500 uppercase mb-2">Outcomes</p>
                 <ul className="space-y-1">
-                  {course.outcomes.map((outcome, idx) => (
+                  {course.outcomes.map((outcome: any, idx: any) => (
                     <li key={idx} className="text-gray-300 text-sm flex gap-2">
                       <span className="text-neon-purple">•</span>
                       <span>{outcome}</span>
@@ -211,7 +208,7 @@ export default async function CourseReviewPage(props: {
                   Target Audience
                 </p>
                 <ul className="space-y-1">
-                  {course.targetAudience.map((audience, idx) => (
+                  {course.targetAudience.map((audience: any, idx: any) => (
                     <li key={idx} className="text-gray-300 text-sm flex gap-2">
                       <span className="text-neon-green">•</span>
                       <span>{audience}</span>
@@ -229,8 +226,10 @@ export default async function CourseReviewPage(props: {
             <CardTitle className="text-white">Curriculum</CardTitle>
           </CardHeader>
           <CardContent className="space-y-4">
-            {course.modules.map((module, idx) => (
-              <div key={module.id} className="border border-white/10 rounded-lg p-4">
+            {course.modules.map((module: any, idx: any) => (
+              <div
+                key={module.id}
+                className="border border-white/10 rounded-lg p-4">
                 <div className="flex items-center justify-between mb-3">
                   <h4 className="font-semibold text-white">
                     Module {idx + 1}: {module.title}
@@ -240,11 +239,10 @@ export default async function CourseReviewPage(props: {
                   </Badge>
                 </div>
                 <div className="space-y-2">
-                  {module.lessons.map((lesson) => (
+                  {module.lessons.map((lesson: any) => (
                     <div
                       key={lesson.id}
-                      className="flex items-center justify-between text-sm text-gray-300 pl-4 py-2"
-                    >
+                      className="flex items-center justify-between text-sm text-gray-300 pl-4 py-2">
                       <span>• {lesson.title}</span>
                       {lesson.duration && (
                         <span className="text-xs text-gray-500">
@@ -270,8 +268,7 @@ export default async function CourseReviewPage(props: {
                 {course.reviews.map((review: any) => (
                   <div
                     key={review.id}
-                    className="border border-white/10 rounded-lg p-4"
-                  >
+                    className="border border-white/10 rounded-lg p-4">
                     <div className="flex items-start justify-between mb-2">
                       <div>
                         <p className="font-medium text-white">

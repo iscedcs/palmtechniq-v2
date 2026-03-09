@@ -71,7 +71,7 @@ export const notify = {
       // Create notifications for each user
       if (users.length > 0) {
         await db.notification.createMany({
-          data: users.map((user) => ({
+          data: users.map((user: any) => ({
             userId: user.id,
             title: p.title,
             message: p.message,
@@ -103,7 +103,7 @@ export const notify = {
       // Create notifications for each enrolled user
       if (enrollments.length > 0) {
         await db.notification.createMany({
-          data: enrollments.map((enrollment) => ({
+          data: enrollments.map((enrollment: any) => ({
             userId: enrollment.userId,
             title: p.title,
             message: p.message,

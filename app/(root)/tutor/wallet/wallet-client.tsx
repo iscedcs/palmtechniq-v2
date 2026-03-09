@@ -212,7 +212,7 @@ export default function WalletClient({
         setEarningsData(refreshed.earningsData ?? []);
         setRevenueBreakdown(refreshed.revenueBreakdown ?? []);
         setPaymentMethods(
-          (refreshed.paymentMethods ?? []).map((method) => ({
+          (refreshed.paymentMethods ?? []).map((method: any) => ({
             ...method,
             details:
               method.details && typeof method.details === "object"

@@ -23,7 +23,7 @@ export async function getStudentProgressData() {
   const session = await auth();
 
   if (!session?.user?.id) {
-    throw new Error("Unauthorized");
+    return { error: "Unauthorized" };
   }
 
   const userId = session.user.id;
@@ -42,7 +42,7 @@ export async function getStudentProgressData() {
   });
 
   if (!student) {
-    throw new Error("Student profile not found");
+    return { error: "Student profile not found" };
   }
 
   const enrollments = await db.enrollment.findMany({
@@ -81,35 +81,38 @@ export async function getStudentProgressData() {
     },
   });
 
-  const coursesProgress = enrollments.map((enrollment) => {
+  const coursesProgress = enrollments.map((enrollment: any) => {
     const totalLessons = enrollment.course.modules.reduce(
-      (acc, module) => acc + module.lessons.length,
-      0
+      (acc: any, module: any) => acc + module.lessons.length,
+      0,
     );
     const completedLessons = enrollment.lessonProgress.filter(
-      (lp) => lp.isCompleted
+      (lp: any) => lp.isCompleted,
     ).length;
     const progress =
       totalLessons > 0 ? (completedLessons / totalLessons) * 100 : 0;
 
     const totalWatchTimeMinutes = enrollment.lessonProgress.reduce(
-      (sum, lp) => sum + (lp.watchTime || 0),
-      0
+      (sum: any, lp: any) => sum + (lp.watchTime || 0),
+      0,
     );
     const timeSpent = Number((totalWatchTimeMinutes / 60).toFixed(1));
 
-    const allLessons = enrollment.course.modules.flatMap((m) => m.lessons);
+    const allLessons = enrollment.course.modules.flatMap((m: any) => m.lessons);
     const nextLesson = allLessons.find(
-      (lesson) =>
+      (lesson: any) =>
         !enrollment.lessonProgress.some(
-          (lp) => lp.lessonId === lesson.id && lp.isCompleted
-        )
+          (lp: any) => lp.lessonId === lesson.id && lp.isCompleted,
+        ),
     );
 
-    const ratings = enrollment.course.reviews.map((review) => review.rating);
+    const ratings = enrollment.course.reviews.map(
+      (review: any) => review.rating,
+    );
     const avgRating =
       ratings.length > 0
-        ? ratings.reduce((sum, rating) => sum + rating, 0) / ratings.length
+        ? ratings.reduce((sum: any, rating: any) => sum + rating, 0) /
+          ratings.length
         : 0;
 
     return {
@@ -157,11 +160,11 @@ export async function getStudentProgressData() {
     SKILL_MASTERED: "Epic",
   };
 
-  const achievements = recentAchievements.map((achievement) => ({
+  const achievements = recentAchievements.map((achievement: any) => ({
     id: achievement.id,
     title: achievement.type
       .replace(/_/g, " ")
-      .replace(/\b\w/g, (l) => l.toUpperCase()),
+      .replace(/\b\w/g, (l: any) => l.toUpperCase()),
     description: achievement.description,
     icon: achievementIconMap[achievement.type] || "Trophy",
     color: achievementColorMap[achievement.type] || "from-gray-500 to-gray-600",
@@ -215,10 +218,10 @@ export async function getStudentProgressData() {
     dayEnd.setDate(dayStart.getDate() + 1);
 
     return progressThisWeek.some(
-      (entry) =>
+      (entry: any) =>
         entry.completedAt &&
         entry.completedAt >= dayStart &&
-        entry.completedAt < dayEnd
+        entry.completedAt < dayEnd,
     )
       ? 1
       : 0;
@@ -230,7 +233,7 @@ export async function getStudentProgressData() {
     const dayEnd = new Date(dayStart);
     dayEnd.setDate(dayStart.getDate() + 1);
 
-    const totalMinutes = progressThisWeek.reduce((sum, entry) => {
+    const totalMinutes = progressThisWeek.reduce((sum: any, entry: any) => {
       if (!entry.completedAt) return sum;
       if (entry.completedAt >= dayStart && entry.completedAt < dayEnd) {
         return sum + (entry.watchTime || 0);
@@ -243,46 +246,48 @@ export async function getStudentProgressData() {
 
   const weeklyStudyHours = Number(
     (
-      progressThisWeek.reduce((sum, entry) => sum + (entry.watchTime || 0), 0) /
-      60
-    ).toFixed(1)
+      progressThisWeek.reduce(
+        (sum: any, entry: any) => sum + (entry.watchTime || 0),
+        0,
+      ) / 60
+    ).toFixed(1),
   );
   const weeklyLessonsCompleted = progressThisWeek.length;
 
   const totalModules = enrollments.reduce(
-    (sum, enrollment) => sum + enrollment.course.modules.length,
-    0
+    (sum: any, enrollment: any) => sum + enrollment.course.modules.length,
+    0,
   );
-  const completedModules = enrollments.reduce((sum, enrollment) => {
+  const completedModules = enrollments.reduce((sum: any, enrollment: any) => {
     const completedLessonIds = new Set(
       enrollment.lessonProgress
-        .filter((progress) => progress.isCompleted)
-        .map((progress) => progress.lessonId)
+        .filter((progress: any) => progress.isCompleted)
+        .map((progress: any) => progress.lessonId),
     );
-    const moduleCount = enrollment.course.modules.filter((module) => {
+    const moduleCount = enrollment.course.modules.filter((module: any) => {
       if (module.lessons.length === 0) return true;
-      return module.lessons.every((lesson) =>
-        completedLessonIds.has(lesson.id)
+      return module.lessons.every((lesson: any) =>
+        completedLessonIds.has(lesson.id),
       );
     }).length;
     return sum + moduleCount;
   }, 0);
 
-  const totalLessons = enrollments.reduce((sum, enrollment) => {
+  const totalLessons = enrollments.reduce((sum: any, enrollment: any) => {
     return (
       sum +
       enrollment.course.modules.reduce(
-        (lessonSum, module) => lessonSum + module.lessons.length,
-        0
+        (lessonSum: any, module: any) => lessonSum + module.lessons.length,
+        0,
       )
     );
   }, 0);
   const completedLessons = enrollments.reduce(
-    (sum, enrollment) =>
+    (sum: any, enrollment: any) =>
       sum +
-      enrollment.lessonProgress.filter((progress) => progress.isCompleted)
+      enrollment.lessonProgress.filter((progress: any) => progress.isCompleted)
         .length,
-    0
+    0,
   );
 
   const completedLessonDates = await db.lessonProgress.findMany({
@@ -293,8 +298,10 @@ export async function getStudentProgressData() {
 
   const toDateKey = (date: Date) => date.toISOString().slice(0, 10);
   const completedDays = completedLessonDates
-    .map((entry) => (entry.completedAt ? toDateKey(entry.completedAt) : null))
-    .filter((value): value is string => Boolean(value));
+    .map((entry: any) =>
+      entry.completedAt ? toDateKey(entry.completedAt) : null,
+    )
+    .filter((value: any): value is string => Boolean(value));
   const completedSet = new Set(completedDays);
 
   const todayKey = toDateKey(new Date());
@@ -308,7 +315,7 @@ export async function getStudentProgressData() {
   let longestStreak = 0;
   let streak = 0;
   let previousDate: string | null = null;
-  for (const dateKey of Array.from(new Set(completedDays)).sort()) {
+  for (const dateKey of Array.from(new Set(completedDays)).sort() as string[]) {
     if (!previousDate) {
       streak = 1;
     } else {
@@ -327,11 +334,11 @@ export async function getStudentProgressData() {
 
   const recentMilestones = recentAchievements
     .slice(0, 3)
-    .map((achievement) => ({
+    .map((achievement: any) => ({
       id: achievement.id,
       title: achievement.type
         .replace(/_/g, " ")
-        .replace(/\b\w/g, (l) => l.toUpperCase()),
+        .replace(/\b\w/g, (l: any) => l.toUpperCase()),
       description: achievement.description,
       earned: formatDistanceToNow(achievement.achievedAt, { addSuffix: true }),
       icon: achievementIconMap[achievement.type] || "Trophy",
@@ -360,12 +367,12 @@ export async function getStudentProgressData() {
     stats: {
       totalHours: Number((student.studyHours / 60).toFixed(1)),
       monthlyHours: Number(
-        ((monthlyWatchTime._sum.watchTime || 0) / 60).toFixed(1)
+        ((monthlyWatchTime._sum.watchTime || 0) / 60).toFixed(1),
       ),
       coursesCompleted: student.coursesCompleted,
       coursesInProgress: Math.max(
         student.coursesStarted - student.coursesCompleted,
-        0
+        0,
       ),
       averageScore: Math.round(averageQuizScore._avg.score || 0),
       rank: student.currentRank,
@@ -376,6 +383,8 @@ export async function getStudentProgressData() {
   };
 }
 
-export type StudentProgressData = Awaited<
-  ReturnType<typeof getStudentProgressData>
+export type StudentProgressData = Exclude<
+  Awaited<ReturnType<typeof getStudentProgressData>>,
+  { error: string }
 >;
+export type StudentProgressResponse = { error: string } | StudentProgressData;

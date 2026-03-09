@@ -105,7 +105,7 @@ export async function getTutorMentorApplications() {
   });
 
   const applications: AdminApplicationItem[] = rows
-    .map((row) => {
+    .map((row: any) => {
       const payload = parseJsonPayload(row.course);
       if (!payload) return null;
 
@@ -133,7 +133,7 @@ export async function getTutorMentorApplications() {
         payload,
       };
     })
-    .filter((entry): entry is AdminApplicationItem => Boolean(entry));
+    .filter((entry: any): entry is AdminApplicationItem => Boolean(entry));
 
   const stats = {
     total: applications.length,
@@ -205,7 +205,7 @@ export async function updateTutorMentorApplicationStatus(input: {
   } catch (error) {
     console.error(
       "Failed to send application status email, reverting status update:",
-      error
+      error,
     );
     await db.registration.update({
       where: { id: record.id },

@@ -83,7 +83,9 @@ export default async function AdminCourseEnrollmentsPage(props: {
             <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
               <div>
                 <p className="text-xs text-gray-500 uppercase">Category</p>
-                <p className="text-sm text-white mt-2">{course.category.name}</p>
+                <p className="text-sm text-white mt-2">
+                  {course.category.name}
+                </p>
               </div>
               <div>
                 <p className="text-xs text-gray-500 uppercase">Instructor</p>
@@ -110,7 +112,7 @@ export default async function AdminCourseEnrollmentsPage(props: {
         {/* Enrollment Management UI */}
         <AdminEnrollmentUI
           courseId={courseId}
-          enrollments={course.enrollments.map((enrollment) => ({
+          enrollments={course.enrollments.map((enrollment: any) => ({
             id: enrollment.id,
             user: enrollment.user,
             enrolledAt: enrollment.enrolledAt,

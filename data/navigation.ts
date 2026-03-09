@@ -63,7 +63,7 @@ export async function fetchNavigationData(): Promise<NavigationData> {
     });
 
     // Transform courses for navigation
-    const transformedCourses = courses.map((course) => ({
+    const transformedCourses = courses.map((course: any) => ({
       id: course.id,
       title: course.title,
       slug: course.slug,

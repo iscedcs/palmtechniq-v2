@@ -114,13 +114,15 @@ export function EditProjectModal({
 
       getProjectDetails(project.id).then((result) => {
         if (result.project?.resources) {
-          const mappedResources = result.project.resources.map((resource) => ({
-            title: resource.title,
-            description: resource.description || "",
-            url: resource.url,
-            type: resource.type,
-            isPublic: resource.isPublic,
-          }));
+          const mappedResources = result.project.resources.map(
+            (resource: any) => ({
+              title: resource.title,
+              description: resource.description || "",
+              url: resource.url,
+              type: resource.type,
+              isPublic: resource.isPublic,
+            }),
+          );
           setResources(mappedResources);
         }
       });
@@ -159,7 +161,7 @@ export function EditProjectModal({
   const updateResourceField = (
     index: number,
     field: "title" | "description" | "url" | "type" | "isPublic",
-    value: string | boolean
+    value: string | boolean,
   ) => {
     const updated = [...resources];
     updated[index] = {
@@ -321,7 +323,7 @@ export function EditProjectModal({
                         | "IMAGE"
                         | "LINK"
                         | "CODE"
-                        | "DOCUMENT"
+                        | "DOCUMENT",
                     ) =>
                       setCurrentResource({
                         ...currentResource,
@@ -514,7 +516,7 @@ export function EditProjectModal({
                           updateResourceField(
                             index,
                             "description",
-                            e.target.value
+                            e.target.value,
                           )
                         }
                         placeholder="Description (optional)..."
@@ -529,7 +531,7 @@ export function EditProjectModal({
                             updateResourceField(
                               index,
                               "isPublic",
-                              e.target.checked
+                              e.target.checked,
                             )
                           }
                           className="w-4 h-4 rounded border-white/10 bg-white/5"

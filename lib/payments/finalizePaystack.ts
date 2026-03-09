@@ -36,7 +36,7 @@ export async function finalizePaystackByReference(reference: string) {
     console.log({ v });
   }
 
-  await db.$transaction(async (px) => {
+  await db.$transaction(async (px: any) => {
     await px.transaction.update({
       where: { id: tx.id },
       data: {
@@ -189,7 +189,7 @@ export async function finalizePaystackByReference(reference: string) {
           : null;
 
       const totals = computeCheckoutTotals({
-        courses: courses.map((course) => ({
+        courses: courses.map((course: any) => ({
           id: course.id,
           tutorId: course.tutor.userId,
           basePrice: course.basePrice,

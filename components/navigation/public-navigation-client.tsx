@@ -31,28 +31,32 @@ const features = [
     icon: Zap,
     title: "AI Interview Coach",
     description: "Practice with adaptive AI interviewer",
+    link: "/features/ai-interview",
   },
   {
     icon: Users,
     title: "Live Mentorship",
     description: "1-on-1 sessions with industry experts",
+    link: "/features/mentorship",
   },
   {
     icon: BookOpen,
     title: "Hybrid Learning",
     description: "Virtual & physical learning environments",
+    link: "/courses",
   },
   {
     icon: TrendingUp,
     title: "Project-Based Learning",
     description: "Real-world industry projects",
+    link: "/courses",
   },
 ];
 
 const resources = [
-  { icon: FileText, label: "Blog", href: "/blog" },
-  { icon: Lightbulb, label: "Insights", href: "/insights" },
-  { icon: TrendingUp, label: "Case Studies", href: "/case-studies" },
+  // { icon: FileText, label: "Blog", href: "/blog" },
+  // { icon: Lightbulb, label: "Insights", href: "/insights" },
+  // { icon: TrendingUp, label: "Case Studies", href: "/case-studies" },
   { icon: MessageSquare, label: "Help Center", href: "/help" },
 ];
 
@@ -151,7 +155,7 @@ export function PublicNavigationClient({
                                         <Link key={item.href} href={item.href}>
                                           <motion.div
                                             whileHover={{ x: 4 }}
-                                            className="text-gray-300 hover:text-white transition-colors flex items-center cursor-pointer text-sm">
+                                            className="text-gray-300 hover:text-white transition-colors  space-y-3 flex items-center cursor-pointer text-sm">
                                             {item.label}
                                             <ArrowRight className="w-4 h-4 ml-2 opacity-0 group-hover:opacity-100 transition-opacity" />
                                           </motion.div>
@@ -239,7 +243,7 @@ export function PublicNavigationClient({
                           return (
                             <motion.a
                               key={feature.title}
-                              href="/features"
+                              href={feature.link}
                               whileHover={{ x: 4 }}
                               className="p-4 rounded-lg hover:bg-white/5 transition-colors group cursor-pointer">
                               <div className="flex items-start">

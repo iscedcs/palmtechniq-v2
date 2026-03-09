@@ -18,10 +18,10 @@ const run = async () => {
     });
 
     const inferredType = (() => {
-      if (project.submissions.some((s) => s.githubUrl)) return "GITHUB";
-      if (project.submissions.some((s) => s.fileUrl)) return "FILE";
-      if (project.submissions.some((s) => s.liveUrl)) return "LINK";
-      if (project.submissions.some((s) => s.content)) return "TEXT";
+      if (project.submissions.some((s: any) => s.githubUrl)) return "GITHUB";
+      if (project.submissions.some((s: any) => s.fileUrl)) return "FILE";
+      if (project.submissions.some((s: any) => s.liveUrl)) return "LINK";
+      if (project.submissions.some((s: any) => s.content)) return "TEXT";
       return "TEXT";
     })();
 
@@ -42,7 +42,7 @@ const run = async () => {
             project.resources.length > 0
               ? {
                   createMany: {
-                    data: project.resources.map((resource) => ({
+                    data: project.resources.map((resource: any) => ({
                       title: resource.title,
                       description: resource.description,
                       url: resource.url,
@@ -92,7 +92,7 @@ const run = async () => {
 
 run()
   .then(async () => {
-  await db.$disconnect();
+    await db.$disconnect();
   })
   .catch(async (error) => {
     console.error(error);

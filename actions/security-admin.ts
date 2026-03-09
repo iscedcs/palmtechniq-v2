@@ -345,11 +345,11 @@ export async function getSuspiciousActivityReport() {
       success: true,
       data: {
         period: "Last 7 days",
-        topIPsByFailedAttempts: failedAttempts.map((a) => ({
+        topIPsByFailedAttempts: failedAttempts.map((a: any) => ({
           ipAddress: a.ipAddress,
           failedAttempts: a._count.id,
         })),
-        topEmailsByFailedAttempts: failedByEmail.map((a) => ({
+        topEmailsByFailedAttempts: failedByEmail.map((a: any) => ({
           email: a.email,
           failedAttempts: a._count.id,
         })),

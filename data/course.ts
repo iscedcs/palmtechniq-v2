@@ -17,7 +17,7 @@ export async function getPublicCourses() {
     orderBy: [{ publishedAt: "desc" }, { createdAt: "desc" }],
   });
 
-  return courses.map((course) => {
+  return courses.map((course: any) => {
     const discount =
       course.basePrice && course.currentPrice
         ? Math.round(
@@ -32,7 +32,7 @@ export async function getPublicCourses() {
       thumbnail: course.thumbnail,
       level: course.level,
       tutor: course.tutor,
-      tags: course.tags.map((t) => ({ id: t.id, name: t.name })),
+      tags: course.tags.map((t: any) => ({ id: t.id, name: t.name })),
       averageRating: getAverageRating(course.reviews),
       totalStudents: course._count.enrollments,
       enrollments: course._count.enrollments,
@@ -89,7 +89,7 @@ export async function getCourseById(courseId: string) {
 
     return {
       ...course,
-      tags: course.tags?.map((t) => t.name) || [],
+      tags: course.tags?.map((t: any) => t.name) || [],
       learningOutcomes: course.outcomes || [],
     };
   } catch (error) {
@@ -149,10 +149,10 @@ export async function getCourseWithModules(courseId: string) {
     });
 
     if (!course) return null;
-    const allLessons = course.modules.flatMap((m) => m.lessons);
+    const allLessons = course.modules.flatMap((m: any) => m.lessons);
     const lessonQuizIds = allLessons
-      .map((lesson) => lesson.quiz?.id)
-      .filter((id): id is string => Boolean(id));
+      .map((lesson: any) => lesson.quiz?.id)
+      .filter((id: any): id is string => Boolean(id));
     const quizAttempts = session?.user.id
       ? await db.quizAttempt.findMany({
           where: {
@@ -164,13 +164,13 @@ export async function getCourseWithModules(courseId: string) {
         })
       : [];
     const passedQuizIds = new Set(
-      quizAttempts.map((attempt) => attempt.quizId),
+      quizAttempts.map((attempt: any) => attempt.quizId),
     );
 
     const moduleTasks = session?.user.id
       ? await db.task.findMany({
           where: {
-            moduleId: { in: course.modules.map((m) => m.id) },
+            moduleId: { in: course.modules.map((m: any) => m.id) },
             isActive: true,
           },
           orderBy: { createdAt: "asc" },
@@ -190,13 +190,13 @@ export async function getCourseWithModules(courseId: string) {
 
     const taskSubmissionStatuses = new Set(["SUBMITTED", "GRADED", "RETURNED"]);
     const moduleTaskBuckets = new Map<string, typeof moduleTasks>();
-    moduleTasks.forEach((task) => {
+    moduleTasks.forEach((task: any) => {
       const bucket = moduleTaskBuckets.get(task.moduleId) || [];
       bucket.push(task);
       moduleTaskBuckets.set(task.moduleId, bucket);
     });
 
-    course.modules.forEach((module) => {
+    course.modules.forEach((module: any) => {
       const tasksForModule = moduleTaskBuckets.get(module.id) || [];
       if (tasksForModule.length === 0) {
         moduleTaskMap.set(module.id, {
@@ -208,8 +208,10 @@ export async function getCourseWithModules(courseId: string) {
       }
 
       const pendingTask = tasksForModule.find(
-        (task) =>
-          !task.submissions.some((s) => taskSubmissionStatuses.has(s.status)),
+        (task: any) =>
+          !task.submissions.some((s: any) =>
+            taskSubmissionStatuses.has(s.status),
+          ),
       );
       moduleTaskMap.set(module.id, {
         hasTask: true,
@@ -219,12 +221,12 @@ export async function getCourseWithModules(courseId: string) {
     });
 
     const lastCompleted = allLessons
-      .filter((l) => l.progress.length > 0 && l.progress[0].isCompleted)
+      .filter((l: any) => l.progress.length > 0 && l.progress[0].isCompleted)
       .pop();
 
     let resumeLessonId = allLessons[0]?.id;
     if (lastCompleted) {
-      const idx = allLessons.findIndex((l) => l.id === lastCompleted.id);
+      const idx = allLessons.findIndex((l: any) => l.id === lastCompleted.id);
       if (idx >= 0 && idx + 1 < allLessons.length) {
         resumeLessonId = allLessons[idx + 1].id;
       } else {
@@ -233,7 +235,7 @@ export async function getCourseWithModules(courseId: string) {
     }
 
     const completedLessons = allLessons.filter(
-      (lesson) => lesson.progress?.[0]?.isCompleted,
+      (lesson: any) => lesson.progress?.[0]?.isCompleted,
     ).length;
 
     const totalLessons = allLessons.length;
@@ -243,34 +245,40 @@ export async function getCourseWithModules(courseId: string) {
         : 0;
 
     const modules = await Promise.all(
-      course.modules.map(async (module, idx, arr) => {
+      course.modules.map(async (module: any, idx: any, arr: any) => {
         const previousModules = arr.slice(0, idx);
         const previousCompleted = previousModules.every(
-          (m) =>
-            m.lessons.every((l) => l.progress?.[0]?.isCompleted) &&
-            m.lessons.every((l) => !l.quiz || passedQuizIds.has(l.quiz.id)),
+          (m: any) =>
+            m.lessons.every((l: any) => l.progress?.[0]?.isCompleted) &&
+            m.lessons.every(
+              (l: any) => !l.quiz || passedQuizIds.has(l.quiz.id),
+            ),
         );
 
         const isLocked = idx > 0 && !previousCompleted;
 
-        const lessonsWithLocking = module.lessons.map((lesson, lidx) => {
-          const previousLesson = module.lessons[lidx - 1];
-          const previousLessonQuizPassed = previousLesson?.quiz
-            ? passedQuizIds.has(previousLesson.quiz.id)
-            : true;
-          const isLessonLocked =
-            isLocked ||
-            (lidx > 0 &&
-              (!previousLesson?.progress?.[0]?.isCompleted ||
-                !previousLessonQuizPassed));
+        const lessonsWithLocking = module.lessons.map(
+          (lesson: any, lidx: any) => {
+            const previousLesson = module.lessons[lidx - 1];
+            const previousLessonQuizPassed = previousLesson?.quiz
+              ? passedQuizIds.has(previousLesson.quiz.id)
+              : true;
+            const isLessonLocked =
+              isLocked ||
+              (lidx > 0 &&
+                (!previousLesson?.progress?.[0]?.isCompleted ||
+                  !previousLessonQuizPassed));
 
-          return {
-            ...lesson,
-            isCompleted: lesson.progress?.[0]?.isCompleted ?? false,
-            isLocked: isLessonLocked,
-            quizPassed: lesson.quiz ? passedQuizIds.has(lesson.quiz.id) : true,
-          };
-        });
+            return {
+              ...lesson,
+              isCompleted: lesson.progress?.[0]?.isCompleted ?? false,
+              isLocked: isLessonLocked,
+              quizPassed: lesson.quiz
+                ? passedQuizIds.has(lesson.quiz.id)
+                : true,
+            };
+          },
+        );
 
         return {
           ...module,
@@ -290,9 +298,9 @@ export async function getCourseWithModules(courseId: string) {
       progress,
       resumeLessonId,
       modules,
-      // modules: course.modules.map((m) => ({
+      // modules: course.modules.map((m: any) => ({
       //   ...m,
-      //   lessons: m.lessons.map((l) => ({
+      //   lessons: m.lessons.map((l: any) => ({
       //     ...l,
       //     isCompleted: l.progress?.[0]?.isCompleted ?? false,
       //   })),

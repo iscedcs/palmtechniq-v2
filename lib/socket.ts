@@ -19,11 +19,13 @@ export function initIO(server: HttpServer) {
       .map((origin) => origin.trim())
       .filter(Boolean);
     const allowedOrigin = Array.from(
-      new Set([
-        process.env.NEXT_PUBLIC_URL,
-        ...configuredOrigins,
-        ...(isProd ? [] : ["http://localhost:2026"]),
-      ].filter(Boolean))
+      new Set(
+        [
+          process.env.NEXT_PUBLIC_URL,
+          ...configuredOrigins,
+          ...(isProd ? [] : ["http://localhost:2026"]),
+        ].filter(Boolean),
+      ),
     ) as string[];
 
     const io = new IOServer(server, {
@@ -51,11 +53,11 @@ export function initIO(server: HttpServer) {
         });
         if (!token?.sub) return next(new Error("Unauthorized"));
 
-        (socket.data.user = {
+        ((socket.data.user = {
           id: token.sub,
           role: (token as any).role ?? "USER",
         }),
-          next();
+          next());
       } catch (err) {
         next(err as Error);
       }
@@ -74,14 +76,21 @@ export function initIO(server: HttpServer) {
           where: { userId, status: "ACTIVE" },
           select: { courseId: true },
         });
-        enrollments.forEach(({ courseId }) => {
+        enrollments.forEach(({ courseId }: any) => {
           socket.join(`course:${courseId}`);
         });
       } catch (e) {
         console.warn("Failed to join course rooms for", userId, e);
       }
       if (!isProd) {
-        console.log("Socket connected:", socket.id, "user:", userId, "role:", role);
+        console.log(
+          "Socket connected:",
+          socket.id,
+          "user:",
+          userId,
+          "role:",
+          role,
+        );
       }
 
       socket.emit("notification", {

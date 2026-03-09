@@ -33,16 +33,19 @@ export default async function CheckoutPage({
     redirect(`/courses/${courseId}`);
   }
 
-  const totalLessonDuration = course.modules?.reduce((sum, module) => {
-    return (
-      sum +
-      module.lessons.reduce((lessonSum, lesson) => {
-        return lessonSum + (lesson.duration || 0);
-      }, 0)
-    );
-  }, 0);
+  const totalLessonDuration = course.modules?.reduce(
+    (sum: number, module: any) => {
+      return (
+        sum +
+        module.lessons.reduce((lessonSum: number, lesson: any) => {
+          return lessonSum + (lesson.duration || 0);
+        }, 0)
+      );
+    },
+    0,
+  );
 
-  const totalLessons = course.modules?.reduce((sum, module) => {
+  const totalLessons = course.modules?.reduce((sum: number, module: any) => {
     return sum + module.lessons.length;
   }, 0);
 
@@ -64,7 +67,7 @@ export default async function CheckoutPage({
         totalLesson={totalLessons}
         rating={
           course.reviews?.length
-            ? course.reviews.reduce((s, r) => s + r.rating, 0) /
+            ? course.reviews.reduce((s: any, r: any) => s + r.rating, 0) /
               course.reviews.length
             : 0
         }

@@ -270,15 +270,17 @@ export async function getIPStats(ipAddress: string) {
       },
     });
 
-    const failed = attempts.filter((a) => !a.success).length;
-    const successful = attempts.filter((a) => a.success).length;
+    const failed = attempts.filter((a: any) => !a.success).length;
+    const successful = attempts.filter((a: any) => a.success).length;
 
     return {
       ipAddress,
       total: attempts.length,
       failed,
       successful,
-      uniqueEmails: [...new Set(attempts.map((a) => a.email).filter(Boolean))],
+      uniqueEmails: [
+        ...new Set(attempts.map((a: any) => a.email).filter(Boolean)),
+      ],
       recentAttempts: attempts.slice(0, 10),
     };
   } catch (error) {

@@ -4,7 +4,7 @@ import { auth } from "@/auth";
 
 export async function POST(
   req: Request,
-  { params }: { params: Promise<{ quizId: string }> }
+  { params }: { params: Promise<{ quizId: string }> },
 ) {
   const session = await auth();
   if (!session?.user?.id) {
@@ -20,7 +20,7 @@ export async function POST(
   if (!answers || !enrollmentId || score == null || timeSpent == null) {
     return NextResponse.json(
       { error: "Missing required fields" },
-      { status: 400 }
+      { status: 400 },
     );
   }
 
@@ -32,7 +32,10 @@ export async function POST(
         lesson: {
           include: {
             module: {
-              include: { course: { include: { modules: true } }, lessons: true },
+              include: {
+                course: { include: { modules: true } },
+                lessons: true,
+              },
             },
           },
         },
@@ -97,10 +100,10 @@ export async function POST(
 
     if (passed) {
       const moduleLessons = quiz.lesson.module.lessons.sort(
-        (a, b) => a.sortOrder - b.sortOrder
+        (a: any, b: any) => a.sortOrder - b.sortOrder,
       );
       const lessonIndex = moduleLessons.findIndex(
-        (l) => l.id === quiz.lessonId
+        (l: any) => l.id === quiz.lessonId,
       );
       const nextLessonInModule = moduleLessons[lessonIndex + 1] || null;
 
@@ -130,17 +133,16 @@ export async function POST(
 
       const submissionStatuses = new Set(["SUBMITTED", "GRADED", "RETURNED"]);
       const pendingModuleTask = moduleTasks.find(
-        (task) =>
-          !task.submissions.some((s) => submissionStatuses.has(s.status))
+        (task: any) =>
+          !task.submissions.some((s: any) => submissionStatuses.has(s.status)),
       );
-      const moduleTaskId =
-        pendingModuleTask?.id ?? moduleTasks[0]?.id ?? null;
+      const moduleTaskId = pendingModuleTask?.id ?? moduleTasks[0]?.id ?? null;
 
       const modules = quiz.lesson.module.course.modules.sort(
-        (a, b) => a.sortOrder - b.sortOrder
+        (a: any, b: any) => a.sortOrder - b.sortOrder,
       );
       const currentIndex = modules.findIndex(
-        (m) => m.id === quiz.lesson.moduleId
+        (m: any) => m.id === quiz.lesson.moduleId,
       );
       const nextModule = modules[currentIndex + 1];
 

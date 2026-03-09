@@ -89,9 +89,7 @@ export default async function TutorAnalyticsPage() {
                 <p className="text-2xl font-semibold text-white">
                   {formatCurrency(stats.monthlyCompleted)}
                 </p>
-                <p className="text-xs text-gray-500 mt-2">
-                  This month only
-                </p>
+                <p className="text-xs text-gray-500 mt-2">This month only</p>
               </CardContent>
             </Card>
 
@@ -105,9 +103,7 @@ export default async function TutorAnalyticsPage() {
                 <p className="text-2xl font-semibold text-white">
                   {stats.completionRateOverall}%
                 </p>
-                <p className="text-xs text-gray-500 mt-2">
-                  Across all courses
-                </p>
+                <p className="text-xs text-gray-500 mt-2">Across all courses</p>
               </CardContent>
             </Card>
           </div>
@@ -153,27 +149,34 @@ export default async function TutorAnalyticsPage() {
                         </TableCell>
                       </TableRow>
                     ) : (
-                      coursesTable.map((course) => (
-                        <TableRow
-                          key={course.id}
-                          className="border-white/10">
-                          <TableCell className="text-white font-medium">
-                            {course.title}
-                          </TableCell>
-                          <TableCell className="text-green-400">
-                            {formatCurrency(course.completedRevenue)}
-                          </TableCell>
-                          <TableCell className="text-yellow-400">
-                            {formatCurrency(course.pendingRevenue)}
-                          </TableCell>
-                          <TableCell className="text-gray-300">
-                            {course.enrollments.toLocaleString("en-NG")}
-                          </TableCell>
-                          <TableCell className="text-gray-300">
-                            {course.completionRate}%
-                          </TableCell>
-                        </TableRow>
-                      ))
+                      coursesTable.map(
+                        (course: {
+                          id: string;
+                          title: string;
+                          enrollments: number;
+                          completionRate: number;
+                          completedRevenue: number;
+                          pendingRevenue: number;
+                        }) => (
+                          <TableRow key={course.id} className="border-white/10">
+                            <TableCell className="text-white font-medium">
+                              {course.title}
+                            </TableCell>
+                            <TableCell className="text-green-400">
+                              {formatCurrency(course.completedRevenue)}
+                            </TableCell>
+                            <TableCell className="text-yellow-400">
+                              {formatCurrency(course.pendingRevenue)}
+                            </TableCell>
+                            <TableCell className="text-gray-300">
+                              {course.enrollments.toLocaleString("en-NG")}
+                            </TableCell>
+                            <TableCell className="text-gray-300">
+                              {course.completionRate}%
+                            </TableCell>
+                          </TableRow>
+                        ),
+                      )
                     )}
                   </TableBody>
                 </Table>

@@ -25,7 +25,7 @@ export async function getTutorAnalyticsData() {
     orderBy: { createdAt: "desc" },
   });
 
-  const courseIds = courses.map((c) => c.id);
+  const courseIds = courses.map((c: any) => c.id);
 
   const [
     enrollmentsByCourse,
@@ -89,14 +89,17 @@ export async function getTutorAnalyticsData() {
   ]);
 
   const enrollmentCountByCourse = new Map(
-    enrollmentsByCourse.map((entry) => [entry.courseId, entry._count._all])
+    enrollmentsByCourse.map((entry: any) => [
+      entry.courseId,
+      entry._count._all,
+    ]),
   );
 
   const completionByCourseMap = new Map<
     string,
     { total: number; completed: number }
   >();
-  completionByCourse.forEach((entry) => {
+  completionByCourse.forEach((entry: any) => {
     const current = completionByCourseMap.get(entry.courseId) || {
       total: 0,
       completed: 0,
@@ -108,20 +111,20 @@ export async function getTutorAnalyticsData() {
     completionByCourseMap.set(entry.courseId, current);
   });
 
-  const completedRevenueByCourse = new Map(
-    completedRevenueAgg.map((entry) => [
+  const completedRevenueByCourse = new Map<string, number>(
+    completedRevenueAgg.map((entry: any) => [
       entry.courseId,
       entry._sum.totalAmount ?? 0,
-    ])
+    ]),
   );
-  const pendingRevenueByCourse = new Map(
-    pendingRevenueAgg.map((entry) => [
+  const pendingRevenueByCourse = new Map<string, number>(
+    pendingRevenueAgg.map((entry: any) => [
       entry.courseId,
       entry._sum.totalAmount ?? 0,
-    ])
+    ]),
   );
 
-  const coursesTable = courses.map((course) => {
+  const coursesTable = courses.map((course: any) => {
     const enrollments = enrollmentCountByCourse.get(course.id) ?? 0;
     const completion = completionByCourseMap.get(course.id) || {
       total: 0,
@@ -142,12 +145,12 @@ export async function getTutorAnalyticsData() {
   });
 
   const totalCompletedRevenue = coursesTable.reduce(
-    (sum, course) => sum + course.completedRevenue,
-    0
+    (sum: any, course: any) => sum + course.completedRevenue,
+    0,
   );
   const totalPendingRevenue = coursesTable.reduce(
-    (sum, course) => sum + course.pendingRevenue,
-    0
+    (sum: any, course: any) => sum + course.pendingRevenue,
+    0,
   );
 
   const completionRateOverall = (() => {
@@ -157,7 +160,7 @@ export async function getTutorAnalyticsData() {
         acc.completed += entry.completed;
         return acc;
       },
-      { total: 0, completed: 0 }
+      { total: 0, completed: 0 },
     );
     return totals.total === 0
       ? 0
@@ -170,7 +173,7 @@ export async function getTutorAnalyticsData() {
   const earningsChange =
     lastMonthCompleted > 0
       ? Math.round(
-          ((monthlyCompleted - lastMonthCompleted) / lastMonthCompleted) * 100
+          ((monthlyCompleted - lastMonthCompleted) / lastMonthCompleted) * 100,
         )
       : 0;
 

@@ -49,7 +49,7 @@ export async function validatePromoCode({
   }
 
   if (promo.allowedUsers.length > 0) {
-    const allowed = promo.allowedUsers.some((u) => u.userId === userId);
+    const allowed = promo.allowedUsers.some((u: any) => u.userId === userId);
     if (!allowed) return { ok: false, reason: "not_allowed" };
   }
 
