@@ -59,14 +59,14 @@ function toText(value: unknown, fallback = "N/A") {
 
 export async function onBoardingMail(email: string, fullName: string) {
   try {
-    const { default: SignIn } = await import("./email-templates/signin");
+    const { default: Welcome } = await import("./email-templates/welcome");
     const resend = new Resend(process.env.RESEND_API_KEY!);
 
     await resend.emails.send({
       from: process.env.FROM_EMAIL_ADDRESS!,
       to: email,
-      subject: "Welcome to PalmTechnIQ",
-      react: SignIn({ fullName }),
+      subject: "Welcome to PalmTechnIQ - Your Learning Journey Starts Here",
+      react: Welcome({ fullName }),
     });
     return { success: "Signed-Up successfully!" };
   } catch (error) {
@@ -190,7 +190,7 @@ export async function sendTutorMentorApplicationNotification(params: {
     `Languages: ${languages}`,
     `Portfolio: ${toText(professional.portfolio)}`,
     `Resume: ${toText(professional.resumeFileName)} (${toText(
-      professional.resumeUrl
+      professional.resumeUrl,
     )})`,
     "",
     "Motivation",
