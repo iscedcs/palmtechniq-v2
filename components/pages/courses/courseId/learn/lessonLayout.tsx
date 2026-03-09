@@ -22,19 +22,19 @@ export default async function LessonLayout(props: {
   }
 
   // flatten all lessons
-  const allLessons = course.modules.flatMap((m) => m.lessons);
+  const allLessons = course.modules.flatMap((m: any) => m.lessons);
 
   // find current lesson (from search param or default to first lesson)
   const currentLesson =
-    allLessons.find((l) => l.id === lessonId) || allLessons[0];
+    allLessons.find((l: any) => l.id === lessonId) || allLessons[0];
 
   const completedLessonIds = allLessons
-    .filter((lesson) => lesson.id !== currentLesson.id) // mark previous lessons as completed
-    .map((lesson) => lesson.id);
+    .filter((lesson: any) => lesson.id !== currentLesson.id) // mark previous lessons as completed
+    .map((lesson: any) => lesson.id);
 
   // 2️⃣ Map modules with isCompleted fields (normalize description for LessonSidebar's Lesson type)
-  const modulesWithCompletion = course.modules.map((module) => {
-    const lessons = module.lessons.map((lesson) => ({
+  const modulesWithCompletion = course.modules.map((module: any) => {
+    const lessons = module.lessons.map((lesson: any) => ({
       ...lesson,
       description: lesson.description ?? "",
       isCompleted: completedLessonIds.includes(lesson.id),
@@ -43,7 +43,7 @@ export default async function LessonLayout(props: {
     return {
       ...module,
       lessons,
-      isCompleted: lessons.every((lesson) => lesson.isCompleted),
+      isCompleted: lessons.every((lesson: any) => lesson.isCompleted),
     };
   });
 
@@ -65,7 +65,7 @@ export default async function LessonLayout(props: {
 
   function goToNextLesson(): void {
     const currentIndex = allLessons.findIndex(
-      (lesson) => lesson.id === currentLesson.id,
+      (lesson: any) => lesson.id === currentLesson.id,
     );
     const nextLesson = allLessons[currentIndex + 1];
 
@@ -105,7 +105,7 @@ export default async function LessonLayout(props: {
             courseTitle={course.title}
             progress={Math.round(
               (allLessons.findIndex(
-                (lesson) => lesson.id === currentLesson.id,
+                (lesson: any) => lesson.id === currentLesson.id,
               ) /
                 allLessons.length) *
                 100,

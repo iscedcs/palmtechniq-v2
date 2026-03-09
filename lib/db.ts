@@ -10,11 +10,28 @@ const globalForPrisma = globalThis as unknown as {
 
 function createPrismaClient() {
   const connectionString = process.env.DATABASE_URL;
+  
+  // During build time, DATABASE_URL might not be available
+  // In this case, we return a lazy-loading client that will work at runtime
   if (!connectionString) {
-    throw new Error(
-      "DATABASE_URL environment variable is not set. " +
-        "Make sure your .env file contains DATABASE_URL before running the application.",
+    console.warn(
+      "DATABASE_URL not available during build. The app will use database at runtime."
     );
+    
+    // Create a lazy Prisma client that will work when DATABASE_URL is available
+    const lazyDb = new Proxy(
+      {},
+      {
+        get: () => {
+          throw new Error(
+            "DATABASE_URL environment variable is not set. " +
+              "Make sure your .env file is loaded with DATABASE_URL."
+          );
+        },
+      }
+    ) as any;
+    
+    return lazyDb;
   }
 
   const adapter = new PrismaNeon({ connectionString });

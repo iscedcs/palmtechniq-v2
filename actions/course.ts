@@ -44,10 +44,10 @@ export async function updateCourse(
       select: { id: true, name: true },
     });
 
-    const connectTags = existingTags.map((tag) => ({ id: tag.id }));
+    const connectTags = existingTags.map((tag: any) => ({ id: tag.id }));
 
     const newTagNames = validatedCourse.data.tags.filter(
-      (tagName) => !existingTags.some((t) => t.name === tagName),
+      (tagName) => !existingTags.some((t: any) => t.name === tagName),
     );
 
     const createTags = newTagNames.map((name) => ({ name }));
@@ -123,7 +123,7 @@ export async function updateCourse(
       );
 
       for (const tier of incomingTiers) {
-        if (tier.id && existingTiers.some((t) => t.id === tier.id)) {
+        if (tier.id && existingTiers.some((t: any) => t.id === tier.id)) {
           await db.groupTier.update({
             where: { id: tier.id },
             data: {
@@ -147,17 +147,17 @@ export async function updateCourse(
       }
 
       const tiersToDisable = existingTiers
-        .filter((tier) => !incomingIds.has(tier.id))
-        .map((tier) => tier.id);
+        .filter((tier: any) => !incomingIds.has(tier.id))
+        .map((tier: any) => tier.id);
 
       if (tiersToDisable.length > 0) {
         const lockedTiers = await db.groupPurchase.findMany({
           where: { tierId: { in: tiersToDisable } },
           select: { tierId: true },
         });
-        const lockedTierIds = new Set(lockedTiers.map((t) => t.tierId));
+        const lockedTierIds = new Set(lockedTiers.map((t: any) => t.tierId));
         const safeToDisable = tiersToDisable.filter(
-          (id) => !lockedTierIds.has(id),
+          (id: any) => !lockedTierIds.has(id),
         );
 
         if (safeToDisable.length > 0) {

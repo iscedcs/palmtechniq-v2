@@ -1,32 +1,31 @@
-"use server"
+"use server";
 
-import { auth } from "@/auth"
-import { db } from "@/lib/db"
- 
+import { auth } from "@/auth";
+import { db } from "@/lib/db";
 
- function getLevelNumber(level: string): number {
+function getLevelNumber(level: string): number {
   switch (level) {
     case "BEGINNER":
-      return 1
+      return 1;
     case "INTERMEDIATE":
-      return 5
+      return 5;
     case "ADVANCED":
-      return 10
+      return 10;
     case "EXPERT":
-      return 15
+      return 15;
     default:
-      return 1
+      return 1;
   }
 }
 
 export async function getStudentDashboardData() {
-  const session = await auth()
+  const session = await auth();
 
   if (!session?.user?.id) {
-    throw new Error("Unauthorized")
+    return { error: "Unauthorized" };
   }
 
-  const userId = session.user.id
+  const userId = session.user.id;
 
   // Fetch student profile
   const student = await db.student.findUnique({
@@ -40,17 +39,17 @@ export async function getStudentDashboardData() {
         },
       },
     },
-  })
+  });
 
   if (!student) {
-    throw new Error("Student profile not found")
+    return { error: "Student profile not found" };
   }
 
   // Fetch enrollments with course details
   const enrollments = await db.enrollment.findMany({
     where: {
       userId,
-       status: { in: ["ACTIVE", "COMPLETED"] }
+      status: { in: ["ACTIVE", "COMPLETED"] },
     },
     include: {
       course: {
@@ -82,31 +81,43 @@ export async function getStudentDashboardData() {
       updatedAt: "desc",
     },
     take: 3,
-  })
+  });
 
   // Calculate course details
-  const currentCourses = enrollments.map((enrollment) => {
-    const totalLessons = enrollment.course.modules.reduce((acc, module) => acc + module.lessons.length, 0)
-    const completedLessons = enrollment.lessonProgress.filter((lp) => lp.isCompleted).length
-    const progress = totalLessons > 0 ? (completedLessons / totalLessons) * 100 : 0
+  const currentCourses = enrollments.map((enrollment: any) => {
+    const totalLessons = enrollment.course.modules.reduce(
+      (acc: any, module: any) => acc + module.lessons.length,
+      0,
+    );
+    const completedLessons = enrollment.lessonProgress.filter(
+      (lp: any) => lp.isCompleted,
+    ).length;
+    const progress =
+      totalLessons > 0 ? (completedLessons / totalLessons) * 100 : 0;
 
     // Calculate time left (estimate based on remaining lessons and average duration)
-    const remainingLessons = totalLessons - completedLessons
-    const avgLessonDuration = 30 // minutes
-    const timeLeftMinutes = remainingLessons * avgLessonDuration
-    const hours = Math.floor(timeLeftMinutes / 60)
-    const minutes = timeLeftMinutes % 60
+    const remainingLessons = totalLessons - completedLessons;
+    const avgLessonDuration = 30; // minutes
+    const timeLeftMinutes = remainingLessons * avgLessonDuration;
+    const hours = Math.floor(timeLeftMinutes / 60);
+    const minutes = timeLeftMinutes % 60;
 
     // Find next lesson
-    const allLessons = enrollment.course.modules.flatMap((m) => m.lessons)
+    const allLessons = enrollment.course.modules.flatMap((m: any) => m.lessons);
     const nextLesson = allLessons.find(
-      (lesson) => !enrollment.lessonProgress.some((lp) => lp.lessonId === lesson.id && lp.isCompleted),
-    )
-    const reviewRatings = enrollment.course.reviews.map((review) => review.rating)
+      (lesson: any) =>
+        !enrollment.lessonProgress.some(
+          (lp: any) => lp.lessonId === lesson.id && lp.isCompleted,
+        ),
+    );
+    const reviewRatings = enrollment.course.reviews.map(
+      (review: any) => review.rating,
+    );
     const avgRating =
       reviewRatings.length > 0
-        ? reviewRatings.reduce((sum, rating) => sum + rating, 0) / reviewRatings.length
-        : 0
+        ? reviewRatings.reduce((sum: any, rating: any) => sum + rating, 0) /
+          reviewRatings.length
+        : 0;
 
     return {
       id: enrollment.course.id,
@@ -119,8 +130,8 @@ export async function getStudentDashboardData() {
       thumbnail: enrollment.course.thumbnail,
       difficulty: enrollment.course.level,
       rating: Number(avgRating.toFixed(1)),
-    }
-  })
+    };
+  });
 
   // Fetch upcoming mentorship sessions
   const upcomingMentorships = await db.mentorshipSession.findMany({
@@ -144,19 +155,19 @@ export async function getStudentDashboardData() {
       scheduledAt: "asc",
     },
     take: 2,
-  })
+  });
 
-  const formattedMentorships = upcomingMentorships.map((session) => {
-    const scheduledDate = new Date(session.scheduledAt)
-    const today = new Date()
-    const tomorrow = new Date(today)
-    tomorrow.setDate(tomorrow.getDate() + 1)
+  const formattedMentorships = upcomingMentorships.map((session: any) => {
+    const scheduledDate = new Date(session.scheduledAt);
+    const today = new Date();
+    const tomorrow = new Date(today);
+    tomorrow.setDate(tomorrow.getDate() + 1);
 
-    let dateLabel = scheduledDate.toLocaleDateString()
+    let dateLabel = scheduledDate.toLocaleDateString();
     if (scheduledDate.toDateString() === today.toDateString()) {
-      dateLabel = "Today"
+      dateLabel = "Today";
     } else if (scheduledDate.toDateString() === tomorrow.toDateString()) {
-      dateLabel = "Tomorrow"
+      dateLabel = "Tomorrow";
     }
 
     return {
@@ -171,8 +182,8 @@ export async function getStudentDashboardData() {
       }),
       duration: session.duration,
       avatar: session.tutor.avatar || session.tutor.image,
-    }
-  })
+    };
+  });
 
   // Fetch recent achievements (progress milestones)
   const recentAchievements = await db.progressMilestone.findMany({
@@ -183,43 +194,50 @@ export async function getStudentDashboardData() {
       achievedAt: "desc",
     },
     take: 3,
-  })
+  });
 
   const achievementIcons = {
     LESSON_COMPLETED: "⚡",
     QUIZ_PASSED: "🧠",
     COURSE_COMPLETED: "🏆",
     SKILL_MASTERED: "🎯",
-  }
+  };
 
   const achievementColors = {
     LESSON_COMPLETED: "from-yellow-400 to-orange-500",
     QUIZ_PASSED: "from-blue-500 to-cyan-500",
     COURSE_COMPLETED: "from-purple-500 to-indigo-500",
     SKILL_MASTERED: "from-green-500 to-emerald-500",
-  }
+  };
 
-  const formattedAchievements = recentAchievements.map((achievement) => {
-    const achievedDate = new Date(achievement.achievedAt)
-    const daysAgo = Math.floor((Date.now() - achievedDate.getTime()) / (1000 * 60 * 60 * 24))
-    let earnedLabel = "Today"
-    if (daysAgo === 1) earnedLabel = "Yesterday"
-    else if (daysAgo > 1 && daysAgo < 7) earnedLabel = `${daysAgo} days ago`
-    else if (daysAgo >= 7) earnedLabel = `${Math.floor(daysAgo / 7)} week${Math.floor(daysAgo / 7) > 1 ? "s" : ""} ago`
+  const formattedAchievements = recentAchievements.map((achievement: any) => {
+    const achievedDate = new Date(achievement.achievedAt);
+    const daysAgo = Math.floor(
+      (Date.now() - achievedDate.getTime()) / (1000 * 60 * 60 * 24),
+    );
+    let earnedLabel = "Today";
+    if (daysAgo === 1) earnedLabel = "Yesterday";
+    else if (daysAgo > 1 && daysAgo < 7) earnedLabel = `${daysAgo} days ago`;
+    else if (daysAgo >= 7)
+      earnedLabel = `${Math.floor(daysAgo / 7)} week${Math.floor(daysAgo / 7) > 1 ? "s" : ""} ago`;
+
+    const achievementType = achievement.type as keyof typeof achievementIcons;
 
     return {
       id: achievement.id,
-      title: achievement.type.replace(/_/g, " ").replace(/\b\w/g, (l) => l.toUpperCase()),
+      title: achievement.type
+        .replace(/_/g, " ")
+        .replace(/\b\w/g, (l: any) => l.toUpperCase()),
       description: achievement.description,
-      icon: achievementIcons[achievement.type] || "Trophy",
-      color: achievementColors[achievement.type] || "from-gray-500 to-gray-600",
+      icon: achievementIcons[achievementType] || "Trophy",
+      color: achievementColors[achievementType] || "from-gray-500 to-gray-600",
       earned: earnedLabel,
-    }
-  })
+    };
+  });
 
   // Calculate weekly stats
-  const oneWeekAgo = new Date()
-  oneWeekAgo.setDate(oneWeekAgo.getDate() - 7)
+  const oneWeekAgo = new Date();
+  oneWeekAgo.setDate(oneWeekAgo.getDate() - 7);
 
   const weeklyLessons = await db.lessonProgress.count({
     where: {
@@ -229,7 +247,7 @@ export async function getStudentDashboardData() {
       },
       isCompleted: true,
     },
-  })
+  });
 
   const weeklyWatchTime = await db.lessonProgress.aggregate({
     where: {
@@ -241,18 +259,18 @@ export async function getStudentDashboardData() {
     _sum: {
       watchTime: true,
     },
-  })
+  });
 
-  const totalWatchTimeMinutes = weeklyWatchTime._sum.watchTime || 0
-  const weeklyHours = Math.floor(totalWatchTimeMinutes / 60)
-  const weeklyMinutes = totalWatchTimeMinutes % 60
+  const totalWatchTimeMinutes = weeklyWatchTime._sum.watchTime || 0;
+  const weeklyHours = Math.floor(totalWatchTimeMinutes / 60);
+  const weeklyMinutes = totalWatchTimeMinutes % 60;
 
   // Calculate XP earned this week (you might have a different XP calculation)
-  const weeklyXP = weeklyLessons * 50 // Example: 50 XP per lesson
+  const weeklyXP = weeklyLessons * 50; // Example: 50 XP per lesson
 
   // Calculate XP to next level
-  const numericLevel = getLevelNumber(student.level)
-  const xpToNext = (numericLevel + 1) * 500 // Example formula
+  const numericLevel = getLevelNumber(student.level);
+  const xpToNext = (numericLevel + 1) * 500; // Example formula
 
   return {
     studentData: {
@@ -270,7 +288,7 @@ export async function getStudentDashboardData() {
       coursesCompleted: student.coursesCompleted,
       coursesInProgress: Math.max(
         student.coursesStarted - student.coursesCompleted,
-        0
+        0,
       ),
       totalHours: Math.floor(student.studyHours / 60),
       achievements: recentAchievements.length,
@@ -287,5 +305,5 @@ export async function getStudentDashboardData() {
     },
     userName: student.user.name,
     userAvatar: student.user.avatar || student.user.image,
-  }
+  };
 }

@@ -5,7 +5,7 @@ import { NextResponse } from "next/server";
 
 export async function POST(
   req: Request,
-  { params }: { params: Promise<{ lessonId: string }> }
+  { params }: { params: Promise<{ lessonId: string }> },
 ) {
   const session = await auth();
   if (!session?.user?.id) {
@@ -50,7 +50,7 @@ export async function POST(
     if (!enrollment) {
       return NextResponse.json(
         { error: "Enrollment not found for this course" },
-        { status: 400 }
+        { status: 400 },
       );
     }
 
@@ -91,8 +91,8 @@ export async function POST(
       where: { lessonId },
       select: { id: true },
     });
-    const allLessonIds = enrollment.course.modules.flatMap((m) =>
-      m.lessons.map((l) => l.id)
+    const allLessonIds = enrollment.course.modules.flatMap((m: any) =>
+      m.lessons.map((l: any) => l.id),
     );
 
     const completedCount = await db.lessonProgress.count({
@@ -116,14 +116,14 @@ export async function POST(
       ? await db.quizAttempt.findMany({
           where: {
             userId,
-            quizId: { in: quizIds.map((q) => q.id) },
+            quizId: { in: quizIds.map((q: any) => q.id) },
             passed: true,
           },
           select: { quizId: true },
         })
       : [];
-    const passedQuizIds = new Set(passedQuizAttempts.map((a) => a.quizId));
-    const quizzesComplete = quizIds.every((q) => passedQuizIds.has(q.id));
+    const passedQuizIds = new Set(passedQuizAttempts.map((a: any) => a.quizId));
+    const quizzesComplete = quizIds.every((q: any) => passedQuizIds.has(q.id));
 
     const courseTasks = await db.task.findMany({
       where: { courseId: enrollment.course.id, isActive: true },
@@ -135,8 +135,8 @@ export async function POST(
       },
     });
     const submissionStatuses = new Set(["SUBMITTED", "GRADED", "RETURNED"]);
-    const tasksComplete = courseTasks.every((task) =>
-      task.submissions.some((s) => submissionStatuses.has(s.status))
+    const tasksComplete = courseTasks.every((task: any) =>
+      task.submissions.some((s: any) => submissionStatuses.has(s.status)),
     );
 
     const courseProjects = await db.project.findMany({
@@ -152,8 +152,8 @@ export async function POST(
         },
       },
     });
-    const projectsComplete = courseProjects.every((project) =>
-      project.submissions.some((s) => submissionStatuses.has(s.status))
+    const projectsComplete = courseProjects.every((project: any) =>
+      project.submissions.some((s: any) => submissionStatuses.has(s.status)),
     );
 
     const certificateEnabled = Boolean(enrollment.course.certificate);
@@ -175,14 +175,13 @@ export async function POST(
     });
 
     const moduleTasks = courseTasks.filter(
-      (task) => task.moduleId === lesson.moduleId
+      (task: any) => task.moduleId === lesson.moduleId,
     );
     const pendingModuleTask = moduleTasks.find(
-      (task) =>
-        !task.submissions.some((s) => submissionStatuses.has(s.status))
+      (task: any) =>
+        !task.submissions.some((s: any) => submissionStatuses.has(s.status)),
     );
-    const moduleTaskId =
-      pendingModuleTask?.id ?? moduleTasks[0]?.id ?? null;
+    const moduleTaskId = pendingModuleTask?.id ?? moduleTasks[0]?.id ?? null;
 
     return NextResponse.json({
       success: true,
@@ -212,7 +211,7 @@ export async function POST(
     console.error("Lesson completion error:", error);
     return NextResponse.json(
       { error: "Something went wrong" },
-      { status: 500 }
+      { status: 500 },
     );
   }
 }

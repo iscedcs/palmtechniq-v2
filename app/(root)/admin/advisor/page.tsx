@@ -73,11 +73,11 @@ export default async function AdminAdvisorPage() {
     ]);
 
   const courseIds = topCourseDemand
-    .map((entry) => entry.courseId)
-    .filter((id): id is string => Boolean(id));
+    .map((entry: any) => entry.courseId)
+    .filter((id: any): id is string => Boolean(id));
   const categoryIds = topCategoryDemand
-    .map((entry) => entry.categoryId)
-    .filter((id): id is string => Boolean(id));
+    .map((entry: any) => entry.categoryId)
+    .filter((id: any): id is string => Boolean(id));
 
   const [courses, categories] = await Promise.all([
     courseIds.length
@@ -94,12 +94,12 @@ export default async function AdminAdvisorPage() {
       : [],
   ]);
 
-  const courseById = new Map(courses.map((course) => [course.id, course]));
-  const categoryById = new Map(
-    categories.map((category) => [category.id, category]),
+  const courseById = new Map<string, any>(courses.map((course: any) => [course.id, course]));
+  const categoryById = new Map<string, any>(
+    categories.map((category: any) => [category.id, category]),
   );
-  const statusMap = new Map(
-    followUpStatusCounts.map((entry) => [entry.status, entry._count._all]),
+  const statusMap = new Map<string, number>(
+    followUpStatusCounts.map((entry: any) => [entry.status, entry._count._all]),
   );
 
   return (
@@ -166,7 +166,7 @@ export default async function AdminAdvisorPage() {
                     No course demand data yet.
                   </p>
                 ) : (
-                  topCourseDemand.map((entry) => {
+                  topCourseDemand.map((entry: any) => {
                     const course = entry.courseId
                       ? courseById.get(entry.courseId)
                       : null;
@@ -208,7 +208,7 @@ export default async function AdminAdvisorPage() {
                     No category demand data yet.
                   </p>
                 ) : (
-                  topCategoryDemand.map((entry) => {
+                  topCategoryDemand.map((entry: any) => {
                     const category = entry.categoryId
                       ? categoryById.get(entry.categoryId)
                       : null;
@@ -260,7 +260,7 @@ export default async function AdminAdvisorPage() {
                       </TableCell>
                     </TableRow>
                   ) : (
-                    followUps.map((row) => (
+                    followUps.map((row: any) => (
                       <TableRow key={row.id} className="border-white/10">
                         <TableCell className="text-gray-300">
                           {formatDateTime(row.createdAt)}

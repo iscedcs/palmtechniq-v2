@@ -33,7 +33,7 @@ export async function getUserCart() {
     },
   });
 
-  return items.map((item) => ({
+  return items.map((item: any) => ({
     id: item.course.id,
     quantity: item.quantity,
     title: item.course.title,
@@ -48,7 +48,7 @@ export async function getUserCart() {
       0,
     rating:
       item.course.reviews.length > 0
-        ? item.course.reviews.reduce((a, r) => a + r.rating, 0) /
+        ? item.course.reviews.reduce((a: any, r: any) => a + r.rating, 0) /
           item.course.reviews.length
         : 0,
     duration: item.course.duration || 0,

@@ -1,13 +1,19 @@
 import { NextRequest, NextResponse } from "next/server";
 import { auth } from "@/auth";
 import { db } from "@/lib/db";
-import { computeCheckoutTotals, DEFAULT_VAT_RATE } from "@/lib/payments/pricing";
+import {
+  computeCheckoutTotals,
+  DEFAULT_VAT_RATE,
+} from "@/lib/payments/pricing";
 import { validatePromoCode } from "@/lib/payments/promo";
 
 export async function POST(req: NextRequest) {
   const session = await auth();
   if (!session?.user?.id) {
-    return NextResponse.json({ ok: false, reason: "unauthorized" }, { status: 401 });
+    return NextResponse.json(
+      { ok: false, reason: "unauthorized" },
+      { status: 401 },
+    );
   }
 
   const body = await req.json().catch(() => ({}));
@@ -19,7 +25,7 @@ export async function POST(req: NextRequest) {
   if (!code || courseIds.length === 0) {
     return NextResponse.json(
       { ok: false, reason: "invalid_request" },
-      { status: 400 }
+      { status: 400 },
     );
   }
 
@@ -30,7 +36,10 @@ export async function POST(req: NextRequest) {
   });
 
   if (!promoResult.ok) {
-    return NextResponse.json({ ok: false, reason: promoResult.reason }, { status: 400 });
+    return NextResponse.json(
+      { ok: false, reason: promoResult.reason },
+      { status: 400 },
+    );
   }
 
   const courses = await db.course.findMany({
@@ -45,11 +54,14 @@ export async function POST(req: NextRequest) {
   });
 
   if (courses.length === 0) {
-    return NextResponse.json({ ok: false, reason: "courses_not_found" }, { status: 404 });
+    return NextResponse.json(
+      { ok: false, reason: "courses_not_found" },
+      { status: 404 },
+    );
   }
 
   const totals = computeCheckoutTotals({
-    courses: courses.map((course) => ({
+    courses: courses.map((course: any) => ({
       id: course.id,
       tutorId: course.tutor.userId,
       basePrice: course.basePrice,

@@ -99,7 +99,7 @@ export async function beginGroupCheckout(courseId: string, tierId: string) {
     vatRate: DEFAULT_VAT_RATE,
   });
 
-  const { groupPurchaseId } = await db.$transaction(async (tx) => {
+  const { groupPurchaseId } = await db.$transaction(async (tx: any) => {
     const groupPurchase = await tx.groupPurchase.create({
       data: {
         courseId,
@@ -251,7 +251,7 @@ export async function joinGroupPurchase(inviteCode: string) {
   }
 
   const alreadyMember = group.members.some(
-    (member) => member.userId === session.user.id
+    (member: any) => member.userId === session.user.id
   );
   if (alreadyMember) return { success: true };
 
@@ -267,7 +267,7 @@ export async function joinGroupPurchase(inviteCode: string) {
     return { error: "You are already enrolled in this course" };
   }
 
-  const { shouldComplete } = await db.$transaction(async (tx) => {
+  const { shouldComplete } = await db.$transaction(async (tx: any) => {
     await tx.groupMember.create({
       data: {
         groupPurchaseId: group.id,
@@ -329,9 +329,9 @@ export async function joinGroupPurchase(inviteCode: string) {
       where: { groupPurchaseId: group.id },
       select: { userId: true },
     });
-    const memberIds = members.map((m) => m.userId);
+    const memberIds = members.map((m: any) => m.userId);
 
-    const enrollmentOps = memberIds.map((userId) =>
+    const enrollmentOps = memberIds.map((userId: any) =>
       db.enrollment.upsert({
         where: {
           userId_courseId: { userId, courseId: group.courseId },
@@ -352,8 +352,8 @@ export async function joinGroupPurchase(inviteCode: string) {
       select: { id: true, role: true },
     });
     const userIdsToUpgrade = users
-      .filter((user) => user.role === "USER")
-      .map((user) => user.id);
+      .filter((user: any) => user.role === "USER")
+      .map((user: any) => user.id);
 
     const upgradeOps =
       userIdsToUpgrade.length > 0
@@ -362,7 +362,7 @@ export async function joinGroupPurchase(inviteCode: string) {
               where: { id: { in: userIdsToUpgrade } },
               data: { role: "STUDENT" },
             }),
-            ...userIdsToUpgrade.map((userId) =>
+            ...userIdsToUpgrade.map((userId: any) =>
               db.student.upsert({
                 where: { userId },
                 update: {},

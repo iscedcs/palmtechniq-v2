@@ -85,11 +85,11 @@ async function searchCourses(
       take: 15,
     });
 
-    return courses.map((course) => {
+    return courses.map((course: any) => {
       const avgRating =
         course.reviews.length > 0
           ? (
-              course.reviews.reduce((sum, r) => sum + r.rating, 0) /
+              course.reviews.reduce((sum: any, r: any) => sum + r.rating, 0) /
               course.reviews.length
             ).toFixed(1)
           : null;
@@ -158,7 +158,7 @@ async function searchUsers(query: string): Promise<SearchResult[]> {
       take: 10,
     });
 
-    return users.map((user) => ({
+    return users.map((user: any) => ({
       id: user.id,
       type: "user",
       title: user.name,
@@ -204,7 +204,7 @@ async function searchCategories(query: string): Promise<SearchResult[]> {
       take: 8,
     });
 
-    return categories.map((category) => ({
+    return categories.map((category: any) => ({
       id: category.id,
       type: "category",
       title: category.name,

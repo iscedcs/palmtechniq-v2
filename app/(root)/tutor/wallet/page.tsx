@@ -34,7 +34,7 @@ export default async function TutorWalletPage() {
     "paymentMethods" in result && result.paymentMethods
       ? result.paymentMethods
       : [];
-  const initialPaymentMethods = rawPaymentMethods.map((method) => ({
+  const initialPaymentMethods = rawPaymentMethods.map((method: any) => ({
     ...method,
     details:
       method.details && typeof method.details === "object"

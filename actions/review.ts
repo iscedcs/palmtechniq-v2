@@ -186,14 +186,16 @@ export async function getTutorReviewsOverview() {
 
   const totalReviews = reviews.length;
   const averageRating = getAverageRating(reviews);
-  const respondedCount = reviews.filter((review) => review.responseText).length;
+  const respondedCount = reviews.filter(
+    (review: any) => review.responseText,
+  ).length;
   const pendingReplies = totalReviews - respondedCount;
   const responseRate =
     totalReviews > 0 ? Math.round((respondedCount / totalReviews) * 100) : 0;
 
   const ratingDistribution = [5, 4, 3, 2, 1].map((stars) => ({
     stars,
-    count: reviews.filter((review) => review.rating === stars).length,
+    count: reviews.filter((review: any) => review.rating === stars).length,
   }));
 
   const now = new Date();
@@ -206,7 +208,7 @@ export async function getTutorReviewsOverview() {
       1,
     );
     const monthlyReviews = reviews.filter(
-      (review) => review.createdAt >= start && review.createdAt < end,
+      (review: any) => review.createdAt >= start && review.createdAt < end,
     );
     return {
       month: start.toLocaleString("default", { month: "short" }),
@@ -220,10 +222,10 @@ export async function getTutorReviewsOverview() {
   sixtyDaysAgo.setDate(sixtyDaysAgo.getDate() - 60);
 
   const recentCount = reviews.filter(
-    (r) => r.createdAt >= thirtyDaysAgo,
+    (r: any) => r.createdAt >= thirtyDaysAgo,
   ).length;
   const previousCount = reviews.filter(
-    (r) => r.createdAt >= sixtyDaysAgo && r.createdAt < thirtyDaysAgo,
+    (r: any) => r.createdAt >= sixtyDaysAgo && r.createdAt < thirtyDaysAgo,
   ).length;
 
   const recentGrowth =

@@ -9,8 +9,8 @@ import { generateRandomAvatar } from "@/lib/utils";
 
 const testimonials = [
   {
-    name: "Sarah Chen",
-    role: "Specialist at Google",
+    name: "Favour Williams",
+    role: "Specialist",
     company: "Google",
     avatar: generateRandomAvatar(),
     rating: 5,
@@ -20,7 +20,7 @@ const testimonials = [
   },
   {
     name: "Marcus Johnson",
-    role: "Performance Marketing Manager at Meta",
+    role: "Performance Marketing Manager",
     company: "Meta",
     avatar: generateRandomAvatar(),
     rating: 5,
@@ -29,8 +29,8 @@ const testimonials = [
     gradient: "from-neon-purple to-pink-400",
   },
   {
-    name: "Elena Rodriguez",
-    role: "Data Analyst at The Trade Desk",
+    name: "Elena Okpo",
+    role: "Data Analyst",
     company: "The Trade Desk",
     avatar: generateRandomAvatar(),
     rating: 5,
@@ -39,8 +39,8 @@ const testimonials = [
     gradient: "from-neon-green to-emerald-400",
   },
   {
-    name: "David Kim",
-    role: "Account Executive at AppNexus",
+    name: "David Omoh",
+    role: "Account Executive",
     company: "AppNexus",
     avatar: generateRandomAvatar(),
     rating: 5,
@@ -49,8 +49,8 @@ const testimonials = [
     gradient: "from-neon-orange to-yellow-400",
   },
   {
-    name: "Priya Patel",
-    role: "Product Manager at Criteo",
+    name: "James Jude",
+    role: "Product Manager ",
     company: "Criteo",
     avatar: generateRandomAvatar(),
     rating: 5,
@@ -60,7 +60,7 @@ const testimonials = [
   },
   {
     name: "Alex Thompson",
-    role: "Engineer at PubMatic",
+    role: "Engineer",
     company: "PubMatic",
     avatar: generateRandomAvatar(),
     rating: 5,
@@ -101,8 +101,7 @@ export function TestimonialsSection() {
             <span className="text-white">Professionals</span>
           </h2>
           <p className="text-xl text-gray-300 max-w-3xl mx-auto">
-            Join hundreds of successful alumni already working at top companies
-            including Google, Meta, and The Trade Desk
+            Join hundreds of successful alumni already working at top companies.
           </p>
         </motion.div>
 

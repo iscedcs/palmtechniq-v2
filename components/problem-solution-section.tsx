@@ -171,7 +171,7 @@ export function ProblemSolutionSection() {
             From aspiring to leading. That's the PalmTechnIQ difference.
           </p>
           <p className="text-gray-400 text-lg">
-            Our platform doesn't just teach skills—it transforms careers and
+            Our platform doesn't just teach skills; it transforms careers and
             builds the next generation of leaders.
           </p>
         </motion.div>

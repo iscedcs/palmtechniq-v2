@@ -76,20 +76,20 @@ export default async function CourseSlugPage(props: {
     );
   }
 
-  const totalDuration = course.modules?.reduce((sum, module) => {
+  const totalDuration = course.modules?.reduce((sum: number, module: any) => {
     return sum + (module.duration || 0);
   }, 0);
 
-  const totalLessonDuration = course.modules?.reduce((sum, module) => {
+  const totalLessonDuration = course.modules?.reduce((sum: number, module: any) => {
     return (
       sum +
-      module.lessons.reduce((lessonSum, lesson) => {
+      module.lessons.reduce((lessonSum: number, lesson: any) => {
         return lessonSum + (lesson.duration || 0);
       }, 0)
     );
   }, 0);
 
-  const totalLessons = course.modules?.reduce((sum, module) => {
+  const totalLessons = course.modules?.reduce((sum: number, module: any) => {
     return sum + module.lessons.length;
   }, 0);
 

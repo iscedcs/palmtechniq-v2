@@ -82,7 +82,7 @@ export default function StudentProgress({
   };
   const formattedAchievements: Array<
     Omit<Achievement, "icon"> & { icon: any }
-  > = achievements.map((achievement) => ({
+  > = achievements.map((achievement: any) => ({
     ...achievement,
     icon: iconMap[achievement.icon] || Trophy,
   }));
@@ -269,7 +269,7 @@ export default function StudentProgress({
                         <p className="text-2xl font-bold text-white">
                           {learningStreak.thisWeek.reduce<number>(
                             (sum, value) => sum + value,
-                            0
+                            0,
                           )}
                         </p>
                         <p className="text-sm text-gray-400">This Week</p>
@@ -303,7 +303,7 @@ export default function StudentProgress({
 
             <TabsContent value="courses" className="space-y-6">
               <div className="grid grid-cols-1 lg:grid-cols-2 xl:grid-cols-3 gap-6">
-                {coursesProgress.map((course, index) => (
+                {coursesProgress.map((course: any, index: any) => (
                   <motion.div
                     key={course.id}
                     initial={{ opacity: 0, y: 20 }}
@@ -594,7 +594,7 @@ export default function StudentProgress({
                               No milestones yet
                             </div>
                           ) : (
-                            recentMilestones.map((milestone) => {
+                            recentMilestones.map((milestone: any) => {
                               const Icon = iconMap[milestone.icon] || Trophy;
                               return (
                                 <div

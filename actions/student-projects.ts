@@ -66,23 +66,23 @@ export async function getStudentProjectsOverview() {
       const { course } = enrollment;
       const instructor = course.tutor?.user?.name || "PalmTechnIQ Tutor";
       const technologies =
-        course.tags?.length > 0 ? course.tags.map((t) => t.name) : [];
+        course.tags?.length > 0 ? course.tags.map((t: any) => t.name) : [];
       const completedLessonIds = new Set(
         enrollment.lessonProgress
-          .filter((progress) => progress.isCompleted)
-          .map((progress) => progress.lessonId)
+          .filter((progress: any) => progress.isCompleted)
+          .map((progress: any) => progress.lessonId),
       );
-      const allCourseLessonIds = course.modules.flatMap((module) =>
-        module.lessons.map((lesson) => lesson.id)
+      const allCourseLessonIds = course.modules.flatMap((module: any) =>
+        module.lessons.map((lesson: any) => lesson.id),
       );
-      const moduleLessonIds = course.modules.map((module) => ({
+      const moduleLessonIds = course.modules.map((module: any) => ({
         moduleId: module.id,
-        lessonIds: module.lessons.map((lesson) => lesson.id),
+        lessonIds: module.lessons.map((lesson: any) => lesson.id),
       }));
-      const completedModulesCount = moduleLessonIds.filter((module) => {
+      const completedModulesCount = moduleLessonIds.filter((module: any) => {
         if (module.lessonIds.length === 0) return true;
-        return module.lessonIds.every((lessonId) =>
-          completedLessonIds.has(lessonId)
+        return module.lessonIds.every((lessonId: any) =>
+          completedLessonIds.has(lessonId),
         );
       }).length;
 
@@ -90,8 +90,8 @@ export async function getStudentProjectsOverview() {
         const submission = project.submissions[0] || null;
         const isCompleted = submission?.status === "GRADED";
         const requiredLessonIds = allCourseLessonIds;
-        const isEligible = requiredLessonIds.every((lessonId) =>
-          completedLessonIds.has(lessonId)
+        const isEligible = requiredLessonIds.every((lessonId: any) =>
+          completedLessonIds.has(lessonId),
         );
 
         if (isCompleted) {
@@ -128,15 +128,15 @@ export async function getStudentProjectsOverview() {
 
         if (!isEligible) {
           const completedLessonsForProject = Array.from(
-            completedLessonIds
+            completedLessonIds,
           ).filter((lessonId) => requiredLessonIds.includes(lessonId)).length;
           const remainingLessons = Math.max(
             requiredLessonIds.length - completedLessonsForProject,
-            0
+            0,
           );
           const remainingModules = Math.max(
             course.modules.length - completedModulesCount,
-            0
+            0,
           );
 
           upcomingProjects.push({
@@ -179,7 +179,7 @@ export async function getStudentProjectsOverview() {
           feedback: submission?.feedback || "No feedback yet.",
           lastUpdated: formatDistanceToNow(
             submission?.updatedAt || project.updatedAt,
-            { addSuffix: true }
+            { addSuffix: true },
           ),
         });
       }
@@ -191,7 +191,7 @@ export async function getStudentProjectsOverview() {
             (gradedScores.reduce((sum, score) => sum + score, 0) /
               gradedScores.length /
               20) *
-              10
+              10,
           ) / 10
         : 0;
 
@@ -216,7 +216,7 @@ export async function getStudentProjectsOverview() {
 }
 
 export async function submitProjectWork(
-  data: z.infer<typeof studentSubmissionSchema>
+  data: z.infer<typeof studentSubmissionSchema>,
 ) {
   const session = await auth();
   if (!session?.user?.id) {

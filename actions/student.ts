@@ -18,7 +18,7 @@ export async function getTutorStudents() {
     include: { user: true, course: true },
   });
 
-  const userIds = Array.from(new Set(enrollments.map((e) => e.user.id)));
+  const userIds = Array.from(new Set(enrollments.map((e: any) => e.user.id)));
 
   // Batch queries instead of one-by-one in loop
   const [submissions, discussions] = await Promise.all([
@@ -33,10 +33,10 @@ export async function getTutorStudents() {
   ]);
 
   const submissionMap = new Map(
-    submissions.map((s) => [s.userId, s._count._all])
+    submissions.map((s: any) => [s.userId, s._count._all]),
   );
   const discussionMap = new Map(
-    discussions.map((d) => [d.userId, d._count._all])
+    discussions.map((d: any) => [d.userId, d._count._all]),
   );
 
   const studentsMap = new Map();
@@ -74,7 +74,7 @@ export async function getTutorStudents() {
     });
   }
 
-  const students = Array.from(studentsMap.values()).map((s) => {
+  const students = Array.from(studentsMap.values()).map((s: any) => {
     const avg =
       s.coursesEnrolled.length > 0
         ? s.coursesEnrolled.reduce((a: any, c: any) => a + c.progress, 0) /
@@ -88,12 +88,12 @@ export async function getTutorStudents() {
     totalStudents: students.length,
     activeNow: students.filter((s) => s.status === "active").length,
     completedCourses: students.filter((s) =>
-      s.coursesEnrolled.some((c: any) => c.status === "completed")
+      s.coursesEnrolled.some((c: any) => c.status === "completed"),
     ).length,
     averageProgress:
       students.length > 0
         ? Math.round(
-            students.reduce((a, s) => a + s.totalProgress, 0) / students.length
+            students.reduce((a, s) => a + s.totalProgress, 0) / students.length,
           )
         : 0,
   };
@@ -130,10 +130,10 @@ export async function getTutorStudentsWithTrends() {
   ]);
 
   const submissionMap = new Map(
-    submissions.map((s) => [s.userId, s._count._all])
+    submissions.map((s: any) => [s.userId, s._count._all]),
   );
   const discussionMap = new Map(
-    discussions.map((d) => [d.userId, d._count._all])
+    discussions.map((d: any) => [d.userId, d._count._all]),
   );
 
   const studentsMap = new Map();
@@ -173,7 +173,7 @@ export async function getTutorStudentsWithTrends() {
     });
   }
 
-  const students = Array.from(studentsMap.values()).map((s) => {
+  const students = Array.from(studentsMap.values()).map((s: any) => {
     const avg =
       s.coursesEnrolled.length > 0
         ? s.coursesEnrolled.reduce((a: any, c: any) => a + c.progress, 0) /
@@ -195,7 +195,7 @@ export async function getTutorStudentsWithTrends() {
     averageProgress:
       students.length > 0
         ? Math.round(
-            students.reduce((a, s) => a + s.totalProgress, 0) / students.length
+            students.reduce((a, s) => a + s.totalProgress, 0) / students.length,
           )
         : 0,
   };
@@ -240,7 +240,7 @@ export async function getTutorStudentsWithTrends() {
   const avgProgressThisMonth =
     students.length > 0
       ? Math.round(
-          students.reduce((a, s) => a + s.totalProgress, 0) / students.length
+          students.reduce((a, s) => a + s.totalProgress, 0) / students.length,
         )
       : 0;
 
@@ -250,7 +250,7 @@ export async function getTutorStudentsWithTrends() {
         ? Math.round(
             ((thisMonthEnrollments - lastMonthEnrollments) /
               lastMonthEnrollments) *
-              100
+              100,
           )
         : 0,
     activeNow: 0, // placeholder
@@ -258,7 +258,7 @@ export async function getTutorStudentsWithTrends() {
       lastMonthCompleted > 0
         ? Math.round(
             ((thisMonthCompleted - lastMonthCompleted) / lastMonthCompleted) *
-              100
+              100,
           )
         : 0,
     averageProgress: avgProgressThisMonth,

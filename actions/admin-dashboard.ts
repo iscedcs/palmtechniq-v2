@@ -191,24 +191,31 @@ export async function getAdminDashboardData() {
   ];
 
   const tutorProfiles = await db.tutor.findMany({
-    where: { userId: { in: users.map((u) => u.id) } },
+    where: { userId: { in: users.map((u: any) => u.id) } },
     select: { id: true, userId: true },
   });
-  const tutorByUserId = new Map(tutorProfiles.map((t) => [t.userId, t.id]));
-  const courseCountByTutor = new Map(
-    tutorCourseCounts.map((entry) => [entry.tutorId, entry._count._all]),
+  const tutorByUserId = new Map<string, string>(
+    tutorProfiles.map((t: any) => [t.userId, t.id]),
   );
-  const enrollmentCountByUser = new Map(
-    studentEnrollmentCounts.map((entry) => [entry.userId, entry._count._all]),
+  const courseCountByTutor = new Map<string, number>(
+    tutorCourseCounts.map((entry: any) => [entry.tutorId, entry._count._all]),
+  );
+  const enrollmentCountByUser = new Map<string, number>(
+    studentEnrollmentCounts.map((entry: any) => [
+      entry.userId,
+      entry._count._all,
+    ]),
   );
 
-  const recentUsers = users.map((user) => {
+  const recentUsers = users.map((user: any) => {
     let courses = 0;
     if (user.role === "TUTOR") {
       const tutorId = tutorByUserId.get(user.id);
-      courses = tutorId ? (courseCountByTutor.get(tutorId) ?? 0) : 0;
+      courses = tutorId
+        ? ((courseCountByTutor.get(tutorId) as number) ?? 0)
+        : 0;
     } else if (user.role === "STUDENT") {
-      courses = enrollmentCountByUser.get(user.id) ?? 0;
+      courses = (enrollmentCountByUser.get(user.id) as number) ?? 0;
     }
     return {
       id: user.id,
@@ -222,7 +229,7 @@ export async function getAdminDashboardData() {
     };
   });
 
-  const topCourseIds = lineItemAgg.map((entry) => entry.courseId);
+  const topCourseIds = lineItemAgg.map((entry: any) => entry.courseId);
   const topCoursesRaw = topCourseIds.length
     ? await db.course.findMany({
         where: { id: { in: topCourseIds } },
@@ -234,15 +241,15 @@ export async function getAdminDashboardData() {
       })
     : [];
 
-  const reviewByCourse = new Map(
-    reviewAgg.map((entry) => [entry.courseId, entry._avg.rating ?? 0]),
+  const reviewByCourse = new Map<string, number>(
+    reviewAgg.map((entry: any) => [entry.courseId, entry._avg.rating ?? 0]),
   );
 
   const enrollmentByCourse = new Map<
     string,
     { total: number; completed: number }
   >();
-  courseEnrollmentAgg.forEach((entry) => {
+  courseEnrollmentAgg.forEach((entry: any) => {
     const current = enrollmentByCourse.get(entry.courseId) || {
       total: 0,
       completed: 0,
@@ -255,10 +262,10 @@ export async function getAdminDashboardData() {
     enrollmentByCourse.set(entry.courseId, current);
   });
 
-  const topCourses = lineItemAgg.map((entry) => {
-    const course = topCoursesRaw.find((c) => c.id === entry.courseId);
+  const topCourses = lineItemAgg.map((entry: any) => {
+    const course = topCoursesRaw.find((c: any) => c.id === entry.courseId);
     const revenue = entry._sum.totalAmount ?? 0;
-    const rating = reviewByCourse.get(entry.courseId) ?? 0;
+    const rating = (reviewByCourse.get(entry.courseId) as number) ?? 0;
     const completionInfo = enrollmentByCourse.get(entry.courseId) || {
       total: 0,
       completed: 0,
@@ -278,8 +285,8 @@ export async function getAdminDashboardData() {
     };
   });
 
-  const roleCountMap = new Map(
-    roleCounts.map((entry) => [entry.role, entry._count._all]),
+  const roleCountMap = new Map<string, number>(
+    roleCounts.map((entry: any) => [entry.role, entry._count._all]),
   );
   const systemAlerts = [];
   if (draftCourses > 0) {
@@ -328,39 +335,42 @@ export async function getAdminDashboardData() {
     },
     {
       label: "Active Tutors",
-      value: (roleCountMap.get("TUTOR") ?? 0).toLocaleString("en-NG"),
+      value: (roleCountMap.get("TUTOR") ?? 0).toLocaleString(),
     },
     {
       label: "Active Students",
-      value: (roleCountMap.get("STUDENT") ?? 0).toLocaleString("en-NG"),
+      value: (roleCountMap.get("STUDENT") ?? 0).toLocaleString(),
     },
     {
       label: "Admins",
-      value: (roleCountMap.get("ADMIN") ?? 0).toLocaleString("en-NG"),
+      value: (roleCountMap.get("ADMIN") ?? 0).toLocaleString(),
     },
   ];
 
-  const enrollmentCountByCourse = new Map(
-    courseEnrollmentCounts.map((entry) => [entry.courseId, entry._count._all]),
+  const enrollmentCountByCourse = new Map<string, number>(
+    courseEnrollmentCounts.map((entry: any) => [
+      entry.courseId,
+      entry._count._all,
+    ]),
   );
-  const revenueByCourse = new Map(
-    courseRevenueAgg.map((entry) => [
+  const revenueByCourse = new Map<string, number>(
+    courseRevenueAgg.map((entry: any) => [
       entry.courseId,
       entry._sum.totalAmount ?? 0,
     ]),
   );
-  const courses = courseRows.map((course) => ({
+  const courses = courseRows.map((course: any) => ({
     id: course.id,
     title: course.title,
     status: course.status,
     price: course.currentPrice ?? course.basePrice ?? course.price ?? 0,
-    revenue: (revenueByCourse.get(course.id) ?? 0) / 100,
-    enrollments: enrollmentCountByCourse.get(course.id) ?? 0,
+    revenue: ((revenueByCourse.get(course.id) as number) ?? 0) / 100,
+    enrollments: (enrollmentCountByCourse.get(course.id) as number) ?? 0,
     tutor: course.tutor?.user?.name || "Tutor",
     createdAt: formatDate(course.createdAt),
   }));
 
-  const usersTable = users.map((user) => ({
+  const usersTable = users.map((user: any) => ({
     id: user.id,
     name: user.name,
     email: user.email,
@@ -458,15 +468,17 @@ export async function getAdminUsersPageData(params?: {
     },
   });
 
-  const userIds = users.map((user) => user.id);
+  const userIds = users.map((user: any) => user.id);
   const tutorProfiles = userIds.length
     ? await db.tutor.findMany({
         where: { userId: { in: userIds } },
         select: { id: true, userId: true },
       })
     : [];
-  const tutorByUserId = new Map(tutorProfiles.map((t) => [t.userId, t.id]));
-  const tutorIds = tutorProfiles.map((t) => t.id);
+  const tutorByUserId = new Map<string, string>(
+    tutorProfiles.map((t: any) => [t.userId, t.id]),
+  );
+  const tutorIds = tutorProfiles.map((t: any) => t.id);
 
   const [courseCounts, enrollmentCounts] = await Promise.all([
     tutorIds.length
@@ -485,18 +497,18 @@ export async function getAdminUsersPageData(params?: {
       : [],
   ]);
 
-  const courseCountByTutor = new Map(
-    courseCounts.map((entry) => [entry.tutorId, entry._count._all]),
+  const courseCountByTutor = new Map<string, number>(
+    courseCounts.map((entry: any) => [entry.tutorId, entry._count._all]),
   );
-  const enrollmentCountByUser = new Map(
-    enrollmentCounts.map((entry) => [entry.userId, entry._count._all]),
-  );
-
-  const roleCountMap = new Map(
-    roleCounts.map((entry) => [entry.role, entry._count._all]),
+  const enrollmentCountByUser = new Map<string, number>(
+    enrollmentCounts.map((entry: any) => [entry.userId, entry._count._all]),
   );
 
-  const usersTable = users.map((user) => {
+  const roleCountMap = new Map<string, number>(
+    roleCounts.map((entry: any) => [entry.role, entry._count._all]),
+  );
+
+  const usersTable = users.map((user: any) => {
     const tutorId = tutorByUserId.get(user.id);
     return {
       id: user.id,
@@ -506,8 +518,8 @@ export async function getAdminUsersPageData(params?: {
       avatar: user.avatar,
       status: user.isActive ? "active" : "suspended",
       joinDate: formatDate(user.createdAt),
-      courses: tutorId ? (courseCountByTutor.get(tutorId) ?? 0) : 0,
-      enrollments: enrollmentCountByUser.get(user.id) ?? 0,
+      courses: tutorId ? ((courseCountByTutor.get(tutorId) as number) ?? 0) : 0,
+      enrollments: (enrollmentCountByUser.get(user.id) as number) ?? 0,
     };
   });
 
@@ -664,7 +676,7 @@ export async function getAdminCoursesPageData(params?: {
     },
   });
 
-  const courseIds = courses.map((course) => course.id);
+  const courseIds = courses.map((course: any) => course.id);
   const [enrollmentCounts, revenueAgg] = await Promise.all([
     courseIds.length
       ? db.enrollment.groupBy({
@@ -682,14 +694,17 @@ export async function getAdminCoursesPageData(params?: {
       : [],
   ]);
 
-  const enrollmentCountByCourse = new Map(
-    enrollmentCounts.map((entry) => [entry.courseId, entry._count._all]),
+  const enrollmentCountByCourse = new Map<string, number>(
+    enrollmentCounts.map((entry: any) => [entry.courseId, entry._count._all]),
   );
-  const revenueByCourse = new Map(
-    revenueAgg.map((entry) => [entry.courseId, entry._sum.totalAmount ?? 0]),
+  const revenueByCourse = new Map<string, number>(
+    revenueAgg.map((entry: any) => [
+      entry.courseId,
+      entry._sum.totalAmount ?? 0,
+    ]),
   );
 
-  const coursesTable = courses.map((course) => ({
+  const coursesTable = courses.map((course: any) => ({
     id: course.id,
     title: course.title,
     status: course.status,
@@ -697,15 +712,15 @@ export async function getAdminCoursesPageData(params?: {
       course.currentPrice && course.currentPrice > 0
         ? course.currentPrice
         : (course.basePrice ?? course.price ?? 0),
-    revenue: (revenueByCourse.get(course.id) ?? 0) / 100,
-    enrollments: enrollmentCountByCourse.get(course.id) ?? 0,
+    revenue: ((revenueByCourse.get(course.id) as number) ?? 0) / 100,
+    enrollments: (enrollmentCountByCourse.get(course.id) as number) ?? 0,
     tutor: course.tutor?.user?.name || "Tutor",
     createdAt: formatDate(course.createdAt),
     slug: course.slug ?? null,
   }));
 
-  const statusCountMap = new Map(
-    statusCounts.map((entry) => [entry.status, entry._count._all]),
+  const statusCountMap = new Map<string, number>(
+    statusCounts.map((entry: any) => [entry.status, entry._count._all]),
   );
 
   return {
@@ -1007,7 +1022,7 @@ export async function bulkAddStudentsToCourse(
       select: { id: true },
     });
 
-    const validUserIds = users.map((u) => u.id);
+    const validUserIds = users.map((u: any) => u.id);
     const invalidUserIds = userIds.filter((id) => !validUserIds.includes(id));
 
     if (validUserIds.length === 0) {
@@ -1023,9 +1038,9 @@ export async function bulkAddStudentsToCourse(
       select: { userId: true },
     });
 
-    const enrolledUserIds = existingEnrollments.map((e) => e.userId);
+    const enrolledUserIds = existingEnrollments.map((e: any) => e.userId);
     const newUserIds = validUserIds.filter(
-      (id) => !enrolledUserIds.includes(id),
+      (id: any) => !enrolledUserIds.includes(id),
     );
 
     if (newUserIds.length === 0) {
@@ -1036,7 +1051,7 @@ export async function bulkAddStudentsToCourse(
 
     // Bulk create enrollments
     const createdEnrollments = await db.enrollment.createMany({
-      data: newUserIds.map((userId) => ({
+      data: newUserIds.map((userId: any) => ({
         userId,
         courseId,
         status: "ACTIVE",

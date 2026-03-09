@@ -190,11 +190,11 @@ export async function getTutorProjects() {
       orderBy: { createdAt: "desc" },
     });
 
-    const formattedProjects = projects.map((project) => {
+    const formattedProjects = projects.map((project: any) => {
       const submissions = project.submissions;
       const totalSubmissions = submissions.length;
       const gradedSubmissions = submissions.filter(
-        (s: { status: string }) => s.status === "GRADED"
+        (s: { status: string }) => s.status === "GRADED",
       ).length;
       const averageScore =
         gradedSubmissions > 0
@@ -203,7 +203,7 @@ export async function getTutorProjects() {
               .reduce(
                 (sum: number, s: { score: number | null }) =>
                   sum + (s.score || 0),
-                0
+                0,
               ) / gradedSubmissions
           : 0;
       const completionRate =
@@ -293,7 +293,7 @@ export async function getPendingSubmissions() {
       orderBy: { createdAt: "desc" },
     });
 
-    const formattedSubmissions = submissions.map((submission) => {
+    const formattedSubmissions = submissions.map((submission: any) => {
       const isOverdue =
         submission.project.dueDate &&
         new Date(submission.project.dueDate) < new Date() &&
@@ -390,7 +390,7 @@ export async function getGradedSubmissions() {
       orderBy: { gradedAt: "desc" },
     });
 
-    const formattedSubmissions = submissions.map((submission) => {
+    const formattedSubmissions = submissions.map((submission: any) => {
       const score = submission.score || 0;
       let grade = "F";
       if (score >= 90) grade = "A";
@@ -480,7 +480,7 @@ export async function getProjectSubmissions(projectId: string) {
       orderBy: { createdAt: "desc" },
     });
 
-    const formattedSubmissions = submissions.map((submission) => ({
+    const formattedSubmissions = submissions.map((submission: any) => ({
       id: submission.id,
       student: {
         name: submission.user.name,
@@ -512,7 +512,7 @@ export async function getProjectSubmissions(projectId: string) {
 
 // Grade a submission
 export async function gradeSubmission(
-  data: z.infer<typeof gradeSubmissionSchema>
+  data: z.infer<typeof gradeSubmissionSchema>,
 ) {
   const session = await auth();
   if (!session?.user?.id || session.user.role !== "TUTOR") {
@@ -602,36 +602,37 @@ export async function getProjectStats() {
     });
 
     const totalProjects = projects.length;
-    const activeProjects = projects.filter((p) => p.isActive).length;
+    const activeProjects = projects.filter((p: any) => p.isActive).length;
     const pendingSubmissions = projects.reduce(
-      (sum, p) =>
+      (sum: any, p: any) =>
         sum +
         p.submissions.filter(
-          (s) => s.status === "PENDING" || s.status === "SUBMITTED"
+          (s: any) => s.status === "PENDING" || s.status === "SUBMITTED",
         ).length,
-      0
+      0,
     );
     const gradedSubmissions = projects.reduce(
-      (sum, p) =>
-        sum + p.submissions.filter((s) => s.status === "GRADED").length,
-      0
+      (sum: any, p: any) =>
+        sum + p.submissions.filter((s: any) => s.status === "GRADED").length,
+      0,
     );
 
     const allScores = projects
-      .flatMap((p) => p.submissions)
-      .filter((s) => s.score !== null)
-      .map((s) => s.score!);
+      .flatMap((p: any) => p.submissions)
+      .filter((s: any) => s.score !== null)
+      .map((s: any) => s.score!);
 
     const averageScore =
       allScores.length > 0
         ? Math.round(
-            allScores.reduce((sum, score) => sum + score, 0) / allScores.length
+            allScores.reduce((sum: any, score: any) => sum + score, 0) /
+              allScores.length,
           )
         : 0;
 
     const totalSubmissions = projects.reduce(
-      (sum, p) => sum + p.submissions.length,
-      0
+      (sum: any, p: any) => sum + p.submissions.length,
+      0,
     );
     const completionRate =
       totalSubmissions > 0
@@ -657,7 +658,7 @@ export async function getProjectStats() {
 // Update project
 export async function updateProject(
   projectId: string,
-  data: Partial<z.infer<typeof projectSchema>>
+  data: Partial<z.infer<typeof projectSchema>>,
 ) {
   const session = await auth();
   if (!session?.user?.id || session.user.role !== "TUTOR") {
@@ -728,7 +729,7 @@ export async function updateProject(
 // Toggle project active status
 export async function toggleProjectActive(
   projectId: string,
-  isActive: boolean
+  isActive: boolean,
 ) {
   const session = await auth();
   if (!session?.user?.id || session.user.role !== "TUTOR") {
@@ -816,7 +817,7 @@ export async function duplicateProject(projectId: string) {
           project.resources.length > 0
             ? {
                 createMany: {
-                  data: project.resources.map((resource) => ({
+                  data: project.resources.map((resource: any) => ({
                     title: resource.title,
                     description: resource.description || null,
                     url: resource.url,
@@ -887,17 +888,18 @@ export async function getProjectAnalytics(projectId: string) {
 
     const totalSubmissions = project.submissions.length;
     const gradedSubmissions = project.submissions.filter(
-      (s) => s.status === "GRADED"
+      (s: any) => s.status === "GRADED",
     ).length;
     const pendingSubmissions = project.submissions.filter(
-      (s) => s.status === "PENDING" || s.status === "SUBMITTED"
+      (s: any) => s.status === "PENDING" || s.status === "SUBMITTED",
     ).length;
     const averageScore =
       gradedSubmissions > 0
         ? Math.round(
             project.submissions
-              .filter((s) => s.score !== null)
-              .reduce((sum, s) => sum + (s.score || 0), 0) / gradedSubmissions
+              .filter((s: any) => s.score !== null)
+              .reduce((sum: any, s: any) => sum + (s.score || 0), 0) /
+              gradedSubmissions,
           )
         : 0;
     const completionRate =

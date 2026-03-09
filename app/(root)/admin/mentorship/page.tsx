@@ -100,7 +100,7 @@ export default async function AdminMentorshipPage() {
         </div>
 
         <div className="grid gap-4">
-          {result.sessions.map((session) => (
+          {result.sessions.map((session: any) => (
             <Card key={session.id} className="glass-card border-white/10">
               <CardContent className="p-5 space-y-3">
                 <div className="flex items-center justify-between">

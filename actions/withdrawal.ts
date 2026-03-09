@@ -20,8 +20,7 @@ type DashboardTransaction = {
   status: "completed" | "pending" | "failed";
 };
 
-const monthKey = (date: Date) =>
-  `${date.getFullYear()}-${date.getMonth() + 1}`;
+const monthKey = (date: Date) => `${date.getFullYear()}-${date.getMonth() + 1}`;
 
 const buildRecentMonths = (count: number) => {
   const result: { key: string; label: string }[] = [];
@@ -85,48 +84,48 @@ export async function getWalletDashboardData() {
     withdrawals,
     paymentMethods,
   ] = await Promise.all([
-      db.user.findUnique({
-        where: { id: userId },
-        select: {
-          name: true,
-          avatar: true,
-          role: true,
-          walletBalance: true,
-          recipientCode: true,
-          bankName: true,
-          accountNumber: true,
-        },
-      }),
-      db.tutorEarning.aggregate({
-        where: { tutorId: userId },
-        _sum: { amount: true },
-      }),
-      db.withdrawalRequest.aggregate({
-        where: { userId, status: { in: ["PENDING", "APPROVED"] } },
-        _sum: { amount: true },
-      }),
-      db.tutorEarning.findMany({
-        where: { tutorId: userId },
-        orderBy: { createdAt: "desc" },
-        take: 50,
-        include: { course: { select: { title: true } } },
-      }),
-      db.withdrawalRequest.findMany({
-        where: { userId },
-        orderBy: { requestedAt: "desc" },
-        take: 50,
-      }),
-      db.paymentMethod.findMany({
-        where: { userId, isActive: true },
-        orderBy: [{ isDefault: "desc" }, { createdAt: "desc" }],
-        select: {
-          id: true,
-          type: true,
-          details: true,
-          isDefault: true,
-        },
-      }),
-    ]);
+    db.user.findUnique({
+      where: { id: userId },
+      select: {
+        name: true,
+        avatar: true,
+        role: true,
+        walletBalance: true,
+        recipientCode: true,
+        bankName: true,
+        accountNumber: true,
+      },
+    }),
+    db.tutorEarning.aggregate({
+      where: { tutorId: userId },
+      _sum: { amount: true },
+    }),
+    db.withdrawalRequest.aggregate({
+      where: { userId, status: { in: ["PENDING", "APPROVED"] } },
+      _sum: { amount: true },
+    }),
+    db.tutorEarning.findMany({
+      where: { tutorId: userId },
+      orderBy: { createdAt: "desc" },
+      take: 50,
+      include: { course: { select: { title: true } } },
+    }),
+    db.withdrawalRequest.findMany({
+      where: { userId },
+      orderBy: { requestedAt: "desc" },
+      take: 50,
+    }),
+    db.paymentMethod.findMany({
+      where: { userId, isActive: true },
+      orderBy: [{ isDefault: "desc" }, { createdAt: "desc" }],
+      select: {
+        id: true,
+        type: true,
+        details: true,
+        isDefault: true,
+      },
+    }),
+  ]);
 
   const summary = {
     availableBalance: 0,
@@ -138,19 +137,21 @@ export async function getWalletDashboardData() {
   summary.totalEarnings = totalEarnings._sum.amount ?? 0;
   summary.pendingPayouts = pendingWithdrawals._sum.amount ?? 0;
 
-  const earningTransactions: DashboardTransaction[] = earnings.map((item) => ({
-    id: item.id,
-    type: "earning",
-    description: item.course?.title
-      ? `Course: ${item.course.title}`
-      : "Course earning",
-    amount: item.amount,
-    date: item.createdAt.toISOString().slice(0, 10),
-    status: item.status === "PENDING" ? "pending" : "completed",
-  }));
+  const earningTransactions: DashboardTransaction[] = earnings.map(
+    (item: any) => ({
+      id: item.id,
+      type: "earning",
+      description: item.course?.title
+        ? `Course: ${item.course.title}`
+        : "Course earning",
+      amount: item.amount,
+      date: item.createdAt.toISOString().slice(0, 10),
+      status: item.status === "PENDING" ? "pending" : "completed",
+    }),
+  );
 
   const withdrawalTransactions: DashboardTransaction[] = withdrawals.map(
-    (item) => ({
+    (item: any) => ({
       id: item.id,
       type: "withdrawal",
       description: "Withdrawal",
@@ -160,9 +161,9 @@ export async function getWalletDashboardData() {
         item.status === "PAID"
           ? "completed"
           : item.status === "REJECTED"
-          ? "failed"
-          : "pending",
-    })
+            ? "failed"
+            : "pending",
+    }),
   );
 
   const transactions = [...earningTransactions, ...withdrawalTransactions]
@@ -170,21 +171,16 @@ export async function getWalletDashboardData() {
     .slice(0, 20);
 
   const months = buildRecentMonths(6);
-  const earningsByMonth = new Map(
-    months.map((month) => [month.key, 0])
-  );
+  const earningsByMonth = new Map(months.map((month: any) => [month.key, 0]));
 
-  earnings.forEach((item) => {
+  earnings.forEach((item: any) => {
     const key = monthKey(item.createdAt);
     if (earningsByMonth.has(key)) {
-      earningsByMonth.set(
-        key,
-        (earningsByMonth.get(key) || 0) + item.amount
-      );
+      earningsByMonth.set(key, (earningsByMonth.get(key) || 0) + item.amount);
     }
   });
 
-  const earningsData = months.map((month) => ({
+  const earningsData = months.map((month: any) => ({
     month: month.label,
     courses: earningsByMonth.get(month.key) || 0,
     mentorship: 0,
@@ -324,7 +320,7 @@ export async function saveBankPaymentMethod({
           }).then((data) => data.subaccount_code)
         : user.subaccountCode || undefined;
 
-    await db.$transaction(async (tx) => {
+    await db.$transaction(async (tx: any) => {
       await tx.user.update({
         where: { id: session.user.id },
         data: {
@@ -382,7 +378,8 @@ export async function saveBankPaymentMethod({
   } catch (error: any) {
     return {
       error:
-        error?.message || "Unable to save bank details. Please try again later.",
+        error?.message ||
+        "Unable to save bank details. Please try again later.",
     };
   }
 }
@@ -401,7 +398,7 @@ export async function setDefaultPaymentMethod(paymentMethodId: string) {
     return { error: "Invalid payment method" };
   }
 
-  await db.$transaction(async (tx) => {
+  await db.$transaction(async (tx: any) => {
     await tx.paymentMethod.updateMany({
       where: { userId: session.user.id },
       data: { isDefault: false },
@@ -512,7 +509,7 @@ export async function requestWithdrawal(amount: number) {
   if (!user.recipientCode) return { error: "No payout recipient configured" };
   if (user.walletBalance < amount) return { error: "Insufficient balance" };
 
-  await db.$transaction(async (tx) => {
+  await db.$transaction(async (tx: any) => {
     await tx.user.update({
       where: { id: session.user.id },
       data: { walletBalance: { decrement: amount } },
@@ -532,7 +529,7 @@ export async function requestWithdrawal(amount: number) {
 
 export async function approveWithdrawalRequest(
   withdrawalRequestId: string,
-  adminNote?: string
+  adminNote?: string,
 ) {
   const session = await auth();
   if (!session?.user?.id) return { error: "Unauthorized" };
@@ -557,7 +554,7 @@ export async function approveWithdrawalRequest(
     reason: "Tutor withdrawal",
   });
 
-  await db.$transaction(async (tx) => {
+  await db.$transaction(async (tx: any) => {
     await tx.withdrawalRequest.update({
       where: { id: withdrawalRequestId },
       data: {
@@ -577,8 +574,8 @@ export async function approveWithdrawalRequest(
           transfer.status === "success"
             ? "COMPLETED"
             : transfer.status === "pending"
-            ? "PROCESSING"
-            : "FAILED",
+              ? "PROCESSING"
+              : "FAILED",
         transferReference: reference,
         transferCode: transfer.transfer_code,
         recipientCode: withdrawal.user.recipientCode || undefined,
@@ -592,7 +589,7 @@ export async function approveWithdrawalRequest(
 
 export async function rejectWithdrawalRequest(
   withdrawalRequestId: string,
-  adminNote?: string
+  adminNote?: string,
 ) {
   const session = await auth();
   if (!session?.user?.id) return { error: "Unauthorized" };
@@ -608,7 +605,7 @@ export async function rejectWithdrawalRequest(
     return { error: "Withdrawal already processed" };
   }
 
-  await db.$transaction(async (tx) => {
+  await db.$transaction(async (tx: any) => {
     await tx.withdrawalRequest.update({
       where: { id: withdrawalRequestId },
       data: {

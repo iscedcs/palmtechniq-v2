@@ -68,7 +68,7 @@ export async function createCourse(data: any, modulesData: any[] = []) {
     }
 
     const result = await db.$transaction(
-      async (tx) => {
+      async (tx: any) => {
         const resolvedBasePrice =
           typeof validatedData.data.basePrice === "number"
             ? validatedData.data.basePrice

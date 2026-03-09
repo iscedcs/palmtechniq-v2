@@ -5,12 +5,15 @@ import { db } from "@/lib/db";
 import { redirect } from "next/navigation";
 import { randomUUID } from "crypto";
 import { paystackInitialize } from "./paystack";
-import { computeCheckoutTotals, DEFAULT_VAT_RATE } from "@/lib/payments/pricing";
+import {
+  computeCheckoutTotals,
+  DEFAULT_VAT_RATE,
+} from "@/lib/payments/pricing";
 import { validatePromoCode } from "@/lib/payments/promo";
 
 export async function beginCheckout(
   courseIds: string[] | string,
-  promoCode?: string
+  promoCode?: string,
 ) {
   const session = await auth();
   if (!session?.user?.id || !session.user.email) {
@@ -47,7 +50,7 @@ export async function beginCheckout(
   }
 
   const totals = computeCheckoutTotals({
-    courses: courses.map((course) => ({
+    courses: courses.map((course: any) => ({
       id: course.id,
       tutorId: course.tutor.userId,
       basePrice: course.basePrice,
@@ -86,8 +89,12 @@ export async function beginCheckout(
       platformShareAmount: totals.platformShareAmount,
       promoCodeId: promoResult?.ok ? promoResult.promo.id : undefined,
       promoType: promoResult?.ok ? promoResult.promo.promoType : undefined,
-      promoDiscountType: promoResult?.ok ? promoResult.promo.discountType : undefined,
-      promoDiscountValue: promoResult?.ok ? promoResult.promo.discountValue : undefined,
+      promoDiscountType: promoResult?.ok
+        ? promoResult.promo.discountType
+        : undefined,
+      promoDiscountValue: promoResult?.ok
+        ? promoResult.promo.discountValue
+        : undefined,
       metadata: {
         courseIds: ids,
         primaryCourseId,

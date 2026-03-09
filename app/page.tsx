@@ -1,10 +1,8 @@
-"use client";
-
 import { CourseCategoriesSection } from "@/components/course-categories";
 import { FeaturesSection } from "@/components/features-section";
 import { Footer } from "@/components/footer";
 import { HeroSection } from "@/components/hero-section";
-import { InteractiveDemo } from "@/components/interactive-demo";
+import { DemoSection } from "@/components/demo-section";
 import { PricingSection } from "@/components/pricing-section";
 import { StatsSection } from "@/components/stats-section";
 import { TestimonialsSection } from "@/components/testimonials-section";
@@ -23,7 +21,7 @@ export default function HomePage() {
       <TestimonialsSection />
       <StatsSection />
       <CourseCategoriesSection />
-      <InteractiveDemo />
+      <DemoSection />
       {/* <PricingSection /> */}
       <Footer />
     </div>

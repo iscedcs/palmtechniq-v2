@@ -14,7 +14,7 @@ const advisorReplySchema = z.object({
       z.object({
         id: z.string(),
         reason: z.string().min(1),
-      })
+      }),
     )
     .default([]),
   recommendedCategories: z
@@ -23,7 +23,7 @@ const advisorReplySchema = z.object({
         id: z.string(),
         name: z.string(),
         reason: z.string().min(1),
-      })
+      }),
     )
     .default([]),
   shouldOfferHumanFollowUp: z.boolean().default(false),
@@ -67,13 +67,13 @@ export async function getCourseAdvisorContext(): Promise<AdvisorContext> {
     take: MAX_COURSES_IN_CONTEXT,
   });
 
-  const normalizedCourses: CourseContextItem[] = courses.map((course) => ({
+  const normalizedCourses: CourseContextItem[] = courses.map((course: any) => ({
     id: course.id,
     title: course.title,
     level: course.level,
     categoryId: course.category.id,
     categoryName: course.category.name,
-    tags: course.tags.map((tag) => tag.name).slice(0, 8),
+    tags: course.tags.map((tag: any) => tag.name).slice(0, 8),
     shortDescription: course.description.slice(0, MAX_DESCRIPTION_CHARS),
     currentPrice: course.currentPrice ?? course.price ?? 0,
     basePrice: course.basePrice ?? course.price ?? 0,
@@ -98,7 +98,7 @@ export async function getCourseAdvisorContext(): Promise<AdvisorContext> {
   return {
     courses: normalizedCourses,
     categories: Array.from(categoryMap.values()).sort(
-      (a, b) => b.courseCount - a.courseCount
+      (a, b) => b.courseCount - a.courseCount,
     ),
   };
 }
@@ -142,10 +142,12 @@ function extractJsonObject(value: string): string | null {
 
 function sanitizeReply(
   raw: AdvisorReply,
-  context: AdvisorContext
+  context: AdvisorContext,
 ): AdvisorReply {
   const courseIds = new Set(context.courses.map((course) => course.id));
-  const categoryIds = new Set(context.categories.map((category) => category.id));
+  const categoryIds = new Set(
+    context.categories.map((category) => category.id),
+  );
 
   return {
     answer: raw.answer.trim(),
@@ -160,7 +162,7 @@ function sanitizeReply(
 }
 
 export async function generateCourseAdvisorReply(
-  userMessage: string
+  userMessage: string,
 ): Promise<{ reply: AdvisorReply; context: AdvisorContext }> {
   const context = await getCourseAdvisorContext();
 
