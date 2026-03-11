@@ -125,7 +125,8 @@ const Welcome = ({ fullName = "there" }: WelcomeProps) => {
               <Text className="text-sm text-gray-600">
                 Best regards,
                 <br />
-                <b>The PalmTechnIQ Team</b>
+                <b>Ignatius Emeka J</b>
+                <b>Head Of Academy</b>
               </Text>
             </Section>
 
