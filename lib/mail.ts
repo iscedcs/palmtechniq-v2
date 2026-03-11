@@ -76,8 +76,8 @@ export async function onBoardingMail(email: string, fullName: string) {
 }
 
 export async function sendPasswordResetToken(email: string, token: string) {
-  const { default: ResetTemplate } =
-    await import("./email-templates/test-email-password-reset");
+  const { default: PasswordReset } =
+    await import("./email-templates/password-reset");
 
   const resend = new Resend(process.env.RESEND_API_KEY!);
 
@@ -85,21 +85,21 @@ export async function sendPasswordResetToken(email: string, token: string) {
     from: process.env.FROM_EMAIL_ADDRESS!,
     to: email,
     subject: "Password Reset",
-    react: ResetTemplate({ email, token }),
+    react: PasswordReset({ email, token }),
   });
 }
 
 export async function sendVerificationEmail(email: string, token: string) {
-  const { default: TestEmail } = await import("./email-templates/test-email");
+  const { default: EmailVerification } =
+    await import("./email-templates/email-verification");
 
   const resend = new Resend(process.env.RESEND_API_KEY!);
-  const confirmLink = `${process.env.NEXT_PUBLIC_URL}/verify?token=${token}`;
 
   await resend.emails.send({
     from: process.env.FROM_EMAIL_ADDRESS!,
     to: email,
     subject: "Confirm your email",
-    react: TestEmail({ email, token }),
+    react: EmailVerification({ email, token }),
     // optionally include confirmLink if your template needs it
   });
 }

@@ -176,11 +176,15 @@ export async function login(
     }
 
     // Check if email is verified
-    if (
-      !existingUser.emailVerified ||
-      !existingUser.email ||
-      !existingUser.password
-    ) {
+    if (!existingUser.emailVerified || !existingUser.email) {
+      // If user has no password, they signed up via OAuth
+      if (!existingUser.password) {
+        return {
+          error:
+            "This account is linked to Google or GitHub. Please sign in with your OAuth provider instead.",
+        };
+      }
+
       const verificationToken = await generateverificationToken(email);
       const { sendVerificationEmail } = await import("@/lib/mail");
 
@@ -205,6 +209,15 @@ export async function login(
 
       return {
         success: "Confirmation email sent! Please check your inbox.",
+      };
+    }
+
+    // Check if user has a password for email/password login
+    // OAuth users won't have a password and should use their OAuth provider
+    if (!existingUser.password) {
+      return {
+        error:
+          "This account is linked to Google or GitHub. Please sign in with your OAuth provider instead.",
       };
     }
 
