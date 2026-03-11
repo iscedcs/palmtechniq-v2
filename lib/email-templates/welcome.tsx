@@ -37,8 +37,8 @@ const Welcome = ({ fullName = "there" }: WelcomeProps) => {
               <Img
                 className="mx-auto"
                 src={`https://www.palmtechniq.com/assets/palmtechniqlogo.png`}
-                width="200"
-                height="200"
+                width="400"
+                height="400"
                 alt="PalmTechnIQ Logo"
               />
             </Section>
@@ -126,6 +126,7 @@ const Welcome = ({ fullName = "there" }: WelcomeProps) => {
                 Best regards,
                 <br />
                 <b>Ignatius Emeka J</b>
+                <br />
                 <b>Head Of Academy</b>
               </Text>
             </Section>
