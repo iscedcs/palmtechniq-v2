@@ -21,7 +21,7 @@ interface WelcomeProps {
 
 const Welcome = ({ fullName = "there" }: WelcomeProps) => {
   const domain = process.env.NEXT_PUBLIC_URL || "https://palmtechniq.com";
-
+  const year = new Date().getFullYear();
   return (
     <Tailwind>
       <Html>
@@ -196,7 +196,7 @@ const Welcome = ({ fullName = "there" }: WelcomeProps) => {
               {/* Footer Text */}
               <Section className="text-center">
                 <Text className="text-xs text-gray-400 mb-2">
-                  Copyright © 2025 PalmTechnIQ. All rights reserved.
+                  Copyright © {year} PalmTechnIQ. All rights reserved.
                 </Text>
                 <Text className="text-xs text-gray-400 mb-2">
                   You're receiving this email because you've successfully
