@@ -126,6 +126,7 @@ const Welcome = ({ fullName = "there" }: WelcomeProps) => {
                 Best regards,
                 <br />
                 <b>Ignatius Emeka J</b>
+                <br />
                 <b>Head Of Academy</b>
               </Text>
             </Section>
