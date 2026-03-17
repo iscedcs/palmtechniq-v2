@@ -145,7 +145,7 @@ export default function TutorProfilePage() {
 
   const updateAvailability = (
     day: keyof Availability,
-    updates: Partial<AvailabilityDay>
+    updates: Partial<AvailabilityDay>,
   ) => {
     setAvailability((prev) => ({
       ...prev,
@@ -157,50 +157,43 @@ export default function TutorProfilePage() {
   };
 
   const handleProfileImageChange = async (
-    event: ChangeEvent<HTMLInputElement>
+    event: ChangeEvent<HTMLInputElement>,
   ) => {
     const file = event.target.files?.[0];
     if (!file) return;
 
     setUploadingImage(true);
     try {
-      const response = await fetch("/api/upload", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({
-          filename: file.name,
-          contentType: file.type,
-          visibility: "public",
-        }),
-      });
-
-      const data = await response.json();
-      if (!response.ok || !data.success) {
-        toast.error(data.error || "Upload initialization failed.");
-        return;
-      }
-
-      const uploadUrl = data.url;
-      const fields = data.fields;
-      const fileUrl = `${uploadUrl}${fields.key}`;
-
       const formData = new FormData();
-      Object.entries(fields).forEach(([key, value]) =>
-        formData.append(key, value as string)
-      );
       formData.append("file", file);
+      formData.append("filename", file.name);
+      formData.append("contentType", file.type);
+      formData.append("visibility", "public");
 
-      const uploadResponse = await fetch(uploadUrl, {
+      const response = await fetch("/api/upload", {
         method: "POST",
         body: formData,
       });
 
-      if (uploadResponse.ok) {
-        setProfileImage(fileUrl);
-        toast.success("Profile photo updated.");
-      } else {
-        toast.error("Upload failed.");
+      const data = await response.json();
+      if (!response.ok) {
+        toast.error(data.error || "Failed to upload image.");
+        console.error("Upload error:", data.error);
+        return;
       }
+
+      if (!data.success || !data.fileUrl) {
+        toast.error("Invalid upload response.");
+        return;
+      }
+
+      console.log("✅ Profile photo uploaded:", {
+        fileUrl: data.fileUrl,
+        filename: file.name,
+      });
+
+      setProfileImage(data.fileUrl);
+      toast.success("Profile photo updated.");
     } catch (error) {
       console.error("Upload error:", error);
       toast.error("An unexpected error occurred during upload.");
@@ -220,9 +213,7 @@ export default function TutorProfilePage() {
         title: profile.title,
         experience: profile.experience,
         course: profile.course,
-        hourlyRate: profile.hourlyRate
-          ? Number(profile.hourlyRate)
-          : undefined,
+        hourlyRate: profile.hourlyRate ? Number(profile.hourlyRate) : undefined,
         location: profile.location,
         timezone: profile.timezone,
         language: profile.language,

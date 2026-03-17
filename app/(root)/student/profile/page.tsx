@@ -308,49 +308,36 @@ export default function StudentProfile() {
     setIsAvatarUploading(true);
 
     try {
+      const formData = new FormData();
+      formData.append("file", file);
+      formData.append("filename", file.name);
+      formData.append("contentType", file.type);
+      formData.append("visibility", "public");
+
       const response = await fetch("/api/upload", {
         method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({
-          filename: file.name,
-          contentType: file.type,
-          visibility: "public",
-        }),
+        body: formData,
       });
 
       const data = await response.json();
 
       if (!response.ok) {
-        toast.error(data.error || "Failed to start upload.");
+        toast.error(data.error || "Failed to upload image.");
+        console.error("Upload error:", data.error);
         return;
       }
 
-      const uploadUrl = data.url;
-      const fields = data.fields;
-      const fileUrl = `${data.url}${data.fields.key}`;
-
-      if (!uploadUrl || !fields) {
+      if (!data.success || !data.fileUrl) {
         toast.error("Invalid upload response.");
         return;
       }
 
-      const formData = new FormData();
-      Object.entries(fields).forEach(([key, value]) =>
-        formData.append(key, value as string),
-      );
-      formData.append("file", file);
-
-      const uploadResponse = await fetch(uploadUrl, {
-        method: "POST",
-        body: formData,
+      console.log("✅ Avatar uploaded:", {
+        fileUrl: data.fileUrl,
+        filename: file.name,
       });
 
-      if (!uploadResponse.ok) {
-        toast.error("Failed to upload image.");
-        return;
-      }
-
-      const result = await updateStudentAvatar(fileUrl);
+      const result = await updateStudentAvatar(data.fileUrl);
       if ("error" in result) {
         toast.error(result.error);
         return;

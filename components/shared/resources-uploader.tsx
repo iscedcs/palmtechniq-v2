@@ -35,44 +35,37 @@ export default function ResourceUploaderFile({
     setUploading(true);
 
     try {
-      const response = await fetch(`/api/upload`, {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({
-          filename: file.name,
-          contentType: file.type,
-          visibility: "public",
-        }),
-      });
-
-      const data = await response.json();
-      if (!response.ok || !data.success) {
-        toast.error(data.error || "Upload initialization failed.");
-        return;
-      }
-
-      const uploadUrl = data.url;
-      const fields = data.fields;
-      const fileUrl = `${uploadUrl}${fields.key}`;
-
       const formData = new FormData();
-      Object.entries(fields).forEach(([key, value]) =>
-        formData.append(key, value as string)
-      );
       formData.append("file", file);
+      formData.append("filename", file.name);
+      formData.append("contentType", file.type);
+      formData.append("visibility", "public");
 
-      const uploadResponse = await fetch(uploadUrl, {
+      const response = await fetch(`/api/upload`, {
         method: "POST",
         body: formData,
       });
 
-      if (uploadResponse.ok) {
-        onUploadSuccess(fileUrl, file);
-        toast.success("File uploaded successfully!");
-        setFile(null);
-      } else {
-        toast.error("Upload failed.");
+      const data = await response.json();
+      if (!response.ok || !data.success) {
+        toast.error(data.error || "Upload failed.");
+        console.error("Upload error:", data.error);
+        return;
       }
+
+      if (!data.fileUrl) {
+        toast.error("Invalid upload response - no file URL returned.");
+        return;
+      }
+
+      console.log("✅ File uploaded successfully:", {
+        fileUrl: data.fileUrl,
+        filename: file.name,
+      });
+
+      onUploadSuccess(data.fileUrl, file);
+      toast.success("File uploaded successfully!");
+      setFile(null);
     } catch (error) {
       console.error("Upload error:", error);
       toast.error("An unexpected error occurred during upload.");

@@ -54,8 +54,12 @@ export default function MentorshipPage() {
   const [notes, setNotes] = useState("");
   const [scheduledDate, setScheduledDate] = useState("");
   const [duration, setDuration] = useState("60");
-  const [packageCode, setPackageCode] = useState<"NONE" | "STARTER_3" | "GROWTH_5">("NONE");
-  const [bookingMode, setBookingMode] = useState<"INSTANT" | "REQUEST">("INSTANT");
+  const [packageCode, setPackageCode] = useState<
+    "NONE" | "STARTER_3" | "GROWTH_5"
+  >("NONE");
+  const [bookingMode, setBookingMode] = useState<"INSTANT" | "REQUEST">(
+    "INSTANT",
+  );
 
   useEffect(() => {
     let mounted = true;
@@ -74,9 +78,9 @@ export default function MentorshipPage() {
     const normalized = query.trim().toLowerCase();
     if (!normalized) return mentors;
     return mentors.filter((mentor) =>
-      [mentor.name, mentor.title, mentor.bio, ...mentor.specialties].some((value) =>
-        value.toLowerCase().includes(normalized)
-      )
+      [mentor.name, mentor.title, mentor.bio, ...mentor.specialties].some(
+        (value) => value.toLowerCase().includes(normalized),
+      ),
     );
   }, [mentors, query]);
 
@@ -124,8 +128,7 @@ export default function MentorshipPage() {
             initial={{ opacity: 0, y: 20 }}
             animate={{ opacity: 1, y: 0 }}
             transition={{ duration: 0.7 }}
-            className="text-center max-w-4xl mx-auto"
-          >
+            className="text-center max-w-4xl mx-auto">
             <h1 className="text-5xl md:text-6xl font-bold mb-4">
               <span className="text-white">Live</span>{" "}
               <span className="text-gradient">Mentorship</span>
@@ -139,7 +142,7 @@ export default function MentorshipPage() {
               <Input
                 value={query}
                 onChange={(e) => setQuery(e.target.value)}
-                className="pl-10 bg-white/10 border-white/20 text-white"
+                className="pl-10 bg-white/10 border-white/20 placeholder:text-foreground/50 text-white"
                 placeholder="Search mentor by skill, title, or name"
               />
             </div>
@@ -150,7 +153,7 @@ export default function MentorshipPage() {
       <section className="pb-20">
         <div className="container mx-auto px-6">
           <Tabs defaultValue="offerings" className="space-y-8">
-            <TabsList className="grid w-full grid-cols-3 bg-white/10 border border-white/20">
+            <TabsList className="grid w-full grid-cols-3 bg-white/10 border text-foreground border-white/20">
               <TabsTrigger value="offerings">Available Offerings</TabsTrigger>
               <TabsTrigger value="mentors">Available Mentors</TabsTrigger>
               <TabsTrigger value="pricing">Pricing Model</TabsTrigger>
@@ -164,20 +167,30 @@ export default function MentorshipPage() {
               {loading ? (
                 <p className="text-gray-300">Loading mentors...</p>
               ) : filteredMentors.length === 0 ? (
-                <p className="text-gray-300">No mentors found for this search.</p>
+                <p className="text-gray-300">
+                  No mentors found for this search.
+                </p>
               ) : (
                 <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
                   {filteredMentors.map((mentor) => (
-                    <Card key={mentor.tutorUserId} className="glass-card border-white/10">
+                    <Card
+                      key={mentor.tutorUserId}
+                      className="glass-card border-white/10">
                       <CardContent className="p-6">
                         <div className="flex items-start gap-4 mb-4">
                           <Avatar className="w-14 h-14">
                             <AvatarImage src={mentor.avatar} />
-                            <AvatarFallback>{mentor.name.charAt(0)}</AvatarFallback>
+                            <AvatarFallback>
+                              {mentor.name.charAt(0)}
+                            </AvatarFallback>
                           </Avatar>
                           <div className="flex-1">
-                            <h3 className="text-xl font-semibold text-white">{mentor.name}</h3>
-                            <p className="text-gray-300 text-sm">{mentor.title}</p>
+                            <h3 className="text-xl font-semibold text-white">
+                              {mentor.name}
+                            </h3>
+                            <p className="text-gray-300 text-sm">
+                              {mentor.title}
+                            </p>
                             <p className="text-gray-400 text-xs">
                               {mentor.location} · {mentor.timezone}
                             </p>
@@ -187,10 +200,14 @@ export default function MentorshipPage() {
                           </Badge>
                         </div>
 
-                        <p className="text-gray-300 text-sm mb-4">{mentor.bio}</p>
+                        <p className="text-gray-300 text-sm mb-4">
+                          {mentor.bio}
+                        </p>
                         <div className="flex flex-wrap gap-2 mb-4">
                           {mentor.specialties.slice(0, 4).map((skill) => (
-                            <Badge key={skill} className="bg-white/10 border-white/20 text-gray-200">
+                            <Badge
+                              key={skill}
+                              className="bg-white/10 border-white/20 text-gray-200">
                               {skill}
                             </Badge>
                           ))}
@@ -221,7 +238,9 @@ export default function MentorshipPage() {
                                 <Input
                                   type="datetime-local"
                                   value={scheduledDate}
-                                  onChange={(e) => setScheduledDate(e.target.value)}
+                                  onChange={(e) =>
+                                    setScheduledDate(e.target.value)
+                                  }
                                   className="mt-1 bg-white/10 border-white/20 text-white"
                                 />
                               </div>
@@ -233,7 +252,9 @@ export default function MentorshipPage() {
                                     min={30}
                                     max={180}
                                     value={duration}
-                                    onChange={(e) => setDuration(e.target.value)}
+                                    onChange={(e) =>
+                                      setDuration(e.target.value)
+                                    }
                                     className="mt-1 bg-white/10 border-white/20 text-white"
                                   />
                                 </div>
@@ -243,11 +264,13 @@ export default function MentorshipPage() {
                                     value={packageCode}
                                     onChange={(e) =>
                                       setPackageCode(
-                                        e.target.value as "NONE" | "STARTER_3" | "GROWTH_5"
+                                        e.target.value as
+                                          | "NONE"
+                                          | "STARTER_3"
+                                          | "GROWTH_5",
                                       )
                                     }
-                                    className="mt-1 w-full rounded-md border border-white/20 bg-white/10 px-3 py-2 text-white"
-                                  >
+                                    className="mt-1 w-full rounded-md border border-white/20 bg-white/10 px-3 py-2 text-white">
                                     {packageOptions.map((opt) => (
                                       <option key={opt.value} value={opt.value}>
                                         {opt.label}
@@ -260,11 +283,18 @@ export default function MentorshipPage() {
                                 <Label>Booking mode</Label>
                                 <select
                                   value={bookingMode}
-                                  onChange={(e) => setBookingMode(e.target.value as "INSTANT" | "REQUEST")}
-                                  className="mt-1 w-full rounded-md border border-white/20 bg-white/10 px-3 py-2 text-white"
-                                >
-                                  <option value="INSTANT">Instant pay-and-book</option>
-                                  <option value="REQUEST">Request first (mentor confirms)</option>
+                                  onChange={(e) =>
+                                    setBookingMode(
+                                      e.target.value as "INSTANT" | "REQUEST",
+                                    )
+                                  }
+                                  className="mt-1 w-full rounded-md border border-white/20 bg-white/10 px-3 py-2 text-white">
+                                  <option value="INSTANT">
+                                    Instant pay-and-book
+                                  </option>
+                                  <option value="REQUEST">
+                                    Request first (mentor confirms)
+                                  </option>
                                 </select>
                               </div>
                               <div>
@@ -279,8 +309,7 @@ export default function MentorshipPage() {
                               <Button
                                 disabled={isSubmitting}
                                 onClick={() => handleCheckout(mentor)}
-                                className="w-full bg-gradient-to-r from-neon-green to-emerald-400 text-white"
-                              >
+                                className="w-full bg-gradient-to-r from-neon-green to-emerald-400 text-white">
                                 {isSubmitting ? "Processing..." : "Continue"}
                               </Button>
                             </div>
@@ -298,7 +327,9 @@ export default function MentorshipPage() {
                 <CardContent className="p-6 space-y-4">
                   <div className="flex items-center gap-2 text-neon-blue">
                     <Sparkles className="w-4 h-4" />
-                    <p className="font-medium">Revenue-focused mentorship options</p>
+                    <p className="font-medium">
+                      Revenue-focused mentorship options
+                    </p>
                   </div>
                   <p className="text-gray-300">
                     One-off sessions are ideal for urgent coaching. Package
