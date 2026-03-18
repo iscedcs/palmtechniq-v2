@@ -113,15 +113,15 @@ export default function UploadFile({
 
     try {
       if (fieldName === "thumbnail") {
+        const formData = new FormData();
+        formData.append("file", file);
+        formData.append("filename", file.name);
+        formData.append("contentType", file.type);
+        formData.append("visibility", "public");
+
         const response = await fetch("/api/upload", {
           method: "POST",
-          headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({
-            filename: file.name,
-            contentType: file.type,
-            type: "image",
-            visibility: "public",
-          }),
+          body: formData,
         });
 
         const data = await response.json();
@@ -132,36 +132,17 @@ export default function UploadFile({
           return;
         }
 
-        const uploadUrl = data.url;
-        const fields = data.fields;
-        const fileUrl = data.success
-          ? `${data.url}${data.fields.key}`
-          : `${data.url}${data.imageUrl.split("/").pop()}`;
-
-        if (!uploadUrl || !fields) {
-          toast.error("Invalid server response.");
-          return;
-        }
-
-        const formData = new FormData();
-        Object.entries(fields).forEach(([key, value]) =>
-          formData.append(key, value as string),
-        );
-        formData.append("file", file);
-
-        const uploadResponse = await fetch(uploadUrl, {
-          method: "POST",
-          body: formData,
-        });
-
-        if (uploadResponse.ok) {
-          setValue(fieldName, fileUrl, { shouldDirty: true });
-
+        if (data.success && data.fileUrl) {
+          console.log("✅ File uploaded successfully:", {
+            fileUrl: data.fileUrl,
+            filename: file.name,
+            fieldName: fieldName,
+          });
+          setValue(fieldName, data.fileUrl, { shouldDirty: true });
           toast.success("Thumbnail uploaded successfully!");
           setFile(null);
         } else {
-          console.error("S3 Upload Error:", await uploadResponse.text());
-          toast("Upload failed.");
+          toast.error("Upload failed - no file URL returned");
         }
         return;
       }

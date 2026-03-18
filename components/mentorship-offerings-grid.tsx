@@ -103,7 +103,7 @@ export default function MentorshipOfferingsGrid() {
         <h2 className="text-2xl font-bold mb-2">
           Available Mentorship Sessions
         </h2>
-        <p className="text-muted-foreground">
+        <p className="text-foreground">
           Book 1-on-1 mentorship from experienced professionals
         </p>
       </div>
@@ -114,7 +114,7 @@ export default function MentorshipOfferingsGrid() {
           placeholder="Search by mentor name, topic, or title..."
           value={searchQuery}
           onChange={(e) => setSearchQuery(e.target.value)}
-          className="w-full"
+          className="w-full placeholder:text-foreground/50"
         />
         <div className="flex gap-2 flex-wrap">
           <Badge
@@ -148,7 +148,7 @@ export default function MentorshipOfferingsGrid() {
       {filteredOfferings.length === 0 ? (
         <Card>
           <CardContent className="pt-12 pb-12 text-center">
-            <p className="text-muted-foreground mb-4">
+            <p className="text-foreground mb-4">
               {offerings.length === 0
                 ? "No mentorship offerings available yet"
                 : "No offerings match your search"}
@@ -174,7 +174,7 @@ export default function MentorshipOfferingsGrid() {
       )}
 
       {/* Summary */}
-      <p className="text-sm text-muted-foreground text-center">
+      <p className="text-sm text-foreground text-center">
         Showing {filteredOfferings.length} of {offerings.length} available
         sessions
       </p>

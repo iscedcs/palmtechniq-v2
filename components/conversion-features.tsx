@@ -195,6 +195,7 @@ export function TrustSignals() {
     "Axio",
     "Schoolware",
     "EasySpend",
+    "WorkCity Africa",
     "ISCE",
   ];
 
