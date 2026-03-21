@@ -963,6 +963,7 @@ export async function addStudentToCourse(courseId: string, userId: string) {
     // Check if user exists
     const user = await db.user.findUnique({
       where: { id: userId },
+      select: { id: true, role: true },
     });
 
     if (!user) {
@@ -980,6 +981,20 @@ export async function addStudentToCourse(courseId: string, userId: string) {
     if (existingEnrollment) {
       return { error: "Student is already enrolled in this course" };
     }
+
+    // Ensure user has a Student profile and STUDENT role
+    if (user.role === "USER") {
+      await db.user.update({
+        where: { id: userId },
+        data: { role: "STUDENT" },
+      });
+    }
+
+    await db.student.upsert({
+      where: { userId },
+      update: {},
+      create: { userId, interests: [], goals: [] },
+    });
 
     // Create enrollment
     const enrollment = await db.enrollment.create({
@@ -1047,6 +1062,28 @@ export async function bulkAddStudentsToCourse(
       return {
         error: "All selected students are already enrolled in this course",
       };
+    }
+
+    // Ensure all new users have Student profiles and STUDENT role
+    const usersToUpdate = await db.user.findMany({
+      where: { id: { in: newUserIds }, role: "USER" },
+      select: { id: true },
+    });
+
+    if (usersToUpdate.length > 0) {
+      await db.user.updateMany({
+        where: { id: { in: usersToUpdate.map((u: any) => u.id) } },
+        data: { role: "STUDENT" },
+      });
+    }
+
+    // Upsert Student profiles for all new enrollees
+    for (const uid of newUserIds) {
+      await db.student.upsert({
+        where: { userId: uid },
+        update: {},
+        create: { userId: uid, interests: [], goals: [] },
+      });
     }
 
     // Bulk create enrollments

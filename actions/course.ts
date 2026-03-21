@@ -312,16 +312,6 @@ export async function updateCourse(
       metadata: { category: "course_update", courseId },
     });
 
-    // Notify only the course owner (current user)
-    await notify.user(session.user.id, {
-      type: "info",
-      title: "Your Course Updated",
-      message: `You updated "${course.title}".`,
-      actionUrl: `/tutor/courses/${courseId}/edit`,
-      actionLabel: "Open Course",
-      metadata: { category: "course_update", courseId },
-    });
-
     // Notify admins to review changes
     await notify.role("ADMIN", {
       type: "info",
@@ -467,7 +457,7 @@ export async function publishCourse(courseId: string) {
 
     if (shouldPublish) {
       // 🔔 Emit notification
-      await notify.role("STUDENT", {
+      await notify.course(courseId, {
         type: "success",
         title: "Course Published",
         message: `The course "${updatedCourse.title}" is now live!`,

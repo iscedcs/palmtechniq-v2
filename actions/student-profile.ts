@@ -223,7 +223,7 @@ export async function updateStudentProfile(input: UpdateProfileInput) {
 }
 
 export async function updateStudentAvatar(
-  avatarUrl: string
+  avatarUrl: string,
 ): Promise<StudentAvatarResponse> {
   const session = await auth();
   if (!session?.user?.id) {
@@ -243,24 +243,27 @@ export async function updateStudentAvatar(
 }
 
 export async function addStudentGoal(
-  goal: string
+  goal: string,
 ): Promise<StudentGoalsResponse> {
   const session = await auth();
   if (!session?.user?.id) {
     return { error: "Unauthorized" };
   }
 
-  const student = await db.student.findUnique({
+  let student = await db.student.findUnique({
     where: { userId: session.user.id },
     select: { goals: true },
   });
 
   if (!student) {
-    return { error: "Student profile not found" };
+    student = await db.student.create({
+      data: { userId: session.user.id, interests: [], goals: [] },
+      select: { goals: true },
+    });
   }
 
   const nextGoals = Array.from(
-    new Set([...(student.goals || []), goal.trim()])
+    new Set([...(student.goals || []), goal.trim()]),
   ).filter(Boolean);
 
   await db.student.update({

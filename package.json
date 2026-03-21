@@ -9,7 +9,8 @@
     "start": "next start",
     "postinstall": "prisma generate",
     "test-seed-enrollment": "tsx scripts/test-seed-enrollment.ts",
-    "recompute-course-durations": "tsx scripts/recompute-course-durations.ts"
+    "recompute-course-durations": "tsx scripts/recompute-course-durations.ts",
+    "fix-missing-student-profiles": "tsx scripts/fix-missing-student-profiles.ts"
   },
   "prisma": {
     "seed": "ts-node app/prisma/seed.js"
@@ -101,6 +102,7 @@
     "react-dom": "^19",
     "react-email": "^5.2.8",
     "react-hook-form": "^7.71.1",
+    "react-markdown": "^10.1.0",
     "react-paystack": "^6.0.0",
     "react-resizable-panels": "^2.1.7",
     "react-toastify": "^11.0.5",
