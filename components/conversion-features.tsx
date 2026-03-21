@@ -483,7 +483,9 @@ export function LiveChatWidget() {
               <CardContent className="p-0 h-full flex flex-col">
                 <div className="p-4 border-b border-white/10">
                   <div className="flex items-center justify-between">
-                    <h3 className="text-white font-semibold">Course Advisor</h3>
+                    <h3 className="text-white font-semibold">
+                      PalmAsk Course Advisor
+                    </h3>
                     <Button
                       variant="ghost"
                       size="icon"

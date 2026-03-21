@@ -42,7 +42,16 @@ export async function getStudentProgressData() {
   });
 
   if (!student) {
-    return { error: "Student profile not found" };
+    // Auto-create Student profile for users who were enrolled without payment
+    await db.student.create({
+      data: { userId, interests: [], goals: [] },
+    });
+    await db.user.update({
+      where: { id: userId },
+      data: { role: "STUDENT" },
+    });
+    // Re-run to fetch the newly created profile with all includes
+    return getStudentProgressData();
   }
 
   const enrollments = await db.enrollment.findMany({

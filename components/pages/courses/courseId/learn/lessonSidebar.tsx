@@ -79,7 +79,7 @@ export default function LessonSidebar({
             <div className="space-y-4">
               {modules.map((module) => {
                 const moduleCompleted = module.lessons.every(
-                  (lesson) => lesson.isCompleted
+                  (lesson) => lesson.isCompleted,
                 );
 
                 return (
@@ -118,8 +118,8 @@ export default function LessonSidebar({
                               lesson.isLocked && !lesson.isCompleted
                                 ? "cursor-not-allowed opacity-40"
                                 : isActive
-                                ? "bg-neon-blue/20 border border-neon-blue/30 shadow-[0_0_15px_rgba(0,200,255,0.4)] animate-pulse-smooth"
-                                : "hover:bg-white/5"
+                                  ? "bg-neon-blue/20 border border-neon-blue/30 shadow-[0_0_15px_rgba(0,200,255,0.4)] animate-pulse-smooth"
+                                  : "hover:bg-white/5"
                             }`}
                             onClick={(e) => {
                               if (!lesson.isLocked || lesson.isCompleted) {
@@ -128,9 +128,9 @@ export default function LessonSidebar({
                                 setTimeout(
                                   () =>
                                     button.classList.remove(
-                                      "lesson-click-flash"
+                                      "lesson-click-flash",
                                     ),
-                                  800
+                                  800,
                                 );
                                 onChangeLesson(lesson);
                               }
@@ -148,8 +148,8 @@ export default function LessonSidebar({
                                     isActive
                                       ? "text-white"
                                       : lesson.isLocked && !lesson.isCompleted
-                                      ? "text-gray-500"
-                                      : "text-gray-300"
+                                        ? "text-gray-500"
+                                        : "text-gray-300"
                                   }`}>
                                   <span className="font-medium">
                                     {lesson.title}
