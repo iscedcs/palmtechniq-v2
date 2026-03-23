@@ -9,7 +9,7 @@ const nextConfig = {
   async headers() {
     const csp = [
       "default-src 'self'",
-      "script-src 'self' 'unsafe-eval' 'unsafe-inline' https://vercel.live https://connect.facebook.net https://isce-image.fra1.digitaloceanspaces.com https://isce-image.fra1.digitaloceanspaces.com https://www.googletagmanager.com https://cdn.mxpnl.com https://localhost:* http://localhost:* ",
+      "script-src 'self' 'unsafe-eval' 'unsafe-inline' https://vercel.live https://connect.facebook.net https://isce-image.fra1.digitaloceanspaces.com https://isce-image.fra1.digitaloceanspaces.com https://www.googletagmanager.com https://cdn.mxpnl.com https://www.youtube.com https://localhost:* http://localhost:* ",
       "style-src 'self' 'unsafe-inline' https:",
       "media-src 'self' blob: https:",
       "img-src 'self' data: blob: https://connect.facebook.net https://isce-image.fra1.digitaloceanspaces.com https://www.googletagmanager.com https://www.facebook.com https: http://localhost:*",
