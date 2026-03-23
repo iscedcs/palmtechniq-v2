@@ -21,10 +21,25 @@ import {
   SelectValue,
 } from "@/components/ui/select";
 import { Textarea } from "@/components/ui/textarea";
-import { Plus, X, PlayCircle, Clock, BookOpen, Layers } from "lucide-react";
+import { Plus, X, PlayCircle, Clock, BookOpen, Layers, GripVertical } from "lucide-react";
 import { useMemo, useRef } from "react";
 import { updateLessonVideo } from "@/actions/tutor-actions";
 import { isYoutubeUrl, toYoutubeEmbedUrl } from "@/lib/youtube";
+import {
+  DndContext,
+  closestCenter,
+  PointerSensor,
+  useSensor,
+  useSensors,
+  DragEndEvent,
+} from "@dnd-kit/core";
+import {
+  arrayMove,
+  SortableContext,
+  verticalListSortingStrategy,
+} from "@dnd-kit/sortable";
+import { SortableLessonItem } from "@/components/pages/tutor/shared/sortable-lesson-item";
+import { SortableItem } from "@/components/pages/tutor/shared/sortable-item";
 
 interface CourseLesson {
   id: string;
@@ -73,6 +88,8 @@ interface CourseCurriculumFormProps {
     lessonId: string,
     updates: Partial<CourseLesson>,
   ) => void;
+  onReorderLessons?: (moduleId: string, lessonIds: string[]) => void;
+  onReorderModules?: (moduleIds: string[]) => void;
 }
 
 export function CourseCurriculumForm({
@@ -83,8 +100,42 @@ export function CourseCurriculumForm({
   addLesson,
   removeLesson,
   updateLesson,
+  onReorderLessons,
+  onReorderModules,
 }: CourseCurriculumFormProps) {
   const durationCache = useRef<Record<string, number>>({});
+
+  const sensors = useSensors(
+    useSensor(PointerSensor, {
+      activationConstraint: { distance: 8 },
+    }),
+  );
+
+  const handleModuleDragEnd = (event: DragEndEvent) => {
+    const { active, over } = event;
+    if (!over || active.id === over.id) return;
+    const oldIndex = modules.findIndex((m) => m.id === active.id);
+    const newIndex = modules.findIndex((m) => m.id === over.id);
+    if (oldIndex === -1 || newIndex === -1) return;
+    const reordered = arrayMove(modules, oldIndex, newIndex);
+    reordered.forEach((m, i) => updateModule(m.id, { sortOrder: i }));
+    onReorderModules?.(reordered.map((m) => m.id));
+  };
+
+  const handleLessonDragEnd = (moduleId: string, event: DragEndEvent) => {
+    const { active, over } = event;
+    if (!over || active.id === over.id) return;
+    const mod = modules.find((m) => m.id === moduleId);
+    if (!mod) return;
+    const oldIndex = mod.lessons.findIndex((l) => l.id === active.id);
+    const newIndex = mod.lessons.findIndex((l) => l.id === over.id);
+    if (oldIndex === -1 || newIndex === -1) return;
+    const reordered = arrayMove(mod.lessons, oldIndex, newIndex).map(
+      (l, i) => ({ ...l, sortOrder: i }),
+    );
+    updateModule(moduleId, { lessons: reordered });
+    onReorderLessons?.(moduleId, reordered.map((l) => l.id));
+  };
   // 🧮 Compute quick stats
   const stats = useMemo(() => {
     const totalLessons = modules.reduce(
@@ -133,11 +184,20 @@ export function CourseCurriculumForm({
             </p>
           )}
 
+          <DndContext
+            sensors={sensors}
+            collisionDetection={closestCenter}
+            onDragEnd={handleModuleDragEnd}>
+            <SortableContext
+              items={modules.map((m) => m.id)}
+              strategy={verticalListSortingStrategy}>
           <Accordion type="multiple" className="space-y-4">
             {modules.map((module, moduleIndex) => (
-              <AccordionItem key={module.id} value={module.id}>
+              <SortableItem key={module.id} id={module.id}>
+              <AccordionItem value={module.id}>
                 <AccordionTrigger className="text-lg font-semibold text-white hover:text-neon-blue transition-colors">
                   <div className="flex items-center gap-2">
+                    <GripVertical className="w-4 h-4 text-gray-400 cursor-grab" />
                     <PlayCircle className="w-4 h-4 text-neon-green" />
                     Module {moduleIndex + 1}:{" "}
                     {module.title || "Untitled Module"}
@@ -217,9 +277,17 @@ export function CourseCurriculumForm({
                     </div>
 
                     {/* Lessons */}
+                    <DndContext
+                      sensors={sensors}
+                      collisionDetection={closestCenter}
+                      onDragEnd={(e) => handleLessonDragEnd(module.id, e)}>
+                      <SortableContext
+                        items={module.lessons.map((l) => l.id)}
+                        strategy={verticalListSortingStrategy}>
                     <Accordion type="multiple" className="mt-4 space-y-3">
                       {module.lessons.map((lesson, lessonIndex) => (
-                        <AccordionItem key={lesson.id} value={lesson.id}>
+                        <SortableLessonItem key={lesson.id} id={lesson.id}>
+                        <AccordionItem value={lesson.id}>
                           <AccordionTrigger className="text-md font-medium text-white hover:text-neon-green transition-colors">
                             Lesson {lessonIndex + 1}:{" "}
                             {lesson.title || "Untitled Lesson"}
@@ -383,13 +451,19 @@ export function CourseCurriculumForm({
                             </div>
                           </AccordionContent>
                         </AccordionItem>
+                        </SortableLessonItem>
                       ))}
                     </Accordion>
+                      </SortableContext>
+                    </DndContext>
                   </div>
                 </AccordionContent>
               </AccordionItem>
+              </SortableItem>
             ))}
           </Accordion>
+            </SortableContext>
+          </DndContext>
         </CardContent>
       </Card>
 

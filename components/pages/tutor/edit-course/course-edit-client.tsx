@@ -6,6 +6,8 @@ import {
   addModuleToCourse,
   removeLessonFromModule,
   removeModuleFromCourse,
+  reorderLessons,
+  reorderModules,
 } from "@/actions/tutor-actions";
 import { motion } from "framer-motion";
 
@@ -639,6 +641,18 @@ export function CourseEditClient({
                           addLesson={addLesson}
                           removeLesson={removeLesson}
                           updateLesson={updateLesson}
+                          onReorderLessons={async (moduleId, lessonIds) => {
+                            const res = await reorderLessons(course.id, moduleId, lessonIds);
+                            if (!res?.success) {
+                              toast.error(res?.error ?? "Failed to reorder lessons");
+                            }
+                          }}
+                          onReorderModules={async (moduleIds) => {
+                            const res = await reorderModules(course.id, moduleIds);
+                            if (!res?.success) {
+                              toast.error(res?.error ?? "Failed to reorder modules");
+                            }
+                          }}
                         />
                       </motion.div>
                     </TabsContent>

@@ -514,6 +514,80 @@ export async function removeLessonFromModule(
   }
 }
 
+export async function reorderLessons(
+  courseId: string,
+  moduleId: string,
+  lessonIds: string[],
+) {
+  const session = await auth();
+  if (!session?.user?.id) {
+    return { error: "Unauthorized" };
+  }
+
+  try {
+    const mod = await db.courseModule.findUnique({
+      where: { id: moduleId },
+      include: { course: true },
+    });
+
+    if (!mod || mod.course.creatorId !== session.user.id) {
+      return { error: "Unauthorized" };
+    }
+
+    if (mod.courseId !== courseId) {
+      return { error: "Module does not belong to this course" };
+    }
+
+    await db.$transaction(
+      lessonIds.map((id, index) =>
+        db.lesson.update({
+          where: { id },
+          data: { sortOrder: index },
+        }),
+      ),
+    );
+
+    return { success: true };
+  } catch (error) {
+    console.error("Error reordering lessons:", error);
+    return { error: "Failed to reorder lessons" };
+  }
+}
+
+export async function reorderModules(
+  courseId: string,
+  moduleIds: string[],
+) {
+  const session = await auth();
+  if (!session?.user?.id) {
+    return { error: "Unauthorized" };
+  }
+
+  try {
+    const course = await db.course.findUnique({
+      where: { id: courseId },
+    });
+
+    if (!course || course.creatorId !== session.user.id) {
+      return { error: "Unauthorized" };
+    }
+
+    await db.$transaction(
+      moduleIds.map((id, index) =>
+        db.courseModule.update({
+          where: { id },
+          data: { sortOrder: index },
+        }),
+      ),
+    );
+
+    return { success: true };
+  } catch (error) {
+    console.error("Error reordering modules:", error);
+    return { error: "Failed to reorder modules" };
+  }
+}
+
 export async function uploadCourseFile(
   formData: FormData,
   type: "thumbnail" | "video",
