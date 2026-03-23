@@ -23,6 +23,7 @@ import { X, Plus, ChevronDown, ChevronUp, Clock } from "lucide-react";
 import LessonUploadFile from "@/components/shared/lesson-uploader";
 import { toast } from "sonner";
 import { SortableItem } from "../shared/sortable-item";
+import { SortableLessonItem } from "../shared/sortable-lesson-item";
 import {
   Select,
   SelectContent,
@@ -232,6 +233,24 @@ export default function CourseCurriculumBuilder({
     setModules(newModules.map((m, i) => ({ ...m, sortOrder: i })));
   };
 
+  const handleLessonDragEnd = (moduleId: string, event: DragEndEvent) => {
+    const { active, over } = event;
+    if (!over || active.id === over.id) return;
+
+    setModules((prev) =>
+      prev.map((m) => {
+        if (m.id !== moduleId) return m;
+        const oldIndex = m.lessons.findIndex((l) => l.id === active.id);
+        const newIndex = m.lessons.findIndex((l) => l.id === over.id);
+        if (oldIndex === -1 || newIndex === -1) return m;
+        const reordered = arrayMove(m.lessons, oldIndex, newIndex).map(
+          (l, i) => ({ ...l, sortOrder: i }),
+        );
+        return { ...m, lessons: reordered };
+      }),
+    );
+  };
+
   // 🔢 Compute total duration (across all modules)
   const totalDurationMinutes = useMemo(
     () =>
@@ -379,10 +398,18 @@ export default function CourseCurriculumBuilder({
                             </div>
                             {/* LESSONS */}
                             <div className="space-y-3">
+                              <DndContext
+                                sensors={sensors}
+                                collisionDetection={closestCenter}
+                                onDragEnd={(e) =>
+                                  handleLessonDragEnd(module.id, e)
+                                }>
+                                <SortableContext
+                                  items={module.lessons.map((l) => l.id)}
+                                  strategy={verticalListSortingStrategy}>
                               {module.lessons.map((lesson, lessonIndex) => (
-                                <motion.div
-                                  key={lesson.id}
-                                  layout
+                                <SortableLessonItem key={lesson.id} id={lesson.id}>
+                                <div
                                   className="bg-white/5 border border-white/10 rounded-lg p-3 space-y-3">
                                   <div className="flex justify-between items-center">
                                     <div className="flex items-center gap-2 w-full">
@@ -560,8 +587,11 @@ export default function CourseCurriculumBuilder({
                                   <div className="text-sm text-gray-300">
                                     Lesson duration: {lesson.duration} min
                                   </div>
-                                </motion.div>
+                                </div>
+                                </SortableLessonItem>
                               ))}
+                                </SortableContext>
+                              </DndContext>
 
                               <Button
                                 type="button"
