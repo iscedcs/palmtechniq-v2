@@ -41,7 +41,7 @@ type StudentDashboardProps = {
     instructor: string;
     progress: number;
     nextLessonTitle: string; //
-    nextLessonId: string | null; 
+    nextLessonId: string | null;
     timeLeft: string;
     thumbnail: string | null;
     difficulty: string;
@@ -133,8 +133,7 @@ export default function StudentDashboardClient({
             </CardTitle>
             <Badge
               variant="secondary"
-              className="bg-green-500/20 text-green-400"
-            >
+              className="bg-green-500/20 text-green-400">
               {achievements.length} earned
             </Badge>
           </div>
@@ -146,11 +145,9 @@ export default function StudentDashboardClient({
               initial={{ opacity: 0, x: -20 }}
               animate={{ opacity: 1, x: 0 }}
               transition={{ duration: 0.5, delay: index * 0.1 }}
-              className="flex items-center space-x-4 p-4 bg-white/5 rounded-lg hover:bg-white/10 transition-colors group"
-            >
+              className="flex items-center space-x-4 p-4 bg-white/5 rounded-lg hover:bg-white/10 transition-colors group">
               <div
-                className={`w-12 h-12 rounded-full bg-gradient-to-r ${achievement.color} flex items-center justify-center group-hover:scale-110 transition-transform`}
-              >
+                className={`w-12 h-12 rounded-full bg-gradient-to-r ${achievement.color} flex items-center justify-center group-hover:scale-110 transition-transform`}>
                 <span className="text-xl">{achievement.icon}</span>
               </div>
 
@@ -180,8 +177,7 @@ export default function StudentDashboardClient({
           <Link href="/achievements">
             <Button
               variant="outline"
-              className="w-full border-white/20 text-white hover:bg-white/10 bg-transparent mt-4"
-            >
+              className="w-full border-white/20 text-white hover:bg-white/10 bg-transparent mt-4">
               View All Achievements
             </Button>
           </Link>
@@ -202,8 +198,7 @@ export default function StudentDashboardClient({
               )}
             </div>
             <div
-              className={`w-16 h-16 rounded-2xl bg-gradient-to-r ${color} p-4 group-hover:scale-110 transition-transform duration-300`}
-            >
+              className={`w-16 h-16 rounded-2xl bg-gradient-to-r ${color} p-4 group-hover:scale-110 transition-transform duration-300`}>
               <Icon className="w-full h-full text-white" />
             </div>
           </div>
@@ -238,8 +233,7 @@ export default function StudentDashboardClient({
             initial={{ opacity: 0, y: 30 }}
             animate={{ opacity: 1, y: 0 }}
             transition={{ duration: 0.8 }}
-            className="text-center mb-12"
-          >
+            className="text-center mb-12">
             <h1 className="text-5xl md:text-6xl font-bold mb-4">
               <span className="text-white">Welcome back,</span>{" "}
               <span className="text-gradient">{userName.split(" ")[0]}!</span>
@@ -254,8 +248,7 @@ export default function StudentDashboardClient({
             initial={{ opacity: 0, y: 30 }}
             animate={{ opacity: 1, y: 0 }}
             transition={{ duration: 0.8, delay: 0.2 }}
-            className="max-w-2xl mx-auto mb-12"
-          >
+            className="max-w-2xl mx-auto mb-12">
             <Card className="glass-card border-white/10">
               <CardContent className="p-6">
                 <div className="flex items-center justify-between mb-4">
@@ -270,6 +263,9 @@ export default function StudentDashboardClient({
                         {studentData.rank}
                       </h3>
                       <p className="text-gray-400">Level {studentData.level}</p>
+                      <p className="text-xs text-gray-500 mt-0.5">
+                        Overall rank across all your courses
+                      </p>
                     </div>
                   </div>
                   <div className="text-right">
@@ -305,8 +301,7 @@ export default function StudentDashboardClient({
             initial={{ opacity: 0, y: 30 }}
             animate={{ opacity: 1, y: 0 }}
             transition={{ duration: 0.8, delay: 0.3 }}
-            className="flex flex-wrap justify-center gap-4 mb-12"
-          >
+            className="flex flex-wrap justify-center gap-4 mb-12">
             {[
               {
                 icon: BookOpen,
@@ -340,8 +335,7 @@ export default function StudentDashboardClient({
                   whileTap={{ scale: 0.95 }}
                   initial={{ opacity: 0, y: 20 }}
                   animate={{ opacity: 1, y: 0 }}
-                  transition={{ duration: 0.5, delay: index * 0.1 }}
-                >
+                  transition={{ duration: 0.5, delay: index * 0.1 }}>
                   <action.icon className="w-5 h-5 mr-2 group-hover:scale-110 transition-transform" />
                   {action.label}
                 </motion.button>
@@ -385,7 +379,7 @@ export default function StudentDashboardClient({
                       (studentData.coursesCompleted /
                         (studentData.coursesCompleted +
                           studentData.coursesInProgress)) *
-                        100
+                        100,
                     )}%`
                   : "0%"
               }
@@ -401,8 +395,7 @@ export default function StudentDashboardClient({
               <motion.div
                 initial={{ opacity: 0, y: 30 }}
                 animate={{ opacity: 1, y: 0 }}
-                transition={{ duration: 0.8, delay: 0.4 }}
-              >
+                transition={{ duration: 0.8, delay: 0.4 }}>
                 <Card className="glass-card border-white/10">
                   <CardHeader>
                     <div className="flex items-center justify-between">
@@ -412,8 +405,7 @@ export default function StudentDashboardClient({
                       <Link href="/student/courses">
                         <Button
                           variant="outline"
-                          className="border-white/20 text-white hover:bg-white/10 bg-transparent"
-                        >
+                          className="border-white/20 text-white hover:bg-white/10 bg-transparent">
                           View All Courses
                         </Button>
                       </Link>
@@ -426,8 +418,7 @@ export default function StudentDashboardClient({
                         initial={{ opacity: 0, x: -20 }}
                         animate={{ opacity: 1, x: 0 }}
                         transition={{ duration: 0.5, delay: index * 0.1 }}
-                        className="flex items-center space-x-4 p-4 bg-white/5 rounded-lg hover:bg-white/10 transition-colors group cursor-pointer"
-                      >
+                        className="flex items-center space-x-4 p-4 bg-white/5 rounded-lg hover:bg-white/10 transition-colors group cursor-pointer">
                         <img
                           src={course.thumbnail || generateRandomAvatar()}
                           alt={course.title}
@@ -456,29 +447,23 @@ export default function StudentDashboardClient({
                                 course.difficulty === "ADVANCED"
                                   ? "bg-red-500/20 text-red-400 border-red-500/30"
                                   : course.difficulty === "INTERMEDIATE"
-                                  ? "bg-yellow-500/20 text-yellow-400 border-yellow-500/30"
-                                  : "bg-green-500/20 text-green-400 border-green-500/30"
-                              }`}
-                            >
+                                    ? "bg-yellow-500/20 text-yellow-400 border-yellow-500/30"
+                                    : "bg-green-500/20 text-green-400 border-green-500/30"
+                              }`}>
                               {course.difficulty}
                             </Badge>
                           </div>
                         </div>
                         <div className="text-right">
-                           
-                            <Link
-                              href={`courses/${course.id}/learn`}
-                            >
-                              <Button className="bg-gradient-to-r from-neon-blue to-neon-purple text-white mb-2">
-                                <Play className="w-4 h-4 mr-2" />
-                                {course.nextLessonId ? "Continue" : "Retake Course"}
-                            
-                              
-                              </Button>
-                            </Link>
-                           
-                            
-                          
+                          <Link href={`courses/${course.id}/learn`}>
+                            <Button className="bg-gradient-to-r from-neon-blue to-neon-purple text-white mb-2">
+                              <Play className="w-4 h-4 mr-2" />
+                              {course.nextLessonId
+                                ? "Continue"
+                                : "Retake Course"}
+                            </Button>
+                          </Link>
+
                           <p className="text-gray-400 text-xs">
                             {course.timeLeft} left
                           </p>
@@ -493,9 +478,8 @@ export default function StudentDashboardClient({
               <motion.div
                 initial={{ opacity: 0, y: 30 }}
                 animate={{ opacity: 1, y: 0 }}
-                transition={{ duration: 0.8, delay: 0.5 }}
-              >
-                <AchievementsList achievements={[]} />
+                transition={{ duration: 0.8, delay: 0.5 }}>
+                <AchievementsList achievements={formattedAchievements} />
               </motion.div>
             </div>
 
@@ -505,8 +489,7 @@ export default function StudentDashboardClient({
               <motion.div
                 initial={{ opacity: 0, x: 50 }}
                 animate={{ opacity: 1, x: 0 }}
-                transition={{ duration: 0.8, delay: 0.4 }}
-              >
+                transition={{ duration: 0.8, delay: 0.4 }}>
                 <Card className="glass-card border-white/10">
                   <CardHeader>
                     <CardTitle className="text-xl font-bold text-white">
@@ -517,8 +500,7 @@ export default function StudentDashboardClient({
                     {upcomingMentorships.map((session) => (
                       <div
                         key={session.id}
-                        className="p-4 bg-white/5 rounded-lg"
-                      >
+                        className="p-4 bg-white/5 rounded-lg">
                         <div className="flex items-center gap-3 mb-2">
                           <Avatar className="w-10 h-10">
                             <AvatarImage
@@ -554,8 +536,7 @@ export default function StudentDashboardClient({
                     <Link href="/mentorship">
                       <Button
                         variant="outline"
-                        className="w-full border-white/20 text-white hover:bg-white/10 bg-transparent"
-                      >
+                        className="w-full border-white/20 text-white hover:bg-white/10 bg-transparent">
                         <Plus className="w-4 h-4 mr-2" />
                         Book New Session
                       </Button>
@@ -612,8 +593,7 @@ export default function StudentDashboardClient({
               <motion.div
                 initial={{ opacity: 0, x: 50 }}
                 animate={{ opacity: 1, x: 0 }}
-                transition={{ duration: 0.8, delay: 0.6 }}
-              >
+                transition={{ duration: 0.8, delay: 0.6 }}>
                 <Card className="glass-card border-white/10">
                   <CardHeader>
                     <CardTitle className="text-xl font-bold text-white">

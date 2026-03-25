@@ -85,7 +85,7 @@ export default async function LessonLayout(props: {
         <div className="flex-1 p-6">
           <LessonHeader course={course} currentLesson={currentLesson} />
           <VideoPlayer
-            src={currentLesson.videoUrl!}
+            lessonId={currentLesson.id}
             poster="/placeholder.svg?height=400&width=800&text=Video+Thumbnail"
             markLessonComplete={markLessonCompleted}
             goToNextLesson={goToNextLesson}
