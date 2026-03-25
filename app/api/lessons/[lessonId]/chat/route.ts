@@ -1,7 +1,10 @@
 import { NextRequest, NextResponse } from "next/server";
 import { z } from "zod";
 import { auth } from "@/auth";
-import { generateLessonChatReply, LessonChatMessage } from "@/lib/ai/lesson-chat";
+import {
+  generateLessonChatReply,
+  LessonChatMessage,
+} from "@/lib/ai/lesson-chat";
 
 const messageSchema = z.object({
   role: z.enum(["user", "assistant"]),

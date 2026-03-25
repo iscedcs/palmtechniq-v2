@@ -55,7 +55,7 @@ export function AuthenticatedNavigation() {
                 height={100}
                 className="w-10 h-10"
               />
-              <span className="text-2xl font-bold text-gradient">
+              <span className="text-2xl hidden md:block font-bold text-gradient">
                 PalmTechnIQ
               </span>
             </motion.div>

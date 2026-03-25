@@ -269,8 +269,9 @@ export async function getCourseWithModules(courseId: string) {
                 (!previousLesson?.progress?.[0]?.isCompleted ||
                   !previousLessonQuizPassed));
 
+            const { videoUrl: _videoUrl, ...lessonWithoutVideo } = lesson;
             return {
-              ...lesson,
+              ...lessonWithoutVideo,
               isCompleted: lesson.progress?.[0]?.isCompleted ?? false,
               isLocked: isLessonLocked,
               quizPassed: lesson.quiz

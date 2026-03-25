@@ -104,20 +104,20 @@ export async function getStudentDashboardData() {
     const progress =
       totalLessons > 0 ? (completedLessons / totalLessons) * 100 : 0;
 
-    // Calculate time left (estimate based on remaining lessons and average duration)
-    const remainingLessons = totalLessons - completedLessons;
-    const avgLessonDuration = 30; // minutes
-    const timeLeftMinutes = remainingLessons * avgLessonDuration;
+    // Calculate time left from actual lesson durations
+    const allLessons = enrollment.course.modules.flatMap((m: any) => m.lessons);
+    const completedLessonIds = new Set(
+      enrollment.lessonProgress
+        .filter((lp: any) => lp.isCompleted)
+        .map((lp: any) => lp.lessonId),
+    );
+    const timeLeftMinutes = allLessons
+      .filter((lesson: any) => !completedLessonIds.has(lesson.id))
+      .reduce((sum: number, lesson: any) => sum + (lesson.duration || 0), 0);
     const hours = Math.floor(timeLeftMinutes / 60);
     const minutes = timeLeftMinutes % 60;
-
-    // Find next lesson
-    const allLessons = enrollment.course.modules.flatMap((m: any) => m.lessons);
     const nextLesson = allLessons.find(
-      (lesson: any) =>
-        !enrollment.lessonProgress.some(
-          (lp: any) => lp.lessonId === lesson.id && lp.isCompleted,
-        ),
+      (lesson: any) => !completedLessonIds.has(lesson.id),
     );
     const reviewRatings = enrollment.course.reviews.map(
       (review: any) => review.rating,
@@ -244,6 +244,73 @@ export async function getStudentDashboardData() {
     };
   });
 
+  // --- Compute real stats from actual activity data ---
+
+  // Total study time from all lesson progress
+  const totalWatchTime = await db.lessonProgress.aggregate({
+    where: { userId },
+    _sum: { watchTime: true },
+  });
+  const totalStudyMinutes = totalWatchTime._sum.watchTime || 0;
+  const totalStudyHours = Math.floor(totalStudyMinutes / 60);
+
+  // Total completed lessons (for XP calculation)
+  const totalCompletedLessons = await db.lessonProgress.count({
+    where: { userId, isCompleted: true },
+  });
+  const totalXP = totalCompletedLessons * 50;
+
+  // Courses completed & in progress from enrollment data
+  const allEnrollments = await db.enrollment.findMany({
+    where: { userId, status: { in: ["ACTIVE", "COMPLETED"] } },
+    select: { status: true },
+  });
+  const coursesCompleted = allEnrollments.filter(
+    (e: any) => e.status === "COMPLETED",
+  ).length;
+  const coursesInProgress = allEnrollments.filter(
+    (e: any) => e.status === "ACTIVE",
+  ).length;
+
+  // Compute current streak from lesson completion dates
+  const completedLessonDates = await db.lessonProgress.findMany({
+    where: { userId, isCompleted: true, completedAt: { not: null } },
+    select: { completedAt: true },
+    orderBy: { completedAt: "desc" },
+  });
+
+  const toDateKey = (date: Date) => date.toISOString().slice(0, 10);
+  const completedDaySet = new Set(
+    completedLessonDates
+      .map((entry: any) =>
+        entry.completedAt ? toDateKey(entry.completedAt) : null,
+      )
+      .filter(Boolean),
+  );
+
+  let currentStreak = 0;
+  const cursor = new Date();
+  while (completedDaySet.has(toDateKey(cursor))) {
+    currentStreak += 1;
+    cursor.setDate(cursor.getDate() - 1);
+  }
+
+  // Compute dynamic level based on XP
+  const computedLevel =
+    totalXP < 500 ? 1 : totalXP < 2500 ? 5 : totalXP < 7500 ? 10 : 15;
+  const xpToNext =
+    totalXP < 500 ? 500 : totalXP < 2500 ? 2500 : totalXP < 7500 ? 7500 : 15000;
+
+  // Compute rank from XP
+  const computedRank =
+    totalXP < 500
+      ? "Novice"
+      : totalXP < 2500
+        ? "Apprentice"
+        : totalXP < 7500
+          ? "Scholar"
+          : "Master";
+
   // Calculate weekly stats
   const oneWeekAgo = new Date();
   oneWeekAgo.setDate(oneWeekAgo.getDate() - 7);
@@ -251,9 +318,7 @@ export async function getStudentDashboardData() {
   const weeklyLessons = await db.lessonProgress.count({
     where: {
       userId,
-      completedAt: {
-        gte: oneWeekAgo,
-      },
+      completedAt: { gte: oneWeekAgo },
       isCompleted: true,
     },
   });
@@ -261,47 +326,27 @@ export async function getStudentDashboardData() {
   const weeklyWatchTime = await db.lessonProgress.aggregate({
     where: {
       userId,
-      completedAt: {
-        gte: oneWeekAgo,
-      },
+      completedAt: { gte: oneWeekAgo },
     },
-    _sum: {
-      watchTime: true,
-    },
+    _sum: { watchTime: true },
   });
 
-  const totalWatchTimeMinutes = weeklyWatchTime._sum.watchTime || 0;
-  const weeklyHours = Math.floor(totalWatchTimeMinutes / 60);
-  const weeklyMinutes = totalWatchTimeMinutes % 60;
-
-  // Calculate XP earned this week (you might have a different XP calculation)
-  const weeklyXP = weeklyLessons * 50; // Example: 50 XP per lesson
-
-  // Calculate XP to next level
-  const numericLevel = getLevelNumber(student.level);
-  const xpToNext = (numericLevel + 1) * 500; // Example formula
+  const weeklyWatchMinutes = weeklyWatchTime._sum.watchTime || 0;
+  const weeklyHours = Math.floor(weeklyWatchMinutes / 60);
+  const weeklyMinutes = weeklyWatchMinutes % 60;
+  const weeklyXP = weeklyLessons * 50;
 
   return {
     studentData: {
-      level:
-        student.level === "BEGINNER"
-          ? 1
-          : student.level === "INTERMEDIATE"
-            ? 5
-            : student.level === "ADVANCED"
-              ? 10
-              : 15,
-      xp: student.totalPoints,
+      level: computedLevel,
+      xp: totalXP,
       xpToNext,
-      streak: student.streak,
-      coursesCompleted: student.coursesCompleted,
-      coursesInProgress: Math.max(
-        student.coursesStarted - student.coursesCompleted,
-        0,
-      ),
-      totalHours: Math.floor(student.studyHours / 60),
+      streak: currentStreak,
+      coursesCompleted,
+      coursesInProgress,
+      totalHours: totalStudyHours,
       achievements: recentAchievements.length,
-      rank: student.currentRank,
+      rank: computedRank,
     },
     currentCourses,
     upcomingMentorships: formattedMentorships,
@@ -310,7 +355,7 @@ export async function getStudentDashboardData() {
       lessonsCompleted: weeklyLessons,
       studyTime: `${weeklyHours}h ${weeklyMinutes}m`,
       xpEarned: weeklyXP,
-      streak: student.streak,
+      streak: currentStreak,
     },
     userName: student.user.name,
     userAvatar: student.user.avatar || student.user.image,

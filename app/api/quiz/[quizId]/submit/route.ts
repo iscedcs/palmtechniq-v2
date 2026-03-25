@@ -99,6 +99,22 @@ export async function POST(
     const remainingAttempts = Math.max(maxAttempts - (attemptsMade + 1), 0);
 
     if (passed) {
+      // Create quiz achievement milestone
+      const totalPassedQuizzes = await db.quizAttempt.groupBy({
+        by: ["quizId"],
+        where: { userId, passed: true },
+      });
+      const quizMilestones = [1, 5, 10, 25, 50];
+      if (quizMilestones.includes(totalPassedQuizzes.length)) {
+        await db.progressMilestone.create({
+          data: {
+            userId,
+            type: "QUIZ_PASSED",
+            description: `Passed ${totalPassedQuizzes.length} quiz${totalPassedQuizzes.length > 1 ? "zes" : ""}!`,
+          },
+        });
+      }
+
       const moduleLessons = quiz.lesson.module.lessons.sort(
         (a: any, b: any) => a.sortOrder - b.sortOrder,
       );

@@ -11,12 +11,11 @@ import {
   Volume2,
   VolumeX,
   Maximize,
-  Settings,
 } from "lucide-react";
 import { isYoutubeUrl, toYoutubeEmbedUrl } from "@/lib/youtube";
 
 export interface VideoPlayerProps {
-  src: string;
+  lessonId: string;
   poster?: string;
   autoPlay?: boolean;
   markLessonComplete: () => void | Promise<void>;
@@ -25,7 +24,7 @@ export interface VideoPlayerProps {
 }
 
 export default function VideoPlayer({
-  src,
+  lessonId,
   poster,
   autoPlay = false,
   markLessonComplete,
@@ -33,10 +32,16 @@ export default function VideoPlayer({
   onDurationChange,
 }: VideoPlayerProps) {
   const videoRef = useRef<HTMLVideoElement>(null);
+  const playerWrapperRef = useRef<HTMLDivElement>(null);
   const youtubeContainerRef = useRef<HTMLDivElement>(null);
   const youtubePlayerRef = useRef<any>(null);
-  const isYoutube = isYoutubeUrl(src);
-  const youtubeEmbedUrl = isYoutube ? toYoutubeEmbedUrl(src) : "";
+
+  const [src, setSrc] = useState<string | null>(null);
+  const [videoError, setVideoError] = useState<string | null>(null);
+  const [isLoadingUrl, setIsLoadingUrl] = useState(true);
+
+  const isYoutube = src ? isYoutubeUrl(src) : false;
+  const youtubeEmbedUrl = isYoutube && src ? toYoutubeEmbedUrl(src) : "";
   const youtubeVideoId = isYoutube
     ? youtubeEmbedUrl.split("/embed/")[1]?.split("?")[0]
     : "";
@@ -49,6 +54,105 @@ export default function VideoPlayer({
   const [isBuffering, setIsBuffering] = useState(true);
 
   const [playbackSpeed, setPlaybackSpeed] = useState(1);
+  const [isFullscreen, setIsFullscreen] = useState(false);
+
+  // Track fullscreen state
+  // Track fullscreen state and resize YouTube iframe
+  useEffect(() => {
+    const onFsChange = () => {
+      const doc = document as any;
+      const fs = !!(
+        doc.fullscreenElement ||
+        doc.webkitFullscreenElement ||
+        doc.msFullscreenElement
+      );
+      setIsFullscreen(fs);
+
+      // Resize the YouTube iframe to match the new container size
+      const player = youtubePlayerRef.current;
+      if (player?.getIframe) {
+        const iframe = player.getIframe() as HTMLIFrameElement;
+        if (fs) {
+          iframe.style.width = "100%";
+          iframe.style.height = "100%";
+        } else {
+          iframe.style.width = "";
+          iframe.style.height = "";
+        }
+      }
+    };
+    document.addEventListener("fullscreenchange", onFsChange);
+    document.addEventListener("webkitfullscreenchange", onFsChange);
+    return () => {
+      document.removeEventListener("fullscreenchange", onFsChange);
+      document.removeEventListener("webkitfullscreenchange", onFsChange);
+    };
+  }, []);
+
+  // YouTube-specific state tracking
+  const [ytPlaying, setYtPlaying] = useState(false);
+  const [ytCurrentTime, setYtCurrentTime] = useState(0);
+  const ytIntervalRef = useRef<NodeJS.Timeout | null>(null);
+
+  // Track YouTube playback time
+  useEffect(() => {
+    if (!isYoutube) return;
+    ytIntervalRef.current = setInterval(() => {
+      const player = youtubePlayerRef.current;
+      if (player?.getCurrentTime) {
+        setYtCurrentTime(player.getCurrentTime());
+      }
+    }, 500);
+    return () => {
+      if (ytIntervalRef.current) clearInterval(ytIntervalRef.current);
+    };
+  }, [isYoutube, src]);
+
+  const toggleYtPlay = () => {
+    const player = youtubePlayerRef.current;
+    if (!player) return;
+    if (ytPlaying) {
+      player.pauseVideo();
+    } else {
+      player.playVideo();
+    }
+  };
+
+  const seekYt = (time: number) => {
+    const player = youtubePlayerRef.current;
+    if (!player) return;
+    player.seekTo(time, true);
+    setYtCurrentTime(time);
+  };
+  useEffect(() => {
+    let cancelled = false;
+    setSrc(null);
+    setVideoError(null);
+    setIsLoadingUrl(true);
+
+    fetch(`/api/lessons/${lessonId}/video`)
+      .then(async (res) => {
+        if (cancelled) return;
+        if (!res.ok) {
+          const data = await res.json().catch(() => ({}));
+          throw new Error(data.error || "Failed to load video");
+        }
+        const data = await res.json();
+        if (!cancelled) {
+          setSrc(data.videoUrl || null);
+        }
+      })
+      .catch((err) => {
+        if (!cancelled) setVideoError(err.message);
+      })
+      .finally(() => {
+        if (!cancelled) setIsLoadingUrl(false);
+      });
+
+    return () => {
+      cancelled = true;
+    };
+  }, [lessonId]);
 
   // Handle time updates
   const handleTimeUpdate = () => {
@@ -114,8 +218,31 @@ export default function VideoPlayer({
     return `${minutes}:${seconds.toString().padStart(2, "0")}`;
   };
 
+  // Cross-browser fullscreen toggle
+  const toggleFullscreen = (el: HTMLElement | null | undefined) => {
+    if (!el) return;
+    const doc = document as any;
+    if (
+      doc.fullscreenElement ||
+      doc.webkitFullscreenElement ||
+      doc.msFullscreenElement
+    ) {
+      (
+        doc.exitFullscreen ||
+        doc.webkitExitFullscreen ||
+        doc.msExitFullscreen
+      )?.call(doc);
+    } else {
+      (
+        el.requestFullscreen ||
+        (el as any).webkitRequestFullscreen ||
+        (el as any).msRequestFullscreen
+      )?.call(el);
+    }
+  };
+
   useEffect(() => {
-    if (autoPlay && videoRef.current) {
+    if (autoPlay && videoRef.current && src) {
       videoRef.current.play();
       setIsPlaying(true);
     }
@@ -137,6 +264,11 @@ export default function VideoPlayer({
             autoplay: autoPlay ? 1 : 0,
             rel: 0,
             modestbranding: 1,
+            controls: 0,
+            disablekb: 1,
+            iv_load_policy: 3,
+            showinfo: 0,
+            fs: 0,
           },
           events: {
             onReady: (event: any) => {
@@ -147,13 +279,23 @@ export default function VideoPlayer({
               }
             },
             onStateChange: (event: any) => {
-              if (event?.data === (window as any).YT?.PlayerState?.ENDED) {
+              const YT = (window as any).YT;
+              if (event?.data === YT?.PlayerState?.PLAYING) {
+                setYtPlaying(true);
+              } else if (
+                event?.data === YT?.PlayerState?.PAUSED ||
+                event?.data === YT?.PlayerState?.BUFFERING
+              ) {
+                setYtPlaying(false);
+              }
+              if (event?.data === YT?.PlayerState?.ENDED) {
+                setYtPlaying(false);
                 markLessonComplete();
                 goToNextLesson?.();
               }
             },
           },
-        }
+        },
       );
     };
 
@@ -185,23 +327,169 @@ export default function VideoPlayer({
         youtubePlayerRef.current = null;
       }
     };
-  }, [isYoutube, youtubeVideoId, autoPlay, markLessonComplete, goToNextLesson, onDurationChange]);
+  }, [
+    isYoutube,
+    youtubeVideoId,
+    autoPlay,
+    markLessonComplete,
+    goToNextLesson,
+    onDurationChange,
+  ]);
+
+  if (isLoadingUrl) {
+    return (
+      <div className="relative bg-black rounded-lg overflow-hidden w-full aspect-video flex items-center justify-center">
+        <div className="animate-spin rounded-full h-12 w-12 border-4 border-white border-t-transparent"></div>
+      </div>
+    );
+  }
+
+  if (videoError || !src) {
+    return (
+      <div className="relative bg-black rounded-lg overflow-hidden w-full aspect-video flex items-center justify-center">
+        <p className="text-red-400 text-sm">
+          {videoError || "Video not available"}
+        </p>
+      </div>
+    );
+  }
 
   if (isYoutube) {
     return (
-      <div className="relative bg-black rounded-lg overflow-hidden">
-        <div ref={youtubeContainerRef} className="w-full aspect-video" />
+      <div
+        ref={playerWrapperRef}
+        className={`relative bg-black rounded-lg overflow-hidden group ${isFullscreen ? "w-screen h-screen" : ""}`}
+        onContextMenu={(e) => e.preventDefault()}>
+        {/* YouTube player sits at z-0 */}
+        <div
+          ref={youtubeContainerRef}
+          className={`relative z-0 w-full ${isFullscreen ? "h-full" : "aspect-video"}`}
+        />
+
+        {/* Transparent overlay blocks right-click on the iframe */}
+        <div
+          className="absolute inset-0 z-10"
+          style={{ background: "transparent" }}
+          onClick={toggleYtPlay}
+          onDoubleClick={() => toggleFullscreen(playerWrapperRef.current)}
+        />
+
+        {/* Custom controls (visible on hover) */}
+        <div className="absolute bottom-0 left-0 right-0 z-20 bg-gradient-to-t from-black/80 to-transparent p-4 opacity-0 group-hover:opacity-100 transition-opacity">
+          {/* Seek bar */}
+          <div className="mb-2">
+            <Progress
+              value={duration > 0 ? (ytCurrentTime / duration) * 100 : 0}
+              className="h-2 cursor-pointer"
+              onClick={(e) => {
+                const rect = e.currentTarget.getBoundingClientRect();
+                const percent = (e.clientX - rect.left) / rect.width;
+                seekYt(duration * percent);
+              }}
+            />
+          </div>
+          <div className="flex items-center gap-4">
+            {/* Play / Pause */}
+            <Button
+              variant="ghost"
+              size="icon"
+              onClick={(e) => {
+                e.stopPropagation();
+                toggleYtPlay();
+              }}
+              className="text-white hover:bg-white/20">
+              {ytPlaying ? (
+                <Pause className="w-5 h-5" />
+              ) : (
+                <Play className="w-5 h-5" />
+              )}
+            </Button>
+
+            {/* Skip back 10s */}
+            <Button
+              variant="ghost"
+              size="icon"
+              onClick={(e) => {
+                e.stopPropagation();
+                seekYt(Math.max(0, ytCurrentTime - 10));
+              }}
+              className="text-white hover:bg-white/20">
+              <SkipBack className="w-5 h-5" />
+            </Button>
+
+            {/* Skip forward 10s */}
+            <Button
+              variant="ghost"
+              size="icon"
+              onClick={(e) => {
+                e.stopPropagation();
+                seekYt(Math.min(duration, ytCurrentTime + 10));
+              }}
+              className="text-white hover:bg-white/20">
+              <SkipForward className="w-5 h-5" />
+            </Button>
+
+            {/* Time display */}
+            <span className="text-white text-sm">
+              {formatTime(ytCurrentTime)} / {formatTime(duration)}
+            </span>
+
+            <div className="flex-1" />
+
+            {/* Playback speed */}
+            <select
+              value={playbackSpeed}
+              onChange={(e) => {
+                e.stopPropagation();
+                const speed = Number(e.target.value);
+                setPlaybackSpeed(speed);
+                youtubePlayerRef.current?.setPlaybackRate?.(speed);
+              }}
+              onClick={(e) => e.stopPropagation()}
+              className="bg-black/50 text-white border border-white/20 rounded px-2 py-1 text-sm">
+              <option value={0.5}>0.5x</option>
+              <option value={0.75}>0.75x</option>
+              <option value={1}>1x</option>
+              <option value={1.25}>1.25x</option>
+              <option value={1.5}>1.5x</option>
+              <option value={2}>2x</option>
+            </select>
+
+            {/* Fullscreen */}
+            <Button
+              variant="ghost"
+              size="icon"
+              onClick={(e) => {
+                e.stopPropagation();
+                toggleFullscreen(playerWrapperRef.current);
+              }}
+              className="text-white hover:bg-white/20">
+              <Maximize className="w-5 h-5" />
+            </Button>
+          </div>
+        </div>
+
+        {/* Large play button when paused */}
+        {!ytPlaying && (
+          <div className="absolute inset-0 z-10 flex items-center justify-center pointer-events-none">
+            <div className="bg-black/50 rounded-full p-4">
+              <Play className="w-10 h-10 text-white" />
+            </div>
+          </div>
+        )}
       </div>
     );
   }
 
   return (
-    <div className="relative bg-black rounded-lg overflow-hidden">
+    <div
+      ref={playerWrapperRef}
+      className="relative bg-black rounded-lg overflow-hidden">
       <video
         ref={videoRef}
         src={src}
         poster={poster}
-        className="w-full aspect-video"
+        className={`w-full ${isFullscreen ? "h-full object-contain" : "aspect-video"}`}
         onTimeUpdate={handleTimeUpdate}
         onLoadedMetadata={() => {
           handleLoadedMetadata();
@@ -295,16 +583,11 @@ export default function VideoPlayer({
             <option value={2}>2x</option>
           </select>
 
-          {/* Settings & Fullscreen */}
+          {/* Fullscreen */}
           <Button
             variant="ghost"
             size="icon"
-            className="text-white hover:bg-white/20">
-            <Settings className="w-5 h-5" />
-          </Button>
-          <Button
-            variant="ghost"
-            size="icon"
+            onClick={() => toggleFullscreen(playerWrapperRef.current)}
             className="text-white hover:bg-white/20">
             <Maximize className="w-5 h-5" />
           </Button>

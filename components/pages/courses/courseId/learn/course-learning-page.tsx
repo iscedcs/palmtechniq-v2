@@ -21,7 +21,7 @@ export default function CourseLearningPageClient({
   const [currentLesson, setCurrentLesson] = useState<any>(null);
   const [allLessons, setAllLessons] = useState<any[]>([]);
   const [courseProgress, setCourseProgress] = useState<number>(
-    courseData.progress ?? 0
+    courseData.progress ?? 0,
   );
   const [currentTime, setCurrentTime] = useState(0);
   const [duration, setDuration] = useState(0);
@@ -36,8 +36,8 @@ export default function CourseLearningPageClient({
       m.lessons.map((l: any) => ({
         ...l,
         isCompleted: l.isCompleted ?? false,
-        isLocked: l.isCompleted ? false : l.isLocked ?? false,
-      }))
+        isLocked: l.isCompleted ? false : (l.isLocked ?? false),
+      })),
     );
     setAllLessons(lessons);
 
@@ -62,7 +62,7 @@ export default function CourseLearningPageClient({
   useEffect(() => {
     if (!currentLesson) return;
     const moduleForLesson = courseData.modules.find((m: any) =>
-      m.lessons.some((l: any) => l.id === currentLesson.id)
+      m.lessons.some((l: any) => l.id === currentLesson.id),
     );
     if (!moduleForLesson) {
       setModuleTaskPrompt(null);
@@ -90,7 +90,7 @@ export default function CourseLearningPageClient({
   const changeLesson = (lesson: any) => {
     if (lesson.isLocked && !lesson.isCompleted) {
       toast.error(
-        "This lesson is locked. Complete the previous lessons first."
+        "This lesson is locked. Complete the previous lessons first.",
       );
       return;
     }
@@ -102,7 +102,7 @@ export default function CourseLearningPageClient({
     window.history.replaceState(
       null,
       "",
-      `/courses/${courseData.id}/learn/${lesson.id}`
+      `/courses/${courseData.id}/learn/${lesson.id}`,
     );
   };
 
@@ -130,11 +130,7 @@ export default function CourseLearningPageClient({
 
         // unlock the next lesson only if quiz is passed or not required
         const prev = arr[idx - 1];
-        if (
-          prev &&
-          prev.id === lessonId &&
-          (!prev.quiz || prev.quizPassed)
-        ) {
+        if (prev && prev.id === lessonId && (!prev.quiz || prev.quizPassed)) {
           return { ...l, isLocked: false };
         }
 
@@ -179,7 +175,7 @@ export default function CourseLearningPageClient({
       }
 
       const moduleForLesson = courseData.modules.find((m: any) =>
-        m.lessons.some((l: any) => l.id === lessonId)
+        m.lessons.some((l: any) => l.id === lessonId),
       );
       const isLastLessonInModule =
         moduleForLesson?.lessons?.[moduleForLesson.lessons.length - 1]?.id ===
@@ -196,7 +192,7 @@ export default function CourseLearningPageClient({
           moduleTitle: moduleForLesson?.title || "this module",
         });
         toast.info(
-          "This module has a task. Submit it to stay eligible for your certificate."
+          "This module has a task. Submit it to stay eligible for your certificate.",
         );
       }
 
@@ -211,7 +207,7 @@ export default function CourseLearningPageClient({
         if (data.certificateMissing?.projects) missing.push("course project");
         if (missing.length > 0) {
           toast.info(
-            `Course completed, but certificate requires: ${missing.join(", ")}.`
+            `Course completed, but certificate requires: ${missing.join(", ")}.`,
           );
         }
       }
@@ -237,7 +233,7 @@ export default function CourseLearningPageClient({
   }
 
   const currentModule = courseData.modules.find((m: any) =>
-    m.lessons.some((l: any) => l.id === currentLesson.id)
+    m.lessons.some((l: any) => l.id === currentLesson.id),
   );
 
   return (
@@ -246,96 +242,98 @@ export default function CourseLearningPageClient({
         <div className="mx-auto max-w-[1600px] flex flex-col lg:flex-row gap-6 px-4">
           {/* Main Content */}
           <div className="flex-1 p-4 sm:p-6">
-          <div className="mb-4 flex flex-col gap-3">
-            <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3">
-              <div>
-                <h1 className="text-2xl sm:text-3xl font-semibold text-white">
-                  {currentLesson.title}
-                </h1>
-                <p className="text-sm text-gray-400">
-                  {currentModule?.title ?? "Module"}
-                </p>
-              </div>
-              <div className="flex flex-wrap items-center gap-2">
-                {currentLesson.quiz ? (
-                  <Badge className="bg-neon-purple/20 text-neon-purple border border-neon-purple/40">
-                    Quiz Available
-                  </Badge>
-                ) : null}
-                {currentLesson.quizPassed ? (
-                  <Badge className="bg-neon-green/20 text-neon-green border border-neon-green/40">
-                    Quiz Passed
-                  </Badge>
-                ) : null}
-                {currentLesson.isCompleted ? (
-                  <Badge className="bg-neon-green/20 text-neon-green border border-neon-green/40">
-                    Completed
-                  </Badge>
-                ) : currentLesson.isLocked ? (
-                  <Badge className="bg-gray-500/20 text-gray-300 border border-gray-500/40">
-                    Locked
-                  </Badge>
-                ) : (
-                  <Badge className="bg-neon-blue/20 text-neon-blue border border-neon-blue/40">
-                    In Progress
-                  </Badge>
-                )}
+            <div className="mb-4 flex flex-col gap-3">
+              <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3">
+                <div>
+                  <h1 className="text-2xl sm:text-3xl font-semibold text-white">
+                    {currentLesson.title}
+                  </h1>
+                  <p className="text-sm text-gray-400">
+                    {currentModule?.title ?? "Module"}
+                  </p>
+                </div>
+                <div className="flex flex-wrap items-center gap-2">
+                  {currentLesson.quiz ? (
+                    <Badge className="bg-neon-purple/20 text-neon-purple border border-neon-purple/40">
+                      Quiz Available
+                    </Badge>
+                  ) : null}
+                  {currentLesson.quizPassed ? (
+                    <Badge className="bg-neon-green/20 text-neon-green border border-neon-green/40">
+                      Quiz Passed
+                    </Badge>
+                  ) : null}
+                  {currentLesson.isCompleted ? (
+                    <Badge className="bg-neon-green/20 text-neon-green border border-neon-green/40">
+                      Completed
+                    </Badge>
+                  ) : currentLesson.isLocked ? (
+                    <Badge className="bg-gray-500/20 text-gray-300 border border-gray-500/40">
+                      Locked
+                    </Badge>
+                  ) : (
+                    <Badge className="bg-neon-blue/20 text-neon-blue border border-neon-blue/40">
+                      In Progress
+                    </Badge>
+                  )}
+                </div>
               </div>
             </div>
-          </div>
-          <VideoPlayer
-            src={currentLesson.videoUrl}
-            poster={currentLesson.thumbnailUrl}
-            autoPlay
-            markLessonComplete={() => markLessonComplete(currentLesson.id)}
-            onDurationChange={(d) => setDuration(d)}
-          />
-          {currentLesson?.isCompleted &&
-            currentLesson?.quiz &&
-            !currentLesson?.quizPassed && (
-              <div className="mt-4 flex justify-end">
+            <VideoPlayer
+              lessonId={currentLesson.id}
+              poster={currentLesson.thumbnailUrl}
+              autoPlay
+              markLessonComplete={() => markLessonComplete(currentLesson.id)}
+              onDurationChange={(d) => setDuration(d)}
+            />
+            {currentLesson?.isCompleted &&
+              currentLesson?.quiz &&
+              !currentLesson?.quizPassed && (
+                <div className="mt-4 flex justify-end">
+                  <Button
+                    onClick={() =>
+                      router.push(
+                        `/courses/${courseData.id}/quiz/${currentLesson.quiz.id}`,
+                      )
+                    }
+                    className="bg-gradient-to-r from-neon-blue to-neon-purple text-white">
+                    Start Quiz
+                  </Button>
+                </div>
+              )}
+            {moduleTaskPrompt && (
+              <div className="mt-4 flex flex-col gap-3 rounded-xl border border-neon-orange/40 bg-neon-orange/10 p-4 text-sm text-orange-100 sm:flex-row sm:items-center sm:justify-between">
+                <div>
+                  <p className="font-medium text-white">
+                    Module task available
+                  </p>
+                  <p className="text-orange-200/80">
+                    Complete the task for {moduleTaskPrompt.moduleTitle} to stay
+                    eligible for your certificate.
+                  </p>
+                </div>
                 <Button
                   onClick={() =>
                     router.push(
-                      `/courses/${courseData.id}/quiz/${currentLesson.quiz.id}`
+                      `/student/assignments?taskId=${moduleTaskPrompt.taskId}`,
                     )
                   }
-                  className="bg-gradient-to-r from-neon-blue to-neon-purple text-white">
-                  Start Quiz
+                  className="bg-gradient-to-r from-neon-orange to-orange-400 text-white">
+                  Go to Task
                 </Button>
               </div>
             )}
-          {moduleTaskPrompt && (
-            <div className="mt-4 flex flex-col gap-3 rounded-xl border border-neon-orange/40 bg-neon-orange/10 p-4 text-sm text-orange-100 sm:flex-row sm:items-center sm:justify-between">
-              <div>
-                <p className="font-medium text-white">Module task available</p>
-                <p className="text-orange-200/80">
-                  Complete the task for {moduleTaskPrompt.moduleTitle} to stay
-                  eligible for your certificate.
-                </p>
-              </div>
-              <Button
-                onClick={() =>
-                  router.push(
-                    `/student/assignments?taskId=${moduleTaskPrompt.taskId}`
-                  )
-                }
-                className="bg-gradient-to-r from-neon-orange to-orange-400 text-white">
-                Go to Task
-              </Button>
-            </div>
-          )}
-          <LessonTabs
-            description={currentLesson.description || ""}
-            lessonResources={currentLesson.resources || []}
-            moduleResources={currentModule?.resources || []}
-            reviews={currentLesson.reviews || []}
-            quiz={currentLesson.quiz}
-            courseId={courseData.id}
-            isCompleted={currentLesson.isCompleted}
-            quizPassed={currentLesson.quizPassed}
-          />
-        </div>
+            <LessonTabs
+              description={currentLesson.description || ""}
+              lessonResources={currentLesson.resources || []}
+              moduleResources={currentModule?.resources || []}
+              reviews={currentLesson.reviews || []}
+              quiz={currentLesson.quiz}
+              courseId={courseData.id}
+              isCompleted={currentLesson.isCompleted}
+              quizPassed={currentLesson.quizPassed}
+            />
+          </div>
 
           {/* Sidebar */}
           <LessonSidebar

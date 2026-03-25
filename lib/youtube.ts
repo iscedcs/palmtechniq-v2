@@ -18,17 +18,26 @@ export const isYoutubeUrl = (url: string) => {
 export const toYoutubeEmbedUrl = (url: string) => {
   try {
     const parsed = new URL(url);
+    let videoId = "";
+
     if (parsed.hostname === "youtu.be" || parsed.hostname === "www.youtu.be") {
-      const id = parsed.pathname.replace("/", "");
-      return id ? `https://www.youtube.com/embed/${id}` : url;
+      videoId = parsed.pathname.replace("/", "");
+    } else if (parsed.pathname.startsWith("/embed/")) {
+      videoId = parsed.pathname.split("/embed/")[1]?.split("?")[0] || "";
+    } else {
+      videoId = parsed.searchParams.get("v") || "";
     }
 
-    if (parsed.pathname.startsWith("/embed/")) {
-      return url;
-    }
+    if (!videoId) return url;
 
-    const id = parsed.searchParams.get("v");
-    return id ? `https://www.youtube.com/embed/${id}` : url;
+    const params = new URLSearchParams({
+      rel: "0",
+      modestbranding: "1",
+      iv_load_policy: "3",
+      showinfo: "0",
+    });
+
+    return `https://www.youtube-nocookie.com/embed/${videoId}?${params.toString()}`;
   } catch {
     return url;
   }

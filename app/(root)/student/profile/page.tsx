@@ -105,6 +105,8 @@ export default function StudentProfile() {
     achievements: 0,
     rank: "",
     averageScore: 0,
+    monthlyHours: 0,
+    longestStreak: 0,
   });
 
   const [achievements, setAchievements] = useState<
@@ -197,6 +199,8 @@ export default function StudentProfile() {
         averageScore: progressResult.stats.averageScore,
         streak: progressResult.learningStreak.current,
         rank: progressResult.stats.rank,
+        monthlyHours: progressResult.stats.monthlyHours,
+        longestStreak: progressResult.learningStreak.longest,
       }));
 
       setAchievements(
@@ -558,21 +562,21 @@ export default function StudentProfile() {
               icon={Clock}
               title="Learning Hours"
               value={`${studentStats.totalHours}h`}
-              subtitle="This month: 24h"
+              subtitle={`This month: ${studentStats.monthlyHours}h`}
               color="from-neon-green to-emerald-400"
             />
             <StatCard
               icon={Trophy}
               title="Achievements"
               value={studentStats.achievements}
-              subtitle="3 this week"
+              subtitle="Keep earning more"
               color="from-neon-orange to-yellow-400"
             />
             <StatCard
               icon={Fire}
               title="Current Streak"
               value={`${studentStats.streak} days`}
-              subtitle="Personal best: 12"
+              subtitle={`Best: ${studentStats.longestStreak} days`}
               color="from-neon-purple to-pink-400"
             />
           </div>

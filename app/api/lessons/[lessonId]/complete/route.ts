@@ -36,6 +36,7 @@ export async function POST(
         course: {
           select: {
             id: true,
+            title: true,
             certificate: true,
             modules: {
               include: {
@@ -173,6 +174,92 @@ export async function POST(
         completedAt: canCompleteEnrollment ? now : null,
       },
     });
+
+    // Keep Student record stats in sync
+    const today = new Date();
+    today.setHours(0, 0, 0, 0);
+    const student = await db.student.findUnique({
+      where: { userId },
+      select: { lastActiveDate: true, streak: true },
+    });
+
+    if (student) {
+      const lastActive = student.lastActiveDate;
+      const lastActiveDay = lastActive
+        ? new Date(
+            lastActive.getFullYear(),
+            lastActive.getMonth(),
+            lastActive.getDate(),
+          )
+        : null;
+
+      let newStreak = student.streak;
+      if (!lastActiveDay || lastActiveDay.getTime() < today.getTime()) {
+        // Check if yesterday was the last active day (continue streak) or not (reset)
+        const yesterday = new Date(today);
+        yesterday.setDate(yesterday.getDate() - 1);
+        if (lastActiveDay && lastActiveDay.getTime() === yesterday.getTime()) {
+          newStreak = student.streak + 1;
+        } else if (
+          !lastActiveDay ||
+          lastActiveDay.getTime() < yesterday.getTime()
+        ) {
+          newStreak = 1;
+        }
+      }
+
+      const watchTimeToAdd = typeof duration === "number" ? duration : 0;
+
+      // Compute new total XP to determine rank
+      const totalCompleted = await db.lessonProgress.count({
+        where: { userId, isCompleted: true },
+      });
+      const newTotalXP = totalCompleted * 50;
+      const newRank =
+        newTotalXP < 500
+          ? "Novice"
+          : newTotalXP < 2500
+            ? "Apprentice"
+            : newTotalXP < 7500
+              ? "Scholar"
+              : "Master";
+
+      await db.student.update({
+        where: { userId },
+        data: {
+          totalPoints: { increment: 50 },
+          studyHours: { increment: watchTimeToAdd },
+          streak: newStreak,
+          lastActiveDate: now,
+          currentRank: newRank,
+          ...(canCompleteEnrollment
+            ? { coursesCompleted: { increment: 1 } }
+            : {}),
+        },
+      });
+
+      // Create achievement milestones at key thresholds
+      const milestoneThresholds = [1, 5, 10, 25, 50, 100, 200];
+      if (milestoneThresholds.includes(totalCompleted)) {
+        await db.progressMilestone.create({
+          data: {
+            userId,
+            type: "LESSON_COMPLETED",
+            description: `Completed ${totalCompleted} lesson${totalCompleted > 1 ? "s" : ""}!`,
+          },
+        });
+      }
+
+      if (canCompleteEnrollment) {
+        await db.progressMilestone.create({
+          data: {
+            userId,
+            type: "COURSE_COMPLETED",
+            description: `Completed "${enrollment.course.title}"`,
+          },
+        });
+      }
+    }
 
     const moduleTasks = courseTasks.filter(
       (task: any) => task.moduleId === lesson.moduleId,
