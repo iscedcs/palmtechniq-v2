@@ -324,6 +324,12 @@ export function PublicNavigationClient({
                   Contact
                 </Button>
               </Link>
+
+              <Link href="/enroll">
+                <Button className="bg-gradient-to-r from-green-500 to-emerald-600 hover:from-green-600 hover:to-emerald-700 text-white transition-all">
+                  Enroll Now
+                </Button>
+              </Link>
             </div>
 
             {/* Right Side - Auth Buttons */}
@@ -401,6 +407,11 @@ export function PublicNavigationClient({
                     variant="ghost"
                     className="w-full justify-start text-gray-300 hover:text-white">
                     Contact
+                  </Button>
+                </Link>
+                <Link href="/enroll" onClick={() => setIsMobileOpen(false)}>
+                  <Button className="w-full justify-start bg-gradient-to-r from-green-500 to-emerald-600 text-white">
+                    Enroll Now
                   </Button>
                 </Link>
 
