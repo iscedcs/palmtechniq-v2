@@ -82,6 +82,7 @@ model User {
   wishlist                Wishlist[]
   approvedWithdrawals     WithdrawalRequest[]      @relation("WithdrawalApprover")
   withdrawalRequests      WithdrawalRequest[]
+  programEnrollments      ProgramEnrollment[]
 
   @@map("users")
 }
@@ -622,41 +623,41 @@ model AdvisorFollowUp {
 }
 
 model MentorshipSession {
-  id              String                  @id @default(cuid())
-  title           String
-  description     String?
-  duration        Int
-  price           Float
-  status          SessionStatus           @default(SCHEDULED)
-  meetingUrl      String?
-  notes           String?
-  feedback        String?
-  rating          Int?
-  scheduledAt     DateTime
-  startedAt       DateTime?
-  endedAt         DateTime?
-  studentId       String
-  tutorId         String
-  courseId        String?
-  createdAt       DateTime                @default(now())
-  updatedAt       DateTime                @updatedAt
-  bookingMode     MentorshipBookingMode   @default(INSTANT)
-  packageName     String?
-  packageSessions Int?
-  paymentStatus   MentorshipPaymentStatus @default(PENDING)
-  approvalNotes   String?
-  rejectedAt      DateTime?
-  approvalDeadline DateTime?
-  isOffering      Boolean                 @default(false)
-  offeringSessionId String?               // Reference to original offering if this is a booking
-  bookingStartTime DateTime?              // When student selected to start within offering
-  bookingEndTime   DateTime?              // When student selected to end (for time slot booking)
-  student         User                    @relation("StudentSessions", fields: [studentId], references: [id], onDelete: Cascade)
-  tutor           User                    @relation("TutorSessions", fields: [tutorId], references: [id], onDelete: Cascade)
-  course          Course?                 @relation(fields: [courseId], references: [id], onDelete: SetNull)
-  offering        MentorshipSession?      @relation("OfferingBookings", fields: [offeringSessionId], references: [id], onDelete: Cascade)
-  bookings        MentorshipSession[]     @relation("OfferingBookings")
-  transactions    Transaction[]
+  id                String                  @id @default(cuid())
+  title             String
+  description       String?
+  duration          Int
+  price             Float
+  status            SessionStatus           @default(SCHEDULED)
+  meetingUrl        String?
+  notes             String?
+  feedback          String?
+  rating            Int?
+  scheduledAt       DateTime
+  startedAt         DateTime?
+  endedAt           DateTime?
+  studentId         String
+  tutorId           String
+  courseId          String?
+  createdAt         DateTime                @default(now())
+  updatedAt         DateTime                @updatedAt
+  bookingMode       MentorshipBookingMode   @default(INSTANT)
+  packageName       String?
+  packageSessions   Int?
+  paymentStatus     MentorshipPaymentStatus @default(PENDING)
+  approvalNotes     String?
+  rejectedAt        DateTime?
+  approvalDeadline  DateTime?
+  isOffering        Boolean                 @default(false)
+  offeringSessionId String? // Reference to original offering if this is a booking
+  bookingStartTime  DateTime? // When student selected to start within offering
+  bookingEndTime    DateTime? // When student selected to end (for time slot booking)
+  student           User                    @relation("StudentSessions", fields: [studentId], references: [id], onDelete: Cascade)
+  tutor             User                    @relation("TutorSessions", fields: [tutorId], references: [id], onDelete: Cascade)
+  course            Course?                 @relation(fields: [courseId], references: [id], onDelete: SetNull)
+  offering          MentorshipSession?      @relation("OfferingBookings", fields: [offeringSessionId], references: [id], onDelete: Cascade)
+  bookings          MentorshipSession[]     @relation("OfferingBookings")
+  transactions      Transaction[]
 
   @@map("mentorship_sessions")
 }
@@ -1220,12 +1221,12 @@ model LoginAttempt {
 }
 
 model IPBlacklist {
-  id        String   @id @default(cuid())
-  ipAddress String   @unique
-  reason    String?
-  blockedAt DateTime @default(now())
+  id          String    @id @default(cuid())
+  ipAddress   String    @unique
+  reason      String?
+  blockedAt   DateTime  @default(now())
   unblockedAt DateTime?
-  isActive  Boolean  @default(true)
+  isActive    Boolean   @default(true)
 
   @@index([ipAddress])
   @@map("ip_blacklist")
@@ -1285,6 +1286,100 @@ model GroupMember {
 
   @@unique([groupPurchaseId, userId])
   @@map("group_members")
+}
+
+model ProfessionalProgram {
+  id             String          @id @default(cuid())
+  name           String
+  slug           String          @unique
+  description    String?
+  duration       ProgramDuration
+  fullPrice      Float // Full payment price in Naira
+  installTotal   Float // Total when paying in installments
+  firstInstall   Float // 70% of installTotal
+  secondInstall  Float // 30% of installTotal
+  isActive       Boolean         @default(true)
+  careerOutcomes String[] // Array of career outcomes
+  curriculum     String[] // Key topics covered
+  createdAt      DateTime        @default(now())
+  updatedAt      DateTime        @updatedAt
+
+  cohorts     ProgramCohort[]
+  enrollments ProgramEnrollment[]
+
+  @@map("professional_programs")
+}
+
+model ProgramCohort {
+  id            String    @id @default(cuid())
+  cycleNumber   Int // Sequential cycle number (e.g., 42)
+  year          Int // Full year (e.g., 2026)
+  month         Int // 1–12
+  quarterLabel  String // e.g., "Q2"
+  phoneticLabel String // e.g., "Delta"
+  displayName   String // e.g., "Cycle 42 · 26Q2 Delta"
+  startDate     DateTime
+  endDate       DateTime?
+  seatLimit     Int       @default(30)
+  seatsTaken    Int       @default(0)
+  isOpen        Boolean   @default(true)
+  programId     String
+  createdAt     DateTime  @default(now())
+  updatedAt     DateTime  @updatedAt
+
+  program     ProfessionalProgram @relation(fields: [programId], references: [id], onDelete: Cascade)
+  enrollments ProgramEnrollment[]
+
+  @@unique([programId, cycleNumber])
+  @@map("program_cohorts")
+}
+
+model ProgramEnrollment {
+  id                   String                  @id @default(cuid())
+  fullName             String
+  email                String
+  phone                String
+  dateOfBirth          DateTime?
+  highestQualification String?
+  learningMode         LearningMode            @default(VIRTUAL)
+  paymentPlan          PaymentPlanType         @default(FULL_PAYMENT)
+  status               ProgramEnrollmentStatus @default(PENDING_PAYMENT)
+  totalAmount          Float
+  amountPaid           Float                   @default(0)
+  notes                String?
+
+  programId String
+  cohortId  String
+  userId    String? // Linked after account provisioning
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  program      ProfessionalProgram  @relation(fields: [programId], references: [id], onDelete: Cascade)
+  cohort       ProgramCohort        @relation(fields: [cohortId], references: [id], onDelete: Cascade)
+  user         User?                @relation(fields: [userId], references: [id], onDelete: SetNull)
+  installments InstallmentPayment[]
+
+  @@map("program_enrollments")
+}
+
+model InstallmentPayment {
+  id              String            @id @default(cuid())
+  enrollmentId    String
+  installmentNo   Int // 1 or 2
+  amount          Float
+  dueDate         DateTime
+  paidAt          DateTime?
+  status          InstallmentStatus @default(PENDING)
+  paystackRef     String?           @unique
+  transactionData Json?
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  enrollment ProgramEnrollment @relation(fields: [enrollmentId], references: [id], onDelete: Cascade)
+
+  @@map("installment_payments")
 }
 
 enum ReviewReactionType {
@@ -1514,6 +1609,7 @@ enum Language {
   FR
   DE
 }
+
 enum CertificateType {
   CertificateOfCompletion
   ProfessionalCertification
@@ -1530,4 +1626,41 @@ enum ProgramType {
   CRASH_COURSE
   THREE_MONTHS
   SIX_MONTHS
+  ONE_YEAR
+}
+
+// ─── Professional Program Enrollment ────────────────────────────────────────
+
+enum ProgramDuration {
+  ONE_MONTH
+  THREE_MONTHS
+  SIX_MONTHS
+  ONE_YEAR
+}
+
+enum LearningMode {
+  PHYSICAL
+  VIRTUAL
+}
+
+enum ProgramEnrollmentStatus {
+  PENDING_PAYMENT
+  FIRST_INSTALLMENT_PAID
+  FULLY_PAID
+  ACTIVE
+  COMPLETED
+  CANCELLED
+  DROPPED
+}
+
+enum PaymentPlanType {
+  FULL_PAYMENT
+  INSTALLMENT
+}
+
+enum InstallmentStatus {
+  PENDING
+  PAID
+  OVERDUE
+  CANCELLED
 }

@@ -252,3 +252,116 @@ export async function sendTutorMentorApplicationStatusNotification(params: {
     text,
   });
 }
+
+export async function sendEnrollmentConfirmation(params: {
+  email: string;
+  fullName: string;
+  programName: string;
+  cohortName: string;
+  learningMode: string;
+  paymentPlan: string;
+  amountPaid: number;
+  totalAmount: number;
+  status: string;
+  isNewAccount?: boolean;
+  tempPassword?: string;
+  resetLink?: string;
+  loginUrl?: string;
+}) {
+  try {
+    const { default: EnrollmentConfirmation } =
+      await import("./email-templates/enrollment-confirmation");
+    const resend = new Resend(process.env.RESEND_API_KEY!);
+
+    await resend.emails.send({
+      from: process.env.FROM_EMAIL_ADDRESS!,
+      to: params.email,
+      subject: `Enrollment Confirmed — ${params.programName} | PalmTechnIQ`,
+      react: EnrollmentConfirmation({
+        fullName: params.fullName,
+        email: params.email,
+        programName: params.programName,
+        cohortName: params.cohortName,
+        learningMode: params.learningMode,
+        paymentPlan: params.paymentPlan,
+        amountPaid: params.amountPaid,
+        totalAmount: params.totalAmount,
+        status: params.status,
+        isNewAccount: params.isNewAccount,
+        tempPassword: params.tempPassword,
+        resetLink: params.resetLink,
+        loginUrl: params.loginUrl,
+      }),
+    });
+  } catch (error) {
+    console.error("[sendEnrollmentConfirmation] Failed to send email:", error);
+  }
+}
+
+export async function sendAdminEnrollmentNotification(params: {
+  fullName: string;
+  email: string;
+  phone: string;
+  programName: string;
+  cohortName: string;
+  learningMode: string;
+  paymentPlan: string;
+  amountPaid: number;
+  totalAmount: number;
+  status: string;
+  isNewAccount: boolean;
+}) {
+  try {
+    const resend = new Resend(process.env.RESEND_API_KEY!);
+    const adminEmail =
+      process.env.ADMIN_EMAIL_ADDRESS || "admin@palmtechniq.com";
+    const domain = process.env.NEXT_PUBLIC_URL || "https://palmtechniq.com";
+
+    const balanceRemaining = params.totalAmount - params.amountPaid;
+    const isFullyPaid = params.status === "FULLY_PAID";
+
+    const formatAmount = (n: number) =>
+      new Intl.NumberFormat("en-NG", {
+        style: "currency",
+        currency: "NGN",
+        minimumFractionDigits: 0,
+      }).format(n);
+
+    const subject = `🎓 New Enrollment: ${params.fullName} — ${params.programName}`;
+    const text = [
+      "New Professional Program Enrollment",
+      "====================================",
+      "",
+      `Student: ${params.fullName}`,
+      `Email: ${params.email}`,
+      `Phone: ${params.phone}`,
+      "",
+      `Program: ${params.programName}`,
+      `Cohort: ${params.cohortName}`,
+      `Learning Mode: ${params.learningMode === "VIRTUAL" ? "Virtual" : "Physical"}`,
+      `Payment Plan: ${params.paymentPlan === "INSTALLMENT" ? "Installment (70/30)" : "Full Payment"}`,
+      "",
+      `Amount Paid: ${formatAmount(params.amountPaid)}`,
+      `Total Fee: ${formatAmount(params.totalAmount)}`,
+      isFullyPaid
+        ? "Status: ✅ FULLY PAID"
+        : `Status: ⏳ Balance remaining — ${formatAmount(balanceRemaining)}`,
+      "",
+      `Account: ${params.isNewAccount ? "New account created" : "Linked to existing account"}`,
+      "",
+      `View enrollments: ${domain}/admin/enrollments`,
+    ].join("\n");
+
+    await resend.emails.send({
+      from: process.env.FROM_EMAIL_ADDRESS!,
+      to: adminEmail,
+      subject,
+      text,
+    });
+  } catch (error) {
+    console.error(
+      "[sendAdminEnrollmentNotification] Failed to send email:",
+      error,
+    );
+  }
+}

@@ -21,6 +21,8 @@ export const publicRoutes = [
   "/awareness-program",
   "/features/ai-interview",
   "/features/mentorship",
+  "/enroll",
+  "/enroll/verify",
 ];
 
 /**
