@@ -334,14 +334,14 @@ export async function forgotPassword(
     const validated = forgotPasswordSchema.safeParse(data);
 
     if (!validated.success) {
-      return { error: "Invalid email" };
+      return { error: "You'll recieve a token if email exist!" };
     }
 
     const { email } = validated.data;
 
     const existingUser = await getUserByEmail(email);
     if (!existingUser) {
-      return { error: "Email not found" };
+      return { error: "You'll recieve a token if email exist!" };
     }
 
     // Generate reset token
@@ -388,7 +388,7 @@ export async function resetPassword(
     const existingUser = await getUserByEmail(existingToken?.email!);
 
     if (!existingUser) {
-      return { error: "Email does not exist!" };
+      return { error: "You'll recieve a token if email exist!" };
     }
 
     const hashed = await hashPassword(password);
@@ -426,7 +426,7 @@ export async function verifyEmail(token: string) {
     const existingUser = await getUserByEmail(existingToken.email);
 
     if (!existingUser) {
-      return { error: "Email does not exist!" };
+      return { error: "You'll recieve a mail if email exist!" };
     }
 
     await db.user.update({
