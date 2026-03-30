@@ -77,7 +77,7 @@ export const useCartStore = create<CartState>()(
           // Track analytics
           if (typeof window !== "undefined") {
             window.gtag?.("event", "add_to_cart", {
-              currency: "USD",
+              currency: "NGN",
               value: item.price,
               items: [
                 {
@@ -104,7 +104,7 @@ export const useCartStore = create<CartState>()(
         // Track analytics
         if (item && typeof window !== "undefined") {
           window.gtag?.("event", "remove_from_cart", {
-            currency: "USD",
+            currency: "NGN",
             value: item.price,
             items: [
               {
@@ -157,7 +157,8 @@ export const useCartStore = create<CartState>()(
             promoCode: {
               code: promo.code,
               discount: promo.discountValue,
-              type: promo.discountType === "PERCENTAGE" ? "percentage" : "fixed",
+              type:
+                promo.discountType === "PERCENTAGE" ? "percentage" : "fixed",
               isValid: true,
             },
             isLoading: false,
@@ -210,6 +211,6 @@ export const useCartStore = create<CartState>()(
         items: state.items,
         promoCode: state.promoCode,
       }),
-    }
-  )
+    },
+  ),
 );

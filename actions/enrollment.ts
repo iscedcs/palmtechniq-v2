@@ -205,8 +205,8 @@ export async function submitEnrollment(data: EnrollmentFormData) {
       fullName: form.fullName,
       email: form.email,
       phone: form.phone,
-      dateOfBirth: form.dateOfBirth ? new Date(form.dateOfBirth) : null,
-      highestQualification: form.highestQualification || null,
+      dateOfBirth: new Date(form.dateOfBirth),
+      highestQualification: form.highestQualification,
       learningMode: form.learningMode,
       paymentPlan: form.paymentPlan,
       totalAmount,
@@ -217,10 +217,13 @@ export async function submitEnrollment(data: EnrollmentFormData) {
 
   // ── Create installment schedule ──
   const now = new Date();
-  const twoWeeksLater = new Date(now.getTime() + 14 * 24 * 60 * 60 * 1000);
+  // 2nd installment due 1 month after cohort start date
+  const cohortStart = new Date(cohortParts.year, cohortParts.month - 1, 1);
+  const secondInstallmentDue = new Date(cohortStart);
+  secondInstallmentDue.setMonth(secondInstallmentDue.getMonth() + 1);
 
   if (isInstallment) {
-    // Two installments: 70% now, 30% in 2 weeks
+    // Two installments: 70% now, 30% one month after classes start
     await db.installmentPayment.createMany({
       data: [
         {
@@ -234,7 +237,7 @@ export async function submitEnrollment(data: EnrollmentFormData) {
           enrollmentId: enrollment.id,
           installmentNo: 2,
           amount: programDef.secondInstall,
-          dueDate: twoWeeksLater,
+          dueDate: secondInstallmentDue,
         },
       ],
     });
@@ -429,7 +432,10 @@ export async function verifyEnrollmentPayment(reference: string) {
       status: newStatus,
       isNewAccount: accountInfo?.isNew ?? false,
     }).catch((err) =>
-      console.error("[verifyEnrollmentPayment] Admin notification failed:", err),
+      console.error(
+        "[verifyEnrollmentPayment] Admin notification failed:",
+        err,
+      ),
     );
 
     return {

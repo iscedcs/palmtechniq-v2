@@ -14,8 +14,8 @@ export const enrollmentSchema = z.object({
     .string()
     .min(10, "Phone number must be at least 10 digits")
     .regex(/^\+?[0-9\s\-()]+$/, "Please enter a valid phone number"),
-  dateOfBirth: z.string().optional(),
-  highestQualification: z.string().optional(),
+  dateOfBirth: z.string().min(1, "Date of birth is required"),
+  highestQualification: z.string().min(1, "Highest qualification is required"),
 
   // Step 3 — Program configuration
   cohortValue: z.string().min(1, "Please select a cohort"),

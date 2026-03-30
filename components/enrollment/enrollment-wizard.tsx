@@ -118,7 +118,13 @@ export function EnrollmentWizard() {
         fieldsToValidate = ["programSlug"];
         break;
       case 1:
-        fieldsToValidate = ["fullName", "email", "phone"];
+        fieldsToValidate = [
+          "fullName",
+          "email",
+          "phone",
+          "dateOfBirth",
+          "highestQualification",
+        ];
         break;
       case 2:
         fieldsToValidate = ["cohortValue", "learningMode"];
@@ -507,7 +513,7 @@ function StepPersonalDetails({ form }: { form: any }) {
           render={({ field }) => (
             <FormItem>
               <FormLabel className="text-gray-300">
-                Date of Birth <span className="text-gray-600">(optional)</span>
+                Date of Birth <span className="text-red-500">*</span>
               </FormLabel>
               <FormControl>
                 <Input
@@ -527,8 +533,7 @@ function StepPersonalDetails({ form }: { form: any }) {
           render={({ field }) => (
             <FormItem>
               <FormLabel className="text-gray-300">
-                Highest Qualification{" "}
-                <span className="text-gray-600">(optional)</span>
+                Highest Qualification <span className="text-red-500">*</span>
               </FormLabel>
               <FormControl>
                 <Select onValueChange={field.onChange} value={field.value}>
@@ -767,7 +772,7 @@ function StepPaymentPlan({
                           2-Part Installment (70/30)
                         </p>
                         <p className="text-sm text-gray-400 mt-0.5">
-                          70% now, 30% in 2 weeks
+                          70% now, 30% one month after classes start
                         </p>
                       </div>
                     </div>
@@ -791,7 +796,7 @@ function StepPaymentPlan({
                       </div>
                       <div className="flex justify-between text-sm">
                         <span className="text-gray-400">
-                          2nd Installment (after 2 weeks)
+                          2nd Installment (1 month after start)
                         </span>
                         <span className="font-semibold text-white">
                           {formatNaira(selectedProgram.secondInstall)}
@@ -934,7 +939,7 @@ function StepReview({
                 </div>
                 <div className="flex justify-between">
                   <span className="text-gray-400">
-                    2nd Installment (in 2 weeks)
+                    2nd Installment (1 month after start)
                   </span>
                   <span className="text-white">
                     {formatNaira(selectedProgram.secondInstall)}

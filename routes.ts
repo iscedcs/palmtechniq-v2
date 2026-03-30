@@ -78,7 +78,9 @@ export const protectedRoutes = [
   "/admin/applications",
   "/admin/mentorship",
   "/admin/settings",
+  "/admin/promotions",
   "/settings",
+  "/tutor/promotions",
 ];
 
 /**
@@ -95,6 +97,7 @@ export const adminRoutes = [
   "/admin/applications",
   "/admin/mentorship",
   "/admin/settings",
+  "/admin/promotions",
 ];
 
 /**
