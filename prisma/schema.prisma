@@ -83,6 +83,7 @@ model User {
   approvedWithdrawals     WithdrawalRequest[]      @relation("WithdrawalApprover")
   withdrawalRequests      WithdrawalRequest[]
   programEnrollments      ProgramEnrollment[]
+  promotions              CoursePromotion[]        @relation("PromotionCreator")
 
   @@map("users")
 }
@@ -216,6 +217,7 @@ model Course {
   tutorEarnings          TutorEarning[]
   wishlist               Wishlist[]
   mentorshipSessions     MentorshipSession[]
+  promotions             CoursePromotion[]
 
   @@map("courses")
 }
@@ -1662,5 +1664,58 @@ enum InstallmentStatus {
   PENDING
   PAID
   OVERDUE
+  CANCELLED
+}
+
+// ─── Course Promotion / Ad System ───────────────────────────────────────────
+
+model PlatformSettings {
+  id        String   @id @default("platform_settings")
+  settings  Json     @default("{}")
+  updatedAt DateTime @updatedAt
+
+  @@map("platform_settings")
+}
+
+model CoursePromotion {
+  id                String          @id @default(cuid())
+  courseId          String
+  course            Course          @relation(fields: [courseId], references: [id], onDelete: Cascade)
+  promotedBy        String
+  promoter          User            @relation("PromotionCreator", fields: [promotedBy], references: [id])
+  type              PromotionType
+  status            PromotionStatus @default(PENDING_PAYMENT)
+  headline          String?
+  description       String?
+  ctaText           String?         @default("Enroll Now")
+  promoPrice        Float?
+  originalPrice     Float?
+  startDate         DateTime
+  endDate           DateTime
+  fee               Float           @default(0)
+  feePaid           Boolean         @default(false)
+  paystackReference String?         @unique
+  impressions       Int             @default(0)
+  clicks            Int             @default(0)
+  priority          Int             @default(0)
+  createdAt         DateTime        @default(now())
+  updatedAt         DateTime        @updatedAt
+
+  @@index([status, startDate, endDate])
+  @@index([courseId])
+  @@map("course_promotions")
+}
+
+enum PromotionType {
+  ADMIN
+  TUTOR
+}
+
+enum PromotionStatus {
+  PENDING_PAYMENT
+  PENDING
+  ACTIVE
+  EXPIRED
+  REJECTED
   CANCELLED
 }

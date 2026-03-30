@@ -18,6 +18,7 @@ import {
   Flame,
   NotebookIcon,
   FileText,
+  Megaphone,
 } from "lucide-react";
 
 export const courseTypes = [
@@ -94,6 +95,7 @@ export const roleNavItems = {
     { icon: MessageSquare, label: "Projects", href: "/tutor/projects" },
     { icon: NotebookIcon, label: "Tasks", href: "/tutor/tasks" },
     { icon: MessageSquare, label: "Reviews", href: "/tutor/reviews" },
+    { icon: Megaphone, label: "Promotions", href: "/tutor/promotions" },
   ],
   ADMIN: [
     { icon: Home, label: "Dashboard", href: "/admin" },
@@ -103,7 +105,7 @@ export const roleNavItems = {
     { icon: FileText, label: "Applications", href: "/admin/applications" },
     { icon: Calendar, label: "Mentorship", href: "/admin/mentorship" },
     { icon: Wallet, label: "Finance", href: "/admin/finance" },
-    // { icon: Settings, label: "Settings", href: "/admin/settings" },
+    { icon: Megaphone, label: "Promotions", href: "/admin/promotions" },
   ],
 };
 
@@ -149,6 +151,7 @@ export const roleMenuItems = {
     { icon: FileText, label: "Applications", href: "/admin/applications" },
     { icon: Calendar, label: "Mentorship Ops", href: "/admin/mentorship" },
     { icon: Wallet, label: "Financial Reports", href: "/admin/finance" },
+    { icon: Megaphone, label: "Promotions", href: "/admin/promotions" },
     { icon: Settings, label: "System Settings", href: "/admin/settings" },
   ],
 };

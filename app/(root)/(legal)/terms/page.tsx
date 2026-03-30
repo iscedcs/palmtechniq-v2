@@ -222,7 +222,7 @@ export default function TermsOfService() {
                           • Subscription fees are billed monthly or annually
                         </li>
                         <li>
-                          • All prices are in USD unless otherwise specified
+                          • All prices are in NGN unless otherwise specified
                         </li>
                         <li>
                           • Refunds are subject to our 30-day money-back

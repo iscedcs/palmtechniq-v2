@@ -173,9 +173,9 @@ const EnrollmentConfirmation = ({
                   </Text>
                   <Text className="text-sm text-amber-700 m-0">
                     You have a remaining balance of{" "}
-                    <b>{formatNaira(balanceRemaining)}</b> (30%) due before your
-                    cohort starts. We'll send you a reminder closer to the due
-                    date.
+                    <b>{formatNaira(balanceRemaining)}</b> (30%) due one month
+                    after your classes begin. We'll send you a reminder closer
+                    to the due date.
                   </Text>
                 </Section>
               )}

@@ -43,7 +43,7 @@ const features = [
     icon: BookOpen,
     title: "Hybrid Learning",
     description: "Virtual & physical learning environments",
-    link: "/courses",
+    link: "/enroll",
   },
   {
     icon: TrendingUp,
