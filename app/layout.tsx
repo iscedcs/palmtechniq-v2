@@ -32,10 +32,14 @@ export const metadata: Metadata = {
     "data science",
     "tech mentorship",
   ],
-  authors: [{ name: "PalmTechnIQ Team" }],
+  authors: [{ name: "PalmTechnIQ Team" }, { name: "Ignatius Emeka Joshua" }],
   creator: "PalmTechnIQ",
   publisher: "PalmTechnIQ",
   category: "education",
+  icons: {
+    icon: "/assets/standalone.png",
+    apple: "/assets/standalone.png",
+  },
   formatDetection: {
     email: false,
     address: false,
@@ -86,6 +90,11 @@ export const metadata: Metadata = {
     google: "5HTHdwd5queZq2qykGMCxyAh-KM6-kvuOLwvoFZNzWo",
     yandex: "7c7c50ea0bb36790",
   },
+  other: {
+    "theme-color": "#10b981",
+    "apple-mobile-web-app-capable": "yes",
+    "apple-mobile-web-app-status-bar-style": "black-translucent",
+  },
 };
 
 export default async function MainRootLayout({
@@ -106,7 +115,12 @@ export default async function MainRootLayout({
     url: "https://palmtechniq.com",
     email: "support@palmtechniq.com",
     logo: "https://palmtechniq.com/opengraph-image",
-    sameAs: [],
+    sameAs: [
+      "https://www.facebook.com/palmtechniq/",
+      "https://www.instagram.com/palmtechniq",
+      "https://www.linkedin.com/company/palmtechniq/",
+      "https://www.youtube.com/@palmtechniq_official",
+    ],
   };
 
   const websiteJsonLd = {
