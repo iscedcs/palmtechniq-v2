@@ -71,7 +71,7 @@ const socialLinks = [
   },
   {
     icon: Youtube,
-    href: "https://www.youtube.com/@PalmTechnIQ",
+    href: "https://www.youtube.com/@palmtechniq_official",
     color: "hover:text-red-400",
   },
 ];

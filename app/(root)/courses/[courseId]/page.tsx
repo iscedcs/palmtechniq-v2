@@ -29,13 +29,18 @@ export async function generateMetadata(props: {
 
   const description =
     course.description?.slice(0, 160) || "Learn with PalmTechnIQ";
+  const courseUrl = `https://palmtechniq.com/courses/${course.slug || course.id}`;
 
   return {
-    title: `${course.title} | PalmTechnIQ`,
+    title: course.title,
     description,
+    alternates: {
+      canonical: `/courses/${course.slug || course.id}`,
+    },
     openGraph: {
       title: course.title,
       description,
+      url: courseUrl,
       images: course.thumbnail
         ? [
             {
@@ -46,7 +51,7 @@ export async function generateMetadata(props: {
             },
           ]
         : [],
-      type: "website",
+      type: "article",
       siteName: "PalmTechnIQ",
     },
     twitter: {
@@ -80,21 +85,114 @@ export default async function CourseSlugPage(props: {
     return sum + (module.duration || 0);
   }, 0);
 
-  const totalLessonDuration = course.modules?.reduce((sum: number, module: any) => {
-    return (
-      sum +
-      module.lessons.reduce((lessonSum: number, lesson: any) => {
-        return lessonSum + (lesson.duration || 0);
-      }, 0)
-    );
-  }, 0);
+  const totalLessonDuration = course.modules?.reduce(
+    (sum: number, module: any) => {
+      return (
+        sum +
+        module.lessons.reduce((lessonSum: number, lesson: any) => {
+          return lessonSum + (lesson.duration || 0);
+        }, 0)
+      );
+    },
+    0,
+  );
 
   const totalLessons = course.modules?.reduce((sum: number, module: any) => {
     return sum + module.lessons.length;
   }, 0);
 
+  const avgRating = getAverageRating(course.reviews);
+  const courseUrl = `https://palmtechniq.com/courses/${course.slug || course.id}`;
+
+  const courseJsonLd = {
+    "@context": "https://schema.org",
+    "@type": "Course",
+    name: course.title,
+    description: course.description?.slice(0, 300) || "Learn with PalmTechnIQ",
+    url: courseUrl,
+    provider: {
+      "@type": "Organization",
+      name: "PalmTechnIQ",
+      url: "https://palmtechniq.com",
+    },
+    ...(course.thumbnail && { image: course.thumbnail }),
+    ...(course.tutor?.user?.name && {
+      instructor: {
+        "@type": "Person",
+        name: course.tutor.user.name,
+      },
+    }),
+    ...(course.language && { inLanguage: course.language }),
+    ...(course.level && {
+      educationalLevel: course.level,
+    }),
+    ...(course.outcomes?.length && {
+      teaches: course.outcomes,
+    }),
+    ...(course.requirements?.length && {
+      coursePrerequisites: course.requirements,
+    }),
+    ...(totalLessonDuration && {
+      timeRequired: `PT${Math.ceil(totalLessonDuration / 60)}H`,
+    }),
+    ...(course.reviews.length > 0 && {
+      aggregateRating: {
+        "@type": "AggregateRating",
+        ratingValue: avgRating.toFixed(1),
+        reviewCount: course.reviews.length,
+        bestRating: 5,
+        worstRating: 1,
+      },
+    }),
+    offers: {
+      "@type": "Offer",
+      price:
+        course.currentPrice && course.currentPrice > 0
+          ? course.currentPrice
+          : (course.basePrice ?? 0),
+      priceCurrency: course.currency || "NGN",
+      availability: "https://schema.org/InStock",
+      url: courseUrl,
+    },
+  };
+
+  const breadcrumbJsonLd = {
+    "@context": "https://schema.org",
+    "@type": "BreadcrumbList",
+    itemListElement: [
+      {
+        "@type": "ListItem",
+        position: 1,
+        name: "Home",
+        item: "https://palmtechniq.com",
+      },
+      {
+        "@type": "ListItem",
+        position: 2,
+        name: "Courses",
+        item: "https://palmtechniq.com/courses",
+      },
+      {
+        "@type": "ListItem",
+        position: 3,
+        name: course.title,
+        item: courseUrl,
+      },
+    ],
+  };
+
   return (
     <div className="min-h-screen bg-background">
+      <script
+        type="application/ld+json"
+      >
+        {JSON.stringify(courseJsonLd)}
+      </script>
+      <script
+        type="application/ld+json"
+      >
+        {JSON.stringify(breadcrumbJsonLd)}
+      </script>
       <div className="pt-20">
         <div className="container mx-auto py-8 grid grid-cols-1 lg:grid-cols-3 gap-8">
           <div className="lg:col-span-2 space-y-6">
@@ -111,7 +209,7 @@ export default async function CourseSlugPage(props: {
                     }
                   : { user: { name: "Unknown Tutor", image: undefined } }
               }
-              averageRating={getAverageRating(course.reviews)}
+              averageRating={avgRating}
               totalStudents={course.enrollments?.length || 0}
               duration={totalLessonDuration}
             />
@@ -150,9 +248,7 @@ export default async function CourseSlugPage(props: {
                       image:
                         course.tutor?.user.avatar || generateRandomAvatar(),
                     },
-                    rating: course.reviews.length
-                      ? getAverageRating(course.reviews)
-                      : undefined,
+                    rating: course.reviews.length ? avgRating : undefined,
                     students: course.enrollments.length || 0,
                     courses: course.tutor?.Course.length || 0,
                     bio: course.tutor?.user.bio || undefined,
