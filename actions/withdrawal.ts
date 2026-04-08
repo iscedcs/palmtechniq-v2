@@ -545,11 +545,18 @@ export async function approveWithdrawalRequest(
     return { error: "Withdrawal already processed" };
   }
 
+  if (!withdrawal.user.recipientCode) {
+    return {
+      error:
+        "Tutor has no valid Paystack recipient code. They need to update their bank details first.",
+    };
+  }
+
   const reference = `wd_${randomUUID()}`;
 
   const transfer = await paystackTransfer({
     amountKobo: Math.round(withdrawal.amount * 100),
-    recipientCode: withdrawal.user.recipientCode || "",
+    recipientCode: withdrawal.user.recipientCode,
     reference,
     reason: "Tutor withdrawal",
   });

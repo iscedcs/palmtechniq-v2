@@ -63,6 +63,8 @@ export const resetPasswordSchema = z
 
 // Base course schema for publishing (strict validation)
 export const courseSchema = z.object({
+  courseType: z.enum(["REGULAR", "PROGRAM"]).default("REGULAR"),
+  programSlug: z.string().nullish(),
   title: z.string().min(1, "Title is required"),
   subtitle: z.string().min(1, "Subtitle is required"),
   description: z.string().min(1, "Description is required"),
@@ -124,6 +126,8 @@ export const courseSchema = z.object({
 
 // Draft course schema (relaxed validation for saving drafts)
 export const courseDraftSchema = courseSchema.extend({
+  courseType: z.enum(["REGULAR", "PROGRAM"]).default("REGULAR"),
+  programSlug: z.string().nullish(),
   title: z.string().min(1, "Title is required"),
   subtitle: z.string().optional().default(""),
   description: z.string().optional().default(""),

@@ -607,6 +607,53 @@ export function getProgramsByDuration(): Record<string, ProgramDefinition[]> {
 }
 
 /**
+ * Get unique program base names (de-duplicated across durations).
+ * E.g., "Backend Development", "Cybersecurity", etc.
+ */
+export function getUniqueProgramNames(): string[] {
+  const seen = new Set<string>();
+  const names: string[] = [];
+  for (const program of PROGRAMS) {
+    // Strip "(Crash Course)" suffix to get the base name
+    const baseName = program.name.replace(/\s*\(Crash Course\)$/, "");
+    if (!seen.has(baseName)) {
+      seen.add(baseName);
+      names.push(baseName);
+    }
+  }
+  return names;
+}
+
+/**
+ * Get available durations for a given base program name.
+ */
+export function getDurationsForProgram(
+  baseName: string,
+): { duration: ProgramDurationKey; label: string; slug: string }[] {
+  return PROGRAMS.filter((p) => {
+    const pBase = p.name.replace(/\s*\(Crash Course\)$/, "");
+    return pBase === baseName;
+  }).map((p) => ({
+    duration: p.duration,
+    label: p.durationLabel,
+    slug: p.slug,
+  }));
+}
+
+/**
+ * Get a program definition by base name + duration.
+ */
+export function getProgramByNameAndDuration(
+  baseName: string,
+  duration: ProgramDurationKey,
+): ProgramDefinition | undefined {
+  return PROGRAMS.find((p) => {
+    const pBase = p.name.replace(/\s*\(Crash Course\)$/, "");
+    return pBase === baseName && p.duration === duration;
+  });
+}
+
+/**
  * Find a single program by slug.
  */
 export function getProgramBySlug(slug: string): ProgramDefinition | undefined {

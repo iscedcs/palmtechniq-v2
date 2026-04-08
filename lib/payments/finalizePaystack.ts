@@ -6,6 +6,7 @@ import {
   DEFAULT_VAT_RATE,
 } from "@/lib/payments/pricing";
 import { createZoomMeeting } from "@/lib/zoom-integration";
+import { resolveTutorReferralCode } from "@/lib/referral";
 
 export async function finalizePaystackByReference(reference: string) {
   const tx = await db.transaction.findFirst({
@@ -188,6 +189,11 @@ export async function finalizePaystackByReference(reference: string) {
             }
           : null;
 
+      // Resolve referral if present on the transaction
+      const referralTutorId = tx.referralCode
+        ? await resolveTutorReferralCode(tx.referralCode)
+        : null;
+
       const totals = computeCheckoutTotals({
         courses: courses.map((course: any) => ({
           id: course.id,
@@ -198,6 +204,7 @@ export async function finalizePaystackByReference(reference: string) {
         })),
         promo,
         vatRate: DEFAULT_VAT_RATE,
+        referralTutorId,
       });
 
       await px.transaction.update({
@@ -225,6 +232,7 @@ export async function finalizePaystackByReference(reference: string) {
               totalAmount: item.totalAmount,
               tutorShareAmount: item.tutorShareAmount,
               platformShareAmount: item.platformShareAmount,
+              isReferralPurchase: item.isReferralPurchase,
               promoCodeId: item.promoCodeId ?? undefined,
               promoType: item.promoType,
               promoDiscountType: item.promoDiscountType,
@@ -298,11 +306,13 @@ export async function finalizePaystackByReference(reference: string) {
             courseId: item.courseId,
             amount: item.tutorShareAmount,
             splitPercent:
-              item.promoType === "PLATFORM"
-                ? 0.2
-                : item.promoType === "INSTRUCTOR"
-                  ? 0.7
-                  : 0.25,
+              item.isReferralPurchase
+                ? 0.5
+                : item.promoType === "PLATFORM"
+                  ? 0.2
+                  : item.promoType === "INSTRUCTOR"
+                    ? 0.5
+                    : 0.2,
             status: "AVAILABLE",
           },
         });

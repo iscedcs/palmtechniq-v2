@@ -349,7 +349,20 @@ export async function publishCourse(courseId: string) {
         basePrice: true,
         price: true,
         category: { select: { id: true } },
-        tutor: { select: { userId: true } },
+        tutor: {
+          select: {
+            userId: true,
+            user: {
+              select: {
+                avatar: true,
+                image: true,
+                bankName: true,
+                accountNumber: true,
+                recipientCode: true,
+              },
+            },
+          },
+        },
       },
     });
     if (!courseOwner) return { error: "Course not found" };
@@ -381,6 +394,21 @@ export async function publishCourse(courseId: string) {
     ) {
       if (typeof courseOwner.price !== "number" || courseOwner.price < 0) {
         missingRequirements.push("Course price must be set");
+      }
+    }
+
+    // Validate tutor profile completion for payment splits
+    const tutorUser = courseOwner.tutor?.user;
+    if (tutorUser) {
+      if (!tutorUser.avatar && !tutorUser.image) {
+        missingRequirements.push(
+          "Tutor profile picture is required — update your profile to continue",
+        );
+      }
+      if (!tutorUser.bankName || !tutorUser.accountNumber) {
+        missingRequirements.push(
+          "Tutor bank account details are required for earnings — update your wallet settings",
+        );
       }
     }
 

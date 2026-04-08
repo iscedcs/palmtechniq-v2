@@ -274,7 +274,7 @@ export default function CourseCurriculumBuilder({
       animate={{ opacity: 1 }}
       transition={{ duration: 0.5 }}>
       <Card className="glass-card border-white/10 hover-glow">
-        <CardHeader className="flex flex-row justify-between items-center">
+        <CardHeader className="flex md:flex-row flex-col  justify-between items-center">
           <div className="grid  items-center gap-3">
             <CardTitle className="text-white text-xl">
               Curriculum Builder
@@ -407,39 +407,44 @@ export default function CourseCurriculumBuilder({
                                 <SortableContext
                                   items={module.lessons.map((l) => l.id)}
                                   strategy={verticalListSortingStrategy}>
-                              {module.lessons.map((lesson, lessonIndex) => (
-                                <SortableLessonItem key={lesson.id} id={lesson.id}>
-                                <div
-                                  className="bg-white/5 border border-white/10 rounded-lg p-3 space-y-3">
-                                  <div className="flex justify-between items-center">
-                                    <div className="flex items-center gap-2 w-full">
-                                      <span className="text-xs text-gray-400 shrink-0">
-                                        Lesson {lessonIndex + 1}:
-                                      </span>
-                                      <Input
-                                        value={lesson.title}
-                                        onChange={(e) =>
-                                          updateLesson(module.id, lesson.id, {
-                                            title: e.target.value,
-                                          })
-                                        }
-                                        placeholder="Lesson title"
-                                        className="bg-white/10 border-white/20 text-white placeholder:text-gray-50/35"
-                                      />
-                                    </div>
-                                    <Button
-                                      size="icon"
-                                      type="button"
-                                      variant="ghost"
-                                      onClick={() =>
-                                        removeLesson(module.id, lesson.id)
-                                      }
-                                      className="text-red-400 hover:bg-red-500/10">
-                                      <X className="w-4 h-4" />
-                                    </Button>
-                                  </div>
+                                  {module.lessons.map((lesson, lessonIndex) => (
+                                    <SortableLessonItem
+                                      key={lesson.id}
+                                      id={lesson.id}>
+                                      <div className="bg-white/5 border border-white/10 rounded-lg p-3 space-y-3">
+                                        <div className="flex justify-between items-center">
+                                          <div className="flex items-center gap-2 w-full">
+                                            <span className="text-xs text-gray-400 shrink-0">
+                                              Lesson {lessonIndex + 1}:
+                                            </span>
+                                            <Input
+                                              value={lesson.title}
+                                              onChange={(e) =>
+                                                updateLesson(
+                                                  module.id,
+                                                  lesson.id,
+                                                  {
+                                                    title: e.target.value,
+                                                  },
+                                                )
+                                              }
+                                              placeholder="Lesson title"
+                                              className="bg-white/10 border-white/20 text-white placeholder:text-gray-50/35"
+                                            />
+                                          </div>
+                                          <Button
+                                            size="icon"
+                                            type="button"
+                                            variant="ghost"
+                                            onClick={() =>
+                                              removeLesson(module.id, lesson.id)
+                                            }
+                                            className="text-red-400 hover:bg-red-500/10">
+                                            <X className="w-4 h-4" />
+                                          </Button>
+                                        </div>
 
-                                  {/* <div className="flex justify-between items-center">
+                                        {/* <div className="flex justify-between items-center">
                                     <Textarea
                                       value={lesson.content}
                                       onChange={(e) =>
@@ -460,107 +465,126 @@ export default function CourseCurriculumBuilder({
                                       <X className="w-4 h-4" />
                                     </Button>
                                   </div> */}
-                                  <Select value={lesson.type} disabled>
-                                    <SelectTrigger className="mt-2 bg-white/10 border-white/20 text-white placeholder:text-gray-50/35">
-                                      <SelectValue />
-                                    </SelectTrigger>
-                                    <SelectContent>
-                                      <SelectItem value="VIDEO">
-                                        Video
-                                      </SelectItem>
-                                    </SelectContent>
-                                  </Select>
+                                        <Select value={lesson.type} disabled>
+                                          <SelectTrigger className="mt-2 bg-white/10 border-white/20 text-white placeholder:text-gray-50/35">
+                                            <SelectValue />
+                                          </SelectTrigger>
+                                          <SelectContent>
+                                            <SelectItem value="VIDEO">
+                                              Video
+                                            </SelectItem>
+                                          </SelectContent>
+                                        </Select>
 
-                                  {lesson.type === "VIDEO" && (
-                                    <div className="space-y-3">
-                                      {lesson.videoUrl ? (
-                                        <div className="space-y-2">
-                                          {isYoutubeUrl(lesson.videoUrl) ? (
-                                            <iframe
-                                              src={toYoutubeEmbedUrl(
-                                                lesson.videoUrl,
-                                              )}
-                                              title="Lesson video"
-                                              allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture"
-                                              allowFullScreen
-                                              className="w-full max-h-56 sm:max-h-64 rounded-lg border border-white/20"
+                                        {lesson.type === "VIDEO" && (
+                                          <div className="space-y-3">
+                                            {lesson.videoUrl ? (
+                                              <div className="space-y-2">
+                                                {isYoutubeUrl(
+                                                  lesson.videoUrl,
+                                                ) ? (
+                                                  <iframe
+                                                    src={toYoutubeEmbedUrl(
+                                                      lesson.videoUrl,
+                                                    )}
+                                                    title="Lesson video"
+                                                    allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture"
+                                                    allowFullScreen
+                                                    className="w-full max-h-56 sm:max-h-64 rounded-lg border border-white/20"
+                                                  />
+                                                ) : (
+                                                  <video
+                                                    src={lesson.videoUrl}
+                                                    controls
+                                                    className="w-full max-h-56 sm:max-h-64 rounded-lg border border-white/20"
+                                                  />
+                                                )}
+                                                <div className="space-y-2">
+                                                  <Input
+                                                    readOnly
+                                                    value={lesson.videoUrl}
+                                                    className="bg-white/10 border-white/20 text-xs sm:text-sm text-white"
+                                                  />
+                                                  <a
+                                                    href={lesson.videoUrl}
+                                                    target="_blank"
+                                                    rel="noreferrer"
+                                                    className="text-xs text-neon-blue underline underline-offset-4">
+                                                    Open current video
+                                                  </a>
+                                                </div>
+                                              </div>
+                                            ) : (
+                                              <p className="text-sm text-gray-400 italic">
+                                                No video uploaded yet
+                                              </p>
+                                            )}
+                                            <div>
+                                              <p className="text-xs text-gray-400 mb-2">
+                                                Lesson Description
+                                              </p>
+                                              <Input
+                                                type="text"
+                                                value={lesson.description}
+                                                onChange={(e) =>
+                                                  updateLesson(
+                                                    module.id,
+                                                    lesson.id,
+                                                    {
+                                                      description:
+                                                        e.target.value,
+                                                    },
+                                                  )
+                                                }
+                                                placeholder="Enter lesson description"
+                                                className="mt-2 bg-white/10 border-white/20 text-white placeholder:text-gray-50/35"
+                                              />
+                                            </div>
+                                            <div>
+                                              <p className="text-xs text-gray-400 mb-2">
+                                                Lesson Content
+                                              </p>
+                                              <Textarea
+                                                value={lesson.content}
+                                                onChange={(e) =>
+                                                  updateLesson(
+                                                    module.id,
+                                                    lesson.id,
+                                                    {
+                                                      content: e.target.value,
+                                                    },
+                                                  )
+                                                }
+                                                placeholder="Enter lesson content"
+                                                className="my-2 bg-white/10 border-white/20 text-white placeholder:text-gray-50/35"
+                                              />
+                                            </div>
+                                            <LessonUploadFile
+                                              onUploadSuccess={(url) => {
+                                                updateLesson(
+                                                  module.id,
+                                                  lesson.id,
+                                                  {
+                                                    videoUrl: url,
+                                                  },
+                                                );
+                                              }}
+                                              onDuration={(minutes) => {
+                                                updateLesson(
+                                                  module.id,
+                                                  lesson.id,
+                                                  {
+                                                    duration: minutes,
+                                                  },
+                                                );
+                                                toast.success(
+                                                  `Video uploaded (${minutes} min)`,
+                                                );
+                                              }}
                                             />
-                                          ) : (
-                                            <video
-                                              src={lesson.videoUrl}
-                                              controls
-                                              className="w-full max-h-56 sm:max-h-64 rounded-lg border border-white/20"
-                                            />
-                                          )}
-                                          <div className="space-y-2">
-                                            <Input
-                                              readOnly
-                                              value={lesson.videoUrl}
-                                              className="bg-white/10 border-white/20 text-xs sm:text-sm text-white"
-                                            />
-                                            <a
-                                              href={lesson.videoUrl}
-                                              target="_blank"
-                                              rel="noreferrer"
-                                              className="text-xs text-neon-blue underline underline-offset-4">
-                                              Open current video
-                                            </a>
                                           </div>
-                                        </div>
-                                      ) : (
-                                        <p className="text-sm text-gray-400 italic">
-                                          No video uploaded yet
-                                        </p>
-                                      )}
-                                      <div>
-                                        <p className="text-xs text-gray-400 mb-2">
-                                          Lesson Description
-                                        </p>
-                                        <Input
-                                          type="text"
-                                          value={lesson.description}
-                                          onChange={(e) =>
-                                            updateLesson(module.id, lesson.id, {
-                                              description: e.target.value,
-                                            })
-                                          }
-                                          placeholder="Enter lesson description"
-                                          className="mt-2 bg-white/10 border-white/20 text-white placeholder:text-gray-50/35"
-                                        />
-                                      </div>
-                                      <div>
-                                        <p className="text-xs text-gray-400 mb-2">
-                                          Lesson Content
-                                        </p>
-                                        <Textarea
-                                          value={lesson.content}
-                                          onChange={(e) =>
-                                            updateLesson(module.id, lesson.id, {
-                                              content: e.target.value,
-                                            })
-                                          }
-                                          placeholder="Enter lesson content"
-                                          className="my-2 bg-white/10 border-white/20 text-white placeholder:text-gray-50/35"
-                                        />
-                                      </div>
-                                      <LessonUploadFile
-                                        onUploadSuccess={(url) => {
-                                          updateLesson(module.id, lesson.id, {
-                                            videoUrl: url,
-                                          });
-                                        }}
-                                        onDuration={(minutes) => {
-                                          updateLesson(module.id, lesson.id, {
-                                            duration: minutes,
-                                          });
-                                          toast.success(
-                                            `Video uploaded (${minutes} min)`,
-                                          );
-                                        }}
-                                      />
-                                    </div>
-                                  )}
-                                  {/* <LessonUploadFile
+                                        )}
+                                        {/* <LessonUploadFile
                                     uploading={lessonUploading}
                                     setUploading={setLessonUploading}
                                     onUploadSuccess={(url) => {
@@ -584,12 +608,12 @@ export default function CourseCurriculumBuilder({
                                     }}
                                   /> */}
 
-                                  <div className="text-sm text-gray-300">
-                                    Lesson duration: {lesson.duration} min
-                                  </div>
-                                </div>
-                                </SortableLessonItem>
-                              ))}
+                                        <div className="text-sm text-gray-300">
+                                          Lesson duration: {lesson.duration} min
+                                        </div>
+                                      </div>
+                                    </SortableLessonItem>
+                                  ))}
                                 </SortableContext>
                               </DndContext>
 

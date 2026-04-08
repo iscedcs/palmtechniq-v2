@@ -5,6 +5,8 @@ import { getCourseById } from "@/data/course";
 import { generateRandomAvatar } from "@/lib/utils";
 import { redirect } from "next/navigation";
 import { db } from "@/lib/db";
+import { cookies } from "next/headers";
+import { REFERRAL_COOKIE_NAME } from "@/lib/referral";
 
 export default async function CheckoutPage({
   params,
@@ -102,7 +104,9 @@ export default async function CheckoutPage({
             await beginGroupCheckout(course.id, groupTier.id);
             return;
           }
-          await beginCheckout(course.id, promoCode);
+          const cookieStore = await cookies();
+          const referralCode = cookieStore.get(REFERRAL_COOKIE_NAME)?.value;
+          await beginCheckout(course.id, promoCode, referralCode);
         }}
       />
     </div>

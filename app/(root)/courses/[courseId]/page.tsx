@@ -12,6 +12,7 @@ import CourseNotFoundSkeleton from "@/components/shared/skeleton/course-not-foun
 import { GroupBuyingWidget } from "@/components/group-buying";
 import { getMyGroupPurchase } from "@/actions/group-purchase";
 import { getAverageRating } from "@/lib/reviews";
+import { ReferralTracker } from "@/components/shared/referral-tracker";
 import type { Metadata } from "next";
 
 export async function generateMetadata(props: {
@@ -65,8 +66,14 @@ export async function generateMetadata(props: {
 
 export default async function CourseSlugPage(props: {
   params: Promise<{ courseId: string }>;
+  searchParams?: Promise<{ ref?: string }>;
 }) {
   const { courseId } = await props.params;
+  const resolvedSearchParams = (await props.searchParams) ?? {};
+  const refCode =
+    typeof resolvedSearchParams.ref === "string"
+      ? resolvedSearchParams.ref
+      : undefined;
   const course = await getCourseById(courseId);
 
   // Call the server action directly
@@ -183,14 +190,9 @@ export default async function CourseSlugPage(props: {
 
   return (
     <div className="min-h-screen bg-background">
-      <script
-        type="application/ld+json"
-      >
-        {JSON.stringify(courseJsonLd)}
-      </script>
-      <script
-        type="application/ld+json"
-      >
+      {refCode && <ReferralTracker refCode={refCode} />}
+      <script type="application/ld+json">{JSON.stringify(courseJsonLd)}</script>
+      <script type="application/ld+json">
         {JSON.stringify(breadcrumbJsonLd)}
       </script>
       <div className="pt-20">

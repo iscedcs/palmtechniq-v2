@@ -10,7 +10,7 @@ import { Form } from "@/components/ui/form";
 import { courseSchema } from "@/schemas";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { motion } from "framer-motion";
-import { BookOpen, Eye, PlayCircle, Save, Settings } from "lucide-react";
+import { BookOpen, Eye, PlayCircle, Save, Settings, GraduationCap } from "lucide-react";
 import { useRouter } from "next/navigation";
 import { useEffect, useRef, useState, useTransition } from "react";
 import { useForm, type Resolver } from "react-hook-form";
@@ -20,6 +20,7 @@ import CourseBasicInfoForm from "./course-basic-info-form";
 import CourseCurriculumBuilder from "./course-curriculum-builder";
 import CoursePricingForm from "./course-pricing-form";
 import CourseSettingsForm from "./course-settings-form";
+import CourseTypeSelector from "./course-type-selector";
 import { Spinner } from "@/components/ui/spinner";
 
 interface CourseModule {
@@ -98,6 +99,8 @@ export default function CreateCourse() {
   });
 
   const defaultValues: z.infer<typeof courseSchema> = {
+    courseType: "REGULAR",
+    programSlug: undefined,
     title: "",
     subtitle: "",
     description: "",
@@ -301,10 +304,11 @@ export default function CreateCourse() {
   };
 
   const steps = [
-    { id: 0, title: "Basic Info", icon: BookOpen },
-    { id: 1, title: "Curriculum", icon: PlayCircle },
-    { id: 2, title: "Pricing", icon: NairaSign },
-    { id: 3, title: "Settings", icon: Settings },
+    { id: 0, title: "Course Type", icon: GraduationCap },
+    { id: 1, title: "Basic Info", icon: BookOpen },
+    { id: 2, title: "Curriculum", icon: PlayCircle },
+    { id: 3, title: "Pricing", icon: NairaSign },
+    { id: 4, title: "Settings", icon: Settings },
   ];
 
   const handleResetBuilder = () => {
@@ -377,13 +381,17 @@ export default function CreateCourse() {
                   </div>
 
                   {currentStep === 0 && (
+                    <CourseTypeSelector form={form} />
+                  )}
+
+                  {currentStep === 1 && (
                     <CourseBasicInfoForm
                       categories={categories}
                       levels={levels}
                     />
                   )}
 
-                  {currentStep === 1 && (
+                  {currentStep === 2 && (
                     <CourseCurriculumBuilder
                       form={form}
                       modules={modules}
@@ -391,9 +399,9 @@ export default function CreateCourse() {
                     />
                   )}
 
-                  {currentStep === 2 && <CoursePricingForm form={form} />}
+                  {currentStep === 3 && <CoursePricingForm form={form} />}
 
-                  {currentStep === 3 && (
+                  {currentStep === 4 && (
                     <CourseSettingsForm
                       form={form}
                       onSubmit={onSubmit}
@@ -476,7 +484,7 @@ export default function CreateCourse() {
                   </div>
 
                   {/* Publishing Requirements Checklist */}
-                  {currentStep === 3 && (
+                  {currentStep === 4 && (
                     <div className="mt-6 p-4 bg-white/5 border border-white/10 rounded-lg">
                       <h4 className="text-white font-semibold mb-3">
                         Publishing Checklist

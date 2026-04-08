@@ -131,6 +131,7 @@ model Tutor {
   completionRate Float     @default(0)
   availability   Json?
   timezone       String?
+  referralCode   String?   @unique @map("referral_code")
   Course         Course[]
   user           User      @relation(fields: [userId], references: [id], onDelete: Cascade)
 
@@ -190,6 +191,9 @@ model Course {
   subtitle               String
   tutorId                String
   allowDiscussions       Boolean                 @default(false)
+  courseType              CourseType              @default(REGULAR)
+  programId              String?                 @unique
+  program                ProfessionalProgram?    @relation(fields: [programId], references: [id])
   tags                   CourseTag[]
   advisorRecommendations AdvisorRecommendation[]
   AIRecommendation       AIRecommendation[]      @relation("CourseRecommendations")
@@ -811,6 +815,8 @@ model Transaction {
   vatAmount                Float?
   mentorshipPackageOrderId String?
   mentorshipSessionId      String?
+  referralCode             String?                 @map("referral_code")
+  isReferralPurchase       Boolean                 @default(false) @map("is_referral_purchase")
   promoRedemptions         PromoRedemption[]
   lineItems                TransactionLineItem[]
   course                   Course?                 @relation(fields: [courseId], references: [id])
@@ -841,6 +847,7 @@ model TransactionLineItem {
   promoType           PromoType?
   promoDiscountType   PromoDiscountType?
   promoDiscountValue  Float?
+  isReferralPurchase  Boolean            @default(false) @map("is_referral_purchase")
   createdAt           DateTime           @default(now())
   updatedAt           DateTime           @updatedAt
   course              Course             @relation(fields: [courseId], references: [id])
@@ -1308,6 +1315,7 @@ model ProfessionalProgram {
 
   cohorts     ProgramCohort[]
   enrollments ProgramEnrollment[]
+  courses     Course[]
 
   @@map("professional_programs")
 }
@@ -1463,6 +1471,11 @@ enum CourseStatus {
   PUBLISHED
   ARCHIVED
   SUSPENDED
+}
+
+enum CourseType {
+  REGULAR
+  PROGRAM
 }
 
 enum EnrollmentStatus {

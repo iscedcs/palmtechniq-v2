@@ -10,10 +10,12 @@ import {
   DEFAULT_VAT_RATE,
 } from "@/lib/payments/pricing";
 import { validatePromoCode } from "@/lib/payments/promo";
+import { resolveTutorReferralCode } from "@/lib/referral";
 
 export async function beginCheckout(
   courseIds: string[] | string,
   promoCode?: string,
+  referralCode?: string,
 ) {
   const session = await auth();
   if (!session?.user?.id || !session.user.email) {
@@ -49,6 +51,11 @@ export async function beginCheckout(
     throw new Error("Invalid promo code");
   }
 
+  // Resolve referral code to tutor userId
+  const referralTutorId = referralCode
+    ? await resolveTutorReferralCode(referralCode)
+    : null;
+
   const totals = computeCheckoutTotals({
     courses: courses.map((course: any) => ({
       id: course.id,
@@ -59,6 +66,7 @@ export async function beginCheckout(
     })),
     promo: promoResult?.ok ? promoResult.promo : null,
     vatRate: DEFAULT_VAT_RATE,
+    referralTutorId,
   });
 
   if (totals.totalAmount <= 0) throw new Error("Invalid course prices");
@@ -95,6 +103,8 @@ export async function beginCheckout(
       promoDiscountValue: promoResult?.ok
         ? promoResult.promo.discountValue
         : undefined,
+      referralCode: referralCode ?? undefined,
+      isReferralPurchase: !!referralTutorId,
       metadata: {
         courseIds: ids,
         primaryCourseId,
@@ -112,6 +122,7 @@ export async function beginCheckout(
           totalAmount: item.totalAmount,
           tutorShareAmount: item.tutorShareAmount,
           platformShareAmount: item.platformShareAmount,
+          isReferralPurchase: item.isReferralPurchase,
           promoCodeId: item.promoCodeId ?? undefined,
           promoType: item.promoType,
           promoDiscountType: item.promoDiscountType,
@@ -133,6 +144,7 @@ export async function beginCheckout(
       primaryCourseId,
       userId: session.user.id,
       promoCode: promoResult?.ok ? promoResult.promo.code : undefined,
+      referralCode: referralCode ?? undefined,
     },
   });
 

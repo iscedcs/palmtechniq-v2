@@ -642,15 +642,26 @@ export function CourseEditClient({
                           removeLesson={removeLesson}
                           updateLesson={updateLesson}
                           onReorderLessons={async (moduleId, lessonIds) => {
-                            const res = await reorderLessons(course.id, moduleId, lessonIds);
+                            const res = await reorderLessons(
+                              course.id,
+                              moduleId,
+                              lessonIds,
+                            );
                             if (!res?.success) {
-                              toast.error(res?.error ?? "Failed to reorder lessons");
+                              toast.error(
+                                res?.error ?? "Failed to reorder lessons",
+                              );
                             }
                           }}
                           onReorderModules={async (moduleIds) => {
-                            const res = await reorderModules(course.id, moduleIds);
+                            const res = await reorderModules(
+                              course.id,
+                              moduleIds,
+                            );
                             if (!res?.success) {
-                              toast.error(res?.error ?? "Failed to reorder modules");
+                              toast.error(
+                                res?.error ?? "Failed to reorder modules",
+                              );
                             }
                           }}
                         />
