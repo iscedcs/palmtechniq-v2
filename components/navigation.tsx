@@ -6,9 +6,16 @@ export async function Navigation() {
   let session = null;
   try {
     session = await auth();
-  } catch (error) {
-    // During build or when DATABASE_URL is not available
-    console.error("Error fetching session:", error);
+  } catch (error: unknown) {
+    // Silently handle static generation — auth() uses headers() which is unavailable during build
+    if (
+      error instanceof Error &&
+      error.message?.includes("headers")
+    ) {
+      // Expected during static build, no need to log
+    } else {
+      console.error("Error fetching session:", error);
+    }
   }
 
   // Show public navigation for unauthenticated users

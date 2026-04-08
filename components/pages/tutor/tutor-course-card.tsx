@@ -34,11 +34,11 @@ interface TutorCourseCardProps {
 }
 
 export function TutorCourseCard({ course }: TutorCourseCardProps) {
-  if (!course) return null;
-
   const [copied, setCopied] = useState(false);
   const [isPending, startTransition] = useTransition();
   const fallbackThumbnail = generateRandomAvatar();
+
+  if (!course) return null;
 
   const handleCopyReferralLink = () => {
     startTransition(async () => {
