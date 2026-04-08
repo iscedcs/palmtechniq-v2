@@ -19,16 +19,17 @@
     "overrides": {
       "@auth/core": "0.40.0",
       "minimatch": "10.2.3",
-      "hono": ">=4.12.7",
-      "@hono/node-server": ">=1.19.10",
+      "hono": ">=4.12.12",
+      "@hono/node-server": ">=1.19.13",
       "flatted": ">=3.4.2",
-      "lodash": ">=4.17.23",
+      "lodash": ">=4.18.0",
       "fast-xml-parser": ">=5.5.7",
       "effect": ">=3.20.0",
       "socket.io-parser": ">=4.2.6",
       "next": ">=15.5.14",
       "picomatch": ">=4.0.4",
-      "brace-expansion": ">=5.0.5"
+      "brace-expansion": ">=5.0.5",
+      "defu": ">=6.1.5"
     }
   },
   "dependencies": {

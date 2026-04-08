@@ -499,7 +499,7 @@ export default function WalletClient({
                               dataKey="value">
                               {revenueBreakdown.map((entry, index) => (
                                 <Cell
-                                  key={`cell-₦{index}`}
+                                  key={`cell-${index}`}
                                   fill={entry.color}
                                 />
                               ))}
@@ -840,9 +840,9 @@ export default function WalletClient({
                               <SelectValue placeholder="Select bank" />
                             </SelectTrigger>
                             <SelectContent className="bg-black/90 backdrop-blur-sm border-white/10">
-                              {banks.map((bank) => (
+                              {banks.map((bank, index) => (
                                 <SelectItem
-                                  key={bank.code}
+                                  key={`${bank.code}-${index}`}
                                   value={bank.code}
                                   className="text-white hover:bg-white/10">
                                   {bank.name}

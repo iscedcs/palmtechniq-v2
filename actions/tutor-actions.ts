@@ -13,8 +13,10 @@ import {
 } from "@/schemas";
 import { z } from "zod";
 import { toSlug } from "@/lib/utils";
+import { getTutorReferralCode } from "@/lib/referral";
 import { notify } from "@/lib/notify";
 import { recomputeCourseDurations } from "@/lib/course-duration";
+import { getProgramBySlug } from "@/data/programs";
 
 export async function createCourse(data: any, modulesData: any[] = []) {
   const session = await auth();
@@ -81,6 +83,50 @@ export async function createCourse(data: any, modulesData: any[] = []) {
             : resolvedBasePrice;
 
         const categoryName = validatedData.data.category as string;
+
+        // Handle program course linking
+        const courseType = validatedData.data.courseType || "REGULAR";
+        const programSlug = validatedData.data.programSlug;
+        let programConnect: { connect: { id: string } } | undefined;
+
+        if (courseType === "PROGRAM" && programSlug) {
+          const programDef = getProgramBySlug(programSlug);
+          if (!programDef) {
+            throw new Error("Invalid program selected");
+          }
+
+          // Check if a course already exists for this program
+          const existingProgramCourse = await tx.course.findFirst({
+            where: {
+              program: { slug: programSlug },
+              courseType: "PROGRAM",
+            },
+          });
+          if (existingProgramCourse) {
+            throw new Error(
+              `A program course already exists for "${programDef.name} (${programDef.durationLabel})". Only one course per program is allowed.`,
+            );
+          }
+
+          // Upsert the ProfessionalProgram record
+          const program = await tx.professionalProgram.upsert({
+            where: { slug: programSlug },
+            update: {},
+            create: {
+              name: programDef.name,
+              slug: programDef.slug,
+              duration: programDef.duration as any,
+              fullPrice: programDef.fullPrice,
+              installTotal: programDef.installTotal,
+              firstInstall: programDef.firstInstall,
+              secondInstall: programDef.secondInstall,
+              careerOutcomes: programDef.careerOutcomes,
+              curriculum: programDef.curriculum,
+            },
+          });
+          programConnect = { connect: { id: program.id } };
+        }
+
         const course = await tx.course.create({
           data: {
             title: validatedData.data.title,
@@ -122,6 +168,8 @@ export async function createCourse(data: any, modulesData: any[] = []) {
             thumbnail: validatedData.data.thumbnail,
             previewVideo: validatedData.data.previewVideo,
             status: "DRAFT",
+            courseType: courseType as any,
+            ...(programConnect ? { program: programConnect } : {}),
             creator: { connect: { id: session.user.id } },
             tutor: { connect: { id: tutor.id } },
           },
@@ -655,5 +703,23 @@ export async function getCategories() {
   } catch (error) {
     console.error("Error fetching categories:", error);
     return { error: "Failed to fetch categories" };
+  }
+}
+
+/**
+ * Get or generate the current tutor's referral code.
+ */
+export async function getMyReferralCode() {
+  try {
+    const session = await auth();
+    if (!session?.user?.id) return { error: "Unauthorized" };
+
+    const code = await getTutorReferralCode(session.user.id);
+    if (!code) return { error: "Tutor profile not found" };
+
+    return { success: true, referralCode: code };
+  } catch (error) {
+    console.error("Error getting referral code:", error);
+    return { error: "Failed to get referral code" };
   }
 }

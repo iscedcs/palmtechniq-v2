@@ -1,9 +1,10 @@
 export const DEFAULT_VAT_RATE = 0.075;
 
 export const SPLIT_RATES = {
-  normal: 0.25,
+  normal: 0.2,
+  tutorReferral: 0.5,
   platformPromo: 0.2,
-  instructorPromo: 0.7,
+  instructorPromo: 0.5,
 };
 
 export type PricingCourse = {
@@ -35,6 +36,7 @@ type LineItem = {
   totalAmount: number;
   tutorShareAmount: number;
   platformShareAmount: number;
+  isReferralPurchase: boolean;
   promoCodeId?: string | null;
   promoType?: PromoDetails["promoType"];
   promoDiscountType?: PromoDetails["discountType"];
@@ -56,20 +58,30 @@ const promoAppliesToCourse = (
   return !promo.courseId;
 };
 
-const getSplitPercent = (promo: PromoDetails | null, applies: boolean) => {
-  if (!promo || !applies) return SPLIT_RATES.normal;
-  if (promo.promoType === "PLATFORM") return SPLIT_RATES.platformPromo;
-  return SPLIT_RATES.instructorPromo;
+const getSplitPercent = (
+  promo: PromoDetails | null,
+  applies: boolean,
+  isReferral: boolean,
+) => {
+  if (promo && applies) {
+    if (promo.promoType === "INSTRUCTOR") return SPLIT_RATES.instructorPromo;
+    if (isReferral) return SPLIT_RATES.tutorReferral;
+    return SPLIT_RATES.platformPromo;
+  }
+  if (isReferral) return SPLIT_RATES.tutorReferral;
+  return SPLIT_RATES.normal;
 };
 
 export function computeCheckoutTotals({
   courses,
   promo,
   vatRate = DEFAULT_VAT_RATE,
+  referralTutorId,
 }: {
   courses: PricingCourse[];
   promo: PromoDetails | null;
   vatRate?: number;
+  referralTutorId?: string | null;
 }) {
   const preliminary = courses.map((course) => {
     const basePrice =
@@ -107,7 +119,8 @@ export function computeCheckoutTotals({
       0,
       roundCurrency(basePrice - discountedPrice),
     );
-    const splitPercent = getSplitPercent(promo, promoApplies);
+    const isReferral = !!referralTutorId && referralTutorId === course.tutorId;
+    const splitPercent = getSplitPercent(promo, promoApplies, isReferral);
     const tutorShareAmount = roundCurrency(discountedPrice * splitPercent);
     const platformShareAmount = roundCurrency(
       discountedPrice - tutorShareAmount,
@@ -120,6 +133,7 @@ export function computeCheckoutTotals({
       discountedPrice,
       discountAmount,
       promoApplies,
+      isReferral,
       tutorShareAmount,
       platformShareAmount,
     };
@@ -154,6 +168,7 @@ export function computeCheckoutTotals({
       totalAmount,
       tutorShareAmount: item.tutorShareAmount,
       platformShareAmount: item.platformShareAmount,
+      isReferralPurchase: item.isReferral,
       promoCodeId: promo?.id ?? null,
       promoType: item.promoApplies ? promo?.promoType : undefined,
       promoDiscountType: item.promoApplies ? promo?.discountType : undefined,

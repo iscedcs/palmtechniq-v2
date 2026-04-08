@@ -936,6 +936,42 @@ export async function updateCourseStatus({
     return { error: "Forbidden" };
   }
 
+  // Validate tutor profile when publishing
+  if (status === "PUBLISHED") {
+    const course = await db.course.findUnique({
+      where: { id: courseId },
+      select: {
+        tutor: {
+          select: {
+            user: {
+              select: {
+                name: true,
+                avatar: true,
+                image: true,
+                bankName: true,
+                accountNumber: true,
+              },
+            },
+          },
+        },
+      },
+    });
+
+    const tutorUser = course?.tutor?.user;
+    const issues: string[] = [];
+    if (tutorUser && !tutorUser.avatar && !tutorUser.image) {
+      issues.push("profile picture");
+    }
+    if (tutorUser && (!tutorUser.bankName || !tutorUser.accountNumber)) {
+      issues.push("bank account details");
+    }
+    if (issues.length > 0) {
+      return {
+        error: `Cannot publish: Tutor (${tutorUser?.name ?? "Unknown"}) is missing ${issues.join(" and ")}. They must update their profile before the course can go live.`,
+      };
+    }
+  }
+
   await db.course.update({
     where: { id: courseId },
     data: { status },
