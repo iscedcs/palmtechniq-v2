@@ -1,6 +1,7 @@
 "use client";
 
 import { addToCart } from "@/actions/cart";
+import { trackAddToCart } from "@/lib/fbpixel";
 import {
   CoursePreviewModal,
   FlashSaleTimer,
@@ -418,6 +419,15 @@ export default function CoursesGrid({
                             try {
                               const res = await addToCart(course.id);
                               if (res?.success) {
+                                trackAddToCart({
+                                  content_ids: [course.id],
+                                  content_name: course.title,
+                                  content_type: "product",
+                                  currency: "NGN",
+                                  value:
+                                    (course.currentPrice ?? course.price ?? 0) /
+                                    100,
+                                });
                                 toast.success(
                                   `${course.title} added to your cart`,
                                   {

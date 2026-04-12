@@ -10,6 +10,7 @@ import {
   type EnrollmentFormData,
 } from "@/schemas/enrollment";
 import { submitEnrollment } from "@/actions/enrollment";
+import { trackLead } from "@/lib/fbpixel";
 import { PROGRAMS, formatNaira, getProgramsByDuration } from "@/data/programs";
 import type { ProgramDefinition } from "@/data/programs";
 import { getAvailableCohorts, type CohortOption } from "@/lib/cohort";
@@ -147,6 +148,16 @@ export function EnrollmentWizard() {
     startTransition(async () => {
       const result = await submitEnrollment(data);
       if (result.success && result.authorizationUrl) {
+        trackLead({
+          content_name: selectedProgram?.name ?? data.programSlug,
+          content_category: "Professional Program",
+          currency: "NGN",
+          value: selectedProgram
+            ? (data.paymentPlan === "FULL_PAYMENT"
+                ? selectedProgram.fullPrice
+                : selectedProgram.installTotal) / 100
+            : undefined,
+        });
         toast.success("Redirecting to payment...");
         window.location.href = result.authorizationUrl;
       } else {

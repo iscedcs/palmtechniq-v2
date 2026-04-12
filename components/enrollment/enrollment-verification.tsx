@@ -18,6 +18,7 @@ import {
   Mail,
 } from "lucide-react";
 import Link from "next/link";
+import { trackPurchase } from "@/lib/fbpixel";
 
 type VerificationState =
   | { status: "loading" }
@@ -38,6 +39,13 @@ export function EnrollmentVerification() {
     verifyEnrollmentPayment(reference)
       .then((result) => {
         if (result.success) {
+          trackPurchase({
+            content_name:
+              result.enrollment?.program?.name ?? "Program Enrollment",
+            content_type: "product",
+            currency: "NGN",
+            value: (result.enrollment?.amountPaid ?? 0) / 100,
+          });
           setState({ status: "success", enrollment: result.enrollment });
         } else {
           setState({

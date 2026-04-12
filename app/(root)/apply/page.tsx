@@ -33,6 +33,7 @@ import {
   Clock,
 } from "lucide-react";
 import { toast } from "sonner";
+import { trackSubmitApplication } from "@/lib/fbpixel";
 
 export default function ApplicationPage() {
   const router = useRouter();
@@ -364,6 +365,11 @@ export default function ApplicationPage() {
       toast.success(
         "Application submitted successfully! We'll review it within 48 hours.",
       );
+      trackSubmitApplication({
+        content_name:
+          applicationData.applicationType || "Tutor/Mentor Application",
+        content_category: "Application",
+      });
       router.push("/");
     } catch (error) {
       toast.error(
