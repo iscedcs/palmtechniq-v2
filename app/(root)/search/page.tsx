@@ -7,6 +7,7 @@ import { Loader, BookOpen, User, Folder } from "lucide-react";
 import Image from "next/image";
 import Link from "next/link";
 import { Badge } from "@/components/ui/badge";
+import { trackSearch } from "@/lib/fbpixel";
 
 interface SearchResult {
   id: string;
@@ -52,6 +53,7 @@ function SearchResultsContent() {
         }
 
         const data = await response.json();
+        trackSearch({ search_string: query });
         setResults(data.results || []);
       } catch (err) {
         setError(

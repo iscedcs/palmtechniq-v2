@@ -6,6 +6,7 @@ import { Card, CardContent, CardHeader } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Loader2, CheckCircle2, XCircle } from "lucide-react";
 import { useSession } from "next-auth/react";
+import { trackPurchase } from "@/lib/fbpixel";
 
 export default function VerifyClient({ reference }: { reference?: string }) {
   const router = useRouter();
@@ -26,6 +27,13 @@ export default function VerifyClient({ reference }: { reference?: string }) {
         const json = await res.json();
         if (!mounted) return;
         if (json.ok) {
+          trackPurchase({
+            content_type: "product",
+            currency: "NGN",
+            value: json.amount ? json.amount / 100 : 0,
+            content_ids: json.courseIds ?? [],
+            content_name: json.courseName ?? "Course Purchase",
+          });
           setStatus("success");
           await update();
           setTimeout(() => router.push("/student"), 1500);

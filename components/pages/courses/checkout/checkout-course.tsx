@@ -19,6 +19,7 @@ import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { useRouter } from "next/navigation";
 import { useMemo, useState } from "react";
 import { formatToNaira } from "@/lib/utils";
+import { trackInitiateCheckout } from "@/lib/fbpixel";
 
 type PricingInput = {
   basePrice: number; // e.g. ₦50,000
@@ -377,6 +378,14 @@ export default function CheckoutCoursePage({
 
                     <Button
                       onClick={async () => {
+                        trackInitiateCheckout({
+                          content_ids: courseId ? [courseId] : [],
+                          content_name: title,
+                          content_type: "product",
+                          currency: "NGN",
+                          value: total / 100,
+                          num_items: 1,
+                        });
                         onProceed(appliedPromo || undefined);
                       }}
                       className="w-full bg-gradient-to-r from-neon-blue to-neon-purple text-white text-lg py-4 disabled:opacity-50">

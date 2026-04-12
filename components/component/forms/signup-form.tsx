@@ -23,6 +23,7 @@ import { OAuthButtons } from "@/components/auth/oauth-buttons";
 import Link from "next/link";
 import z from "zod";
 import { signup } from "@/actions/auth";
+import { trackCompleteRegistration } from "@/lib/fbpixel";
 import {
   Form,
   FormControl,
@@ -62,13 +63,14 @@ export function SignupForm() {
   });
 
   const onSubmit = async (data: z.infer<typeof signupSchema>) => {
-    setError(""), setSuccess(""), setIsLoading(true);
+    (setError(""), setSuccess(""), setIsLoading(true));
 
     startTransition(() => {
       signup(data).then((data) => {
         setError(data.error);
         setSuccess(data.success);
         if (data.success) {
+          trackCompleteRegistration({ content_name: "User Signup" });
           form.reset();
         }
         setIsLoading(false);
@@ -244,7 +246,7 @@ export function SignupForm() {
                       <div className="flex space-x-1">
                         {[1, 2, 3, 4, 5].map((level) => {
                           const strength = getPasswordStrength(
-                            field.value || ""
+                            field.value || "",
                           ).strength;
                           return (
                             <div
