@@ -9,19 +9,19 @@ import { Download, ExternalLink } from "lucide-react";
 export default function PressPage() {
   const pressReleases = [
     {
-      title: "CyberLearn Raises $50M Series B to Expand AI Learning Platform",
+      title: "PalmTechnIQ Secures Funding to Expand AI Learning Platform",
       date: "November 2024",
       excerpt:
         "Investment led by top-tier VCs to accelerate product development and global expansion",
     },
     {
-      title: "CyberLearn Named Top EdTech Startup of 2024",
+      title: "PalmTechnIQ Named Top EdTech Startup of 2024",
       date: "September 2024",
       excerpt:
         "Recognition from TechCrunch and other major publications for innovation in online education",
     },
     {
-      title: "500,000+ Learners Achieve Their Goals on CyberLearn",
+      title: "Learners Achieve Their Goals on PalmTechnIQ",
       date: "August 2024",
       excerpt:
         "Milestone announcement as platform reaches 500K active learners globally",
@@ -29,15 +29,15 @@ export default function PressPage() {
   ];
 
   const mediaKits = [
-    { title: "Brand Guidelines", file: "cyberlearn-brand-guidelines.pdf" },
-    { title: "Logo Pack", file: "cyberlearn-logos.zip" },
-    { title: "Press Kit", file: "cyberlearn-press-kit.pdf" },
+    { title: "Brand Guidelines", file: "palmtechniq-brand-guidelines.pdf" },
+    { title: "Logo Pack", file: "palmtechniq-logos.zip" },
+    { title: "Press Kit", file: "palmtechniq-press-kit.pdf" },
   ];
 
   const mentions = [
     {
       publication: "TechCrunch",
-      article: "How CyberLearn is Using AI to Personalize Education",
+      article: "How PalmTechnIQ is Using AI to Personalize Education",
     },
     {
       publication: "Forbes",
@@ -49,7 +49,7 @@ export default function PressPage() {
     },
     {
       publication: "VentureBeat",
-      article: "CyberLearn's AI Tutor Powers Next Generation of Learners",
+      article: "PalmTechnIQ's AI Tutor Powers Next Generation of Learners",
     },
   ];
 

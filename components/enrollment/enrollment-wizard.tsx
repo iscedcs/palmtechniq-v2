@@ -153,9 +153,9 @@ export function EnrollmentWizard() {
           content_category: "Professional Program",
           currency: "NGN",
           value: selectedProgram
-            ? (data.paymentPlan === "FULL_PAYMENT"
+            ? data.paymentPlan === "FULL_PAYMENT"
                 ? selectedProgram.fullPrice
-                : selectedProgram.installTotal) / 100
+                : selectedProgram.installTotal
             : undefined,
         });
         toast.success("Redirecting to payment...");

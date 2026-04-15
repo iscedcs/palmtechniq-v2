@@ -52,7 +52,7 @@ export async function generateMetadata(props: {
             },
           ]
         : [],
-      type: "article",
+      type: "website",
       siteName: "PalmTechnIQ",
     },
     twitter: {
@@ -130,6 +130,10 @@ export default async function CourseSlugPage(props: {
       },
     }),
     ...(course.language && { inLanguage: course.language }),
+    ...(course.publishedAt && {
+      datePublished: new Date(course.publishedAt).toISOString(),
+    }),
+    dateModified: new Date(course.updatedAt).toISOString(),
     ...(course.level && {
       educationalLevel: course.level,
     }),

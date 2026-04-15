@@ -12,7 +12,7 @@ const nextConfig = {
       "script-src 'self' 'unsafe-eval' 'unsafe-inline' https://vercel.live https://connect.facebook.net https://isce-image.fra1.digitaloceanspaces.com https://isce-image.fra1.digitaloceanspaces.com https://www.googletagmanager.com https://cdn.mxpnl.com https://www.youtube.com https://localhost:* http://localhost:* ",
       "style-src 'self' 'unsafe-inline' https:",
       "media-src 'self' blob: https:",
-      "img-src 'self' data: blob: https://connect.facebook.net https://isce-image.fra1.digitaloceanspaces.com https://www.googletagmanager.com https://www.facebook.com https: http://localhost:*",
+      "img-src 'self' data: blob: https://connect.facebook.net https://isce-image.fra1.digitaloceanspaces.com https://www.googletagmanager.com https://www.facebook.com https://cdn.sanity.io https: http://localhost:*",
       "font-src 'self' data: https:",
       "connect-src 'self' https: wss: https://www.facebook.com https://connect.facebook.net https://isce-image.fra1.digitaloceanspaces.com  https://www.google-analytics.com https://www.googletagmanager.com   https://api.mixpanel.com https://api-js.mixpanel.com http://localhost:* https://localhost:*",
       "frame-src 'self' https://www.youtube.com https://www.youtube-nocookie.com https://isce-image.fra1.digitaloceanspaces.com https://www.facebook.com https://www.googletagmanager.com",

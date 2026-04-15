@@ -19,6 +19,7 @@ import {
   formatCohortName,
   getAvailableCohorts,
 } from "@/lib/cohort";
+import { sendCRMLeadEvent, sendCRMPurchaseEvent } from "@/lib/meta-conversions";
 
 const SITE_URL = process.env.NEXT_PUBLIC_URL || "http://localhost:2026";
 
@@ -286,6 +287,15 @@ export async function submitEnrollment(data: EnrollmentFormData) {
       },
     });
 
+    // Send Lead event to Meta Conversions API (non-blocking)
+    sendCRMLeadEvent({
+      email: form.email,
+      phone: form.phone ?? undefined,
+      firstName: form.fullName?.split(" ")[0],
+      lastName: form.fullName?.split(" ").slice(1).join(" ") || undefined,
+      externalId: enrollment.id,
+    }).catch(() => {});
+
     return {
       success: true,
       authorizationUrl: paystack.authorization_url,
@@ -380,6 +390,23 @@ export async function verifyEnrollmentPayment(reference: string) {
     }
 
     const newStatus = isFullyPaid ? "FULLY_PAID" : "FIRST_INSTALLMENT_PAID";
+
+    // Send Purchase event to Meta Conversions API (non-blocking)
+    sendCRMPurchaseEvent(
+      {
+        email: enrollment.email,
+        phone: enrollment.phone ?? undefined,
+        firstName: enrollment.fullName?.split(" ")[0],
+        lastName:
+          enrollment.fullName?.split(" ").slice(1).join(" ") || undefined,
+        externalId: enrollment.id,
+      },
+      {
+        currency: "NGN",
+        value: newAmountPaid,
+        contentName: enrollment.program.name,
+      },
+    ).catch(() => {});
 
     // ── Provision user account ──
     let accountInfo: Awaited<ReturnType<typeof provisionUserAccount>> | null =

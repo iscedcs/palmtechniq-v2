@@ -12,7 +12,7 @@ export default function PartnerPage() {
       icon: Users,
       title: "Affiliate Program",
       description:
-        "Earn recurring commissions by referring students to CyberLearn",
+        "Earn recurring commissions by referring students to PalmTechnIQ",
       benefits: [
         "Up to 30% commission",
         "Marketing materials provided",
@@ -35,7 +35,7 @@ export default function PartnerPage() {
     {
       icon: Zap,
       title: "Technology Integration",
-      description: "Integrate your tools and services with CyberLearn",
+      description: "Integrate your tools and services with PalmTechnIQ",
       benefits: ["API access", "Co-marketing opportunities", "Revenue sharing"],
     },
   ];
@@ -60,7 +60,7 @@ export default function PartnerPage() {
             <h1 className="text-5xl md:text-6xl font-bold mb-6">
               <span className="text-white">Partner With</span>
               <br />
-              <span className="text-gradient">CyberLearn</span>
+              <span className="text-gradient">PalmTechnIQ</span>
             </h1>
             <p className="text-xl text-gray-300 mb-8">
               Join our growing ecosystem of partners and help us transform

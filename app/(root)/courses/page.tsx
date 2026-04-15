@@ -26,18 +26,27 @@ export const dynamic = "force-dynamic";
 
 export default async function CoursesPage() {
   const [courses, categoriesResponse, activePromotion] = await Promise.all([
-    getPublicCourses(),
-    getCategories(),
-    getActivePromotion(),
+    getPublicCourses().catch((error) => {
+      console.error("Failed to fetch courses:", error);
+      return [];
+    }),
+    getCategories().catch((error) => {
+      console.error("Failed to fetch categories:", error);
+      return { success: false, categories: [] };
+    }),
+    getActivePromotion().catch((error) => {
+      console.error("Failed to fetch active promotion:", error);
+      return null;
+    }),
   ]);
 
-  const categories = categoriesResponse.success
+  const categories = categoriesResponse?.success
     ? categoriesResponse.categories
     : [];
 
   return (
     <div>
-      <CoursesGrid courses={courses} categories={categories} />
+      <CoursesGrid courses={courses || []} categories={categories || []} />
       <CoursePromotionPopup promotion={activePromotion} />
     </div>
   );

@@ -44,7 +44,7 @@ export function EnrollmentVerification() {
               result.enrollment?.program?.name ?? "Program Enrollment",
             content_type: "product",
             currency: "NGN",
-            value: (result.enrollment?.amountPaid ?? 0) / 100,
+            value: result.enrollment?.amountPaid ?? 0,
           });
           setState({ status: "success", enrollment: result.enrollment });
         } else {

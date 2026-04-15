@@ -13,6 +13,7 @@ import {
 
 import getUserByEmail from "@/data/user";
 import { hashPassword } from "@/lib/password";
+import { sendCRMRegistrationEvent } from "@/lib/meta-conversions";
 import { UserRole } from "@prisma/client";
 
 import { getPasswordResetTokenByToken } from "@/data/password-reset-token";
@@ -73,6 +74,14 @@ export async function signup(data: z.infer<typeof signupSchema>) {
       verificationToken.email,
       verificationToken.token,
     );
+
+    // Send CompleteRegistration to Meta Conversions API (non-blocking)
+    sendCRMRegistrationEvent({
+      email,
+      phone: phone ?? undefined,
+      firstName: name?.split(" ")[0],
+      lastName: name?.split(" ").slice(1).join(" ") || undefined,
+    }).catch(() => {});
 
     return { success: "Confirmation email sent!" };
   } catch (error) {

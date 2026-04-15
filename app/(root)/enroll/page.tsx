@@ -5,6 +5,16 @@ export const metadata: Metadata = {
   title: "Enroll — PalmTechnIQ Professional Programs",
   description:
     "Reserve your spot in PalmTechnIQ's intensive professional programs. Choose your path, select a cohort, and start your career pipeline.",
+  alternates: {
+    canonical: "/enroll",
+  },
+  openGraph: {
+    title: "Enroll — PalmTechnIQ Professional Programs",
+    description:
+      "Reserve your spot in PalmTechnIQ's intensive professional programs. Choose your path, select a cohort, and start your career pipeline.",
+    url: "https://palmtechniq.com/enroll",
+    type: "website",
+  },
 };
 
 export default function EnrollPage() {

@@ -425,8 +425,7 @@ export default function CoursesGrid({
                                   content_type: "product",
                                   currency: "NGN",
                                   value:
-                                    (course.currentPrice ?? course.price ?? 0) /
-                                    100,
+                                    course.currentPrice ?? course.price ?? 0,
                                 });
                                 toast.success(
                                   `${course.title} added to your cart`,

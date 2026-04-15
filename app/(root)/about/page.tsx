@@ -108,7 +108,7 @@ export default function AboutPage() {
               <span className="text-gradient">Values</span>
             </h2>
             <p className="text-xl text-gray-300 max-w-2xl mx-auto">
-              These principles guide everything we do at CyberLearn
+              These principles guide everything we do at PalmTechnIQ
             </p>
           </motion.div>
 

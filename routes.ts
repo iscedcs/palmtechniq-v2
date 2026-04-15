@@ -23,6 +23,7 @@ export const publicRoutes = [
   "/features/mentorship",
   "/enroll",
   "/enroll/verify",
+  "/verify-certificate",
 ];
 
 /**
