@@ -55,11 +55,13 @@ jobs:
         run: pnpm lint
 
       - name: Dependency Audit
-        run: |
-          npm install -g npm@latest
-          npm install --package-lock-only --ignore-scripts --legacy-peer-deps
-          npm audit --audit-level=high
-          rm -f package-lock.json
+        uses: aquasecurity/trivy-action@master
+        with:
+          scan-type: fs
+          scanners: vuln
+          severity: HIGH,CRITICAL
+          exit-code: 1
+          skip-dirs: .next
 
       - name: Run gitleaks
         if: ${{ env.GITLEAKS_LICENSE != '' }}
