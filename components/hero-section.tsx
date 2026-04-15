@@ -152,9 +152,9 @@ export function HeroSection() {
                   transition={{ duration: 0.6, delay: 1 + index * 0.2 }}
                   className="glass-card p-6 hover:shadow-lg hover:shadow-neon-blue/20 group cursor-pointer border border-white/10 hover:border-neon-blue/30 transition-all">
                   <feature.icon className="w-12 h-12 text-neon-blue mb-4 group-hover:scale-110 group-hover:rotate-12 transition-transform" />
-                  <h3 className="text-lg font-semibold text-white mb-2 group-hover:text-neon-blue transition-colors">
+                  <h2 className="text-lg font-semibold text-white mb-2 group-hover:text-neon-blue transition-colors">
                     {feature.title}
-                  </h3>
+                  </h2>
                   <p className="text-sm text-gray-400 group-hover:text-gray-300 transition-colors">
                     {feature.description}
                   </p>

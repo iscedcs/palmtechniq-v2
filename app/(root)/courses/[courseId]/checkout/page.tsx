@@ -7,6 +7,12 @@ import { redirect } from "next/navigation";
 import { db } from "@/lib/db";
 import { cookies } from "next/headers";
 import { REFERRAL_COOKIE_NAME } from "@/lib/referral";
+import type { Metadata } from "next";
+
+export const metadata: Metadata = {
+  title: "Checkout",
+  robots: { index: false, follow: false },
+};
 
 export default async function CheckoutPage({
   params,

@@ -383,7 +383,7 @@ export default function CheckoutCoursePage({
                           content_name: title,
                           content_type: "product",
                           currency: "NGN",
-                          value: total / 100,
+                          value: total,
                           num_items: 1,
                         });
                         onProceed(appliedPromo || undefined);

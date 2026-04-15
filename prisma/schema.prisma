@@ -191,9 +191,6 @@ model Course {
   subtitle               String
   tutorId                String
   allowDiscussions       Boolean                 @default(false)
-  courseType              CourseType              @default(REGULAR)
-  programId              String?                 @unique
-  program                ProfessionalProgram?    @relation(fields: [programId], references: [id])
   tags                   CourseTag[]
   advisorRecommendations AdvisorRecommendation[]
   AIRecommendation       AIRecommendation[]      @relation("CourseRecommendations")
@@ -1315,7 +1312,6 @@ model ProfessionalProgram {
 
   cohorts     ProgramCohort[]
   enrollments ProgramEnrollment[]
-  courses     Course[]
 
   @@map("professional_programs")
 }
@@ -1471,11 +1467,6 @@ enum CourseStatus {
   PUBLISHED
   ARCHIVED
   SUSPENDED
-}
-
-enum CourseType {
-  REGULAR
-  PROGRAM
 }
 
 enum EnrollmentStatus {
@@ -1731,4 +1722,20 @@ enum PromotionStatus {
   EXPIRED
   REJECTED
   CANCELLED
+}
+
+model VolunteerCertificate {
+  id              String   @id @default(cuid())
+  certCode        String   @unique
+  volunteerName   String
+  eventName       String
+  role            String?
+  description     String?
+  issuedAt        DateTime @default(now())
+  isRevoked       Boolean  @default(false)
+  certificateUrl  String   @default("")
+  createdAt       DateTime @default(now())
+  updatedAt       DateTime @updatedAt
+
+  @@map("volunteer_certificates")
 }

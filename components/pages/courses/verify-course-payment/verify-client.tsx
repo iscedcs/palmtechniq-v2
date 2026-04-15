@@ -30,7 +30,7 @@ export default function VerifyClient({ reference }: { reference?: string }) {
           trackPurchase({
             content_type: "product",
             currency: "NGN",
-            value: json.amount ? json.amount / 100 : 0,
+            value: json.amount ?? 0,
             content_ids: json.courseIds ?? [],
             content_name: json.courseName ?? "Course Purchase",
           });

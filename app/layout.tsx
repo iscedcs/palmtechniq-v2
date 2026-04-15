@@ -120,6 +120,7 @@ export default async function MainRootLayout({
       "https://www.instagram.com/palmtechniq",
       "https://www.linkedin.com/company/palmtechniq/",
       "https://www.youtube.com/@palmtechniq_official",
+      "https://x.com/palmtechniq/",
     ],
   };
 

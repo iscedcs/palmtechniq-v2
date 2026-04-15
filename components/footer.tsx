@@ -30,6 +30,7 @@ const footerLinks = {
   ],
   features: [
     { name: "AI Interview Coach", href: "/features/ai-interview" },
+    { name: "Verify Certificate", href: "/verify-certificate" },
     // { name: "LinkedIn Builder", href: "/features/linkedin-builder" },
     { name: "Live Mentorship", href: "/features/mentorship" },
     // { name: "Project-Based Learning", href: "/features/projects" },
@@ -38,7 +39,7 @@ const footerLinks = {
     { name: "About Us", href: "/about" },
     // { name: "Careers", href: "/careers" },
     // { name: "Press", href: "/press" },
-    // { name: "Blog", href: "/blog" },
+    { name: "Blog", href: "/blog" },
   ],
   support: [
     { name: "Help Center", href: "/help" },

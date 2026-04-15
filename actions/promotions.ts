@@ -152,11 +152,13 @@ export async function getActivePromotion() {
 
   if (!promotion) return null;
 
-  // Increment impressions
-  await db.coursePromotion.update({
-    where: { id: promotion.id },
-    data: { impressions: { increment: 1 } },
-  });
+  // Increment impressions (fire-and-forget, don't crash the page)
+  db.coursePromotion
+    .update({
+      where: { id: promotion.id },
+      data: { impressions: { increment: 1 } },
+    })
+    .catch(() => {});
 
   return promotion;
 }

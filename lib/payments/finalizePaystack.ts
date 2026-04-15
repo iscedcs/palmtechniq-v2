@@ -7,6 +7,7 @@ import {
 } from "@/lib/payments/pricing";
 import { createZoomMeeting } from "@/lib/zoom-integration";
 import { resolveTutorReferralCode } from "@/lib/referral";
+import { sendCRMPurchaseEvent } from "@/lib/meta-conversions";
 
 export async function finalizePaystackByReference(reference: string) {
   const tx = await db.transaction.findFirst({
@@ -399,6 +400,28 @@ export async function finalizePaystackByReference(reference: string) {
       tutor: { select: { userId: true } },
     },
   });
+
+  // Send Purchase event to Meta Conversions API (non-blocking)
+  const buyer = await db.user.findUnique({
+    where: { id: tx.userId },
+    select: { email: true, name: true, phone: true },
+  });
+  if (buyer?.email) {
+    sendCRMPurchaseEvent(
+      {
+        email: buyer.email,
+        phone: buyer.phone ?? undefined,
+        firstName: buyer.name?.split(" ")[0],
+        lastName: buyer.name?.split(" ").slice(1).join(" ") || undefined,
+        externalId: tx.userId,
+      },
+      {
+        currency: tx.currency ?? "NGN",
+        value: tx.amount,
+        contentName: course?.title ?? "Course Purchase",
+      },
+    ).catch(() => {});
+  }
 
   await notify.user(tx.userId, {
     type: "success",

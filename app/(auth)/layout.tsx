@@ -1,7 +1,10 @@
 import type { Metadata } from "next";
 
 export const metadata: Metadata = {
-  title: "Sign In",
+  title: {
+    default: "Account",
+    template: "%s | PalmTechnIQ",
+  },
   description:
     "Sign in to PalmTechnIQ to access your courses, track progress, and continue learning.",
   robots: {

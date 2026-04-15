@@ -6,6 +6,10 @@ import { Loader2 } from "lucide-react";
 export const metadata: Metadata = {
   title: "Payment Verification — PalmTechnIQ",
   description: "Verifying your enrollment payment.",
+  robots: {
+    index: false,
+    follow: false,
+  },
 };
 
 function VerificationFallback() {

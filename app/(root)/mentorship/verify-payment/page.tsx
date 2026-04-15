@@ -1,4 +1,10 @@
 import MentorshipVerifyClient from "@/components/pages/mentorship/verify-payment/verify-client";
+import type { Metadata } from "next";
+
+export const metadata: Metadata = {
+  title: "Mentorship Payment Verification",
+  robots: { index: false, follow: false },
+};
 
 export const dynamic = "force-dynamic";
 
