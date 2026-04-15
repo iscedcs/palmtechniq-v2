@@ -28,6 +28,8 @@ jobs:
       DO_SPACES_KEY: ci-placeholder
       DO_SPACES_SECRET: ci-placeholder
       DO_SPACES_BUCKET: ci-placeholder
+      NEXT_PUBLIC_SANITY_PROJECT_ID: at8svyj2
+      NEXT_PUBLIC_SANITY_DATASET: production
       # Expose Gitleaks license (if present) to the job as an env var so the
       # step conditional can reference it without using the `secrets` context
       # directly in an `if` expression (which can cause parsing errors).
