@@ -55,7 +55,10 @@ jobs:
         run: pnpm lint
 
       - name: Dependency Audit
-        run: npx -y audit-ci@latest --high --package-manager pnpm
+        run: |
+          npm install --package-lock-only --ignore-scripts --legacy-peer-deps
+          npm audit --audit-level=high
+          rm -f package-lock.json
 
       - name: Run gitleaks
         if: ${{ env.GITLEAKS_LICENSE != '' }}
