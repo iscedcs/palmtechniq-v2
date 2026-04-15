@@ -55,7 +55,7 @@ jobs:
         run: pnpm lint
 
       - name: Dependency Audit
-        run: pnpm audit --registry=https://registry.npmjs.org --audit-level=high
+        run: npx -y audit-ci@latest --high --package-manager pnpm
 
       - name: Run gitleaks
         if: ${{ env.GITLEAKS_LICENSE != '' }}
