@@ -56,6 +56,7 @@ jobs:
 
       - name: Dependency Audit
         run: |
+          npm install -g npm@latest
           npm install --package-lock-only --ignore-scripts --legacy-peer-deps
           npm audit --audit-level=high
           rm -f package-lock.json
