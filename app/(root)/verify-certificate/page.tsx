@@ -1,6 +1,7 @@
 "use client";
 
-import { useState } from "react";
+import { useState, useEffect, useCallback, Suspense } from "react";
+import { useSearchParams } from "next/navigation";
 import { motion, AnimatePresence } from "framer-motion";
 import { Footer } from "@/components/footer";
 import { Card } from "@/components/ui/card";
@@ -52,15 +53,23 @@ interface VerifyResult {
   certificate: CourseCertificate | VolunteerCertificate;
 }
 
-export default function VerifyCertificatePage() {
+export default function VerifyCertificatePageWrapper() {
+  return (
+    <Suspense fallback={<div className="min-h-screen bg-background" />}>
+      <VerifyCertificatePage />
+    </Suspense>
+  );
+}
+
+function VerifyCertificatePage() {
+  const searchParams = useSearchParams();
   const [code, setCode] = useState("");
   const [result, setResult] = useState<VerifyResult | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [loading, setLoading] = useState(false);
 
-  async function handleVerify(e: React.FormEvent) {
-    e.preventDefault();
-    const trimmed = code.trim();
+  const verifyCode = useCallback(async (codeToVerify: string) => {
+    const trimmed = codeToVerify.trim();
     if (!trimmed) return;
 
     setLoading(true);
@@ -84,6 +93,19 @@ export default function VerifyCertificatePage() {
     } finally {
       setLoading(false);
     }
+  }, []);
+
+  useEffect(() => {
+    const urlCode = searchParams.get("code");
+    if (urlCode) {
+      setCode(urlCode);
+      verifyCode(urlCode);
+    }
+  }, [searchParams, verifyCode]);
+
+  async function handleVerify(e: React.FormEvent) {
+    e.preventDefault();
+    verifyCode(code);
   }
 
   return (
