@@ -24,6 +24,7 @@ export const publicRoutes = [
   "/enroll",
   "/enroll/verify",
   "/verify-certificate",
+  "/certificate/[id]",
 ];
 
 /**

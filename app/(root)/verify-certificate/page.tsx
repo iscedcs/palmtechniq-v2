@@ -69,7 +69,7 @@ export default function VerifyCertificatePage() {
 
     try {
       const res = await fetch(
-        `/api/certificates/verify?code=${encodeURIComponent(trimmed)}`
+        `/api/certificates/verify?code=${encodeURIComponent(trimmed)}`,
       );
       const data = await res.json();
 
@@ -102,8 +102,7 @@ export default function VerifyCertificatePage() {
             initial={{ opacity: 0, y: 20 }}
             animate={{ opacity: 1, y: 0 }}
             transition={{ duration: 0.8 }}
-            className="text-center max-w-3xl mx-auto"
-          >
+            className="text-center max-w-3xl mx-auto">
             <div className="inline-flex items-center gap-2 px-4 py-2 rounded-full bg-neon-blue/10 border border-neon-blue/20 mb-6">
               <ShieldCheck className="w-4 h-4 text-neon-blue" />
               <span className="text-sm text-neon-blue font-medium">
@@ -122,8 +121,7 @@ export default function VerifyCertificatePage() {
             {/* Search form */}
             <form
               onSubmit={handleVerify}
-              className="flex flex-col sm:flex-row gap-3 max-w-lg mx-auto"
-            >
+              className="flex flex-col sm:flex-row gap-3 max-w-lg mx-auto">
               <Input
                 placeholder="e.g. PTV-2025-P0X8 or certificate ID"
                 value={code}
@@ -134,8 +132,7 @@ export default function VerifyCertificatePage() {
               <Button
                 type="submit"
                 disabled={loading || !code.trim()}
-                className="bg-gradient-to-r from-neon-blue to-neon-purple hover:from-neon-blue/80 hover:to-neon-purple/80 text-white h-12 px-6"
-              >
+                className="bg-gradient-to-r from-neon-blue to-neon-purple hover:from-neon-blue/80 hover:to-neon-purple/80 text-white h-12 px-6">
                 {loading ? (
                   <Loader2 className="w-4 h-4 animate-spin" />
                 ) : (
@@ -157,8 +154,7 @@ export default function VerifyCertificatePage() {
                 key="error"
                 initial={{ opacity: 0, y: 20 }}
                 animate={{ opacity: 1, y: 0 }}
-                exit={{ opacity: 0, y: -20 }}
-              >
+                exit={{ opacity: 0, y: -20 }}>
                 <Card className="glass-card border-red-500/30 p-8 text-center">
                   <ShieldX className="w-16 h-16 text-red-400 mx-auto mb-4" />
                   <h2 className="text-xl font-semibold text-white mb-2">
@@ -174,8 +170,7 @@ export default function VerifyCertificatePage() {
                 key="result"
                 initial={{ opacity: 0, y: 20 }}
                 animate={{ opacity: 1, y: 0 }}
-                exit={{ opacity: 0, y: -20 }}
-              >
+                exit={{ opacity: 0, y: -20 }}>
                 <Card className="glass-card border-white/10 overflow-hidden">
                   {/* Status banner */}
                   <div
@@ -183,8 +178,7 @@ export default function VerifyCertificatePage() {
                       result.valid
                         ? "bg-green-500/10 border-b border-green-500/20"
                         : "bg-red-500/10 border-b border-red-500/20"
-                    }`}
-                  >
+                    }`}>
                     {result.valid ? (
                       <ShieldCheck className="w-6 h-6 text-green-400" />
                     ) : (
@@ -194,8 +188,7 @@ export default function VerifyCertificatePage() {
                       <p
                         className={`font-semibold ${
                           result.valid ? "text-green-400" : "text-red-400"
-                        }`}
-                      >
+                        }`}>
                         {result.valid
                           ? "Valid Certificate"
                           : "Certificate Revoked"}
@@ -218,8 +211,7 @@ export default function VerifyCertificatePage() {
                           result.type === "volunteer"
                             ? "border-neon-purple/40 text-neon-purple"
                             : "border-neon-blue/40 text-neon-blue"
-                        }`}
-                      >
+                        }`}>
                         {result.type === "volunteer" ? (
                           <Heart className="w-3 h-3 mr-1" />
                         ) : (
@@ -251,8 +243,7 @@ export default function VerifyCertificatePage() {
                 initial={{ opacity: 0 }}
                 animate={{ opacity: 1 }}
                 exit={{ opacity: 0 }}
-                className="text-center text-gray-500 space-y-4"
-              >
+                className="text-center text-gray-500 space-y-4">
                 <AlertCircle className="w-12 h-12 mx-auto opacity-30" />
                 <p className="text-sm">
                   Enter a certificate code above to verify

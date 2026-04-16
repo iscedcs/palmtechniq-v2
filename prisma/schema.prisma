@@ -84,6 +84,9 @@ model User {
   withdrawalRequests      WithdrawalRequest[]
   programEnrollments      ProgramEnrollment[]
   promotions              CoursePromotion[]        @relation("PromotionCreator")
+  blogLikes               BlogLike[]               @relation("UserBlogLikes")
+  blogViews               BlogView[]               @relation("UserBlogViews")
+  blogBookmarks           BlogBookmark[]           @relation("UserBlogBookmarks")
 
   @@map("users")
 }
@@ -1738,4 +1741,48 @@ model VolunteerCertificate {
   updatedAt       DateTime @updatedAt
 
   @@map("volunteer_certificates")
+}
+
+// ─── Blog Engagement ───────────────────────────────────────────────
+
+model BlogLike {
+  id            String   @id @default(cuid())
+  sanityPostId  String
+  userId        String?
+  sessionId     String
+  createdAt     DateTime @default(now())
+
+  user User? @relation("UserBlogLikes", fields: [userId], references: [id], onDelete: SetNull)
+
+  @@unique([sanityPostId, sessionId])
+  @@index([sanityPostId])
+  @@map("blog_likes")
+}
+
+model BlogView {
+  id            String   @id @default(cuid())
+  sanityPostId  String
+  userId        String?
+  sessionId     String
+  createdAt     DateTime @default(now())
+
+  user User? @relation("UserBlogViews", fields: [userId], references: [id], onDelete: SetNull)
+
+  @@unique([sanityPostId, sessionId])
+  @@index([sanityPostId])
+  @@map("blog_views")
+}
+
+model BlogBookmark {
+  id            String   @id @default(cuid())
+  sanityPostId  String
+  userId        String
+  createdAt     DateTime @default(now())
+
+  user User @relation("UserBlogBookmarks", fields: [userId], references: [id], onDelete: Cascade)
+
+  @@unique([sanityPostId, userId])
+  @@index([sanityPostId])
+  @@index([userId])
+  @@map("blog_bookmarks")
 }
