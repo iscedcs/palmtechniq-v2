@@ -96,7 +96,7 @@ function VerifyCertificatePage() {
   }, []);
 
   useEffect(() => {
-    const urlCode = searchParams.get("code");
+    const urlCode = searchParams?.get("code");
     if (urlCode) {
       setCode(urlCode);
       verifyCode(urlCode);
