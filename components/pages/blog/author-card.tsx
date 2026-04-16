@@ -5,14 +5,19 @@ interface AuthorCardProps {
   author: {
     name: string;
     image?: { asset: { _ref: string } };
-    bio?: Array<{ children?: Array<{ text: string }> }>;
+    bio?: string | Array<{ children?: Array<{ text: string }> }>;
   };
 }
 
 export function AuthorCard({ author }: AuthorCardProps) {
-  const bioText = author.bio
-    ?.map((b) => b.children?.map((c) => c.text).join(""))
-    .join(" ");
+  let bioText: string | undefined;
+  if (typeof author.bio === "string") {
+    bioText = author.bio;
+  } else if (Array.isArray(author.bio)) {
+    bioText = author.bio
+      .map((b) => b.children?.map((c) => c.text).join(""))
+      .join(" ");
+  }
 
   return (
     <div className="glass-card border border-white/10 rounded-xl p-6 flex items-start gap-4">
