@@ -10,7 +10,14 @@ import { Form } from "@/components/ui/form";
 import { courseSchema } from "@/schemas";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { motion } from "framer-motion";
-import { BookOpen, Eye, PlayCircle, Save, Settings, GraduationCap } from "lucide-react";
+import {
+  BookOpen,
+  Eye,
+  PlayCircle,
+  Save,
+  Settings,
+  GraduationCap,
+} from "lucide-react";
 import { useRouter } from "next/navigation";
 import { useEffect, useRef, useState, useTransition } from "react";
 import { useForm, type Resolver } from "react-hook-form";
@@ -380,9 +387,7 @@ export default function CreateCourse() {
                     ))}
                   </div>
 
-                  {currentStep === 0 && (
-                    <CourseTypeSelector form={form} />
-                  )}
+                  {currentStep === 0 && <CourseTypeSelector form={form} />}
 
                   {currentStep === 1 && (
                     <CourseBasicInfoForm

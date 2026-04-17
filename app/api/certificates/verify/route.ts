@@ -8,7 +8,7 @@ export async function GET(req: NextRequest) {
   if (!code) {
     return NextResponse.json(
       { error: "Certificate code is required" },
-      { status: 400 }
+      { status: 400 },
     );
   }
 
@@ -22,7 +22,7 @@ export async function GET(req: NextRequest) {
       if (!volunteerCert) {
         return NextResponse.json(
           { error: "Certificate not found", valid: false },
-          { status: 404 }
+          { status: 404 },
         );
       }
 
@@ -64,7 +64,7 @@ export async function GET(req: NextRequest) {
     if (!certificate) {
       return NextResponse.json(
         { error: "Certificate not found", valid: false },
-        { status: 404 }
+        { status: 404 },
       );
     }
 
@@ -88,7 +88,7 @@ export async function GET(req: NextRequest) {
     console.error("Certificate verification error:", error);
     return NextResponse.json(
       { error: "Failed to verify certificate" },
-      { status: 500 }
+      { status: 500 },
     );
   }
 }

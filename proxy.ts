@@ -119,7 +119,12 @@ export default auth((req) => {
   }
 
   // Handle protected routes
-  if (isProtectedRoute || isPaymentRoute || isDocumentationRoute || isSuperiorRoute) {
+  if (
+    isProtectedRoute ||
+    isPaymentRoute ||
+    isDocumentationRoute ||
+    isSuperiorRoute
+  ) {
     if (!isLoggedIn) {
       // Redirect to login with callback URL
       let callbackUrl = nextUrl.pathname;
@@ -146,7 +151,9 @@ export default auth((req) => {
     // Superior routes: only SUPERIOR can access
     if (isSuperiorRoute && userRole !== "SUPERIOR") {
       const redirectPath = userRole
-        ? DEFAULT_LOGIN_REDIRECTS[userRole as keyof typeof DEFAULT_LOGIN_REDIRECTS]
+        ? DEFAULT_LOGIN_REDIRECTS[
+            userRole as keyof typeof DEFAULT_LOGIN_REDIRECTS
+          ]
         : DEFAULT_LOGIN_REDIRECT;
       return Response.redirect(new URL(redirectPath, nextUrl));
     }
@@ -158,7 +165,9 @@ export default auth((req) => {
       userRole !== "SUPERIOR"
     ) {
       const redirectPath = userRole
-        ? DEFAULT_LOGIN_REDIRECTS[userRole as keyof typeof DEFAULT_LOGIN_REDIRECTS]
+        ? DEFAULT_LOGIN_REDIRECTS[
+            userRole as keyof typeof DEFAULT_LOGIN_REDIRECTS
+          ]
         : DEFAULT_LOGIN_REDIRECT;
       return Response.redirect(new URL(redirectPath, nextUrl));
     }

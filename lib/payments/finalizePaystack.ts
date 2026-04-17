@@ -306,14 +306,13 @@ export async function finalizePaystackByReference(reference: string) {
             transactionLineItemId: item.id,
             courseId: item.courseId,
             amount: item.tutorShareAmount,
-            splitPercent:
-              item.isReferralPurchase
-                ? 0.5
-                : item.promoType === "PLATFORM"
-                  ? 0.2
-                  : item.promoType === "INSTRUCTOR"
-                    ? 0.5
-                    : 0.2,
+            splitPercent: item.isReferralPurchase
+              ? 0.5
+              : item.promoType === "PLATFORM"
+                ? 0.2
+                : item.promoType === "INSTRUCTOR"
+                  ? 0.5
+                  : 0.2,
             status: "AVAILABLE",
           },
         });

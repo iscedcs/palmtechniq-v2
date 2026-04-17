@@ -57,9 +57,7 @@ const TesterInvite = ({
                 Documentation Access Invitation
               </Text>
 
-              <Text className="text-lg text-gray-800 mb-4">
-                Hi {name},
-              </Text>
+              <Text className="text-lg text-gray-800 mb-4">Hi {name},</Text>
 
               <Text className="text-base text-gray-700 mb-4 leading-relaxed">
                 You&apos;ve been invited to access the PalmTechnIQ project
@@ -114,9 +112,7 @@ const TesterInvite = ({
             <Section className="bg-[#021A1A] px-8 py-6">
               <Row>
                 <Column align="center">
-                  <Text className="text-sm text-white mb-4">
-                    PalmTechnIQ
-                  </Text>
+                  <Text className="text-sm text-white mb-4">PalmTechnIQ</Text>
                 </Column>
               </Row>
 

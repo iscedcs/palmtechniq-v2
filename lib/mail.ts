@@ -373,16 +373,14 @@ export async function sendTesterInviteEmail(
   tempPassword: string,
 ) {
   try {
-    const { default: TesterInvite } = await import(
-      "./email-templates/tester-invite"
-    );
+    const { default: TesterInvite } =
+      await import("./email-templates/tester-invite");
     const resend = new Resend(process.env.RESEND_API_KEY!);
 
     await resend.emails.send({
       from: process.env.FROM_EMAIL_ADDRESS!,
       to: email,
-      subject:
-        "You've been invited to access PalmTechnIQ Documentation",
+      subject: "You've been invited to access PalmTechnIQ Documentation",
       react: TesterInvite({ name, email, tempPassword }),
     });
   } catch (error) {

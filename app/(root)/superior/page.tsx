@@ -12,13 +12,13 @@ export default async function SuperiorDashboardPage() {
   }
 
   return (
-    <div className="min-h-screen bg-background">
+    <div className="min-h-screen bg-background pt-24">
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-10">
         <div className="mb-8">
           <h1 className="text-3xl font-bold tracking-tight">
             Superior Dashboard
           </h1>
-          <p className="text-muted-foreground mt-2">
+          <p className="text-foreground mt-2">
             Manage testers and documentation access
           </p>
         </div>
@@ -30,10 +30,10 @@ export default async function SuperiorDashboardPage() {
                 <CardTitle className="text-sm font-medium">
                   Manage Testers
                 </CardTitle>
-                <Users className="h-5 w-5 text-muted-foreground" />
+                <Users className="h-5 w-5 text-foreground" />
               </CardHeader>
               <CardContent>
-                <p className="text-sm text-muted-foreground">
+                <p className="text-sm text-foreground">
                   Add, remove, and manage tester accounts for documentation
                   access
                 </p>
@@ -47,10 +47,10 @@ export default async function SuperiorDashboardPage() {
                 <CardTitle className="text-sm font-medium">
                   Documentation
                 </CardTitle>
-                <FileText className="h-5 w-5 text-muted-foreground" />
+                <FileText className="h-5 w-5 text-foreground" />
               </CardHeader>
               <CardContent>
-                <p className="text-sm text-muted-foreground">
+                <p className="text-sm text-foreground">
                   View the project documentation as a tester would see it
                 </p>
               </CardContent>
@@ -63,10 +63,10 @@ export default async function SuperiorDashboardPage() {
                 <CardTitle className="text-sm font-medium">
                   Admin Panel
                 </CardTitle>
-                <Shield className="h-5 w-5 text-muted-foreground" />
+                <Shield className="h-5 w-5 text-foreground" />
               </CardHeader>
               <CardContent>
-                <p className="text-sm text-muted-foreground">
+                <p className="text-sm text-foreground">
                   Access the full admin dashboard and management tools
                 </p>
               </CardContent>
