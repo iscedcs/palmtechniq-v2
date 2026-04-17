@@ -3,6 +3,7 @@
 import { auth } from "@/auth";
 import { db } from "@/lib/db";
 import { revalidatePath } from "next/cache";
+import { trackEvent, PLATFORM_EVENTS } from "@/lib/analytics/track";
 
 export async function toggleWishlist(courseId: string) {
   const session = await auth();
@@ -24,6 +25,11 @@ export async function toggleWishlist(courseId: string) {
   } else {
     await db.wishlist.create({
       data: { userId, courseId },
+    });
+    trackEvent(PLATFORM_EVENTS.WISHLIST_ADDED, {
+      userId,
+      entityType: "course",
+      entityId: courseId,
     });
     revalidatePath(`/courses/${courseId}`);
     return { success: true, added: true, message: "Added to wishlist" };

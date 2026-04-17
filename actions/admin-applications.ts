@@ -3,6 +3,7 @@
 import { auth } from "@/auth";
 import { db } from "@/lib/db";
 import { sendTutorMentorApplicationStatusNotification } from "@/lib/mail";
+import { trackEvent, PLATFORM_EVENTS } from "@/lib/analytics/track";
 
 export type AdminApplicationStatus =
   | "PENDING"
@@ -215,6 +216,18 @@ export async function updateTutorMentorApplicationStatus(input: {
       error:
         "Status update failed because applicant notification could not be delivered.",
     };
+  }
+
+  const eventDef = input.status === "APPROVED" ? PLATFORM_EVENTS.APPLICATION_APPROVED
+    : input.status === "REJECTED" ? PLATFORM_EVENTS.APPLICATION_REJECTED
+    : null;
+  if (eventDef) {
+    trackEvent(eventDef, {
+      userId: session.user.id,
+      entityType: "application",
+      entityId: input.registrationId,
+      metadata: { applicationType: updatedPayload.applicationType, status: input.status },
+    });
   }
 
   return { success: true };

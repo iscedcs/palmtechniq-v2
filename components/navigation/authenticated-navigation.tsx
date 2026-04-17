@@ -4,18 +4,29 @@ import { UserProfileDropdown } from "@/components/auth/user-profile-dropdown";
 import { ShoppingCartComponent } from "@/components/cart/shopping-cart";
 import { NotificationsDropdown } from "@/components/notifications/notifications-dropdown";
 import { Button } from "@/components/ui/button";
+import {
+  Sheet,
+  SheetContent,
+  SheetHeader,
+  SheetTitle,
+  SheetTrigger,
+} from "@/components/ui/sheet";
 import { roleNavItems } from "@/lib/const";
 import { generateRandomAvatar } from "@/lib/utils";
 import type { UserRole } from "@/types/user";
 import { motion } from "framer-motion";
+import { Menu } from "lucide-react";
 import { useSession } from "next-auth/react";
 import Image from "next/image";
 import Link from "next/link";
+import { usePathname } from "next/navigation";
 import { useEffect, useState } from "react";
 
 export function AuthenticatedNavigation() {
   const { data: session } = useSession();
   const [isScrolled, setIsScrolled] = useState(false);
+  const [mobileOpen, setMobileOpen] = useState(false);
+  const pathname = usePathname() ?? "";
 
   useEffect(() => {
     const handleScroll = () => {
@@ -24,6 +35,11 @@ export function AuthenticatedNavigation() {
     window.addEventListener("scroll", handleScroll);
     return () => window.removeEventListener("scroll", handleScroll);
   }, []);
+
+  // Close mobile menu on route change
+  useEffect(() => {
+    setMobileOpen(false);
+  }, [pathname]);
 
   const role = (session?.user.role || "USER") as UserRole;
   const userName = session?.user.name || "Guest";
@@ -41,12 +57,12 @@ export function AuthenticatedNavigation() {
       initial={{ y: -100 }}
       animate={{ y: 0 }}
       transition={{ duration: 0.5 }}>
-      <div className=" mx-auto md:px-0  max-w-7xl px-6 py-4">
+      <div className="mx-auto w-full px-4 sm:px-6 lg:px-8 py-4">
         <div className="flex items-center justify-between">
           {/* Logo */}
-          <Link href="/">
+          <Link href="/" className="shrink-0 flex-1">
             <motion.div
-              className="flex justify-center mx-auto items-center space-x-1"
+              className="flex items-center space-x-1"
               whileHover={{ scale: 1.05 }}>
               <Image
                 src="/assets/standalone.png"
@@ -61,28 +77,35 @@ export function AuthenticatedNavigation() {
             </motion.div>
           </Link>
 
-          {/* Navigation Items */}
-          <div className="hidden lg:flex items-center space-x-1">
-            {navItems.map((item, index) => (
-              <motion.div
-                key={item.href}
-                initial={{ opacity: 0, y: -20 }}
-                animate={{ opacity: 1, y: 0 }}
-                transition={{ delay: index * 0.1 }}>
-                <Link href={item.href}>
-                  <Button
-                    variant="ghost"
-                    className="hover-glow hover:bg-white/10 hover:text-neon-blue transition-all duration-300">
-                    <item.icon className="w-4 h-4 mr-2" />
-                    {item.label}
-                  </Button>
-                </Link>
-              </motion.div>
-            ))}
+          {/* Desktop Navigation Items */}
+          <div className="hidden lg:flex items-center justify-center space-x-1 xl:space-x-2">
+            {navItems.map((item, index) => {
+              const isActive =
+                pathname === item.href || pathname.startsWith(item.href + "/");
+              return (
+                <motion.div
+                  key={item.href}
+                  initial={{ opacity: 0, y: -20 }}
+                  animate={{ opacity: 1, y: 0 }}
+                  transition={{ delay: index * 0.1 }}>
+                  <Link href={item.href}>
+                    <Button
+                      variant="ghost"
+                      size="sm"
+                      className={`hover-glow hover:bg-white/10 hover:text-neon-blue transition-all duration-300 ${
+                        isActive ? "bg-white/10 text-neon-blue" : ""
+                      }`}>
+                      <item.icon className="w-4 h-4 mr-1.5" />
+                      {item.label}
+                    </Button>
+                  </Link>
+                </motion.div>
+              );
+            })}
           </div>
 
           {/* User Actions */}
-          <div className="flex items-center space-x-4">
+          <div className="flex items-center justify-end flex-1 space-x-2 sm:space-x-4">
             {/* Shopping Cart */}
             <ShoppingCartComponent />
 
@@ -96,6 +119,47 @@ export function AuthenticatedNavigation() {
               userEmail={userEmail}
               userAvatar={userAvatar}
             />
+
+            {/* Mobile Menu Button */}
+            <Sheet open={mobileOpen} onOpenChange={setMobileOpen}>
+              <SheetTrigger asChild>
+                <Button
+                  variant="ghost"
+                  size="icon"
+                  className="lg:hidden hover:bg-white/10">
+                  <Menu className="w-5 h-5" />
+                  <span className="sr-only">Open menu</span>
+                </Button>
+              </SheetTrigger>
+              <SheetContent
+                side="right"
+                className="w-72 glass-card border-l border-white/10 bg-background/95 backdrop-blur-xl">
+                <SheetHeader>
+                  <SheetTitle className="text-left text-gradient">
+                    Navigation
+                  </SheetTitle>
+                </SheetHeader>
+                <nav className="mt-6 flex flex-col space-y-1">
+                  {navItems.map((item) => {
+                    const isActive =
+                      pathname === item.href ||
+                      pathname.startsWith(item.href + "/");
+                    return (
+                      <Link key={item.href} href={item.href}>
+                        <Button
+                          variant="ghost"
+                          className={`w-full justify-start hover:bg-white/10 hover:text-neon-blue transition-all duration-200 ${
+                            isActive ? "bg-white/10 text-neon-blue" : ""
+                          }`}>
+                          <item.icon className="w-4 h-4 mr-3" />
+                          {item.label}
+                        </Button>
+                      </Link>
+                    );
+                  })}
+                </nav>
+              </SheetContent>
+            </Sheet>
           </div>
         </div>
       </div>

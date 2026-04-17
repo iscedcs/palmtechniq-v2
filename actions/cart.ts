@@ -5,6 +5,7 @@ import { db } from "@/lib/db";
 import { notify } from "@/lib/notify";
 import { generateRandomAvatar } from "@/lib/utils";
 import { revalidatePath } from "next/cache";
+import { trackEvent, PLATFORM_EVENTS } from "@/lib/analytics/track";
 
 export async function getUserCart() {
   const user = await auth();
@@ -85,6 +86,12 @@ export async function addToCart(courseId: string) {
     } catch (e) {
       console.warn("⚠️ Notification failed, skipping emit");
     }
+    trackEvent(PLATFORM_EVENTS.ADDED_TO_CART, {
+      userId: user.user.id,
+      entityType: "course",
+      entityId: courseId,
+      metadata: { courseTitle: course?.title },
+    });
     return { success: true, message: "Added to cart successfully" };
   } catch (error) {
     console.error("Add to cart failed:", error);
@@ -116,6 +123,12 @@ export async function removeFromCart(courseId: string) {
 
   await db.cartItem.delete({
     where: { userId_courseId: { userId: user.user.id, courseId } },
+  });
+
+  trackEvent(PLATFORM_EVENTS.REMOVED_FROM_CART, {
+    userId: user.user.id,
+    entityType: "course",
+    entityId: courseId,
   });
 
   revalidatePath("/cart");

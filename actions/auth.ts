@@ -15,6 +15,7 @@ import getUserByEmail from "@/data/user";
 import { hashPassword } from "@/lib/password";
 import { sendCRMRegistrationEvent } from "@/lib/meta-conversions";
 import { UserRole } from "@prisma/client";
+import { trackEvent, PLATFORM_EVENTS } from "@/lib/analytics/track";
 
 import { getPasswordResetTokenByToken } from "@/data/password-reset-token";
 import { getVerificationTokenByToken } from "@/data/verification-token";
@@ -82,6 +83,10 @@ export async function signup(data: z.infer<typeof signupSchema>) {
       firstName: name?.split(" ")[0],
       lastName: name?.split(" ").slice(1).join(" ") || undefined,
     }).catch(() => {});
+
+    trackEvent(PLATFORM_EVENTS.USER_SIGNED_UP, {
+      metadata: { method: "credentials" },
+    });
 
     return { success: "Confirmation email sent!" };
   } catch (error) {
@@ -255,6 +260,11 @@ export async function login(
           lastLoginAt: new Date(),
           lastLoginIp: ipAddress,
         },
+      });
+
+      trackEvent(PLATFORM_EVENTS.USER_LOGGED_IN, {
+        userId: existingUser.id,
+        metadata: { role: existingUser.role },
       });
 
       return {

@@ -6,6 +6,7 @@ import { reviewSchema, updateReviewSchema } from "@/schemas";
 import { z } from "zod";
 import { getAverageRating } from "@/lib/reviews";
 import { notify } from "@/lib/notify";
+import { trackEvent, PLATFORM_EVENTS } from "@/lib/analytics/track";
 
 const EDIT_WINDOW_DAYS = 7;
 
@@ -86,6 +87,13 @@ export async function createReview(input: z.infer<typeof reviewSchema>) {
       },
     });
   }
+
+  trackEvent(PLATFORM_EVENTS.REVIEW_SUBMITTED, {
+    userId: session.user.id,
+    entityType: "course",
+    entityId: validated.data.courseId,
+    metadata: { rating: validated.data.rating, reviewId: review.id },
+  });
 
   return { review };
 }
