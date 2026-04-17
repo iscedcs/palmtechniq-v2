@@ -52,6 +52,10 @@ const config = {
       if (token.sub && session.user) session.user.id = token.sub as string;
       if (token.role && session.user) session.user.role = token.role as string;
       if (token.role) (session as any).role = token.role as string;
+      if (token.mustChangePassword) {
+        (session as any).mustChangePassword = true;
+        if (session.user) (session.user as any).mustChangePassword = true;
+      }
       return session;
     },
   },

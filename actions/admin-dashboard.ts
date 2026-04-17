@@ -412,7 +412,15 @@ export async function getAdminUsersPageData(params?: {
       : 20;
   const requestedPage =
     typeof params?.page === "number" && params.page > 0 ? params.page : 1;
-  const roleValues = ["USER", "STUDENT", "MENTOR", "TUTOR", "ADMIN"] as const;
+  const roleValues = [
+    "USER",
+    "STUDENT",
+    "MENTOR",
+    "TUTOR",
+    "ADMIN",
+    "TESTER",
+    "SUPERIOR",
+  ] as const;
   const normalizedRole = roleValues.includes(params?.role as UserRole)
     ? (params?.role as UserRole)
     : undefined;

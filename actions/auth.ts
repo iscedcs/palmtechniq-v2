@@ -29,7 +29,7 @@ import {
   getClientIp,
   IP_RATE_LIMIT_CONFIG,
 } from "@/lib/ip-rate-limit";
-import { DEFAULT_LOGIN_REDIRECT } from "@/routes";
+import { DEFAULT_LOGIN_REDIRECT, DEFAULT_LOGIN_REDIRECTS } from "@/routes";
 import { AuthError } from "next-auth";
 import z from "zod";
 
@@ -259,7 +259,13 @@ export async function login(
 
       return {
         success: "Successfully Signed in!",
-        redirectUrl: callbackUrl || DEFAULT_LOGIN_REDIRECT,
+        redirectUrl: existingUser.mustChangePassword
+          ? "/change-password"
+          : callbackUrl ||
+            DEFAULT_LOGIN_REDIRECTS[
+              existingUser.role as keyof typeof DEFAULT_LOGIN_REDIRECTS
+            ] ||
+            DEFAULT_LOGIN_REDIRECT,
       };
     } catch (signInError) {
       // Login failed - increment failed attempts

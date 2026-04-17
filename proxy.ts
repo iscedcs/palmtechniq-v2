@@ -12,6 +12,8 @@ import {
   mentorRoutes,
   studentRoutes,
   paymentRoutes,
+  superiorRoutes,
+  documentationRoutes,
 } from "@/routes";
 import { NextResponse } from "next/server";
 
@@ -45,6 +47,13 @@ export default auth((req) => {
   const isMentorRoute = matchesRoute(nextUrl.pathname, mentorRoutes);
   const isStudentRoute = matchesRoute(nextUrl.pathname, studentRoutes);
   const isPaymentRoute = matchesRoute(nextUrl.pathname, paymentRoutes);
+  const isSuperiorRoute =
+    matchesRoute(nextUrl.pathname, superiorRoutes) ||
+    nextUrl.pathname.startsWith("/superior");
+  const isDocumentationRoute =
+    matchesRoute(nextUrl.pathname, documentationRoutes) ||
+    nextUrl.pathname.startsWith("/documentation");
+  const isChangePasswordRoute = nextUrl.pathname === "/change-password";
 
   // Allow API authentication routes to proceed
   if (isApiAuthRoute) {
@@ -100,8 +109,17 @@ export default auth((req) => {
     return; // Allow access to public routes
   }
 
+  // Handle change-password route
+  if (isChangePasswordRoute) {
+    if (!isLoggedIn) {
+      return Response.redirect(new URL("/login", nextUrl));
+    }
+    // Allow access - the page itself checks mustChangePassword
+    return;
+  }
+
   // Handle protected routes
-  if (isProtectedRoute || isPaymentRoute) {
+  if (isProtectedRoute || isPaymentRoute || isDocumentationRoute || isSuperiorRoute) {
     if (!isLoggedIn) {
       // Redirect to login with callback URL
       let callbackUrl = nextUrl.pathname;
@@ -114,9 +132,35 @@ export default auth((req) => {
       );
     }
 
+    // Forced password change: redirect to /change-password if mustChangePassword is true
+    const mustChangePassword = (authObj as any)?.mustChangePassword;
+    if (mustChangePassword && !isChangePasswordRoute) {
+      return Response.redirect(new URL("/change-password", nextUrl));
+    }
+
     // Role-based access control for protected routes
-    if (isAdminRoute && userRole !== "ADMIN") {
+    if (isAdminRoute && userRole !== "ADMIN" && userRole !== "SUPERIOR") {
       return Response.redirect(new URL("/courses", nextUrl));
+    }
+
+    // Superior routes: only SUPERIOR can access
+    if (isSuperiorRoute && userRole !== "SUPERIOR") {
+      const redirectPath = userRole
+        ? DEFAULT_LOGIN_REDIRECTS[userRole as keyof typeof DEFAULT_LOGIN_REDIRECTS]
+        : DEFAULT_LOGIN_REDIRECT;
+      return Response.redirect(new URL(redirectPath, nextUrl));
+    }
+
+    // Documentation routes: only TESTER and SUPERIOR can access
+    if (
+      isDocumentationRoute &&
+      userRole !== "TESTER" &&
+      userRole !== "SUPERIOR"
+    ) {
+      const redirectPath = userRole
+        ? DEFAULT_LOGIN_REDIRECTS[userRole as keyof typeof DEFAULT_LOGIN_REDIRECTS]
+        : DEFAULT_LOGIN_REDIRECT;
+      return Response.redirect(new URL(redirectPath, nextUrl));
     }
 
     if (
@@ -175,8 +219,11 @@ export const config = {
     "/tutor/:path*",
     "/mentor/:path*",
     "/admin/:path*",
+    "/superior/:path*",
+    "/documentation/:path*",
     "/courses/:path*/learn",
     "/settings/:path*",
     "/auth/:path*",
+    "/change-password",
   ],
 };

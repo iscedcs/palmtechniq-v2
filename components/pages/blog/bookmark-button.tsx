@@ -38,11 +38,8 @@ export function BookmarkButton({
           ? "text-neon-blue hover:text-neon-blue/80"
           : "text-gray-400 hover:text-white"
       }`}
-      aria-label={bookmarked ? "Remove bookmark" : "Bookmark this post"}
-    >
-      <Bookmark
-        className={`w-5 h-5 ${bookmarked ? "fill-neon-blue" : ""}`}
-      />
+      aria-label={bookmarked ? "Remove bookmark" : "Bookmark this post"}>
+      <Bookmark className={`w-5 h-5 ${bookmarked ? "fill-neon-blue" : ""}`} />
     </Button>
   );
 }

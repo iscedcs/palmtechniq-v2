@@ -58,8 +58,7 @@ export function LikeButton({ postId }: { postId: string }) {
         liked
           ? "text-rose-400 hover:text-rose-300"
           : "text-gray-400 hover:text-white"
-      }`}
-    >
+      }`}>
       <Heart
         className={`w-5 h-5 transition-transform ${
           animating ? "scale-125" : "scale-100"

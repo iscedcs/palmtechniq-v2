@@ -3,11 +3,12 @@ import "next-auth/jwt";
 
 declare module "next-auth/jwt" {
   interface JWT {
-    sub?: string; // id stored in `sub`
+    sub?: string;
     id?: string;
     role?: string;
     email?: string;
     exp?: number;
+    mustChangePassword?: boolean;
   }
 }
 
@@ -17,13 +18,15 @@ declare module "next-auth" {
     name?: string;
     email?: string;
     role?: string;
-    image?: string | null; // ✅ allow null
+    image?: string | null;
     avatar?: string | null;
+    mustChangePassword?: boolean;
   }
 
   interface Session {
     user: User;
     role?: string;
+    mustChangePassword?: boolean;
     token?: {
       role: string;
     };

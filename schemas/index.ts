@@ -317,3 +317,16 @@ export type ResetPasswordFormData = z.infer<typeof resetPasswordSchema>;
 export type ProjectFormData = z.infer<typeof projectSchema>;
 export type GradeSubmissionFormData = z.infer<typeof gradeSubmissionSchema>;
 export type StudentSubmissionFormData = z.infer<typeof studentSubmissionSchema>;
+
+// Change password schema (forced change on first login)
+export const changePasswordSchema = z
+  .object({
+    newPassword: passwordSchema,
+    confirmNewPassword: z.string(),
+  })
+  .refine((data) => data.newPassword === data.confirmNewPassword, {
+    message: "Passwords don't match",
+    path: ["confirmNewPassword"],
+  });
+
+export type ChangePasswordFormData = z.infer<typeof changePasswordSchema>;
