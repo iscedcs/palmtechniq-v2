@@ -28,8 +28,7 @@ export function TableOfContents({ headings }: { headings: Heading[] }) {
                 h.style === "h3"
                   ? "pl-4 text-gray-400"
                   : "text-gray-300 font-medium"
-              }`}
-            >
+              }`}>
               {h.text}
             </button>
           </li>

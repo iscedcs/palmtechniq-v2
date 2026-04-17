@@ -39,6 +39,8 @@ model User {
   lastLoginIp             String?
   lastFailedLoginAt       DateTime?
   lastFailedLoginIp       String?
+  mustChangePassword      Boolean                  @default(false)
+  invitedBy               String?
   accounts                Account[]
   adminProfile            Admin?
   advisorFollowUps        AdvisorFollowUp[]
@@ -1444,6 +1446,8 @@ enum UserRole {
   TUTOR
   ADMIN
   MENTOR
+  TESTER
+  SUPERIOR
 }
 
 enum AdminLevel {
@@ -1728,17 +1732,17 @@ enum PromotionStatus {
 }
 
 model VolunteerCertificate {
-  id              String   @id @default(cuid())
-  certCode        String   @unique
-  volunteerName   String
-  eventName       String
-  role            String?
-  description     String?
-  issuedAt        DateTime @default(now())
-  isRevoked       Boolean  @default(false)
-  certificateUrl  String   @default("")
-  createdAt       DateTime @default(now())
-  updatedAt       DateTime @updatedAt
+  id             String   @id @default(cuid())
+  certCode       String   @unique
+  volunteerName  String
+  eventName      String
+  role           String?
+  description    String?
+  issuedAt       DateTime @default(now())
+  isRevoked      Boolean  @default(false)
+  certificateUrl String   @default("")
+  createdAt      DateTime @default(now())
+  updatedAt      DateTime @updatedAt
 
   @@map("volunteer_certificates")
 }
@@ -1746,11 +1750,11 @@ model VolunteerCertificate {
 // ─── Blog Engagement ───────────────────────────────────────────────
 
 model BlogLike {
-  id            String   @id @default(cuid())
-  sanityPostId  String
-  userId        String?
-  sessionId     String
-  createdAt     DateTime @default(now())
+  id           String   @id @default(cuid())
+  sanityPostId String
+  userId       String?
+  sessionId    String
+  createdAt    DateTime @default(now())
 
   user User? @relation("UserBlogLikes", fields: [userId], references: [id], onDelete: SetNull)
 
@@ -1760,11 +1764,11 @@ model BlogLike {
 }
 
 model BlogView {
-  id            String   @id @default(cuid())
-  sanityPostId  String
-  userId        String?
-  sessionId     String
-  createdAt     DateTime @default(now())
+  id           String   @id @default(cuid())
+  sanityPostId String
+  userId       String?
+  sessionId    String
+  createdAt    DateTime @default(now())
 
   user User? @relation("UserBlogViews", fields: [userId], references: [id], onDelete: SetNull)
 
@@ -1774,10 +1778,10 @@ model BlogView {
 }
 
 model BlogBookmark {
-  id            String   @id @default(cuid())
-  sanityPostId  String
-  userId        String
-  createdAt     DateTime @default(now())
+  id           String   @id @default(cuid())
+  sanityPostId String
+  userId       String
+  createdAt    DateTime @default(now())
 
   user User @relation("UserBlogBookmarks", fields: [userId], references: [id], onDelete: Cascade)
 

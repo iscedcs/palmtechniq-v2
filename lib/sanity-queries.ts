@@ -13,7 +13,7 @@ export async function getPosts() {
       readingTime,
       "author": author->{name, image},
       "categories": categories[]->{ _id, title }
-    }`
+    }`,
   );
 }
 
@@ -29,7 +29,7 @@ export async function getFeaturedPosts() {
       readingTime,
       "author": author->{name, image},
       "categories": categories[]->{ _id, title }
-    }`
+    }`,
   );
 }
 
@@ -53,13 +53,13 @@ export async function getPost(slug: string) {
         "_key": _key
       }
     }`,
-    { slug }
+    { slug },
   );
 }
 
 export async function getRelatedPosts(
   currentPostId: string,
-  categoryIds: string[]
+  categoryIds: string[],
 ) {
   return client.fetch(
     `*[_type == "post" && _id != $currentPostId && count(categories[@._ref in $categoryIds]) > 0] | order(publishedAt desc)[0...3] {
@@ -73,12 +73,12 @@ export async function getRelatedPosts(
       "author": author->{name, image},
       "categories": categories[]->{ _id, title }
     }`,
-    { currentPostId, categoryIds }
+    { currentPostId, categoryIds },
   );
 }
 
 export async function getCategories() {
   return client.fetch(
-    `*[_type == "category"] | order(title asc) { _id, title, description }`
+    `*[_type == "category"] | order(title asc) { _id, title, description }`,
   );
 }

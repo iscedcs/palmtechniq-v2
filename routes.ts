@@ -83,6 +83,12 @@ export const protectedRoutes = [
   "/admin/promotions",
   "/settings",
   "/tutor/promotions",
+  "/documentation",
+  "/change-password",
+  "/superior",
+  "/superior/testers",
+  "/superior/admins",
+  "/superior/settings",
 ];
 
 /**
@@ -144,6 +150,23 @@ export const studentRoutes = [
 ];
 
 /**
+ * Superior-only routes (super admin)
+ * @type {string[]}
+ */
+export const superiorRoutes = [
+  "/superior",
+  "/superior/testers",
+  "/superior/admins",
+  "/superior/settings",
+];
+
+/**
+ * Documentation routes - accessible by TESTER and SUPERIOR only
+ * @type {string[]}
+ */
+export const documentationRoutes = ["/documentation"];
+
+/**
  * Routes that require payment/enrollment
  * @type {string[]}
  */
@@ -162,15 +185,22 @@ export const apiAuthPrefix = "/api/auth";
  * The default redirect path after logging in based on user role
  * @type {Record<string, string>}
  */
-export type UserRole = "STUDENT" | "MENTOR" | "TUTOR" | "ADMIN" | "USER";
-export const DEFAULT_LOGIN_REDIRECTS: Record<UserRole, string> & {
-  USER: string;
-} = {
+export type UserRole =
+  | "STUDENT"
+  | "MENTOR"
+  | "TUTOR"
+  | "ADMIN"
+  | "USER"
+  | "TESTER"
+  | "SUPERIOR";
+export const DEFAULT_LOGIN_REDIRECTS: Record<UserRole, string> = {
   STUDENT: "/student",
   MENTOR: "/mentor/mentorship",
   TUTOR: "/tutor",
   ADMIN: "/admin",
   USER: "/courses",
+  TESTER: "/documentation",
+  SUPERIOR: "/superior",
 };
 
 /**

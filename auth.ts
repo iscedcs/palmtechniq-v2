@@ -112,11 +112,12 @@ const nodeConfig: NextAuthConfig = {
         try {
           const userActive = await db.user.findUnique({
             where: { id: token.sub as string },
-            select: { role: true, name: true },
+            select: { role: true, name: true, mustChangePassword: true },
           });
           if (userActive?.role && token.role !== userActive.role) {
             token.role = userActive.role;
           }
+          token.mustChangePassword = userActive?.mustChangePassword ?? false;
           if (userActive?.role === "ADMIN") {
             const existingName = userActive.name || "";
             const pattern = /^PTQ-ADMIN-[A-Z0-9]{6}$/;

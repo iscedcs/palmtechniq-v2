@@ -41,14 +41,12 @@ export function ShareButtons({ title, slug }: ShareButtonsProps) {
         variant="ghost"
         size="icon"
         className="w-8 h-8 text-gray-400 hover:text-[#1DA1F2]"
-        asChild
-      >
+        asChild>
         <a
           href={`https://twitter.com/intent/tweet?text=${encodedTitle}&url=${encoded}`}
           target="_blank"
           rel="noopener noreferrer"
-          aria-label="Share on X/Twitter"
-        >
+          aria-label="Share on X/Twitter">
           <Twitter className="w-4 h-4" />
         </a>
       </Button>
@@ -56,14 +54,12 @@ export function ShareButtons({ title, slug }: ShareButtonsProps) {
         variant="ghost"
         size="icon"
         className="w-8 h-8 text-gray-400 hover:text-[#0A66C2]"
-        asChild
-      >
+        asChild>
         <a
           href={`https://www.linkedin.com/sharing/share-offsite/?url=${encoded}`}
           target="_blank"
           rel="noopener noreferrer"
-          aria-label="Share on LinkedIn"
-        >
+          aria-label="Share on LinkedIn">
           <Linkedin className="w-4 h-4" />
         </a>
       </Button>
@@ -71,14 +67,12 @@ export function ShareButtons({ title, slug }: ShareButtonsProps) {
         variant="ghost"
         size="icon"
         className="w-8 h-8 text-gray-400 hover:text-[#1877F2]"
-        asChild
-      >
+        asChild>
         <a
           href={`https://www.facebook.com/sharer/sharer.php?u=${encoded}`}
           target="_blank"
           rel="noopener noreferrer"
-          aria-label="Share on Facebook"
-        >
+          aria-label="Share on Facebook">
           <Facebook className="w-4 h-4" />
         </a>
       </Button>
@@ -87,8 +81,7 @@ export function ShareButtons({ title, slug }: ShareButtonsProps) {
         size="icon"
         className="w-8 h-8 text-gray-400 hover:text-neon-blue"
         onClick={copyLink}
-        aria-label="Copy link"
-      >
+        aria-label="Copy link">
         {copied ? (
           <Check className="w-4 h-4 text-green-400" />
         ) : (
