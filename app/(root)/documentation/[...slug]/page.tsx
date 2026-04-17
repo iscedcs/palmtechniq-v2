@@ -35,18 +35,6 @@ export async function generateMetadata({
   };
 }
 
-export async function generateStaticParams() {
-  const paths: { slug: string[] }[] = [];
-  for (const section of docSections) {
-    if (section.children) {
-      for (const page of section.children) {
-        paths.push({ slug: [section.slug, page.slug] });
-      }
-    }
-  }
-  return paths;
-}
-
 export default async function DocCatchAllPage({ params }: DocPageProps) {
   const { slug } = await params;
 
