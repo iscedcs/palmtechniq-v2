@@ -59,10 +59,7 @@ export default function CourseTypeSelector({ form }: CourseTypeSelectorProps) {
     if (program) {
       // Auto-populate title with program name + duration label
       const baseName = program.name.replace(/\s*\(Crash Course\)$/, "");
-      form.setValue(
-        "title",
-        `${baseName} – ${program.durationLabel} Program`,
-      );
+      form.setValue("title", `${baseName} – ${program.durationLabel} Program`);
     }
   };
 
@@ -73,8 +70,8 @@ export default function CourseTypeSelector({ form }: CourseTypeSelectorProps) {
           What type of course are you creating?
         </h3>
         <p className="text-gray-400 text-sm mb-6">
-          Choose whether this is a regular standalone course or a
-          program-based course tied to one of our professional programs.
+          Choose whether this is a regular standalone course or a program-based
+          course tied to one of our professional programs.
         </p>
       </div>
 
@@ -97,8 +94,8 @@ export default function CourseTypeSelector({ form }: CourseTypeSelectorProps) {
             Regular Course
           </h4>
           <p className="text-gray-400 text-sm">
-            A standalone course that students can individually purchase from
-            the course marketplace. Not tied to any program or cohort.
+            A standalone course that students can individually purchase from the
+            course marketplace. Not tied to any program or cohort.
           </p>
         </button>
 

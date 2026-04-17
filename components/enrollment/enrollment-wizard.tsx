@@ -154,8 +154,8 @@ export function EnrollmentWizard() {
           currency: "NGN",
           value: selectedProgram
             ? data.paymentPlan === "FULL_PAYMENT"
-                ? selectedProgram.fullPrice
-                : selectedProgram.installTotal
+              ? selectedProgram.fullPrice
+              : selectedProgram.installTotal
             : undefined,
         });
         toast.success("Redirecting to payment...");

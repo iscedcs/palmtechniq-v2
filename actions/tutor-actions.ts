@@ -602,10 +602,7 @@ export async function reorderLessons(
   }
 }
 
-export async function reorderModules(
-  courseId: string,
-  moduleIds: string[],
-) {
+export async function reorderModules(courseId: string, moduleIds: string[]) {
   const session = await auth();
   if (!session?.user?.id) {
     return { error: "Unauthorized" };

@@ -8,10 +8,7 @@ export async function Navigation() {
     session = await auth();
   } catch (error: unknown) {
     // Silently handle static generation — auth() uses headers() which is unavailable during build
-    if (
-      error instanceof Error &&
-      error.message?.includes("headers")
-    ) {
+    if (error instanceof Error && error.message?.includes("headers")) {
       // Expected during static build, no need to log
     } else {
       console.error("Error fetching session:", error);

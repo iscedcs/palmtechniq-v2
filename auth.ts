@@ -69,7 +69,7 @@ const nodeConfig: NextAuthConfig = {
           const existingUser = await db.user.findUnique({
             where: { email: user.email! },
           });
-          
+
           // If user doesn't exist, create them
           if (!existingUser) {
             const { onBoardingMail } = await import("./lib/mail");

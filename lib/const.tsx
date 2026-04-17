@@ -107,6 +107,16 @@ export const roleNavItems = {
     { icon: Wallet, label: "Finance", href: "/admin/finance" },
     { icon: Megaphone, label: "Promotions", href: "/admin/promotions" },
   ],
+  TESTER: [
+    { icon: Home, label: "Home", href: "/" },
+    { icon: FileText, label: "Documentation", href: "/documentation" },
+  ],
+  SUPERIOR: [
+    { icon: Home, label: "Dashboard", href: "/superior" },
+    { icon: Users, label: "Testers", href: "/superior/testers" },
+    { icon: FileText, label: "Documentation", href: "/documentation" },
+    { icon: Shield, label: "Admin Panel", href: "/admin" },
+  ],
 };
 
 export const roleMenuItems = {
@@ -153,6 +163,15 @@ export const roleMenuItems = {
     { icon: Wallet, label: "Financial Reports", href: "/admin/finance" },
     { icon: Megaphone, label: "Promotions", href: "/admin/promotions" },
     { icon: Settings, label: "System Settings", href: "/admin/settings" },
+  ],
+  TESTER: [
+    { icon: FileText, label: "Documentation", href: "/documentation" },
+  ],
+  SUPERIOR: [
+    { icon: Home, label: "Dashboard", href: "/superior" },
+    { icon: Users, label: "Manage Testers", href: "/superior/testers" },
+    { icon: FileText, label: "Documentation", href: "/documentation" },
+    { icon: Shield, label: "Admin Panel", href: "/admin" },
   ],
 };
 

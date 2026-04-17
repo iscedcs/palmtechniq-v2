@@ -211,19 +211,17 @@ export function TesterManagement() {
         <CardContent>
           <div className="grid gap-4 grid-cols-1 sm:grid-cols-3">
             <div>
-              <p className="text-sm text-muted-foreground">Total Testers</p>
+              <p className="text-sm text-foreground">Total Testers</p>
               <p className="text-2xl font-bold">{testers.length}</p>
             </div>
             <div>
-              <p className="text-sm text-muted-foreground">
-                Pending Password Change
-              </p>
+              <p className="text-sm text-foreground">Pending Password Change</p>
               <p className="text-2xl font-bold">
                 {testers.filter((t) => t.mustChangePassword).length}
               </p>
             </div>
             <div>
-              <p className="text-sm text-muted-foreground">Active</p>
+              <p className="text-sm text-foreground">Active</p>
               <p className="text-2xl font-bold">
                 {testers.filter((t) => !t.mustChangePassword).length}
               </p>
@@ -249,11 +247,11 @@ export function TesterManagement() {
         </CardHeader>
         <CardContent>
           {loading ? (
-            <div className="text-center py-8 text-muted-foreground">
+            <div className="text-center py-8 text-foreground">
               Loading testers...
             </div>
           ) : testers.length === 0 ? (
-            <div className="text-center py-8 text-muted-foreground">
+            <div className="text-center py-8 text-foreground">
               <User className="w-10 h-10 mx-auto mb-3 opacity-50" />
               <p>No testers added yet</p>
               <p className="text-sm">
@@ -265,11 +263,13 @@ export function TesterManagement() {
               <Table>
                 <TableHeader>
                   <TableRow>
-                    <TableHead>Name</TableHead>
-                    <TableHead>Email</TableHead>
-                    <TableHead>Status</TableHead>
-                    <TableHead>Added</TableHead>
-                    <TableHead>Last Login</TableHead>
+                    <TableHead className="text-foreground">Name</TableHead>
+                    <TableHead className="text-foreground">Email</TableHead>
+                    <TableHead className="text-foreground">Status</TableHead>
+                    <TableHead className="text-foreground">Added</TableHead>
+                    <TableHead className="text-foreground">
+                      Last Login
+                    </TableHead>
                     <TableHead className="text-right">Actions</TableHead>
                   </TableRow>
                 </TableHeader>
@@ -290,10 +290,10 @@ export function TesterManagement() {
                           <Badge variant="default">Active</Badge>
                         )}
                       </TableCell>
-                      <TableCell className="text-sm text-muted-foreground">
+                      <TableCell className="text-sm text-foreground">
                         {new Date(tester.createdAt).toLocaleDateString()}
                       </TableCell>
-                      <TableCell className="text-sm text-muted-foreground">
+                      <TableCell className="text-sm text-foreground">
                         {tester.lastLoginAt
                           ? new Date(tester.lastLoginAt).toLocaleDateString()
                           : "Never"}
@@ -326,17 +326,15 @@ export function TesterManagement() {
                                 </AlertDialogTitle>
                                 <AlertDialogDescription>
                                   Are you sure you want to remove{" "}
-                                  <strong>{tester.name || tester.email}</strong>?
-                                  This will permanently delete their account and
-                                  revoke documentation access.
+                                  <strong>{tester.name || tester.email}</strong>
+                                  ? This will permanently delete their account
+                                  and revoke documentation access.
                                 </AlertDialogDescription>
                               </AlertDialogHeader>
                               <AlertDialogFooter>
                                 <AlertDialogCancel>Cancel</AlertDialogCancel>
                                 <AlertDialogAction
-                                  onClick={() =>
-                                    handleRemoveTester(tester.id)
-                                  }
+                                  onClick={() => handleRemoveTester(tester.id)}
                                   className="bg-destructive text-destructive-foreground hover:bg-destructive/90">
                                   Remove
                                 </AlertDialogAction>

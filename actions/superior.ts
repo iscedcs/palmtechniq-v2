@@ -7,8 +7,7 @@ import { UserRole } from "@prisma/client";
 import crypto from "crypto";
 
 function generateTempPassword(): string {
-  const chars =
-    "ABCDEFGHJKLMNPQRSTUVWXYZabcdefghjkmnpqrstuvwxyz23456789@!%*?&";
+  const chars = "ABCDEFGHJKLMNPQRSTUVWXYZabcdefghjkmnpqrstuvwxyz23456789@!%*?&";
   let password = "";
   const bytes = crypto.randomBytes(12);
   for (let i = 0; i < 12; i++) {
