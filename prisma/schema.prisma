@@ -39,8 +39,6 @@ model User {
   lastLoginIp             String?
   lastFailedLoginAt       DateTime?
   lastFailedLoginIp       String?
-  mustChangePassword      Boolean                  @default(false)
-  invitedBy               String?
   accounts                Account[]
   adminProfile            Admin?
   advisorFollowUps        AdvisorFollowUp[]
@@ -89,7 +87,6 @@ model User {
   blogLikes               BlogLike[]               @relation("UserBlogLikes")
   blogViews               BlogView[]               @relation("UserBlogViews")
   blogBookmarks           BlogBookmark[]           @relation("UserBlogBookmarks")
-  platformEvents          PlatformEvent[]
 
   @@map("users")
 }
@@ -1447,8 +1444,6 @@ enum UserRole {
   TUTOR
   ADMIN
   MENTOR
-  TESTER
-  SUPERIOR
 }
 
 enum AdminLevel {
@@ -1790,40 +1785,4 @@ model BlogBookmark {
   @@index([sanityPostId])
   @@index([userId])
   @@map("blog_bookmarks")
-}
-
-// ─── Internal Platform Analytics ───────────────────────────────────
-
-model PlatformEvent {
-  id          String   @id @default(cuid())
-  event       String   // e.g. "course_viewed", "add_to_cart", "checkout_started", "enrollment_completed"
-  category    String   // "course", "cart", "checkout", "enrollment", "application", "auth", "engagement"
-  action      String   // human-readable action: "User viewed course", "User added course to cart"
-  userId      String?
-  sessionId   String?
-  entityType  String?  // "course", "program", "transaction", "application"
-  entityId    String?  // ID of the related entity
-  metadata    Json?    // Flexible JSON for event-specific data
-  path        String?  // URL path where event occurred
-  referrer    String?  // Referrer URL
-  userAgent   String?
-  ipAddress   String?
-  country     String?
-  device      String?  // "desktop", "mobile", "tablet"
-  browser     String?
-  os          String?
-  duration    Int?     // Duration in seconds (for session/video events)
-  value       Float?   // Monetary value if applicable (in base currency)
-  createdAt   DateTime @default(now())
-
-  user User? @relation(fields: [userId], references: [id], onDelete: SetNull)
-
-  @@index([event])
-  @@index([category])
-  @@index([userId])
-  @@index([entityType, entityId])
-  @@index([createdAt])
-  @@index([event, createdAt])
-  @@index([category, createdAt])
-  @@map("platform_events")
 }
