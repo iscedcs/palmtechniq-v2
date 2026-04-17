@@ -1,6 +1,6 @@
 import type { DocPage, DocSection } from "./types";
 
-export const DOC_VERSION = "v2.0.0";
+export const DOC_VERSION = "v2.1.0";
 
 export const docSections: DocSection[] = [
   // ─── GETTING STARTED ─────────────────────────────────────
@@ -15,7 +15,7 @@ export const docSections: DocSection[] = [
         description:
           "Welcome to PalmTechnIQ — an overview of the platform and what it offers.",
         audience: "all",
-        lastUpdated: "2026-04-16",
+        lastUpdated: "2026-04-17",
         content: `
 # Welcome to PalmTechnIQ
 
@@ -33,6 +33,8 @@ PalmTechnIQ serves multiple audiences:
 | **Tutors** | Create and sell courses, offer mentorship sessions, track earnings |
 | **Mentors** | Offer 1-on-1 guidance, schedule sessions via Zoom, earn from expertise |
 | **Admins** | Manage users, review applications, oversee finances and content |
+| **Testers** | Access platform documentation and test new features before release |
+| **Superiors** | Manage tester accounts, send invitations, oversee testing operations |
 
 ## Key Features
 
@@ -61,7 +63,7 @@ Use the sidebar to navigate between sections, or use the search bar to find spec
         description:
           "Set up the PalmTechnIQ development environment from scratch.",
         audience: "developer",
-        lastUpdated: "2026-04-16",
+        lastUpdated: "2026-04-17",
         content: `
 # Installation
 
@@ -159,7 +161,7 @@ pnpm start
         slug: "quick-start",
         description: "Get up and running with PalmTechnIQ in 5 minutes.",
         audience: "all",
-        lastUpdated: "2026-04-16",
+        lastUpdated: "2026-04-17",
         content: `
 # Quick Start
 
@@ -208,6 +210,23 @@ Get up and running quickly depending on your role.
 2. Navigate to \`/admin\` for the dashboard
 3. Review tutor applications at \`/admin/applications\`
 4. Manage courses, users, and finances from the sidebar
+
+## For Testers
+
+1. Receive an email invitation from a Superior user
+2. Log in with the temporary credentials provided
+3. **Change your password** — you'll be redirected to \`/change-password\` on first login
+4. Access the documentation at \`/documentation\`
+5. Test platform features and report issues
+
+## For Superiors
+
+1. Log in with your Superior account
+2. Navigate to \`/superior\` for your dashboard
+3. Manage testers at \`/superior/testers\`
+4. Add new testers by email — they'll receive an invite with temporary credentials
+5. Resend invitations or remove testers as needed
+6. Access the documentation at \`/documentation\`
 `,
       },
       {
@@ -215,7 +234,7 @@ Get up and running quickly depending on your role.
         slug: "configuration",
         description: "Configure the platform settings and integrations.",
         audience: "developer",
-        lastUpdated: "2026-04-16",
+        lastUpdated: "2026-04-17",
         content: `
 # Configuration
 
@@ -242,7 +261,8 @@ Authentication is configured in two files:
 
 ### Session Strategy
 - JWT-based sessions (not database sessions)
-- Tokens contain: userId, role, name, email, avatar
+- Tokens contain: userId, role, name, email, avatar, mustChangePassword
+- Forced password change: Users with \`mustChangePassword: true\` are redirected to \`/change-password\` on login
 
 ## Tailwind CSS
 
@@ -284,7 +304,7 @@ Blog content is managed via Sanity:
         description:
           "How courses, modules, lessons, quizzes, and projects work.",
         audience: "all",
-        lastUpdated: "2026-04-16",
+        lastUpdated: "2026-04-17",
         content: `
 # Course Management
 
@@ -364,7 +384,7 @@ Courses go through a lifecycle:
         description:
           "1-on-1 mentorship with instant and request-based booking.",
         audience: "all",
-        lastUpdated: "2026-04-16",
+        lastUpdated: "2026-04-17",
         content: `
 # Mentorship System
 
@@ -448,7 +468,7 @@ The \`MentorshipSession\` model tracks:
         slug: "payments",
         description: "Paystack integration, pricing, splits, and promo codes.",
         audience: "all",
-        lastUpdated: "2026-04-16",
+        lastUpdated: "2026-04-17",
         content: `
 # Payment System
 
@@ -523,7 +543,7 @@ PalmTechnIQ uses Paystack for secure payment processing with support for multipl
         slug: "user-management",
         description: "Roles, permissions, and user lifecycle.",
         audience: "all",
-        lastUpdated: "2026-04-16",
+        lastUpdated: "2026-04-17",
         content: `
 # User Management
 
@@ -538,6 +558,8 @@ PalmTechnIQ supports multiple user roles with different access levels and capabi
 | \`TUTOR\` | Approved course creator | \`/tutor\` |
 | \`MENTOR\` | Approved mentorship provider | \`/mentor/mentorship\` |
 | \`ADMIN\` | Platform administrator | \`/admin\` |
+| \`TESTER\` | Invited tester with documentation access | \`/documentation\` |
+| \`SUPERIOR\` | Manages testers and testing operations | \`/superior\` |
 
 ## Registration Flow
 
@@ -548,6 +570,31 @@ PalmTechnIQ supports multiple user roles with different access levels and capabi
    - Enrolling in a course → \`STUDENT\`
    - Tutor application approved → \`TUTOR\`
    - Admin assignment → \`ADMIN\` or \`MENTOR\`
+   - Invited by a Superior → \`TESTER\` (with temporary password)
+   - Admin assignment → \`SUPERIOR\`
+
+## Tester Invitation System
+
+Superiors can invite testers to the platform through the \`/superior/testers\` dashboard:
+
+1. **Superior adds a tester** — Enters name and email address
+2. **Account is created** — A \`TESTER\` account with a temporary password
+3. **Invite email sent** — The tester receives an email with login credentials
+4. **Forced password change** — On first login, the tester must change their password
+5. **Access granted** — After password change, the tester can access \`/documentation\`
+
+### Superior Dashboard Features
+- **Add Testers** — Create new tester accounts with email invitations
+- **View All Testers** — See active testers, pending password changes, and login status
+- **Resend Invitations** — Re-send invite emails for testers who haven't logged in
+- **Remove Testers** — Delete tester accounts when access is no longer needed
+
+## Forced Password Change
+
+Users with \`mustChangePassword: true\` (e.g., newly invited testers) are:
+1. Redirected to \`/change-password\` after login
+2. Required to set a new password before accessing any other page
+3. The middleware enforces this redirect on every route except \`/change-password\` itself
 
 ## User Profiles
 
@@ -567,20 +614,25 @@ PalmTechnIQ supports multiple user roles with different access levels and capabi
 
 - **JWT-based sessions** — No database session storage
 - **Password hashing** — bcrypt with salt rounds
-- **OAuth** — Google sign-in supported
+- **OAuth** — Google and GitHub sign-in supported
 - **Email verification** — Required for full access
+- **Forced password change** — Testers must change temporary password on first login
 
 ## For Developers
 
 ### Key Files
 - \`auth.ts\` / \`auth.config.ts\` — Authentication configuration
 - \`actions/auth.ts\` — Auth server actions (register, login, verify)
+- \`actions/superior.ts\` — Tester management (add, remove, resend invite)
+- \`actions/change-password.ts\` — Forced password change action
 - \`actions/student-profile.ts\` — Student profile management
 - \`actions/tutor-profile.ts\` — Tutor profile management
 - \`app/(auth)/\` — Login, signup, and verification pages
+- \`app/(root)/change-password/\` — Forced password change page
+- \`app/(root)/superior/\` — Superior dashboard and tester management
 
 ### Session Data
-JWT tokens include: \`userId\`, \`role\`, \`name\`, \`email\`, \`avatar\`
+JWT tokens include: \`userId\`, \`role\`, \`name\`, \`email\`, \`avatar\`, \`mustChangePassword\`
 
 ### Route Protection
 Routes are categorized in \`routes.ts\`:
@@ -588,6 +640,8 @@ Routes are categorized in \`routes.ts\`:
 - \`protectedRoutes\` — Require authentication
 - \`adminRoutes\` — Require ADMIN role
 - \`tutorRoutes\` — Require TUTOR role
+- \`superiorRoutes\` — Require SUPERIOR role
+- \`documentationRoutes\` — Require TESTER or SUPERIOR role
 `,
       },
       {
@@ -595,7 +649,7 @@ Routes are categorized in \`routes.ts\`:
         slug: "email-notifications",
         description: "Email templates and notification system.",
         audience: "all",
-        lastUpdated: "2026-04-16",
+        lastUpdated: "2026-04-17",
         content: `
 # Email Notifications
 
@@ -608,6 +662,7 @@ PalmTechnIQ sends automated emails for key events using Resend as the email prov
 | Signup | User | Welcome email with verification link |
 | Email Verification | User | Confirm email address |
 | Password Reset | User | Reset password link |
+| Tester Invitation | Tester | Login credentials and platform access instructions |
 | Enrollment Confirmation | Student | Course enrollment details |
 | Mentorship Request | Tutor | New session request notification |
 | Mentorship Approved | Student | Session approved + payment link |
@@ -639,7 +694,7 @@ In addition to emails, the platform has a real-time notification system:
         slug: "admin-dashboard",
         description: "Admin features for managing the platform.",
         audience: "all",
-        lastUpdated: "2026-04-16",
+        lastUpdated: "2026-04-17",
         content: `
 # Admin Dashboard
 
@@ -691,13 +746,41 @@ The main admin page shows:
 - Monitor active mentorship sessions
 - Track mentor performance and earnings
 
+### Analytics (\`/admin/analytics\`)
+Comprehensive platform analytics dashboard with:
+
+**Overview Cards:**
+- Total events, active users, total revenue, total signups
+
+**Dashboard Tabs:**
+
+| Tab | What It Shows |
+|-----|---------------|
+| **Overview** | Activity timeline (area chart), event categories (pie chart), top events table |
+| **Conversion Funnel** | Page views → course views → cart → checkout → enrollment |
+| **Revenue** | Daily revenue breakdown, course vs. program revenue split |
+| **Top Courses** | Course performance metrics, interaction breakdowns |
+| **Live Activity** | Real-time event stream of user actions |
+
+**Features:**
+- Date range selector (7d, 30d, 90d, all-time)
+- Device and browser breakdown
+- Recent events display (last 50)
+- Refresh button for real-time updates
+
+> The \`/analytics\` shortcut route redirects to \`/admin/analytics\`.
+
 ## For Developers
 
 ### Key Files
 - \`actions/admin-dashboard.ts\` — Dashboard data fetching
 - \`actions/admin-applications.ts\` — Application management
 - \`actions/admin-enrollments.ts\` — Enrollment management
+- \`actions/analytics.ts\` — Analytics overview, funnel, revenue, timeline, top courses
 - \`actions/security-admin.ts\` — Security admin functions
+- \`lib/analytics/track.ts\` — Event tracking system (30+ platform events)
+- \`lib/analytics/analytics-provider.tsx\` — Client-side analytics provider (GA4, Pixel, Mixpanel)
+- \`data/tutor-analytics.ts\` — Tutor-specific analytics data fetcher
 - \`app/(root)/admin/\` — Admin page components
 - \`components/admin/\` — Admin-specific UI components
 `,
@@ -716,7 +799,7 @@ The main admin page shows:
         slug: "student-guide",
         description: "Complete guide for students using the platform.",
         audience: "non-developer",
-        lastUpdated: "2026-04-16",
+        lastUpdated: "2026-04-17",
         content: `
 # Student Guide
 
@@ -779,6 +862,16 @@ Upon completing all modules and the capstone project:
 3. Share it on LinkedIn or download as PDF
 4. Certificates are verifiable at \`/certificate/[id]\`
 
+## Student Verification
+
+Your student profile can be independently verified by anyone:
+- **Public verification page** at \`/verify/student/[id]\`
+- Displays your name, avatar, rank, and learning level
+- Shows stats: member since, total points, courses started/completed
+- Lists active enrollments
+- Confirms your verified status (active/inactive)
+- Share this link with employers, mentors, or institutions as proof of learning
+
 ## Mentorship
 
 1. Browse available mentors at \`/mentorship\`
@@ -801,7 +894,7 @@ Upon completing all modules and the capstone project:
         slug: "tutor-guide",
         description: "Complete guide for tutors creating and managing courses.",
         audience: "non-developer",
-        lastUpdated: "2026-04-16",
+        lastUpdated: "2026-04-17",
         content: `
 # Tutor Guide
 
@@ -886,7 +979,7 @@ Everything you need to know as a tutor on PalmTechnIQ.
 - **Projects** — Review student project submissions
 - **Reviews** — See student feedback and ratings
 - **Wallet** — Earnings and withdrawal management
-- **Analytics** — Detailed performance metrics
+- **Analytics** — Detailed performance metrics (completed/pending revenue, completion rates, course earnings)
 `,
       },
       {
@@ -894,7 +987,7 @@ Everything you need to know as a tutor on PalmTechnIQ.
         slug: "admin-guide",
         description: "Complete guide for platform administrators.",
         audience: "non-developer",
-        lastUpdated: "2026-04-16",
+        lastUpdated: "2026-04-17",
         content: `
 # Admin Guide
 
@@ -974,7 +1067,7 @@ Platform administration guide for managing PalmTechnIQ.
         slug: "tech-stack",
         description: "Technologies and tools powering PalmTechnIQ.",
         audience: "developer",
-        lastUpdated: "2026-04-16",
+        lastUpdated: "2026-04-17",
         content: `
 # Tech Stack
 
@@ -1068,7 +1161,7 @@ Platform administration guide for managing PalmTechnIQ.
         slug: "database-schema",
         description: "Complete database model overview and relationships.",
         audience: "developer",
-        lastUpdated: "2026-04-16",
+        lastUpdated: "2026-04-17",
         content: `
 # Database Schema
 
@@ -1101,10 +1194,23 @@ Course ──┬── CourseModule
 ## Core Models
 
 ### User & Profiles
-- **User** — Central entity with auth, profile, banking, and wallet data
+- **User** — Central entity with auth, profile, banking, wallet data, and access control flags (\`mustChangePassword\`, \`invitedBy\`)
 - **Student** — Education level, interests, goals, study tracking
 - **Tutor** — Expertise, verifications, ratings, availability
 - **Admin** — Privileges, department, and level
+
+### UserRole Enum
+\`\`\`prisma
+enum UserRole {
+  USER       // Default signup role
+  STUDENT    // Enrolled in a course
+  TUTOR      // Approved course creator
+  ADMIN      // Platform administrator
+  MENTOR     // Mentorship provider
+  TESTER     // Invited documentation/testing access
+  SUPERIOR   // Manages testers and testing operations
+}
+\`\`\`
 
 ### Course Content
 - **Course** — Title, description, pricing, status, SEO fields
@@ -1152,6 +1258,7 @@ Course ──┬── CourseModule
 ## Key Relationships
 
 - A **User** can be a Student, Tutor, and/or Admin simultaneously
+- **Users** have access control fields: \`mustChangePassword\` (forces password change on login), \`invitedBy\` (tracks who invited a tester)
 - **Courses** are owned by a User (tutor) and contain Modules → Lessons
 - **Enrollments** connect Students to Courses with progress tracking
 - **Transactions** link to Users and can contain multiple line items
@@ -1163,7 +1270,7 @@ Course ──┬── CourseModule
         slug: "project-structure",
         description: "File organization and directory conventions.",
         audience: "developer",
-        lastUpdated: "2026-04-16",
+        lastUpdated: "2026-04-17",
         content: `
 # Project Structure
 
@@ -1176,8 +1283,13 @@ palmtechniq-v2/
 │   ├── (root)/            # Main application routes
 │   │   ├── admin/         # Admin dashboard
 │   │   ├── courses/       # Course pages
+│   │   ├── documentation/ # Protected docs (TESTER/SUPERIOR)
+│   │   ├── change-password/ # Forced password change
+│   │   ├── analytics/     # Platform analytics (redirects to admin)
+│   │   ├── verify/        # Public student verification
 │   │   ├── mentorship/    # Mentorship pages
 │   │   ├── student/       # Student dashboard
+│   │   ├── superior/      # Superior dashboard & tester mgmt
 │   │   ├── tutor/         # Tutor dashboard
 │   │   └── mentor/        # Mentor dashboard
 │   ├── api/               # API routes (37+ endpoints)
@@ -1187,10 +1299,12 @@ palmtechniq-v2/
 │   ├── ui/                # shadcn/ui primitives
 │   ├── admin/             # Admin-specific components
 │   ├── course/            # Course components
+│   ├── docs/              # Documentation UI (sidebar, TOC, etc.)
 │   ├── mentorship/        # Mentorship components
 │   ├── auth/              # Auth forms
 │   └── shared/            # Shared/common components
 ├── lib/                   # Utilities & Integrations
+│   ├── docs/              # Documentation content & types
 │   ├── payments/          # Paystack, pricing, promos
 │   ├── notifications/     # Notification system
 │   ├── email-templates/   # HTML email templates
@@ -1247,7 +1361,7 @@ palmtechniq-v2/
         slug: "server-actions",
         description: "Server-side data mutation functions.",
         audience: "developer",
-        lastUpdated: "2026-04-16",
+        lastUpdated: "2026-04-17",
         content: `
 # Server Actions
 
@@ -1279,6 +1393,9 @@ PalmTechnIQ uses Next.js Server Actions for all data mutations. These are organi
 | \`promotions.ts\` | Promo code management |
 | \`group-purchase.ts\` | Group buying operations |
 | \`withdrawal.ts\` | Tutor withdrawal requests |
+| \`superior.ts\` | Tester management (add, remove, list, resend invite) |
+| \`change-password.ts\` | Forced password change for invited users |
+| \`analytics.ts\` | Platform analytics (overview, funnel, revenue, timeline, top courses) |
 | \`navigation.ts\` | Dynamic navigation data |
 | \`user-preferences.ts\` | User settings and preferences |
 | \`user-stats.ts\` | User analytics and stats |
@@ -1322,7 +1439,7 @@ Server actions follow a consistent pattern:
         slug: "rest-api",
         description: "HTTP API endpoints for external integrations.",
         audience: "developer",
-        lastUpdated: "2026-04-16",
+        lastUpdated: "2026-04-17",
         content: `
 # REST API Endpoints
 
@@ -1470,6 +1587,22 @@ GET /api/wallet/summary
 POST /api/wallet/withdraw
 \`\`\`
 Wallet balance and withdrawal operations.
+
+## Students
+
+### Verify Student
+\`\`\`
+GET /api/students/verify?id={studentId}
+\`\`\`
+Publicly verify a student profile. Returns student name, avatar, rank, level, points, and enrollment data.
+
+## Analytics
+
+### Track Event
+\`\`\`
+POST /api/analytics/track
+\`\`\`
+Track a platform event (page view, course interaction, checkout, etc.). Used by the client-side analytics provider.
 `,
       },
     ],
@@ -1486,7 +1619,7 @@ Wallet balance and withdrawal operations.
         slug: "security",
         description: "Security measures, IP protection, and best practices.",
         audience: "developer",
-        lastUpdated: "2026-04-16",
+        lastUpdated: "2026-04-17",
         content: `
 # Security
 
@@ -1543,6 +1676,31 @@ The \`next.config.mjs\` sets security headers:
 - **Session expiry** — Configurable token lifetime
 - **OAuth** — Server-side token exchange (no client secrets exposed)
 - **CSRF protection** — Built into NextAuth
+- **Forced password change** — Users with \`mustChangePassword: true\` must change their password before accessing any route
+
+## Role-Based Access Control (RBAC)
+
+The middleware (\`proxy.ts\`) enforces role-based access at the route level:
+
+| Route Category | Allowed Roles | Redirect on Deny |
+|---------------|--------------|-------------------|
+| \`/admin/*\` | ADMIN | \`/courses\` |
+| \`/tutor/*\` | TUTOR | \`/courses\` |
+| \`/superior/*\` | SUPERIOR | \`/courses\` |
+| \`/documentation/*\` | TESTER, SUPERIOR | \`/courses\` |
+| \`/change-password\` | Any authenticated | — |
+
+### Documentation Access Control
+- Documentation pages at \`/documentation\` are **not publicly accessible**
+- Only users with \`TESTER\` or \`SUPERIOR\` roles can view documentation
+- Server-side auth check in the documentation layout provides a second layer of protection
+- Pages are rendered dynamically (\`force-dynamic\`) to prevent static generation from bypassing auth
+
+### Forced Password Change Flow
+1. Middleware checks \`session.mustChangePassword\` on every request
+2. If true, redirects to \`/change-password\` regardless of the target route
+3. The \`/change-password\` page itself is excluded from this redirect
+4. After password change, \`mustChangePassword\` is set to \`false\` in the database
 
 ## Payment Security
 
@@ -1552,9 +1710,13 @@ The \`next.config.mjs\` sets security headers:
 - **Idempotent processing** — Duplicate webhook handling
 
 ## Key Files
+- \`proxy.ts\` — Middleware with RBAC enforcement
+- \`routes.ts\` — Route classification and role-based redirects
 - \`lib/ip-rate-limit.ts\` — IP-based rate limiting logic
 - \`lib/rate-limit.ts\` — General rate limiting
 - \`actions/security-admin.ts\` — Admin security functions
+- \`actions/superior.ts\` — Tester invite and management
+- \`actions/change-password.ts\` — Forced password change
 - \`next.config.mjs\` — Security headers
 - \`auth.config.ts\` — Auth security configuration
 `,
@@ -1564,7 +1726,7 @@ The \`next.config.mjs\` sets security headers:
         slug: "seo",
         description: "Search engine optimization strategy and implementation.",
         audience: "developer",
-        lastUpdated: "2026-04-16",
+        lastUpdated: "2026-04-17",
         content: `
 # SEO Implementation
 
@@ -1650,7 +1812,7 @@ export default function robots() {
         slug: "deployment",
         description: "Build, deploy, and maintain the platform.",
         audience: "developer",
-        lastUpdated: "2026-04-16",
+        lastUpdated: "2026-04-17",
         content: `
 # Deployment
 
