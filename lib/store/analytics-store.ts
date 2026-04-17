@@ -54,6 +54,28 @@ export const useAnalyticsStore = create<AnalyticsState>((set, get) => ({
       events: [...state.events, analyticsEvent],
     }));
 
+    // Persist to our internal analytics API
+    if (typeof window !== "undefined") {
+      const persistableEvents = new Set([
+        "page_viewed", "course_viewed", "course_searched",
+        "lesson_viewed", "blog_viewed", "promotion_viewed",
+      ]);
+      if (persistableEvents.has(event)) {
+        fetch("/api/analytics/track", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({
+            event,
+            entityType: properties.entityType,
+            entityId: properties.entityId || properties.courseId,
+            metadata: properties,
+            path: properties.path || (typeof window !== "undefined" ? window.location.pathname : undefined),
+            sessionId: get().sessionId,
+          }),
+        }).catch(() => {}); // Non-blocking
+      }
+    }
+
     // Send to external analytics services
     if (typeof window !== "undefined") {
       if (window.gtag) {

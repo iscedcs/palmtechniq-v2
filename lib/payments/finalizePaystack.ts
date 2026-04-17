@@ -8,6 +8,7 @@ import {
 import { createZoomMeeting } from "@/lib/zoom-integration";
 import { resolveTutorReferralCode } from "@/lib/referral";
 import { sendCRMPurchaseEvent } from "@/lib/meta-conversions";
+import { trackEvent, PLATFORM_EVENTS } from "@/lib/analytics/track";
 
 export async function finalizePaystackByReference(reference: string) {
   const tx = await db.transaction.findFirst({
@@ -37,6 +38,15 @@ export async function finalizePaystackByReference(reference: string) {
   if (Math.abs(v.amount - Math.round(tx.amount * 100)) > 0) {
     console.log({ v });
   }
+
+  // Track successful payment verification
+  trackEvent(PLATFORM_EVENTS.CHECKOUT_COMPLETED, {
+    userId: tx.userId,
+    entityType: "transaction",
+    entityId: tx.id,
+    metadata: { reference, courseId: tx.courseId },
+    value: tx.amount,
+  });
 
   await db.$transaction(async (px: any) => {
     await px.transaction.update({

@@ -89,6 +89,7 @@ export const protectedRoutes = [
   "/superior/testers",
   "/superior/admins",
   "/superior/settings",
+  "/analytics",
 ];
 
 /**
@@ -106,6 +107,8 @@ export const adminRoutes = [
   "/admin/mentorship",
   "/admin/settings",
   "/admin/promotions",
+  "/analytics",
+  "/admin/analytics",
 ];
 
 /**
@@ -158,6 +161,7 @@ export const superiorRoutes = [
   "/superior/testers",
   "/superior/admins",
   "/superior/settings",
+  "/analytics",
 ];
 
 /**

@@ -7,6 +7,7 @@ import { courseSchema, moduleSchema, lessonSchema } from "@/schemas";
 import { z } from "zod";
 import { notify } from "@/lib/notify";
 import { recomputeCourseDurations } from "@/lib/course-duration";
+import { trackEvent, PLATFORM_EVENTS } from "@/lib/analytics/track";
 
 export async function updateCourse(
   courseId: string,
@@ -491,6 +492,15 @@ export async function publishCourse(courseId: string) {
         message: `The course "${updatedCourse.title}" is now live!`,
         actionUrl: `/courses/${updatedCourse.id}`,
         actionLabel: "View Course",
+      });
+    }
+
+    if (shouldPublish) {
+      trackEvent(PLATFORM_EVENTS.COURSE_PUBLISHED, {
+        userId: session.user.id,
+        entityType: "course",
+        entityId: courseId,
+        metadata: { courseTitle: updatedCourse.title },
       });
     }
 

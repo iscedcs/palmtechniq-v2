@@ -11,6 +11,7 @@ import {
 } from "@/lib/payments/pricing";
 import { validatePromoCode } from "@/lib/payments/promo";
 import { resolveTutorReferralCode } from "@/lib/referral";
+import { trackEvent, PLATFORM_EVENTS } from "@/lib/analytics/track";
 
 export async function beginCheckout(
   courseIds: string[] | string,
@@ -146,6 +147,13 @@ export async function beginCheckout(
       promoCode: promoResult?.ok ? promoResult.promo.code : undefined,
       referralCode: referralCode ?? undefined,
     },
+  });
+
+  trackEvent(PLATFORM_EVENTS.CHECKOUT_STARTED, {
+    userId: session.user.id,
+    entityType: "transaction",
+    metadata: { courseIds: ids, courseCount: ids.length, reference, promoCode: promoCode || undefined },
+    value: totals.totalAmount,
   });
 
   redirect(init.authorization_url);

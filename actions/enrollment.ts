@@ -20,6 +20,7 @@ import {
   getAvailableCohorts,
 } from "@/lib/cohort";
 import { sendCRMLeadEvent, sendCRMPurchaseEvent } from "@/lib/meta-conversions";
+import { trackEvent, PLATFORM_EVENTS } from "@/lib/analytics/track";
 
 const SITE_URL = process.env.NEXT_PUBLIC_URL || "http://localhost:2026";
 
@@ -296,6 +297,13 @@ export async function submitEnrollment(data: EnrollmentFormData) {
       externalId: enrollment.id,
     }).catch(() => {});
 
+    trackEvent(PLATFORM_EVENTS.PROGRAM_ENROLLMENT_STARTED, {
+      entityType: "program",
+      entityId: enrollment.id,
+      metadata: { programSlug: programDef.slug, cohort: displayName, paymentPlan: form.paymentPlan },
+      value: firstPaymentAmount,
+    });
+
     return {
       success: true,
       authorizationUrl: paystack.authorization_url,
@@ -424,6 +432,14 @@ export async function verifyEnrollmentPayment(reference: string) {
         err,
       );
     }
+
+    trackEvent(PLATFORM_EVENTS.PROGRAM_ENROLLMENT_PAID, {
+      userId: accountInfo?.userId || undefined,
+      entityType: "program",
+      entityId: enrollment.id,
+      metadata: { programName: enrollment.program.name, status: newStatus, installmentNo: installment.installmentNo },
+      value: newAmountPaid,
+    });
 
     // ── Send confirmation email (non-blocking) ──
     sendEnrollmentConfirmation({
