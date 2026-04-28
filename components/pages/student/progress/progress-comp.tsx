@@ -20,6 +20,7 @@ import {
   PlayCircle,
   Users,
 } from "lucide-react";
+import Link from "next/link";
 import { generateRandomAvatar } from "@/lib/utils";
 import type { StudentProgressData } from "@/data/studentprogress";
 
@@ -376,15 +377,19 @@ export default function StudentProgress({
                             <p className="text-white font-medium text-sm truncate">
                               {course.nextLesson}
                             </p>
-                            <p className="text-xs text-gray-500 mt-1">
+                            <p className="text-xs text-gray-500 my-2">
                               Last accessed {course.lastAccessed}
                             </p>
                           </div>
 
-                          <Button className="w-full bg-gradient-to-r from-neon-blue to-neon-purple group-hover:scale-105 transition-transform">
-                            <PlayCircle className="w-4 h-4 mr-2" />
-                            Continue Learning
-                          </Button>
+                          <Link href={`/courses/${course.id}/learn`}>
+                            <Link href={`/courses/${course.id}/learn`}>
+                              <Button className="w-full bg-gradient-to-r from-neon-blue to-neon-purple group-hover:scale-105 transition-transform">
+                                <PlayCircle className="w-4 h-4 mr-2" />
+                                Continue Learning
+                              </Button>
+                            </Link>
+                          </Link>
                         </div>
                       </CardContent>
                     </Card>
@@ -452,7 +457,7 @@ export default function StudentProgress({
 
                         <p className="text-gray-400 text-xs">
                           {achievement.unlockedAt
-                            ? `Unlocked ₦{achievement.unlockedAt}`
+                            ? `Unlocked ${achievement.unlockedAt}`
                             : "Not unlocked yet"}
                         </p>
                       </CardContent>

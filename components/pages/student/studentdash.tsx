@@ -16,10 +16,12 @@ import {
   File as Fire,
   Play,
   Plus,
+  Star,
   Target,
   Trophy,
   Zap,
 } from "lucide-react";
+import React from "react";
 import Link from "next/link";
 
 type StudentDashboardProps = {
@@ -93,7 +95,7 @@ export default function StudentDashboardClient({
 
   const formattedAchievements = recentAchievements.map((achievement) => ({
     ...achievement,
-    icon: iconMap[achievement.icon] || Trophy,
+    IconComponent: (iconMap[achievement.icon] || Trophy) as React.ElementType,
   }));
   interface AchievementsListProps {
     achievements: Array<{
@@ -101,6 +103,7 @@ export default function StudentDashboardClient({
       title: string;
       description: string;
       icon: string;
+      IconComponent: React.ElementType;
       color: string;
       earned: string;
       context?: string;
@@ -148,7 +151,7 @@ export default function StudentDashboardClient({
               className="flex items-center space-x-4 p-4 bg-white/5 rounded-lg hover:bg-white/10 transition-colors group">
               <div
                 className={`w-12 h-12 rounded-full bg-gradient-to-r ${achievement.color} flex items-center justify-center group-hover:scale-110 transition-transform`}>
-                <span className="text-xl">{achievement.icon}</span>
+                <achievement.IconComponent className="w-6 h-6 text-white" />
               </div>
 
               <div className="flex-1 min-w-0">
@@ -174,7 +177,7 @@ export default function StudentDashboardClient({
             </motion.div>
           ))}
 
-          <Link href="/achievements">
+          <Link href="/student/achievements">
             <Button
               variant="outline"
               className="w-full border-white/20 text-white hover:bg-white/10 bg-transparent mt-4">
@@ -184,6 +187,97 @@ export default function StudentDashboardClient({
         </CardContent>
       </Card>
     );
+
+  const STREAK_MILESTONES = [
+    { days: 7, label: "Week Warrior", reward: "+50 XP", color: "from-green-400 to-emerald-500" },
+    { days: 14, label: "Fortnight Fire", reward: "+120 XP", color: "from-blue-400 to-cyan-500" },
+    { days: 30, label: "Monthly Master", reward: "+300 XP + Badge", color: "from-purple-400 to-violet-500" },
+    { days: 60, label: "Diamond Streak", reward: "+700 XP + Badge", color: "from-yellow-400 to-orange-500" },
+    { days: 90, label: "Legend", reward: "+1500 XP + Title", color: "from-red-400 to-pink-500" },
+  ];
+
+  const StreakMilestones = ({ streak }: { streak: number }) => {
+    const nextMilestone = STREAK_MILESTONES.find((m) => m.days > streak);
+    const achievedMilestones = STREAK_MILESTONES.filter((m) => m.days <= streak);
+    const progress = nextMilestone
+      ? Math.round((streak / nextMilestone.days) * 100)
+      : 100;
+
+    return (
+      <Card className="glass-card border-white/10">
+        <CardHeader>
+          <div className="flex items-center justify-between">
+            <CardTitle className="text-xl font-bold text-white flex items-center gap-2">
+              <Fire className="w-5 h-5 text-orange-400" />
+              Streak Milestones
+            </CardTitle>
+            <Badge className="bg-orange-500/20 text-orange-400 border-orange-500/30">
+              {streak} day{streak !== 1 ? "s" : ""}
+            </Badge>
+          </div>
+        </CardHeader>
+        <CardContent className="space-y-5">
+          {/* Next milestone progress */}
+          {nextMilestone ? (
+            <div className="p-4 bg-white/5 rounded-lg border border-white/10">
+              <div className="flex items-center justify-between mb-2">
+                <span className="text-white text-sm font-medium">
+                  Next: {nextMilestone.label}
+                </span>
+                <span className="text-gray-400 text-xs">
+                  {streak}/{nextMilestone.days} days
+                </span>
+              </div>
+              <Progress value={progress} className="h-2 mb-2" />
+              <div className="flex items-center gap-1 mt-1">
+                <Star className="w-3 h-3 text-yellow-400" />
+                <span className="text-yellow-400 text-xs">{nextMilestone.reward}</span>
+              </div>
+            </div>
+          ) : (
+            <div className="p-4 bg-gradient-to-r from-yellow-500/20 to-orange-500/20 rounded-lg border border-yellow-500/30 text-center">
+              <Trophy className="w-8 h-8 text-yellow-400 mx-auto mb-1" />
+              <p className="text-yellow-400 font-semibold text-sm">All milestones achieved!</p>
+            </div>
+          )}
+
+          {/* Milestone steps */}
+          <div className="space-y-2">
+            {STREAK_MILESTONES.map((milestone) => {
+              const achieved = streak >= milestone.days;
+              return (
+                <div
+                  key={milestone.days}
+                  className={`flex items-center gap-3 p-3 rounded-lg transition-colors ${
+                    achieved ? "bg-white/10" : "bg-white/5 opacity-60"
+                  }`}>
+                  <div
+                    className={`w-8 h-8 rounded-full bg-gradient-to-r ${milestone.color} flex items-center justify-center flex-shrink-0`}>
+                    {achieved ? (
+                      <CheckCircle className="w-4 h-4 text-white" />
+                    ) : (
+                      <span className="text-white text-xs font-bold">{milestone.days}</span>
+                    )}
+                  </div>
+                  <div className="flex-1 min-w-0">
+                    <p className={`text-sm font-medium truncate ${achieved ? "text-white" : "text-gray-400"}`}>
+                      {milestone.label}
+                    </p>
+                    <p className="text-xs text-gray-500">{milestone.days}-day streak</p>
+                  </div>
+                  {achieved && (
+                    <Badge className="bg-green-500/20 text-green-400 border-green-500/30 text-xs flex-shrink-0">
+                      Earned
+                    </Badge>
+                  )}
+                </div>
+              );
+            })}
+          </div>
+        </CardContent>
+      </Card>
+    );
+  };
 
   const StatCard = ({ icon: Icon, title, value, subtitle, color }: any) => (
     <motion.div whileHover={{ scale: 1.05, rotateY: 5 }} className="group">
@@ -545,49 +639,13 @@ export default function StudentDashboardClient({
                 </Card>
               </motion.div>
 
-              {/* Learning Goals */}
-              {/* <motion.div
+              {/* Streak Milestones */}
+              <motion.div
                 initial={{ opacity: 0, x: 50 }}
                 animate={{ opacity: 1, x: 0 }}
-                transition={{ duration: 0.8, delay: 0.5 }}
-              >
-                <Card className="glass-card border-white/10">
-                  <CardHeader>
-                    <CardTitle className="text-xl font-bold text-white">
-                      Learning Goals
-                    </CardTitle>
-                  </CardHeader>
-                  <CardContent className="space-y-4">
-                    <div className="space-y-3">
-                      <div className="flex items-center justify-between">
-                        <span className="text-white text-sm">
-                          Complete React Course
-                        </span>
-                        <CheckCircle className="w-5 h-5 text-green-400" />
-                      </div>
-                      <div className="flex items-center justify-between">
-                        <span className="text-white text-sm">
-                          Master Node.js
-                        </span>
-                        <div className="w-5 h-5 border-2 border-gray-400 rounded-full" />
-                      </div>
-                      <div className="flex items-center justify-between">
-                        <span className="text-white text-sm">
-                          Build Portfolio Project
-                        </span>
-                        <div className="w-5 h-5 border-2 border-gray-400 rounded-full" />
-                      </div>
-                    </div>
-                    <Button
-                      variant="outline"
-                      className="w-full border-white/20 text-white hover:bg-white/10 bg-transparent"
-                    >
-                      <Target className="w-4 h-4 mr-2" />
-                      Set New Goal
-                    </Button>
-                  </CardContent>
-                </Card>
-              </motion.div> */}
+                transition={{ duration: 0.8, delay: 0.5 }}>
+                <StreakMilestones streak={studentData.streak} />
+              </motion.div>
 
               {/* Quick Stats */}
               <motion.div

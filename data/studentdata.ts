@@ -25,6 +25,10 @@ export async function getStudentDashboardData() {
     return { error: "Unauthorized" };
   }
 
+  if (session.user.role !== "STUDENT") {
+    return { error: "Forbidden" };
+  }
+
   const userId = session.user.id;
 
   // Fetch student profile
@@ -50,7 +54,9 @@ export async function getStudentDashboardData() {
       where: { id: userId },
       data: { role: "STUDENT" },
     });
-    // Re-run to fetch the newly created profile with all includes
+    /**
+     * Re-run to fetch the newly created profile with all includes
+     */
     return getStudentDashboardData();
   }
 

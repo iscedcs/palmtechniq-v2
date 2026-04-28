@@ -31,6 +31,8 @@ type CourseItem = {
   id: string;
   title: string;
   description: string;
+  category?: string | null;
+  categoryId?: string | null;
   thumbnail: string | null;
   level: string;
   tutor?: { user?: { name?: string; image?: string | null } };

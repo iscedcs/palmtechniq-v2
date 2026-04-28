@@ -82,6 +82,29 @@ Items identified in audit but not yet implemented.
 
 ---
 
+## Blog SEO System Upgrade (Completed — April 28, 2026)
+
+Implemented advanced blog SEO and distribution features for better discovery, ranking, and crawl readiness.
+
+| #   | Item                                                                                               | Status | Files Changed |
+| --- | -------------------------------------------------------------------------------------------------- | ------ | ------------- |
+| 1   | Optional blog SEO fields in Sanity (`metaTitle`, `metaDescription`, `focusKeyword`, `canonicalUrl`) | Done   | `sanity/schemas/post.ts`, `lib/sanity-queries.ts` |
+| 2   | Editor SEO quality hints in Sanity Studio (warning-style guidance on title/description/keyword/canonical) | Done   | `sanity/schemas/post.ts` |
+| 3   | Blog post metadata now uses SEO overrides when present                                              | Done   | `app/(root)/blog/[slug]/page.tsx` |
+| 4   | Auto-generated Related Topics internal links from categories + article headings                     | Done   | `app/(root)/blog/[slug]/page.tsx` |
+| 5   | Blog index now supports topic/query landing URLs (`/blog?topic=...`, `/blog?q=...`)               | Done   | `app/(root)/blog/page.tsx`, `components/pages/blog/blog-content.tsx` |
+| 6   | RSS feed route for syndication (`/rss.xml`)                                                        | Done   | `app/rss.xml/route.ts` |
+| 7   | Google News-ready sitemap feed (`/news-sitemap.xml`)                                               | Done   | `app/news-sitemap.xml/route.ts` |
+| 8   | Robots sitemap discovery updated to include sitemap, news sitemap, and RSS                         | Done   | `app/robots.ts` |
+
+### New Public Endpoints
+
+- `https://palmtechniq.com/rss.xml`
+- `https://palmtechniq.com/news-sitemap.xml`
+
+
+---
+
 ## File Inventory
 
 ### New files created in Phase 3:

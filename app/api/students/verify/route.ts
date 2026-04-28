@@ -12,40 +12,69 @@ export async function GET(req: NextRequest) {
     );
   }
 
-  try {
-    const user = await db.user.findUnique({
-      where: { id },
+  const userSelect = {
+    id: true,
+    name: true,
+    image: true,
+    avatar: true,
+    role: true,
+    createdAt: true,
+    isActive: true,
+    studentProfile: {
       select: {
         id: true,
-        name: true,
-        image: true,
-        avatar: true,
-        createdAt: true,
-        isActive: true,
-        studentProfile: {
+        level: true,
+        currentRank: true,
+        coursesStarted: true,
+        coursesCompleted: true,
+        totalPoints: true,
+      },
+    },
+    enrollments: {
+      where: { status: "ACTIVE" as const },
+      select: {
+        course: {
           select: {
-            level: true,
-            currentRank: true,
-            coursesStarted: true,
-            coursesCompleted: true,
-            totalPoints: true,
+            title: true,
           },
-        },
-        enrollments: {
-          where: { status: "ACTIVE" },
-          select: {
-            course: {
-              select: {
-                title: true,
-              },
-            },
-          },
-          take: 5,
         },
       },
+      take: 5,
+    },
+    _count: {
+      select: { enrollments: true },
+    },
+  } as const;
+
+  try {
+    // Try finding by User ID first, then by Student profile ID
+    let user = await db.user.findUnique({
+      where: { id },
+      select: userSelect,
     });
 
-    if (!user || !user.studentProfile) {
+    if (!user) {
+      const student = await db.student.findUnique({
+        where: { id },
+        select: { userId: true },
+      });
+
+      if (student) {
+        user = await db.user.findUnique({
+          where: { id: student.userId },
+          select: userSelect,
+        });
+      }
+    }
+
+    // Valid if user has a student profile, STUDENT role, or any enrollments
+    const isStudent =
+      user &&
+      (user.studentProfile ||
+        user.role === "STUDENT" ||
+        user._count.enrollments > 0);
+
+    if (!user || !isStudent) {
       return NextResponse.json(
         { error: "Student not found", valid: false },
         { status: 404 },
@@ -59,11 +88,11 @@ export async function GET(req: NextRequest) {
         image: user.image || user.avatar,
         memberSince: user.createdAt,
         isActive: user.isActive,
-        level: user.studentProfile.level,
-        rank: user.studentProfile.currentRank,
-        coursesStarted: user.studentProfile.coursesStarted,
-        coursesCompleted: user.studentProfile.coursesCompleted,
-        totalPoints: user.studentProfile.totalPoints,
+        level: user.studentProfile?.level ?? "BEGINNER",
+        rank: user.studentProfile?.currentRank ?? "Novice",
+        coursesStarted: user.studentProfile?.coursesStarted ?? user._count.enrollments,
+        coursesCompleted: user.studentProfile?.coursesCompleted ?? 0,
+        totalPoints: user.studentProfile?.totalPoints ?? 0,
         activeEnrollments: user.enrollments.map((e: { course: { title: string } }) => e.course.title),
       },
     });

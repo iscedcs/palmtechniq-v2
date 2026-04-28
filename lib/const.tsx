@@ -76,6 +76,7 @@ export const roleNavItems = {
     // { icon: Brain, label: "AI Interview", href: "/student/ai-interview" },
     { icon: NotebookIcon, label: "Assignments", href: "/student/assignments" },
     { icon: MessageSquare, label: "Projects", href: "/student/projects" },
+    { icon: Star, label: "Achievements", href: "/student/achievements" },
   ],
   MENTOR: [
     { icon: Home, label: "Dashboard", href: "/mentor/mentorship" },
@@ -129,6 +130,7 @@ export const roleMenuItems = {
     { icon: User, label: "Profile", href: "/student/profile" },
     { icon: BookOpen, label: "My Courses", href: "/student/courses" },
     { icon: Trophy, label: "Progress", href: "/student/progress" },
+    { icon: Star, label: "Achievements", href: "/student/achievements" },
     { icon: Calendar, label: "Book Mentorship Offerings", href: "/mentorship" },
     { icon: Calendar, label: "Manage Mentorship", href: "/student/mentorship" },
     { icon: MessageSquare, label: "Projects", href: "/student/projects" },

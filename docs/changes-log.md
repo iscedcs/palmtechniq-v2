@@ -1,7 +1,86 @@
 ## Change Log: Tasks, Quizzes, Projects, Student Profile
 
+## 2026-04-28 — Blog SEO, Internal Topic Linking, and Feed Distribution
+
+### Problem
+- Blog content lacked editor-managed SEO overrides (title/description/keyword/canonical) in Sanity.
+- Posts needed stronger internal linking signals to related content topics.
+- No RSS or News sitemap endpoints were available for feed submission and broader distribution.
+
+### Solution
+- Added optional SEO fields under a dedicated `seo` object in the Sanity `post` schema.
+- Added warning-style SEO quality hints in Sanity Studio for title, description, keyword, and canonical values.
+- Enabled metadata override consumption on blog post pages.
+- Added automatic Related Topics internal links based on categories and extracted headings.
+- Added feed endpoints for RSS and Google News sitemap.
+- Updated robots sitemap discovery entries.
+
+### Execution Summary
+- `post` schema now includes:
+  - `seo.metaTitle`
+  - `seo.metaDescription`
+  - `seo.focusKeyword`
+  - `seo.canonicalUrl`
+- Blog post metadata now prefers `seo` overrides when present.
+- Related topic links are generated and rendered on each post page.
+- Blog index now supports pre-filtered landing URLs:
+  - `/blog?topic=...`
+  - `/blog?q=...`
+- Added XML feed routes:
+  - `/rss.xml`
+  - `/news-sitemap.xml`
+
+### Key Files Updated
+- `sanity/schemas/post.ts`
+- `lib/sanity-queries.ts`
+- `app/(root)/blog/[slug]/page.tsx`
+- `app/(root)/blog/page.tsx`
+- `components/pages/blog/blog-content.tsx`
+- `app/rss.xml/route.ts`
+- `app/news-sitemap.xml/route.ts`
+- `app/robots.ts`
+
+---
+
 ### Overview
 This document captures the scope of changes made to restructure learning flows, add task management, move quizzes to lessons, and enhance student profile functionality. It includes the original problem, solution direction, and execution details.
+
+---
+
+## 0) Student Achievements Page, Streak Milestones, and Dashboard Stability
+
+### Problem
+- Students had no dedicated achievements page, and the dashboard linked to a non-existent route (`/achievements`), resulting in a 404.
+- The dashboard achievements widget could throw a runtime React error when rendering icon components.
+- Streaks existed, but students had no milestone targets/reward framing to keep momentum and motivation.
+
+### Solution
+- Added a dedicated **Student Achievements** page at `/student/achievements`.
+- Added **streak milestone cards** on the student dashboard with clear targets and reward labels.
+- Fixed the achievements icon rendering bug by rendering mapped icon components correctly.
+- Updated student navigation to include **Achievements**.
+- Updated dashboard and progress actions so "View All Achievements" and "Continue Learning" routes resolve correctly.
+
+### Execution Summary
+- Created `getStudentAchievementsData()` to fetch all progress milestones with summary stats and per-type counts.
+- Added a full achievements UI with filters, search, rarity badges, and streak highlights.
+- Fixed dashboard runtime error caused by rendering icon object values as plain React children.
+- Corrected dashboard achievements link from `/achievements` to `/student/achievements`.
+
+### Key Files Updated
+- `app/(root)/student/achievements/page.tsx`
+  - New route page for achievements.
+- `components/pages/student/achievements/achievements-comp.tsx`
+  - New achievements screen UI and interactions.
+- `data/studentprogress.ts`
+  - Added student achievements data fetcher and summary shaping.
+- `components/pages/student/studentdash.tsx`
+  - Added streak milestones section.
+  - Fixed achievements icon rendering and route link.
+- `components/pages/student/progress/progress-comp.tsx`
+  - Wired "Continue Learning" to `/courses/[courseId]/learn`.
+- `lib/const.tsx`
+  - Added Achievements nav entry for student role menus.
 
 ---
 

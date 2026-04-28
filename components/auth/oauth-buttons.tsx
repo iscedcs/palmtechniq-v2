@@ -13,8 +13,9 @@ interface OAuthButtonsProps {
 export function OAuthButtons({ mode }: OAuthButtonsProps) {
   const [loadingProvider, setLoadingProvider] = useState<string | null>(null);
 
-  const DEFAULT_LOGIN_REDIRECT = "/student";
+  const DEFAULT_LOGIN_REDIRECT = "/dashboard";
   const onClick = (provider: "google" | "github") => {
+    setLoadingProvider(provider);
     signIn(provider, {
       callbackUrl: DEFAULT_LOGIN_REDIRECT,
     });

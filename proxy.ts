@@ -190,8 +190,13 @@ export default auth((req) => {
       return Response.redirect(new URL("/courses", nextUrl));
     }
 
-    if (isStudentRoute && userRole !== "STUDENT" && userRole !== "ADMIN") {
-      return Response.redirect(new URL("/courses", nextUrl));
+    if (isStudentRoute && userRole !== "STUDENT") {
+      const redirectPath = userRole
+        ? DEFAULT_LOGIN_REDIRECTS[
+            userRole as keyof typeof DEFAULT_LOGIN_REDIRECTS
+          ]
+        : DEFAULT_LOGIN_REDIRECT;
+      return Response.redirect(new URL(redirectPath, nextUrl));
     }
 
     return;
