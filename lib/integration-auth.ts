@@ -68,11 +68,4 @@ export function assertIntegrationAccess(req: NextRequest) {
     throw new IntegrationAuthError("Invalid integration key.", 401);
   }
 
-  const allowlist = parseAllowlist(process.env.MAILING_SYNC_ALLOWED_IPS);
-  if (allowlist.length > 0) {
-    const clientIp = getClientIp(req);
-    if (!allowlist.includes(clientIp)) {
-      throw new IntegrationAuthError("IP is not allowed.", 403);
-    }
-  }
 }
