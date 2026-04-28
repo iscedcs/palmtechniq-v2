@@ -55,13 +55,17 @@ export default async function BlogPage({ searchParams }: BlogPageProps) {
 
   return (
     <>
-      <script type="application/ld+json">{JSON.stringify(blogListJsonLd)}</script>
+      <script type="application/ld+json">
+        {JSON.stringify(blogListJsonLd)}
+      </script>
       <BlogContent
         posts={posts}
         categories={categories}
         featuredPosts={featuredPosts}
         initialCategory={matchingCategory?.title || null}
-        initialSearchQuery={matchingCategory ? "" : initialTopic || initialQuery}
+        initialSearchQuery={
+          matchingCategory ? "" : initialTopic || initialQuery
+        }
       />
     </>
   );

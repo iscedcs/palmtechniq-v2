@@ -64,6 +64,9 @@ export async function updateCourse(
       tags: _tags,
       requirements,
       outcomes: _outcomes,
+      // These fields are not in the Prisma Course model — strip them before spreading
+      courseType: _courseType,
+      programSlug: _programSlug,
       ...safeData
     } = validatedCourse.data;
 
