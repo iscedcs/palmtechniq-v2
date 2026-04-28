@@ -3,11 +3,7 @@ import { notFound } from "next/navigation";
 import Image from "next/image";
 import Link from "next/link";
 import { PortableText } from "@portabletext/react";
-import {
-  getPost,
-  getPostSlugs,
-  getRelatedPosts,
-} from "@/lib/sanity-queries";
+import { getPost, getPostSlugs, getRelatedPosts } from "@/lib/sanity-queries";
 import { urlFor } from "@/lib/sanity";
 import { Footer } from "@/components/footer";
 import { ArrowLeft, Calendar, User, Clock } from "lucide-react";
@@ -243,10 +239,9 @@ export default async function BlogPostPage({ params }: Props) {
     (cat: { title: string }) => cat.title,
   );
   const headingTopics = extractHeadingTopics(post.headings);
-  const topicCandidates = [...new Set([...categoryNames, ...headingTopics])].slice(
-    0,
-    8,
-  );
+  const topicCandidates = [
+    ...new Set([...categoryNames, ...headingTopics]),
+  ].slice(0, 8);
   const categorySet = new Set(
     categoryNames.map((name: string) => name.toLowerCase()),
   );
@@ -320,7 +315,9 @@ export default async function BlogPostPage({ params }: Props) {
 
   return (
     <div className="min-h-screen bg-background">
-      <script type="application/ld+json">{JSON.stringify(articleJsonLd)}</script>
+      <script type="application/ld+json">
+        {JSON.stringify(articleJsonLd)}
+      </script>
       <script type="application/ld+json">
         {JSON.stringify(breadcrumbJsonLd)}
       </script>
@@ -442,7 +439,9 @@ export default async function BlogPostPage({ params }: Props) {
           {/* Related posts */}
           {relatedTopics.length > 0 && (
             <div className="mt-12 rounded-xl border border-white/10 bg-white/5 p-6">
-              <h2 className="text-xl font-semibold text-white mb-3">Related Topics</h2>
+              <h2 className="text-xl font-semibold text-white mb-3">
+                Related Topics
+              </h2>
               <p className="text-sm text-gray-400 mb-4">
                 Explore more content connected to this article.
               </p>
