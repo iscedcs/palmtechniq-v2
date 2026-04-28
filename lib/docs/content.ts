@@ -1,6 +1,6 @@
 import type { DocPage, DocSection } from "./types";
 
-export const DOC_VERSION = "v2.1.0";
+export const DOC_VERSION = "v2.2.0";
 
 export const docSections: DocSection[] = [
   // ─── GETTING STARTED ─────────────────────────────────────
@@ -63,7 +63,7 @@ Use the sidebar to navigate between sections, or use the search bar to find spec
         description:
           "Set up the PalmTechnIQ development environment from scratch.",
         audience: "developer",
-        lastUpdated: "2026-04-17",
+        lastUpdated: "2026-04-28",
         content: `
 # Installation
 
@@ -125,6 +125,12 @@ NEXT_PUBLIC_MIXPANEL_TOKEN="..."
 # Upload
 UPLOADTHING_SECRET="..."
 UPLOADTHING_APP_ID="..."
+
+# Mailing Integration (isce-mail sync)
+MAILING_SYNC_API_KEY="<generated-hex-key>"
+MAILING_SYNC_API_KEY_PREVIOUS="<previous-hex-key-for-rotation>"
+# Optional: restrict to specific IPs (comma-separated)
+# MAILING_SYNC_ALLOWED_IPS="1.2.3.4,5.6.7.8"
 \`\`\`
 
 ## Database Setup
@@ -287,6 +293,22 @@ Blog content is managed via Sanity:
 - Studio available at \`/studio\`
 - Schemas defined in \`sanity/\` directory
 - Queries in \`lib/sanity-queries.ts\`
+
+## Blog SEO Fields — Editor Checklist
+
+Every post has an optional **SEO** section in the Sanity Studio. Fill it in before publishing to maximise search visibility.
+
+| Field | Guidance |
+|---|---|
+| **Meta Title** | 50–60 characters. Put the focus keyword near the start. Don't just copy the post title — make it search-friendly. Example: *"Python for Beginners: Full Course Guide 2026"* |
+| **Meta Description** | 140–160 characters. Summarise the post's value and include a soft call-to-action ("Learn how…", "Discover…"). Shown in Google snippets. |
+| **Focus Keyword** | 2–4 word phrase readers would type into Google. Used in JSON-LD keywords and RSS feed. Example: *"python beginner course"* |
+| **Canonical URL** | Leave blank for original posts. Only fill in when this post is syndicated from another site or has a permanent home elsewhere. |
+| **Excerpt** | 1–2 sentence hook. Shown on blog cards, Open Graph previews, and as the meta-description fallback if Meta Description is left blank. |
+| **Main Image Alt Text** | Describe the image naturally and include the focus keyword where it fits. Required for accessibility and image search. |
+| **Categories** | Tag with at least one relevant category. Categories power the *Related Topics* chip links at the bottom of every post and enable \`/blog?topic=\` filtering. |
+
+> **Quick rule of thumb:** if the SEO section is left empty the post still works — it falls back to the post title, excerpt, and first category. Filling it in unlocks richer snippets and better ranking signals.
 `,
       },
     ],
@@ -799,7 +821,7 @@ Comprehensive platform analytics dashboard with:
         slug: "student-guide",
         description: "Complete guide for students using the platform.",
         audience: "non-developer",
-        lastUpdated: "2026-04-17",
+        lastUpdated: "2026-04-28",
         content: `
 # Student Guide
 
@@ -887,6 +909,15 @@ Your student profile can be independently verified by anyone:
 - **Mentorship** — Upcoming and past sessions
 - **Profile** — Update your details and preferences
 - **Progress** — Overall learning analytics
+- **Achievements** — View all unlocked milestones at \`/student/achievements\`
+
+## Achievements & Streak Milestones
+
+- Open your achievements page at \`/student/achievements\`
+- Filter by type (Lessons, Quizzes, Courses, Skills)
+- Search achievements by title or description
+- Track rarity tiers (Common, Uncommon, Rare, Epic)
+- Use streak milestones on the dashboard to stay motivated with target rewards
 `,
       },
       {
@@ -1439,7 +1470,7 @@ Server actions follow a consistent pattern:
         slug: "rest-api",
         description: "HTTP API endpoints for external integrations.",
         audience: "developer",
-        lastUpdated: "2026-04-17",
+        lastUpdated: "2026-04-28",
         content: `
 # REST API Endpoints
 
@@ -1603,6 +1634,107 @@ Publicly verify a student profile. Returns student name, avatar, rank, level, po
 POST /api/analytics/track
 \`\`\`
 Track a platform event (page view, course interaction, checkout, etc.). Used by the client-side analytics provider.
+
+## Mailing Integration (External)
+
+These endpoints are designed for consumption by the **isce-mail** bulk email system. They are not meant for browser clients or regular users.
+
+### Sync Mailing Recipients
+\`\`\`
+GET /api/integrations/mailing/users
+\`\`\`
+
+Returns a paginated list of platform users and program registrations for use as mailing recipients.
+
+**Authentication — Required**
+
+All requests must include a valid integration key in one of the following headers (in order of precedence):
+
+| Header | Format |
+|--------|--------|
+| \`x-integration-key\` | Raw key string |
+| \`x-api-key\` | Raw key string |
+| \`Authorization\` | \`Bearer <key>\` |
+
+Keys are compared using **timing-safe equality** (constant-time) to prevent timing attacks.
+
+**Query Parameters**
+
+| Parameter | Type | Description |
+|-----------|------|-------------|
+| \`limit\` | number | Records per page. Default: \`250\`, max: \`1000\` |
+| \`cursor\` | string | Cursor from a previous response for pagination |
+| \`since\` | ISO 8601 date | Only return records updated after this timestamp (delta sync) |
+
+**Example Request**
+\`\`\`bash
+curl https://palmtechniq.com/api/integrations/mailing/users?limit=500 \\
+  -H "x-integration-key: <your-key>"
+\`\`\`
+
+**Response Shape**
+\`\`\`json
+{
+  "data": [
+    {
+      "id": "cuid...",
+      "email": "user@example.com",
+      "name": "Jane Doe",
+      "updatedAt": "2026-04-28T10:00:00.000Z",
+      "createdAt": "2026-01-01T00:00:00.000Z",
+      "isActive": true,
+      "source": "user"
+    }
+  ],
+  "paging": {
+    "hasMore": true,
+    "nextCursor": "cuid...",
+    "limit": 500
+  },
+  "sync": {
+    "since": null,
+    "latestSyncAt": "2026-04-28T10:00:00.000Z"
+  }
+}
+\`\`\`
+
+**Data Sources**
+
+The endpoint merges two sources into one flat list:
+
+| Source | Field | Notes |
+|--------|-------|-------|
+| \`User\` table | \`source: "user"\` | All registered platform accounts |
+| \`ProgramRegistration\` table | \`source: "registration"\` | Waitlist / pre-enrollment signups |
+
+When the same email appears in both tables, the \`User\` record wins (deduplication by email).
+Only records with \`isActive: true\` are included in the final recipient list returned by isce-mail.
+
+**Rate Limiting**
+
+\`120 requests per 60 seconds\` per integration key (keyed by the first 12 characters).
+Exceeding this limit returns \`HTTP 429\`.
+
+**Error Responses**
+
+| Status | Reason |
+|--------|--------|
+| \`401\` | Missing or invalid integration key |
+| \`403\` | Caller IP not in \`MAILING_SYNC_ALLOWED_IPS\` allowlist |
+| \`429\` | Rate limit exceeded |
+| \`500\` | Integration key not configured, or database error |
+
+**Key Rotation**
+
+Two keys are supported simultaneously to allow zero-downtime rotation:
+
+- \`MAILING_SYNC_API_KEY\` — the active primary key
+- \`MAILING_SYNC_API_KEY_PREVIOUS\` — the previous key (still accepted during rotation)
+
+Generate new keys with:
+\`\`\`bash
+node scripts/generate-integration-keys.js
+\`\`\`
 `,
       },
     ],
@@ -1619,7 +1751,7 @@ Track a platform event (page view, course interaction, checkout, etc.). Used by 
         slug: "security",
         description: "Security measures, IP protection, and best practices.",
         audience: "developer",
-        lastUpdated: "2026-04-17",
+        lastUpdated: "2026-04-28",
         content: `
 # Security
 
@@ -1709,16 +1841,39 @@ The middleware (\`proxy.ts\`) enforces role-based access at the route level:
 - **Amount verification** — Server validates expected amounts
 - **Idempotent processing** — Duplicate webhook handling
 
-## Key Files
+## Integration Key Authentication
+
+External systems (e.g. **isce-mail**) authenticate to protected API routes via a pre-shared integration key.
+
+### How It Works
+- The caller sends the key in the \`x-integration-key\`, \`x-api-key\`, or \`Authorization: Bearer\` header
+- \`lib/integration-auth.ts\` validates the key using **timing-safe comparison** (\`crypto.timingSafeEqual\`) to prevent timing-based key enumeration
+- Two keys are valid simultaneously: \`MAILING_SYNC_API_KEY\` (primary) and \`MAILING_SYNC_API_KEY_PREVIOUS\` (rotation key)
+- An optional IP allowlist (\`MAILING_SYNC_ALLOWED_IPS\`) can restrict callers to specific IP addresses
+
+### Generating Keys
+Keys are 256-bit cryptographically random hex strings generated with:
+\`\`\`bash
+node scripts/generate-integration-keys.js
+\`\`\`
+Add the output values to your \`.env\` file. During a key rotation:
+1. Move the current primary key to \`MAILING_SYNC_API_KEY_PREVIOUS\`
+2. Set the new key as \`MAILING_SYNC_API_KEY\`
+3. Update isce-mail's \`PALMTECHNIQ_SYNC_API_KEY\` env var to the new key
+4. Once confirmed working, clear \`MAILING_SYNC_API_KEY_PREVIOUS\`
+
+
 - \`proxy.ts\` — Middleware with RBAC enforcement
 - \`routes.ts\` — Route classification and role-based redirects
 - \`lib/ip-rate-limit.ts\` — IP-based rate limiting logic
 - \`lib/rate-limit.ts\` — General rate limiting
+- \`lib/integration-auth.ts\` — Integration key validation (timing-safe compare, IP allowlist)
 - \`actions/security-admin.ts\` — Admin security functions
 - \`actions/superior.ts\` — Tester invite and management
 - \`actions/change-password.ts\` — Forced password change
 - \`next.config.mjs\` — Security headers
 - \`auth.config.ts\` — Auth security configuration
+- \`scripts/generate-integration-keys.js\` — Generate secure 256-bit integration keys
 `,
       },
       {

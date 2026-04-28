@@ -4,7 +4,6 @@ import { auth } from "@/auth";
 import { db } from "@/lib/db";
 
 // ─── Auth Guard ──────────────────────────────────────────────────
-
 async function requireAdmin() {
   const session = await auth();
   if (!session?.user?.id) throw new Error("Unauthorized");

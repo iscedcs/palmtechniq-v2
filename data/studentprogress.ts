@@ -397,3 +397,97 @@ export type StudentProgressData = Exclude<
   { error: string }
 >;
 export type StudentProgressResponse = { error: string } | StudentProgressData;
+
+// ── Achievements page ─────────────────────────────────────────────────────────
+
+const ACHIEVEMENT_ICON_MAP: Record<string, string> = {
+  LESSON_COMPLETED: "Zap",
+  QUIZ_PASSED: "Brain",
+  COURSE_COMPLETED: "Trophy",
+  SKILL_MASTERED: "BookOpen",
+};
+
+const ACHIEVEMENT_COLOR_MAP: Record<string, string> = {
+  LESSON_COMPLETED: "from-yellow-400 to-orange-500",
+  QUIZ_PASSED: "from-blue-500 to-cyan-500",
+  COURSE_COMPLETED: "from-purple-500 to-indigo-500",
+  SKILL_MASTERED: "from-green-500 to-emerald-500",
+};
+
+const ACHIEVEMENT_RARITY_MAP: Record<string, string> = {
+  LESSON_COMPLETED: "Common",
+  QUIZ_PASSED: "Uncommon",
+  COURSE_COMPLETED: "Rare",
+  SKILL_MASTERED: "Epic",
+};
+
+export async function getStudentAchievementsData() {
+  const session = await auth();
+  if (!session?.user?.id) return { error: "Unauthorized" };
+
+  const userId = session.user.id;
+
+  const [student, allMilestones] = await Promise.all([
+    db.student.findUnique({
+      where: { userId },
+      select: {
+        streak: true,
+        currentRank: true,
+        totalPoints: true,
+        coursesCompleted: true,
+        coursesStarted: true,
+        level: true,
+        user: { select: { name: true, avatar: true, image: true } },
+      },
+    }),
+    db.progressMilestone.findMany({
+      where: { userId },
+      orderBy: { achievedAt: "desc" },
+    }),
+  ]);
+
+  if (!student) return { error: "Student profile not found" };
+
+  const achievements = allMilestones.map((m: any) => ({
+    id: m.id,
+    type: m.type as string,
+    title: (m.type as string)
+      .replace(/_/g, " ")
+      .replace(/\b\w/g, (l: string) => l.toUpperCase()),
+    description: m.description,
+    icon: ACHIEVEMENT_ICON_MAP[m.type] || "Trophy",
+    color: ACHIEVEMENT_COLOR_MAP[m.type] || "from-gray-500 to-gray-600",
+    rarity: ACHIEVEMENT_RARITY_MAP[m.type] || "Common",
+    earnedAt: m.achievedAt.toISOString(),
+    earned: formatDistanceToNow(m.achievedAt, { addSuffix: true }),
+  }));
+
+  // Counts by type
+  const counts = {
+    LESSON_COMPLETED: 0,
+    QUIZ_PASSED: 0,
+    COURSE_COMPLETED: 0,
+    SKILL_MASTERED: 0,
+  } as Record<string, number>;
+  for (const m of allMilestones) counts[m.type] = (counts[m.type] || 0) + 1;
+
+  return {
+    achievements,
+    summary: {
+      total: allMilestones.length,
+      byType: counts,
+      streak: student.streak,
+      longestStreak: student.streak,
+      totalPoints: student.totalPoints,
+      rank: student.currentRank,
+      coursesCompleted: student.coursesCompleted,
+    },
+    userName: student.user.name,
+    userAvatar: student.user.avatar || student.user.image,
+  };
+}
+
+export type StudentAchievementsData = Exclude<
+  Awaited<ReturnType<typeof getStudentAchievementsData>>,
+  { error: string }
+>;

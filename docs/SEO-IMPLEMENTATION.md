@@ -13,6 +13,46 @@ Two implementation phases brought the platform from minimal SEO coverage to a pr
 | ------- | --------------------------------------------------------- | ----------- |
 | Phase 1 | OG images, robots/sitemap, per-page metadata, JSON-LD     | ✅ Complete |
 | Phase 2 | Social profiles in JSON-LD, PWA manifest, custom 404 page | ✅ Complete |
+| Phase 3 | Blog SEO overrides, internal topic links, RSS + News feed | ✅ Complete |
+
+---
+
+## Phase 3 — Blog SEO & Content Distribution (April 28, 2026)
+
+### What Was Added
+
+1. **Sanity blog SEO fields (optional overrides)**
+  - Added `seo.metaTitle`, `seo.metaDescription`, `seo.focusKeyword`, `seo.canonicalUrl` to blog posts.
+  - Added warning-level editor hints to guide better lengths and canonical choices.
+
+2. **Blog post metadata override support**
+  - Post pages now prefer SEO overrides from Sanity when provided.
+  - Keeps auto-generated defaults when fields are empty.
+
+3. **Auto-generated Related Topics links**
+  - Internal links are generated from post categories + extracted headings.
+  - Links point to blog filtered landing routes (`/blog?topic=...` or `/blog?q=...`).
+
+4. **Feed routes for submission/distribution**
+  - RSS feed route: `/rss.xml`
+  - Google News sitemap route: `/news-sitemap.xml`
+
+5. **Robots discovery update**
+  - `robots.txt` now references:
+    - `/sitemap.xml`
+    - `/news-sitemap.xml`
+    - `/rss.xml`
+
+### Files Added/Updated
+
+- `sanity/schemas/post.ts`
+- `lib/sanity-queries.ts`
+- `app/(root)/blog/[slug]/page.tsx`
+- `app/(root)/blog/page.tsx`
+- `components/pages/blog/blog-content.tsx`
+- `app/rss.xml/route.ts`
+- `app/news-sitemap.xml/route.ts`
+- `app/robots.ts`
 
 ## Problem
 

@@ -241,13 +241,19 @@ export function BlogContent({
   posts,
   categories,
   featuredPosts,
+  initialSearchQuery = "",
+  initialCategory = null,
 }: {
   posts: Post[];
   categories: Category[];
   featuredPosts: Post[];
+  initialSearchQuery?: string;
+  initialCategory?: string | null;
 }) {
-  const [searchQuery, setSearchQuery] = useState("");
-  const [activeCategory, setActiveCategory] = useState<string | null>(null);
+  const [searchQuery, setSearchQuery] = useState(initialSearchQuery);
+  const [activeCategory, setActiveCategory] = useState<string | null>(
+    initialCategory,
+  );
 
   const filtered = posts.filter((post) => {
     const matchesSearch =

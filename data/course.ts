@@ -29,6 +29,8 @@ export async function getPublicCourses() {
       id: course.id,
       title: course.title,
       description: course.description,
+      category: course.category?.name ?? null,
+      categoryId: course.category?.id ?? null,
       thumbnail: course.thumbnail,
       level: course.level,
       tutor: course.tutor,

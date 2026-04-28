@@ -34,6 +34,56 @@ import { DEFAULT_LOGIN_REDIRECT, DEFAULT_LOGIN_REDIRECTS } from "@/routes";
 import { AuthError } from "next-auth";
 import z from "zod";
 
+function resolvePostLoginRedirect(
+  role: UserRole,
+  callbackUrl?: string | null,
+): string {
+  const roleDefault =
+    DEFAULT_LOGIN_REDIRECTS[role as keyof typeof DEFAULT_LOGIN_REDIRECTS] ||
+    DEFAULT_LOGIN_REDIRECT;
+
+  if (!callbackUrl) {
+    return roleDefault;
+  }
+
+  const normalized = callbackUrl.trim();
+  // Ignore external URLs and protocol-relative values.
+  if (!normalized.startsWith("/") || normalized.startsWith("//")) {
+    return roleDefault;
+  }
+
+  const callbackPath = normalized.split("?")[0]?.split("#")[0] || "/";
+
+  const allowedPrefixesByRole: Record<UserRole, string[]> = {
+    STUDENT: ["/student", "/courses", "/settings", "/change-password"],
+    MENTOR: [
+      "/mentor",
+      "/tutor",
+      "/courses",
+      "/settings",
+      "/change-password",
+    ],
+    TUTOR: ["/tutor", "/courses", "/settings", "/change-password"],
+    ADMIN: ["/admin", "/analytics", "/settings", "/change-password"],
+    USER: ["/courses", "/enroll", "/settings", "/change-password"],
+    TESTER: ["/documentation", "/settings", "/change-password"],
+    SUPERIOR: [
+      "/superior",
+      "/analytics",
+      "/documentation",
+      "/settings",
+      "/change-password",
+    ],
+  };
+
+  const allowedPrefixes = allowedPrefixesByRole[role] || [];
+  const isAllowed = allowedPrefixes.some(
+    (prefix) => callbackPath === prefix || callbackPath.startsWith(`${prefix}/`),
+  );
+
+  return isAllowed ? normalized : roleDefault;
+}
+
 // Signup Action
 export async function signup(data: z.infer<typeof signupSchema>) {
   try {
@@ -271,11 +321,7 @@ export async function login(
         success: "Successfully Signed in!",
         redirectUrl: existingUser.mustChangePassword
           ? "/change-password"
-          : callbackUrl ||
-            DEFAULT_LOGIN_REDIRECTS[
-              existingUser.role as keyof typeof DEFAULT_LOGIN_REDIRECTS
-            ] ||
-            DEFAULT_LOGIN_REDIRECT,
+          : resolvePostLoginRedirect(existingUser.role as UserRole, callbackUrl),
       };
     } catch (signInError) {
       // Login failed - increment failed attempts

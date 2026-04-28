@@ -1,5 +1,6 @@
 import type { MetadataRoute } from "next";
 import { db } from "@/lib/db";
+import { getPostSlugs } from "@/lib/sanity-queries";
 
 export const dynamic = "force-dynamic";
 
@@ -141,5 +142,21 @@ export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
     // DB may not be available during build
   }
 
-  return [...staticPages, ...coursePages, ...categoryPages];
+  // Dynamic blog post pages from Sanity
+  let blogPages: MetadataRoute.Sitemap = [];
+  try {
+    const posts = await getPostSlugs();
+    blogPages = posts.map(
+      (post: { slug: string; publishedAt?: string; _updatedAt?: string }) => ({
+        url: `${baseUrl}/blog/${post.slug}`,
+        lastModified: new Date(post._updatedAt || post.publishedAt || Date.now()),
+        changeFrequency: "weekly" as const,
+        priority: 0.75,
+      }),
+    );
+  } catch {
+    // CMS may not be available during build
+  }
+
+  return [...staticPages, ...coursePages, ...categoryPages, ...blogPages];
 }

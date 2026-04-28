@@ -75,6 +75,90 @@ export const post = defineType({
       title: "Body",
       type: "blockContent",
     }),
+    defineField({
+      name: "seo",
+      title: "SEO",
+      type: "object",
+      description:
+        "Optional search optimization overrides. Leave blank to use auto-generated metadata.",
+      options: { collapsible: true, collapsed: true },
+      fields: [
+        defineField({
+          name: "metaTitle",
+          title: "Meta Title",
+          type: "string",
+          description: "Optional override for page title (recommended: <= 60 chars)",
+          validation: (Rule) =>
+            Rule.custom((value) => {
+              if (!value) return true;
+              if (typeof value !== "string") return true;
+              if (value.length > 60) {
+                return "Meta title is too long. Keep it under 60 characters.";
+              }
+              if (value.length < 30) {
+                return "Meta title is short. Aim for 30-60 characters for stronger CTR.";
+              }
+              return true;
+            }).warning(),
+        }),
+        defineField({
+          name: "metaDescription",
+          title: "Meta Description",
+          type: "text",
+          rows: 3,
+          description:
+            "Optional override for meta description (recommended: 140-160 chars)",
+          validation: (Rule) =>
+            Rule.custom((value) => {
+              if (!value) return true;
+              if (typeof value !== "string") return true;
+              if (value.length > 160) {
+                return "Meta description is too long. Keep it under 160 characters.";
+              }
+              if (value.length < 80) {
+                return "Meta description is short. Aim for 80-160 characters.";
+              }
+              return true;
+            }).warning(),
+        }),
+        defineField({
+          name: "focusKeyword",
+          title: "Focus Keyword",
+          type: "string",
+          description: "Primary keyword phrase for this post",
+          validation: (Rule) =>
+            Rule.custom((value) => {
+              if (!value) return true;
+              if (typeof value !== "string") return true;
+              if (value.length > 80) {
+                return "Focus keyword is too long. Use a shorter keyword phrase.";
+              }
+              if (value.split(" ").length > 8) {
+                return "Focus keyword looks broad. Keep it to a concise phrase.";
+              }
+              return true;
+            }).warning(),
+        }),
+        defineField({
+          name: "canonicalUrl",
+          title: "Canonical URL Override",
+          type: "url",
+          description:
+            "Optional absolute canonical URL. Leave empty to use the post URL.",
+          validation: (Rule) =>
+            Rule.uri({ scheme: ["http", "https"], allowRelative: false })
+              .custom((value) => {
+                if (!value) return true;
+                if (typeof value !== "string") return true;
+                if (!value.includes("palmtechniq.com")) {
+                  return "Canonical URL points off-domain. Confirm this is intentional.";
+                }
+                return true;
+              })
+              .warning(),
+        }),
+      ],
+    }),
   ],
   preview: {
     select: {
