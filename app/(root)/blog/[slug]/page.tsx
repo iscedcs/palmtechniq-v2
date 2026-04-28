@@ -320,14 +320,10 @@ export default async function BlogPostPage({ params }: Props) {
 
   return (
     <div className="min-h-screen bg-background">
-      <script
-        type="application/ld+json"
-        dangerouslySetInnerHTML={{ __html: JSON.stringify(articleJsonLd) }}
-      />
-      <script
-        type="application/ld+json"
-        dangerouslySetInnerHTML={{ __html: JSON.stringify(breadcrumbJsonLd) }}
-      />
+      <script type="application/ld+json">{JSON.stringify(articleJsonLd)}</script>
+      <script type="application/ld+json">
+        {JSON.stringify(breadcrumbJsonLd)}
+      </script>
       <ReadingProgressBar />
       <ViewTracker postId={post._id} />
 

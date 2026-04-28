@@ -55,10 +55,7 @@ export default async function BlogPage({ searchParams }: BlogPageProps) {
 
   return (
     <>
-      <script
-        type="application/ld+json"
-        dangerouslySetInnerHTML={{ __html: JSON.stringify(blogListJsonLd) }}
-      />
+      <script type="application/ld+json">{JSON.stringify(blogListJsonLd)}</script>
       <BlogContent
         posts={posts}
         categories={categories}
