@@ -1,0 +1,82 @@
+name: build
+
+on:
+  pull_request:
+    branches:
+      - main
+  workflow_dispatch:
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+      security-events: write
+    env:
+      # Safe placeholders for build-time checks in CI.
+      DATABASE_URL: postgresql://postgres:postgres@localhost:5432/postgres
+      NEXTAUTH_SECRET: ci-placeholder-secret
+      AUTH_SECRET: ci-placeholder-secret
+      NEXTAUTH_URL: http://localhost:3000
+      RESEND_API_KEY: ci-placeholder
+      PAYSTACK_SECRET_KEY: ci-placeholder
+      PAYSTACK_PUBLIC_KEY: ci-placeholder
+      UPSTASH_REDIS_REST_URL: https://example.upstash.io
+      UPSTASH_REDIS_REST_TOKEN: ci-placeholder
+      DO_SPACES_ENDPOINT: https://fra1.digitaloceanspaces.com
+      DO_SPACES_REGION: fra1
+      DO_SPACES_KEY: ci-placeholder
+      DO_SPACES_SECRET: ci-placeholder
+      DO_SPACES_BUCKET: ci-placeholder
+      NEXT_PUBLIC_SANITY_PROJECT_ID: at8svyj2
+      NEXT_PUBLIC_SANITY_DATASET: production
+      # Expose Gitleaks license (if present) to the job as an env var so the
+      # step conditional can reference it without using the `secrets` context
+      # directly in an `if` expression (which can cause parsing errors).
+      GITLEAKS_LICENSE: ${{ secrets.GITLEAKS_LICENSE }}
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup pnpm
+        uses: pnpm/action-setup@v4
+        with:
+          version: 10
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: pnpm
+
+      - name: Install dependencies
+        run: pnpm install --frozen-lockfile
+
+      - name: Lint
+        run: pnpm lint
+
+      - name: Dependency Audit
+        uses: aquasecurity/trivy-action@master
+        with:
+          scan-type: fs
+          scanners: vuln
+          severity: HIGH,CRITICAL
+          exit-code: 1
+          skip-dirs: .next
+
+      - name: Run gitleaks
+        if: ${{ env.GITLEAKS_LICENSE != '' }}
+        uses: gitleaks/gitleaks-action@v2
+        with:
+          args: --path=.
+        env:
+          GITLEAKS_LICENSE: ${{ env.GITLEAKS_LICENSE }}
+
+      - name: Static Security Scan (Semgrep)
+        uses: returntocorp/semgrep-action@v1
+        with:
+          config: p/security-audit
+
+      - name: Build
+        run: pnpm build

@@ -9,57 +9,63 @@ import { generateRandomAvatar } from "@/lib/utils";
 
 const testimonials = [
   {
-    name: "Sarah Chen",
-    role: "Software Engineer",
+    name: "Favour Williams",
+    role: "Specialist",
+    company: "Google",
     avatar: generateRandomAvatar(),
     rating: 5,
-    text: "The AI interview coach completely transformed my preparation. I landed my dream job at a tech company after just 3 months of practice!",
-    course: "Full Stack Development",
+    text: "PalmTechnIQ prepared me perfectly for my role. The hands-on projects and AI coach made all the difference in landing at Google.",
+    course: "Fundamentals",
     gradient: "from-neon-blue to-cyan-400",
   },
   {
     name: "Marcus Johnson",
-    role: "UX Designer",
+    role: "Performance Marketing Manager",
+    company: "Meta",
     avatar: generateRandomAvatar(),
     rating: 5,
-    text: "The mentorship program is incredible. Having 1-on-1 sessions with industry experts gave me insights I couldn't get anywhere else.",
-    course: "UI/UX Design Mastery",
+    text: "The program's focus on real-world tools and platform optimization helped me excel from day one in my role.",
+    course: "Performance Marketing Mastery",
     gradient: "from-neon-purple to-pink-400",
   },
   {
-    name: "Elena Rodriguez",
-    role: "Data Scientist",
+    name: "Elena Okpo",
+    role: "Data Analyst",
+    company: "The Trade Desk",
     avatar: generateRandomAvatar(),
     rating: 5,
-    text: "The project-based learning approach helped me build a portfolio that impressed every interviewer. The AI LinkedIn builder was a game-changer!",
-    course: "AI & Machine Learning",
+    text: "The advanced analytics curriculum and project-based learning gave me the exact skills I needed for my analytics role at The Trade Desk.",
+    course: "Analytics Pro",
     gradient: "from-neon-green to-emerald-400",
   },
   {
-    name: "David Kim",
-    role: "Marketing Director",
+    name: "David Omoh",
+    role: "Account Executive",
+    company: "AppNexus",
     avatar: generateRandomAvatar(),
     rating: 5,
-    text: "I loved the hybrid learning model. Being able to attend physical workshops while taking online courses gave me the best of both worlds.",
-    course: "Digital Marketing Pro",
+    text: "The mentorship from industry leaders helped me understand the ecosystem deeply. My career advancement has been incredible.",
+    course: "Sales Mastery",
     gradient: "from-neon-orange to-yellow-400",
   },
   {
-    name: "Priya Patel",
-    role: "Product Manager",
+    name: "James Jude",
+    role: "Product Manager ",
+    company: "Criteo",
     avatar: generateRandomAvatar(),
     rating: 5,
-    text: "The progress tracking and personalized recommendations kept me motivated throughout my learning journey. Absolutely revolutionary!",
+    text: "The product management track for was incredibly comprehensive. It prepared me for all aspects of product development.",
     course: "Product Management",
     gradient: "from-red-400 to-pink-400",
   },
   {
     name: "Alex Thompson",
-    role: "Blockchain Developer",
+    role: "Engineer",
+    company: "PubMatic",
     avatar: generateRandomAvatar(),
     rating: 5,
-    text: "The quality of instruction and the cutting-edge curriculum helped me transition into blockchain development seamlessly.",
-    course: "Blockchain Development",
+    text: "As an engineer, I appreciated the technical depth combined with real industry context. A game-changer for my career.",
+    course: "Engineering Fundamentals",
     gradient: "from-indigo-400 to-purple-400",
   },
 ];
@@ -91,12 +97,11 @@ export function TestimonialsSection() {
           viewport={{ once: true }}
           className="text-center mb-20">
           <h2 className="text-5xl md:text-6xl font-bold mb-6">
-            <span className="text-gradient">Success</span>{" "}
-            <span className="text-white">Stories</span>
+            <span className="text-gradient">Trusted by</span>{" "}
+            <span className="text-white">Professionals</span>
           </h2>
           <p className="text-xl text-gray-300 max-w-3xl mx-auto">
-            Real people, real results. See how our platform transformed careers
-            and lives
+            Join hundreds of successful alumni already working at top companies.
           </p>
         </motion.div>
 

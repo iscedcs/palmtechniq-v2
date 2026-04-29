@@ -23,20 +23,22 @@ import Image from "next/image";
 const footerLinks = {
   platform: [
     { name: "Courses", href: "/courses" },
-    { name: "Tutors", href: "/tutors" },
-    { name: "Pricing", href: "/pricing" },
-    { name: "Success Stories", href: "/success-stories" },
+    { name: "Become a Tutor", href: "/become-a-tutor" },
+    { name: "Mentor And Earn", href: "/become-a-tutor" },
+    // { name: "Pricing", href: "/pricing" },
+    // { name: "Success Stories", href: "/success-stories" },
   ],
   features: [
     { name: "AI Interview Coach", href: "/features/ai-interview" },
-    { name: "LinkedIn Builder", href: "/features/linkedin-builder" },
+    { name: "Verify Certificate", href: "/verify-certificate" },
+    // { name: "LinkedIn Builder", href: "/features/linkedin-builder" },
     { name: "Live Mentorship", href: "/features/mentorship" },
-    { name: "Project-Based Learning", href: "/features/projects" },
+    // { name: "Project-Based Learning", href: "/features/projects" },
   ],
   company: [
     { name: "About Us", href: "/about" },
-    { name: "Careers", href: "/careers" },
-    { name: "Press", href: "/press" },
+    // { name: "Careers", href: "/careers" },
+    // { name: "Press", href: "/press" },
     { name: "Blog", href: "/blog" },
   ],
   support: [
@@ -48,12 +50,31 @@ const footerLinks = {
 };
 
 const socialLinks = [
-  { icon: Facebook, href: "#", color: "hover:text-blue-400" },
-  { icon: Twitter, href: "#", color: "hover:text-sky-400" },
-  { icon: Instagram, href: "#", color: "hover:text-pink-400" },
-  { icon: Linkedin, href: "#", color: "hover:text-blue-600" },
-  { icon: Youtube, href: "#", color: "hover:text-red-400" },
-  { icon: Github, href: "#", color: "hover:text-gray-400" },
+  {
+    icon: Facebook,
+    href: "https://www.facebook.com/palmtechniq/",
+    color: "hover:text-blue-400",
+  },
+  {
+    icon: Twitter,
+    href: "https://x.com/palmtechniq/",
+    color: "hover:text-sky-400",
+  },
+  {
+    icon: Instagram,
+    href: "https://www.instagram.com/palmtechniq",
+    color: "hover:text-pink-400",
+  },
+  {
+    icon: Linkedin,
+    href: "https://www.linkedin.com/company/palmtechniq/",
+    color: "hover:text-blue-600",
+  },
+  {
+    icon: Youtube,
+    href: "https://www.youtube.com/@palmtechniq_official",
+    color: "hover:text-red-400",
+  },
 ];
 
 export function Footer() {

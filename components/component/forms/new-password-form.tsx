@@ -11,6 +11,7 @@ import {
   FormField,
   FormItem,
   FormLabel,
+  FormMessage,
 } from "@/components/ui/form";
 import { Input } from "@/components/ui/input";
 import { getPasswordStrength } from "@/lib/utils";
@@ -20,6 +21,7 @@ import { CheckCircle, Eye, EyeOff, Lock } from "lucide-react";
 import { useSearchParams } from "next/navigation";
 import { useState, useTransition } from "react";
 import { useForm, useWatch } from "react-hook-form";
+import { toast } from "sonner";
 import z from "zod";
 
 export function NewPasswordForm({ onSuccess }: { onSuccess?: () => void }) {
@@ -29,12 +31,13 @@ export function NewPasswordForm({ onSuccess }: { onSuccess?: () => void }) {
   const [success, setSuccess] = useState<string | undefined>("");
   const [isPending, startTransition] = useTransition();
   const searchParams = useSearchParams();
-  const token = searchParams.get("token");
+  const token = searchParams?.get("token");
 
   const form = useForm<z.infer<typeof resetPasswordSchema>>({
     resolver: zodResolver(resetPasswordSchema),
     defaultValues: {
       password: "",
+      confirmPassword: "",
     },
   });
 
@@ -46,6 +49,8 @@ export function NewPasswordForm({ onSuccess }: { onSuccess?: () => void }) {
   const onSubmit = async (data: z.infer<typeof resetPasswordSchema>) => {
     if (!token) {
       setError("Missing token!");
+      toast.error("Missing token!");
+      setIsLoading(false);
       return;
     }
     setIsLoading(true);
@@ -55,12 +60,14 @@ export function NewPasswordForm({ onSuccess }: { onSuccess?: () => void }) {
       resetPassword(data, token).then((data) => {
         if (data?.error) {
           setError(data?.error);
+          toast.error(data?.error);
         }
         setSuccess(data?.success);
         if (data.success) {
           form.reset();
           onSuccess?.();
         }
+        setIsLoading(false);
       });
     });
   };
@@ -95,7 +102,16 @@ export function NewPasswordForm({ onSuccess }: { onSuccess?: () => void }) {
 
   return (
     <Form {...form}>
-      <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-6">
+      <form
+        onSubmit={form.handleSubmit(onSubmit, (errors) => {
+          const messages = Object.values(errors)
+            .map((error) => error?.message)
+            .filter((message): message is string => Boolean(message));
+          if (messages.length > 0) {
+            toast.error(messages[0]);
+          }
+        })}
+        className="space-y-6">
         <div className="space-y-2 text-center">
           <h1 className="text-2xl font-bold text-gray-900">Set New Password</h1>
           <p className="text-gray-600">
@@ -144,6 +160,7 @@ export function NewPasswordForm({ onSuccess }: { onSuccess?: () => void }) {
                     </Button>
                   </div>
                 </FormControl>
+                <FormMessage />
               </FormItem>
             )}
           />
@@ -181,6 +198,7 @@ export function NewPasswordForm({ onSuccess }: { onSuccess?: () => void }) {
                     </Button>
                   </div>
                 </FormControl>
+                <FormMessage />
 
                 {/* Move the password strength indicator inside here */}
                 {field.value && (
@@ -188,7 +206,7 @@ export function NewPasswordForm({ onSuccess }: { onSuccess?: () => void }) {
                     <div className="flex space-x-1">
                       {[1, 2, 3, 4, 5].map((level) => {
                         const strength = getPasswordStrength(
-                          field.value || ""
+                          field.value || "",
                         ).strength;
                         return (
                           <div

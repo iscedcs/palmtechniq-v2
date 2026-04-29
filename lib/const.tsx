@@ -16,6 +16,9 @@ import {
   Target,
   Crown,
   Flame,
+  NotebookIcon,
+  FileText,
+  Megaphone,
 } from "lucide-react";
 
 export const courseTypes = [
@@ -61,47 +64,87 @@ export const roleNavItems = {
   USER: [
     { icon: Home, label: "Home", href: "/" },
     { icon: BookOpen, label: "Courses", href: "/courses" },
-    { icon: ShoppingCart, label: "Cart", href: "/cart" },
-    { icon: User, label: "Profile", href: "/profile" },
-    { icon: Shield, label: "Mentorship", href: "/mentorship" },
+    // { icon: ShoppingCart, label: "Cart", href: "/cart" },
+    // { icon: User, label: "Profile", href: "/profile" },
+    // { icon: Shield, label: "Mentorship", href: "/mentorship" },
   ],
   STUDENT: [
     { icon: Home, label: "Dashboard", href: "/student" },
     { icon: BookOpen, label: "My Courses", href: "/student/courses" },
     { icon: Trophy, label: "Progress", href: "/student/progress" },
-    { icon: Calendar, label: "Mentorship", href: "/student/mentorship" },
-    { icon: Brain, label: "AI Interview", href: "/student/ai-interview" },
-    { icon: MessageSquare, label: "Projects", href: "/student/assignments" },
+    // { icon: Calendar, label: "Mentorship", href: "/student/mentorship" },
+    // { icon: Brain, label: "AI Interview", href: "/student/ai-interview" },
+    { icon: NotebookIcon, label: "Assignments", href: "/student/assignments" },
+    { icon: MessageSquare, label: "Projects", href: "/student/projects" },
+    { icon: Star, label: "Achievements", href: "/student/achievements" },
+  ],
+  MENTOR: [
+    { icon: Home, label: "Dashboard", href: "/mentor/mentorship" },
+    {
+      icon: Calendar,
+      label: "Mentorship",
+      href: "/mentor/mentorship/schedule",
+    },
+    { icon: Wallet, label: "Earnings", href: "/mentor/wallet" },
+    { icon: User, label: "Profile", href: "/mentor/profile" },
   ],
   TUTOR: [
     { icon: Home, label: "Dashboard", href: "/tutor" },
     { icon: BookOpen, label: "My Courses", href: "/tutor/courses" },
     { icon: Users, label: "Students", href: "/tutor/students" },
-    { icon: Calendar, label: "Schedule", href: "/tutor/mentorship" },
+    // { icon: Calendar, label: "Schedule", href: "/tutor/mentorship" },
     { icon: MessageSquare, label: "Projects", href: "/tutor/projects" },
-    { icon: MessageSquare, label: "Messages", href: "/tutor/messages" },
+    { icon: NotebookIcon, label: "Tasks", href: "/tutor/tasks" },
+    { icon: MessageSquare, label: "Reviews", href: "/tutor/reviews" },
+    { icon: Megaphone, label: "Promotions", href: "/tutor/promotions" },
   ],
   ADMIN: [
     { icon: Home, label: "Dashboard", href: "/admin" },
     { icon: Users, label: "Users", href: "/admin/users" },
     { icon: BookOpen, label: "Courses", href: "/admin/courses" },
-    { icon: Settings, label: "Settings", href: "/admin/settings" },
+    { icon: Brain, label: "AI Leads", href: "/admin/advisor" },
+    { icon: FileText, label: "Applications", href: "/admin/applications" },
+    { icon: Calendar, label: "Mentorship", href: "/admin/mentorship" },
+    { icon: Wallet, label: "Finance", href: "/admin/finance" },
+    { icon: Megaphone, label: "Promotions", href: "/admin/promotions" },
+  ],
+  TESTER: [
+    { icon: Home, label: "Home", href: "/" },
+    { icon: FileText, label: "Documentation", href: "/documentation" },
+  ],
+  SUPERIOR: [
+    { icon: Home, label: "Dashboard", href: "/superior" },
+    { icon: Users, label: "Testers", href: "/superior/testers" },
+    { icon: FileText, label: "Documentation", href: "/documentation" },
+    { icon: Shield, label: "Admin Panel", href: "/admin" },
   ],
 };
 
 export const roleMenuItems = {
   USER: [
-    { icon: User, label: "Profile", href: "/profile" },
+    // { icon: User, label: "Profile", href: "/profile" },
     { icon: BookOpen, label: "My Courses", href: "/courses" },
-    { icon: Settings, label: "Settings", href: "/settings" },
+    // { icon: Settings, label: "Settings", href: "/settings" },
   ],
   STUDENT: [
     { icon: User, label: "Profile", href: "/student/profile" },
     { icon: BookOpen, label: "My Courses", href: "/student/courses" },
     { icon: Trophy, label: "Progress", href: "/student/progress" },
-    { icon: Calendar, label: "Mentorship", href: "/student/mentorship" },
+    { icon: Star, label: "Achievements", href: "/student/achievements" },
+    { icon: Calendar, label: "Book Mentorship Offerings", href: "/mentorship" },
+    { icon: Calendar, label: "Manage Mentorship", href: "/student/mentorship" },
     { icon: MessageSquare, label: "Projects", href: "/student/projects" },
-    { icon: Settings, label: "Settings", href: "/student/settings" },
+    { icon: NotebookIcon, label: "Tasks", href: "/student/assignments" },
+    // { icon: Settings, label: "Settings", href: "/student/settings" },
+  ],
+  MENTOR: [
+    { icon: User, label: "Profile", href: "/mentor/profile" },
+    {
+      icon: Calendar,
+      label: "Mentorship",
+      href: "/mentor/mentorship/schedule",
+    },
+    { icon: Wallet, label: "Earnings", href: "/mentor/wallet" },
   ],
   TUTOR: [
     { icon: User, label: "Profile", href: "/tutor/profile" },
@@ -109,15 +152,28 @@ export const roleMenuItems = {
     { icon: Users, label: "Students", href: "/tutor/students" },
     { icon: Wallet, label: "Earnings", href: "/tutor/wallet" },
     { icon: Star, label: "Reviews", href: "/tutor/reviews" },
-    { icon: Calendar, label: "Schedule", href: "/tutor/schedule" },
-    { icon: Settings, label: "Settings", href: "/tutor/settings" },
+    { icon: Calendar, label: "Mentorship", href: "/tutor/mentorship" },
+    // { icon: Settings, label: "Settings", href: "/tutor/settings" },
   ],
   ADMIN: [
     { icon: Shield, label: "Admin Panel", href: "/admin" },
     { icon: Users, label: "User Management", href: "/admin/users" },
     { icon: BookOpen, label: "Course Management", href: "/admin/courses" },
+    { icon: Brain, label: "AI Leads", href: "/admin/advisor" },
+    { icon: FileText, label: "Applications", href: "/admin/applications" },
+    { icon: Calendar, label: "Mentorship Ops", href: "/admin/mentorship" },
     { icon: Wallet, label: "Financial Reports", href: "/admin/finance" },
+    { icon: Megaphone, label: "Promotions", href: "/admin/promotions" },
     { icon: Settings, label: "System Settings", href: "/admin/settings" },
+  ],
+  TESTER: [
+    { icon: FileText, label: "Documentation", href: "/documentation" },
+  ],
+  SUPERIOR: [
+    { icon: Home, label: "Dashboard", href: "/superior" },
+    { icon: Users, label: "Manage Testers", href: "/superior/testers" },
+    { icon: FileText, label: "Documentation", href: "/documentation" },
+    { icon: Shield, label: "Admin Panel", href: "/admin" },
   ],
 };
 
@@ -138,3 +194,5 @@ export const roleStats = {
     { label: "Revenue", value: "₦125K", icon: Wallet },
   ],
 };
+
+// Tutor projects feature flags

@@ -54,7 +54,7 @@ export function FloatingAIButton({
           }}>
           <Button
             onClick={onActivate}
-            className={`w-14 h-14 rounded-full bg-gradient-to-r from-neon-blue to-neon-purple shadow-2xl shadow-neon-blue/30 border-2 border-white/20 relative overflow-hidden ₦{
+            className={`w-14 h-14 rounded-full bg-gradient-to-r from-neon-blue to-neon-purple shadow-2xl shadow-neon-blue/30 border-2 border-white/20 relative overflow-hidden ${
               isActive ? "ring-4 ring-neon-blue/50" : ""
             }`}>
             {/* Animated background */}
@@ -133,8 +133,8 @@ export function FloatingAIButton({
                 strokeWidth="2"
                 fill="none"
                 strokeLinecap="round"
-                strokeDasharray={`₦{2 * Math.PI * 30}`}
-                strokeDashoffset={`₦{2 * Math.PI * 30 * (1 - lessonProgress / 100)}`}
+                strokeDasharray={`${2 * Math.PI * 30}`}
+                strokeDashoffset={`${2 * Math.PI * 30 * (1 - lessonProgress / 100)}`}
               />
             </svg>
           </motion.div>

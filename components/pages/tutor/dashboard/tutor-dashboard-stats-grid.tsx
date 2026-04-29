@@ -3,13 +3,19 @@
 import { NairaSign } from "@/components/shared/naira-sign-icon";
 import { Card, CardContent } from "@/components/ui/card";
 import { motion } from "framer-motion";
-import { BookOpen, Star, TrendingUp, Users } from "lucide-react";
+import { BookOpen, Star, TrendingDown, TrendingUp, Users } from "lucide-react";
 
 interface Stats {
   totalStudents: number;
   totalEarnings: number;
   averageRating: number;
   coursesSold: number;
+  change?: {
+    totalStudents?: number;
+    totalEarnings?: number;
+    averageRating?: number;
+    coursesSold?: number;
+  };
 }
 
 export function TutorDashboardStatsGrid({ stats }: { stats: Stats }) {
@@ -33,15 +39,29 @@ export function TutorDashboardStatsGrid({ stats }: { stats: Stats }) {
             <div>
               <p className="text-gray-400 text-sm font-medium">{title}</p>
               <p className="text-3xl font-bold text-white mt-2">{value}</p>
-              {change && (
-                <div
-                  className={`flex items-center mt-2 text-sm ${
-                    change > 0 ? "text-green-400" : "text-red-400"
+              {typeof change === "number" && (
+                <motion.div
+                  initial={{ opacity: 0, y: 10 }}
+                  animate={{ opacity: 1, y: 0 }}
+                  transition={{ duration: 0.3 }}
+                  className={`flex items-center mt-2 text-sm font-medium ${
+                    change > 0
+                      ? "text-green-400"
+                      : change < 0
+                      ? "text-red-400"
+                      : "text-gray-400"
                   }`}>
-                  <TrendingUp className="w-4 h-4 mr-1" />
+                  {change > 0 ? (
+                    <TrendingUp className="w-4 h-4 mr-1 animate-pulse" />
+                  ) : change < 0 ? (
+                    <TrendingDown className="w-4 h-4 mr-1 animate-pulse" />
+                  ) : (
+                    <TrendingUp className="w-4 h-4 mr-1 opacity-60" />
+                  )}
                   {change > 0 ? "+" : ""}
-                  {change}% from last month
-                </div>
+                  {change}%
+                  <span className="ml-1 text-gray-400">from last month</span>
+                </motion.div>
               )}
             </div>
             <div
@@ -60,28 +80,28 @@ export function TutorDashboardStatsGrid({ stats }: { stats: Stats }) {
         icon={Users}
         title="Total Students"
         value={stats.totalStudents.toLocaleString()}
-        change={12}
+        change={stats.change?.totalStudents}
         color="from-neon-blue to-cyan-400"
       />
       <StatCard
         icon={NairaSign}
         title="Total Earnings"
         value={`₦${stats.totalEarnings.toLocaleString()}`}
-        change={8}
+        change={stats.change?.totalEarnings}
         color="from-neon-green to-emerald-400"
       />
       <StatCard
         icon={Star}
         title="Average Rating"
-        value={stats.averageRating}
-        change={2}
+        value={stats.averageRating.toFixed(1)}
+        change={stats.change?.averageRating}
         color="from-neon-orange to-yellow-400"
       />
       <StatCard
         icon={BookOpen}
         title="Courses Sold"
         value={stats.coursesSold.toLocaleString()}
-        change={15}
+        change={stats.change?.coursesSold}
         color="from-neon-purple to-pink-400"
       />
     </div>

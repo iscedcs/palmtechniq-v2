@@ -42,13 +42,13 @@ export function TutorDashboardHeader() {
             icon: Calendar,
             label: "Schedule Mentorship",
             color: "from-neon-purple to-pink-400",
-            url: "/tutor/mentorships/schedule",
+            url: "/tutor/mentorship",
           },
           {
             icon: Award,
             label: "Create Project",
             color: "from-neon-green to-emerald-400",
-            url: "/tutor/projects/create",
+            url: "/tutor/projects",
           },
           {
             icon: BarChart3,

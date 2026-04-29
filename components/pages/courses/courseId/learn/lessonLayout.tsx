@@ -22,27 +22,28 @@ export default async function LessonLayout(props: {
   }
 
   // flatten all lessons
-  const allLessons = course.modules.flatMap((m) => m.lessons);
+  const allLessons = course.modules.flatMap((m: any) => m.lessons);
 
   // find current lesson (from search param or default to first lesson)
   const currentLesson =
-    allLessons.find((l) => l.id === lessonId) || allLessons[0];
+    allLessons.find((l: any) => l.id === lessonId) || allLessons[0];
 
   const completedLessonIds = allLessons
-    .filter((lesson) => lesson.id !== currentLesson.id) // mark previous lessons as completed
-    .map((lesson) => lesson.id);
+    .filter((lesson: any) => lesson.id !== currentLesson.id) // mark previous lessons as completed
+    .map((lesson: any) => lesson.id);
 
-  // 2️⃣ Map modules with isCompleted fields
-  const modulesWithCompletion = course.modules.map((module) => {
-    const lessons = module.lessons.map((lesson) => ({
+  // 2️⃣ Map modules with isCompleted fields (normalize description for LessonSidebar's Lesson type)
+  const modulesWithCompletion = course.modules.map((module: any) => {
+    const lessons = module.lessons.map((lesson: any) => ({
       ...lesson,
+      description: lesson.description ?? "",
       isCompleted: completedLessonIds.includes(lesson.id),
     }));
 
     return {
       ...module,
       lessons,
-      isCompleted: lessons.every((lesson) => lesson.isCompleted),
+      isCompleted: lessons.every((lesson: any) => lesson.isCompleted),
     };
   });
 
@@ -64,7 +65,7 @@ export default async function LessonLayout(props: {
 
   function goToNextLesson(): void {
     const currentIndex = allLessons.findIndex(
-      (lesson) => lesson.id === currentLesson.id
+      (lesson: any) => lesson.id === currentLesson.id,
     );
     const nextLesson = allLessons[currentIndex + 1];
 
@@ -84,15 +85,17 @@ export default async function LessonLayout(props: {
         <div className="flex-1 p-6">
           <LessonHeader course={course} currentLesson={currentLesson} />
           <VideoPlayer
-            src={currentLesson.videoUrl!}
+            lessonId={currentLesson.id}
             poster="/placeholder.svg?height=400&width=800&text=Video+Thumbnail"
             markLessonComplete={markLessonCompleted}
             goToNextLesson={goToNextLesson}
           />
           <LessonTabs
+            // completedLessons={completedLessonIds.length}
+            // totalLessons={allLessons.length}
             description={currentLesson.description || ""}
-            resources={[]}
-            initialNotes={currentLesson.content || ""}
+            lessonResources={[]}
+            moduleResources={[]}
           />
         </div>
 
@@ -102,13 +105,11 @@ export default async function LessonLayout(props: {
             courseTitle={course.title}
             progress={Math.round(
               (allLessons.findIndex(
-                (lesson) => lesson.id === currentLesson.id
+                (lesson: any) => lesson.id === currentLesson.id,
               ) /
                 allLessons.length) *
-                100
+                100,
             )}
-            completedLessons={completedLessonIds.length}
-            totalLessons={allLessons.length}
             modules={modulesWithCompletion}
             currentLessonId={currentLesson.id}
             onChangeLesson={(lesson) => {

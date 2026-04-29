@@ -1,13 +1,15 @@
 "use client";
 
-import { useState } from "react";
-import { motion } from "framer-motion";
-import { Card, CardContent } from "@/components/ui/card";
-import { Button } from "@/components/ui/button";
+import { checkWishlist, toggleWishlist } from "@/actions/wishlist";
 import { Badge } from "@/components/ui/badge";
-import { CheckCircle, Heart, Play, ShoppingCart, Share2 } from "lucide-react";
+import { Button } from "@/components/ui/button";
+import { Card, CardContent } from "@/components/ui/card";
+import { motion } from "framer-motion";
+import { CheckCircle, Heart, Play, Share2, ShoppingCart } from "lucide-react";
+import { useSession } from "next-auth/react";
 import Link from "next/link";
-import CourseCheckoutDetails from "../checkout/checkout-course";
+import { useEffect, useState, useTransition } from "react";
+import { toast } from "sonner";
 
 export default function StickyPurchaseCard({
   currentPrice,
@@ -21,6 +23,9 @@ export default function StickyPurchaseCard({
   isEnrolled,
   isInCart,
   courseId,
+  courseTitle,
+  courseDescription,
+  courseThumbnail,
 }: {
   currentPrice: number;
   originalPrice?: number;
@@ -33,8 +38,71 @@ export default function StickyPurchaseCard({
   isEnrolled: boolean;
   isInCart: boolean;
   courseId: string;
+  courseTitle?: string;
+  courseDescription?: string;
+  courseThumbnail?: string;
 }) {
+  const { status } = useSession();
   const [isWishlisted, setIsWishlisted] = useState(false);
+  const [isPending, startTransition] = useTransition();
+
+  useEffect(() => {
+    (async () => {
+      try {
+        const res = await fetch(`/api/wishlist/check?courseId=${courseId}`);
+        const data = await res.json();
+        setIsWishlisted(data.exists);
+      } catch (error) {
+        console.error("Wishlist check failed:", error);
+      }
+    })();
+  }, [courseId]);
+
+  const handleWishlist = async () => {
+    if (status === "unauthenticated") {
+      toast("Sign in to manage wishlist", {
+        description: "You need to log in to save courses.",
+      });
+      return;
+    }
+
+    startTransition(async () => {
+      const res = await toggleWishlist(courseId);
+      if (res.success) {
+        setIsWishlisted((prev) => !prev);
+        toast.success(res.message);
+      } else {
+        toast.error(res.message || "Something went wrong");
+      }
+    });
+  };
+
+  const handleShare = async () => {
+    const shareUrl = `${window.location.origin}/courses/${courseId}`;
+    const shareTitle = courseTitle || "Check out this course!";
+    const shareText = courseDescription 
+      ? `${courseTitle} - ${courseDescription.slice(0, 100)}${courseDescription.length > 100 ? '...' : ''}`
+      : `I found this amazing course on PalmTechnIQ — check it out!`;
+    
+    if (navigator.share) {
+      try {
+        await navigator.share({
+          title: shareTitle,
+          text: shareText,
+          url: shareUrl,
+        });
+      } catch (err) {
+        // User cancelled or share failed
+        if ((err as Error).name !== 'AbortError') {
+          await navigator.clipboard.writeText(shareUrl);
+          toast.success("Course link copied to clipboard!");
+        }
+      }
+    } else {
+      await navigator.clipboard.writeText(shareUrl);
+      toast.success("Course link copied to clipboard!");
+    }
+  };
 
   return (
     <motion.div
@@ -78,10 +146,12 @@ export default function StickyPurchaseCard({
               onClick={() => console.log("Enroll clicked")}
               className="w-full text-white text-lg py-3 bg-gradient-to-r from-neon-blue to-neon-purple hover:opacity-90 transition">
               {isEnrolled ? (
-                <>
+                <Link
+                  href={`/courses/${courseId}/learn`}
+                  className="flex items-center justify-center w-full">
                   <Play className="w-4 h-4 mr-2" />
                   Start Learning
-                </>
+                </Link>
               ) : isInCart ? (
                 <>
                   <ShoppingCart className="w-4 h-4 mr-2" />
@@ -101,7 +171,8 @@ export default function StickyPurchaseCard({
               <Button
                 variant="outline"
                 className="w-full border-white/20 text-white hover:bg-white/10 bg-transparent"
-                onClick={() => setIsWishlisted(!isWishlisted)}>
+                disabled={isPending}
+                onClick={handleWishlist}>
                 <Heart
                   className={`w-4 h-4 mr-2 ${
                     isWishlisted ? "fill-current text-red-400" : ""
@@ -140,7 +211,8 @@ export default function StickyPurchaseCard({
           <div className="mt-6 pt-6 border-t border-white/10">
             <Button
               variant="outline"
-              className="w-full border-white/20 text-white hover:bg-white/10 bg-transparent">
+              className="w-full border-white/20 text-white hover:bg-white/10 bg-transparent"
+              onClick={handleShare}>
               <Share2 className="w-4 h-4 mr-2" />
               Share Course
             </Button>

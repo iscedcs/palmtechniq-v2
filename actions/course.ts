@@ -2,17 +2,18 @@
 
 import { db } from "@/lib/db";
 import { auth } from "@/auth";
-import { getIO } from "@/lib/socket";
 
 import { courseSchema, moduleSchema, lessonSchema } from "@/schemas";
 import { z } from "zod";
 import { notify } from "@/lib/notify";
+import { recomputeCourseDurations } from "@/lib/course-duration";
+import { trackEvent, PLATFORM_EVENTS } from "@/lib/analytics/track";
 
 export async function updateCourse(
   courseId: string,
   values: z.infer<typeof courseSchema>,
   modules: any[],
-  isPublished: boolean
+  isPublished: boolean,
 ) {
   try {
     const session = await auth();
@@ -44,10 +45,10 @@ export async function updateCourse(
       select: { id: true, name: true },
     });
 
-    const connectTags = existingTags.map((tag) => ({ id: tag.id }));
+    const connectTags = existingTags.map((tag: any) => ({ id: tag.id }));
 
     const newTagNames = validatedCourse.data.tags.filter(
-      (tagName) => !existingTags.some((t) => t.name === tagName)
+      (tagName) => !existingTags.some((t: any) => t.name === tagName),
     );
 
     const createTags = newTagNames.map((name) => ({ name }));
@@ -55,19 +56,49 @@ export async function updateCourse(
     const {
       isPublished: _isPublished,
       allowDiscussions,
+      duration: _duration,
+      totalLessons: _totalLessons,
+      groupTiers: _groupTiers,
+      // Extract array fields that might be null (Prisma doesn't accept null for arrays)
+      targetAudience,
+      tags: _tags,
+      requirements,
+      outcomes: _outcomes,
+      // These fields are not in the Prisma Course model — strip them before spreading
+      courseType: _courseType,
+      programSlug: _programSlug,
       ...safeData
     } = validatedCourse.data;
 
     console.log("🔎 Category id to connect:", validatedCourse.data.category);
 
+    const resolvedBasePrice =
+      typeof validatedCourse.data.basePrice === "number"
+        ? validatedCourse.data.basePrice
+        : typeof validatedCourse.data.currentPrice === "number"
+          ? validatedCourse.data.currentPrice
+          : (validatedCourse.data.price ?? 0);
+    const resolvedCurrentPrice =
+      typeof validatedCourse.data.currentPrice === "number"
+        ? validatedCourse.data.currentPrice
+        : resolvedBasePrice;
+
+    const shouldPublish = isPublished && session.user.role === "ADMIN";
+
     await db.course.update({
       where: { id: courseId },
       data: {
         ...safeData,
-        outcomes: validatedCourse.data.outcomes,
+        price: resolvedBasePrice,
+        basePrice: resolvedBasePrice,
+        currentPrice: resolvedCurrentPrice,
+        outcomes: validatedCourse.data.outcomes ?? [],
+        requirements: requirements ?? [],
+        targetAudience: targetAudience ?? undefined, // Convert null to undefined for Prisma
         certificate: validatedCourse.data.certificate ?? false,
         allowDiscussions: allowDiscussions ?? false,
-        status: isPublished ? "PUBLISHED" : "DRAFT",
+        status: shouldPublish ? "PUBLISHED" : "DRAFT",
+        publishedAt: shouldPublish ? new Date() : null,
         updatedAt: new Date(),
         category: {
           connect: { id: validatedCourse.data.category },
@@ -79,11 +110,91 @@ export async function updateCourse(
       },
     });
 
-    // Handle modules + lessons
-    for (const module of modules) {
-      const validatedModule = moduleSchema.safeParse(module);
-      if (!validatedModule.success) continue;
+    const incomingTiers = validatedCourse.data.groupTiers ?? [];
+    const existingTiers = await db.groupTier.findMany({
+      where: { courseId },
+      select: { id: true },
+    });
 
+    if (!validatedCourse.data.groupBuyingEnabled) {
+      await db.groupTier.updateMany({
+        where: { courseId },
+        data: { isActive: false },
+      });
+    } else if (incomingTiers.length > 0) {
+      const incomingIds = new Set(
+        incomingTiers.map((tier) => tier.id).filter(Boolean) as string[],
+      );
+
+      for (const tier of incomingTiers) {
+        if (tier.id && existingTiers.some((t: any) => t.id === tier.id)) {
+          await db.groupTier.update({
+            where: { id: tier.id },
+            data: {
+              size: tier.size,
+              groupPrice: tier.groupPrice,
+              cashbackPercent: tier.cashbackPercent ?? 0,
+              isActive: tier.isActive ?? true,
+            },
+          });
+        } else {
+          await db.groupTier.create({
+            data: {
+              courseId,
+              size: tier.size,
+              groupPrice: tier.groupPrice,
+              cashbackPercent: tier.cashbackPercent ?? 0,
+              isActive: tier.isActive ?? true,
+            },
+          });
+        }
+      }
+
+      const tiersToDisable = existingTiers
+        .filter((tier: any) => !incomingIds.has(tier.id))
+        .map((tier: any) => tier.id);
+
+      if (tiersToDisable.length > 0) {
+        const lockedTiers = await db.groupPurchase.findMany({
+          where: { tierId: { in: tiersToDisable } },
+          select: { tierId: true },
+        });
+        const lockedTierIds = new Set(lockedTiers.map((t: any) => t.tierId));
+        const safeToDisable = tiersToDisable.filter(
+          (id: any) => !lockedTierIds.has(id),
+        );
+
+        if (safeToDisable.length > 0) {
+          await db.groupTier.updateMany({
+            where: { id: { in: safeToDisable } },
+            data: { isActive: false },
+          });
+        }
+      }
+    }
+
+    // Handle modules + lessons
+    const shouldValidateContent = isPublished;
+    for (const module of modules) {
+      const modulePayload = {
+        title: module.title ?? "",
+        description: module.description ?? "",
+        content: module.content ?? "",
+        duration: module.duration ?? 0,
+        sortOrder: module.sortOrder ?? 0,
+        isPublished: Boolean(module.isPublished),
+      };
+      const validatedModule = shouldValidateContent
+        ? moduleSchema.safeParse(modulePayload)
+        : ({ success: true, data: modulePayload } as const);
+      if (!validatedModule.success) {
+        return { error: validatedModule.error.issues[0].message };
+      }
+
+      const moduleDuration = (module.lessons || []).reduce(
+        (sum: number, lesson: any) => sum + (lesson.duration || 0),
+        0,
+      );
       let savedModule;
 
       if (module.id) {
@@ -98,7 +209,7 @@ export async function updateCourse(
               title: module.title,
               description: module.description,
               content: module.content,
-              duration: module.duration,
+              duration: moduleDuration,
               sortOrder: module.sortOrder,
               isPublished: module.isPublished,
             },
@@ -110,7 +221,7 @@ export async function updateCourse(
               title: module.title,
               description: module.description,
               content: module.content,
-              duration: module.duration,
+              duration: moduleDuration,
               sortOrder: module.sortOrder,
               isPublished: module.isPublished,
               courseId,
@@ -124,7 +235,7 @@ export async function updateCourse(
             title: module.title,
             description: module.description,
             content: module.content,
-            duration: module.duration,
+            duration: moduleDuration,
             sortOrder: module.sortOrder,
             isPublished: module.isPublished,
             courseId,
@@ -133,10 +244,24 @@ export async function updateCourse(
       }
 
       for (const lesson of module.lessons || []) {
-        const validatedLesson = lessonSchema.safeParse(lesson);
+        const lessonPayload = {
+          title: lesson.title ?? "",
+          description: lesson.description ?? "",
+          lessonType: lesson.lessonType ?? lesson.type ?? "VIDEO",
+          duration: lesson.duration ?? 0,
+          content: lesson.content ?? "",
+          videoUrl: lesson.videoUrl ?? "",
+          sortOrder: lesson.sortOrder ?? 0,
+          isPreview: Boolean(lesson.isPreview),
+        };
+        const validatedLesson = shouldValidateContent
+          ? lessonSchema.safeParse(lessonPayload)
+          : ({ success: true, data: lessonPayload } as const);
         // console.log("📦 Raw lesson from payload:", lesson);
 
-        if (!validatedLesson.success) continue;
+        if (!validatedLesson.success) {
+          return { error: validatedLesson.error.issues[0].message };
+        }
 
         const l = validatedLesson.data;
 
@@ -178,39 +303,33 @@ export async function updateCourse(
       }
     }
 
-    try {
-      const io = getIO();
-      if (io) {
-        await notify.role("STUDENT", {
-          type: "success",
-          title: "Course Updated",
-          message: `A Course you purchased "${course.title}" has just been updated!`,
-          actionUrl: `/courses/${courseId}`,
-          actionLabel: "View Course",
-        });
+    await recomputeCourseDurations(db, courseId);
 
-        await notify.role("TUTOR", {
-          type: "info",
-          title: "Your Course Updated",
-          message: `You updated “${course.title}”.`,
-          actionUrl: `/tutor/courses/${courseId}/edit`,
-          actionLabel: "Open Course",
-        });
+    // Send update notifications
+    // Notify only students enrolled in THIS course
+    await notify.course(courseId, {
+      type: "info",
+      title: "Course Updated",
+      message: `"${course.title}" has just been updated!`,
+      actionUrl: `/courses/${courseId}`,
+      actionLabel: "View Course",
+      metadata: { category: "course_update", courseId },
+    });
 
-        await notify.role("ADMIN", {
-          type: "info",
-          title: "Course Updated",
-          message: `Tutor updated “${course.title}”. Review changes.`,
-          actionUrl: `/courses/${courseId}`,
-          actionLabel: "Review Changes",
-          metadata: { courseId },
-        });
-      }
-    } catch (e) {
-      console.warn("⚠️ Socket.IO not initialized yet, skipping emit");
-    }
+    // Notify admins to review changes
+    await notify.role("ADMIN", {
+      type: "info",
+      title: "Course Updated",
+      message: `Tutor updated "${course.title}". Review changes.`,
+      actionUrl: `/courses/${courseId}/review`,
+      actionLabel: "Review Changes",
+      metadata: { category: "course_update", courseId },
+    });
 
-    return { success: true };
+    return {
+      success: true,
+      requiresApproval: isPublished && !shouldPublish,
+    };
   } catch (error) {
     console.error("❌ Error updating course:", error);
     return { error: "Something went wrong while updating the course" };
@@ -219,30 +338,182 @@ export async function updateCourse(
 
 export async function publishCourse(courseId: string) {
   try {
-    const updatedCourse = await db.course.update({
-      where: { id: courseId },
-      data: { status: "PUBLISHED" },
-    });
-
-    // 🔔 Emit notification
-    try {
-      const io = getIO();
-      if (io) {
-        io.emit("notification", {
-          type: "success",
-          title: "Course Published",
-          message: `The course "${updatedCourse.title}" is now live!`,
-          actionUrl: `/courses/${updatedCourse.id}`,
-          actionLabel: "View Course",
-        });
-      }
-    } catch (e) {
-      console.warn("⚠️ Socket.IO not initialized yet, skipping emit");
+    const session = await auth();
+    if (!session?.user?.id) {
+      return { error: "Unauthorized" };
     }
 
-    return { success: true, course: updatedCourse };
+    const courseOwner = await db.course.findUnique({
+      where: { id: courseId },
+      select: {
+        id: true,
+        title: true,
+        description: true,
+        thumbnail: true,
+        basePrice: true,
+        price: true,
+        category: { select: { id: true } },
+        tutor: {
+          select: {
+            userId: true,
+            user: {
+              select: {
+                avatar: true,
+                image: true,
+                bankName: true,
+                accountNumber: true,
+                recipientCode: true,
+              },
+            },
+          },
+        },
+      },
+    });
+    if (!courseOwner) return { error: "Course not found" };
+    if (
+      session.user.role !== "ADMIN" &&
+      courseOwner.tutor?.userId !== session.user.id
+    ) {
+      return { error: "Unauthorized" };
+    }
+
+    // Validate publishing requirements
+    const missingRequirements: string[] = [];
+
+    if (!courseOwner.title?.trim()) {
+      missingRequirements.push("Course title is required");
+    }
+    if (!courseOwner.description?.trim()) {
+      missingRequirements.push("Course description is required");
+    }
+    if (!courseOwner.thumbnail) {
+      missingRequirements.push("Course thumbnail is required");
+    }
+    if (!courseOwner.category?.id) {
+      missingRequirements.push("Course category is required");
+    }
+    if (
+      typeof courseOwner.basePrice !== "number" ||
+      courseOwner.basePrice < 0
+    ) {
+      if (typeof courseOwner.price !== "number" || courseOwner.price < 0) {
+        missingRequirements.push("Course price must be set");
+      }
+    }
+
+    // Validate tutor profile completion for payment splits
+    const tutorUser = courseOwner.tutor?.user;
+    if (tutorUser) {
+      if (!tutorUser.avatar && !tutorUser.image) {
+        missingRequirements.push(
+          "Tutor profile picture is required — update your profile to continue",
+        );
+      }
+      if (!tutorUser.bankName || !tutorUser.accountNumber) {
+        missingRequirements.push(
+          "Tutor bank account details are required for earnings — update your wallet settings",
+        );
+      }
+    }
+
+    const modules = await db.courseModule.findMany({
+      where: { courseId },
+      include: { lessons: true },
+    });
+
+    if (modules.length === 0) {
+      missingRequirements.push("At least 1 module is required");
+    }
+
+    for (const module of modules) {
+      if (module.lessons.length < 3) {
+        missingRequirements.push(
+          `Module "${module.title || "Untitled"}" needs at least 3 lessons`,
+        );
+      }
+    }
+
+    if (missingRequirements.length > 0) {
+      return {
+        error: `Cannot publish: ${missingRequirements[0]}`,
+        missingRequirements,
+      };
+    }
+
+    for (const module of modules) {
+      const validatedModule = moduleSchema.safeParse({
+        title: module.title ?? "",
+        description: module.description ?? "",
+        content: module.content ?? "",
+        sortOrder: module.sortOrder ?? 0,
+        duration: module.duration ?? 0,
+        isPublished: module.isPublished ?? false,
+      });
+
+      if (!validatedModule.success) {
+        return {
+          success: false,
+          error: validatedModule.error.issues[0].message,
+        };
+      }
+
+      for (const lesson of module.lessons) {
+        const validatedLesson = lessonSchema.safeParse({
+          title: lesson.title ?? "",
+          description: lesson.description ?? "",
+          content: lesson.content ?? "",
+          videoUrl: lesson.videoUrl ?? undefined,
+          duration: lesson.duration ?? 0,
+          sortOrder: lesson.sortOrder ?? 0,
+          isPreview: lesson.isPreview ?? false,
+          lessonType: lesson.lessonType ?? "VIDEO",
+        });
+
+        if (!validatedLesson.success) {
+          return {
+            success: false,
+            error: validatedLesson.error.issues[0].message,
+          };
+        }
+      }
+    }
+
+    const shouldPublish = session.user.role === "ADMIN";
+    const updatedCourse = await db.course.update({
+      where: { id: courseId },
+      data: {
+        status: shouldPublish ? "PUBLISHED" : "DRAFT",
+        publishedAt: shouldPublish ? new Date() : null,
+      },
+    });
+
+    if (shouldPublish) {
+      // 🔔 Emit notification
+      await notify.course(courseId, {
+        type: "success",
+        title: "Course Published",
+        message: `The course "${updatedCourse.title}" is now live!`,
+        actionUrl: `/courses/${updatedCourse.id}`,
+        actionLabel: "View Course",
+      });
+    }
+
+    if (shouldPublish) {
+      trackEvent(PLATFORM_EVENTS.COURSE_PUBLISHED, {
+        userId: session.user.id,
+        entityType: "course",
+        entityId: courseId,
+        metadata: { courseTitle: updatedCourse.title },
+      });
+    }
+
+    return {
+      success: true,
+      course: updatedCourse,
+      requiresApproval: !shouldPublish,
+    };
   } catch (error) {
     console.error("Error publishing course:", error);
-    return { success: false, error: "Failed to publish course" };
+    return { error: "Failed to publish course" };
   }
 }

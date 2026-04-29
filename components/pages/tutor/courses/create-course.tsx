@@ -1,53 +1,34 @@
 "use client";
 
-import {
-  addLessonToModule,
-  addModuleToCourse,
-  createCourse,
-} from "@/actions/tutor-actions";
+import { createCourse } from "@/actions/tutor-actions";
 import FormError from "@/components/shared/form-error";
 import FormSuccess from "@/components/shared/form-success";
-import LessonUploadFile from "@/components/shared/lesson-uploader";
 import { NairaSign } from "@/components/shared/naira-sign-icon";
-import UploadFile from "@/components/shared/uploader";
-import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
-import {
-  Form,
-  FormControl,
-  FormField,
-  FormItem,
-  FormLabel,
-  FormMessage,
-} from "@/components/ui/form";
-import { Input } from "@/components/ui/input";
-import {
-  Select,
-  SelectContent,
-  SelectItem,
-  SelectTrigger,
-  SelectValue,
-} from "@/components/ui/select";
-import { Switch } from "@/components/ui/switch";
-import { Textarea } from "@/components/ui/textarea";
-import { courseSchema, lessonSchema, moduleSchema } from "@/schemas";
+import { Card, CardContent } from "@/components/ui/card";
+import { Form } from "@/components/ui/form";
+import { courseSchema } from "@/schemas";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { motion } from "framer-motion";
 import {
   BookOpen,
   Eye,
   PlayCircle,
-  Plus,
   Save,
   Settings,
-  X,
+  GraduationCap,
 } from "lucide-react";
 import { useRouter } from "next/navigation";
-import { useState, useTransition } from "react";
-import { useForm } from "react-hook-form";
+import { useEffect, useRef, useState, useTransition } from "react";
+import { useForm, type Resolver } from "react-hook-form";
 import { toast } from "sonner";
 import { z } from "zod";
+import CourseBasicInfoForm from "./course-basic-info-form";
+import CourseCurriculumBuilder from "./course-curriculum-builder";
+import CoursePricingForm from "./course-pricing-form";
+import CourseSettingsForm from "./course-settings-form";
+import CourseTypeSelector from "./course-type-selector";
+import { Spinner } from "@/components/ui/spinner";
 
 interface CourseModule {
   id: string;
@@ -68,7 +49,7 @@ interface CourseLesson {
   content?: string;
   videoUrl?: string;
   sortOrder: number;
-  description?: string; // Added
+  description?: string;
   isPreview: boolean;
 }
 
@@ -105,229 +86,153 @@ const levels = ["Beginner", "Intermediate", "Advanced"];
 export default function CreateCourse() {
   const [currentStep, setCurrentStep] = useState(0);
   const [modules, setModules] = useState<CourseModule[]>([]);
-  const [uploading, setUploading] = useState({
-    thumbnail: false,
-    video: false,
-  });
-  const [lessonUploading, setLessonUploading] = useState(false);
-
   const [error, setError] = useState("");
   const [success, setSuccess] = useState("");
   const [isPending, startTransition] = useTransition();
   const router = useRouter();
+  const modulesRef = useRef<CourseModule[]>([]);
+  const draftKey = "courseCreateDraft";
 
-  const form = useForm<z.infer<typeof courseSchema>>({
-    resolver: zodResolver(courseSchema),
-    defaultValues: {
-      title: "",
-      subtitle: "",
-      description: "",
-      duration: 0,
-      category: "",
-      level: "BEGINNER",
-      language: "English",
-      price: 0,
-      basePrice: 0,
-      currentPrice: 0,
-      currency: "NGN",
-      thumbnail: "",
-      previewVideo: "",
-      tags: [],
-      requirements: [],
-      outcomes: [],
-      isPublished: false,
-      allowDiscussions: true,
-      certificate: true,
-      isFlashSale: false,
-      flashSaleEnd: undefined,
-      groupBuyingEnabled: false,
-      groupBuyingDiscount: 0,
-    },
+  // Track publishing requirements reactively
+  const [publishReady, setPublishReady] = useState({
+    hasTitle: false,
+    hasDescription: false,
+    hasCategory: false,
+    hasModules: false,
+    hasThreeLessons: false,
+    hasLessonTitles: false,
+    hasThumbnail: false,
+    hasPrice: false,
   });
 
-  const [currentTag, setCurrentTag] = useState("");
-  const [currentRequirement, setCurrentRequirement] = useState("");
-  const [currentOutcome, setCurrentOutcome] = useState("");
-
-  const addTag = (e: React.MouseEvent) => {
-    e.preventDefault();
-    if (
-      currentTag.trim() &&
-      !form.getValues("tags").includes(currentTag.trim())
-    ) {
-      form.setValue("tags", [...form.getValues("tags"), currentTag.trim()]);
-      setCurrentTag("");
-    }
+  const defaultValues: z.infer<typeof courseSchema> = {
+    courseType: "REGULAR",
+    programSlug: undefined,
+    title: "",
+    subtitle: "",
+    description: "",
+    duration: 0,
+    category: "",
+    level: "BEGINNER",
+    language: "English",
+    price: 0,
+    basePrice: 0,
+    currentPrice: 0,
+    currency: "NGN",
+    thumbnail: "",
+    previewVideo: "",
+    tags: [],
+    requirements: [],
+    outcomes: [],
+    isPublished: false,
+    allowDiscussions: true,
+    certificate: true,
+    isFlashSale: false,
+    flashSaleEnd: undefined,
+    groupBuyingEnabled: false,
+    groupBuyingDiscount: 0,
+    groupTiers: [],
   };
 
-  const removeTag = (e: React.MouseEvent, tagToRemove: string) => {
-    e.preventDefault();
-    form.setValue(
-      "tags",
-      form.getValues("tags").filter((tag) => tag !== tagToRemove)
-    );
-  };
+  const form = useForm<z.infer<typeof courseSchema>>({
+    resolver: zodResolver(courseSchema) as Resolver<
+      z.infer<typeof courseSchema>
+    >,
+    defaultValues,
+  });
 
-  const addRequirement = (e: React.MouseEvent) => {
-    e.preventDefault();
-    if (currentRequirement.trim()) {
-      form.setValue("requirements", [
-        ...form.getValues("requirements"),
-        currentRequirement.trim(),
-      ]);
-      setCurrentRequirement("");
-    }
-  };
-
-  const removeRequirement = (e: React.MouseEvent, index: number) => {
-    e.preventDefault();
-    form.setValue(
-      "requirements",
-      form.getValues("requirements").filter((_, i) => i !== index)
-    );
-  };
-
-  const addLearningOutcome = (e: React.MouseEvent) => {
-    e.preventDefault();
-    if (currentOutcome.trim()) {
-      form.setValue("outcomes", [
-        ...form.getValues("outcomes"),
-        currentOutcome.trim(),
-      ]);
-      setCurrentOutcome("");
-    }
-  };
-
-  const removeLearningOutcome = (e: React.MouseEvent, index: number) => {
-    e.preventDefault();
-    form.setValue(
-      "outcomes",
-      form.getValues("outcomes").filter((_, i) => i !== index)
-    );
-  };
-
-  const addModule = async (courseId?: string) => {
-    const newModule: CourseModule = {
-      id: `temp-${Date.now()}`,
-      title: `Module ${modules.length + 1}`,
-      description: "",
-      content: "",
-      duration: 0,
-      lessons: [],
-      sortOrder: modules.length,
-      isPublished: false,
-    };
-    const validatedModule = moduleSchema.safeParse(newModule);
-    if (!validatedModule.success) {
-      toast.error(
-        validatedModule.error.issues[0]?.message || "Validation error"
-      );
-      return;
-    }
-    if (courseId) {
-      const result = await addModuleToCourse(courseId, validatedModule.data);
-      if (result.success) {
-        setModules([...modules, { ...newModule, id: result.moduleId }]);
-      } else {
-        toast.error(result.error);
+  useEffect(() => {
+    try {
+      const saved = localStorage.getItem(draftKey);
+      if (!saved) return;
+      const parsed = JSON.parse(saved) as {
+        values?: z.infer<typeof courseSchema>;
+        modules?: CourseModule[];
+      };
+      if (parsed?.values) {
+        form.reset({ ...defaultValues, ...parsed.values });
       }
-    } else {
-      setModules([...modules, newModule]);
-    }
-  };
-
-  const updateModule = (moduleId: string, updates: Partial<CourseModule>) => {
-    setModules(
-      modules.map((module) =>
-        module.id === moduleId ? { ...module, ...updates } : module
-      )
-    );
-  };
-
-  const removeModule = (e: React.MouseEvent, moduleId: string) => {
-    e.preventDefault();
-    setModules(modules.filter((module) => module.id !== moduleId));
-  };
-
-  const addLesson = async (moduleId: string, courseId?: string) => {
-    const module = modules.find((m) => m.id === moduleId);
-    if (!module) return;
-
-    const newLesson: CourseLesson = {
-      id: `temp-${Date.now()}`,
-      title: `Lesson ${module.lessons.length + 1}`,
-      type: "VIDEO",
-      duration: 0,
-      sortOrder: module.lessons.length,
-      description: "",
-      content: "",
-      isPreview: false,
-      videoUrl: "",
-    };
-
-    const validatedLesson = lessonSchema.safeParse(newLesson);
-    if (!validatedLesson.success) {
-      toast.error(validatedLesson.error.issues[0]?.message);
-      return;
-    }
-
-    if (courseId) {
-      const result = await addLessonToModule(
-        courseId,
-        moduleId,
-        validatedLesson.data
-      );
-      if (result.success) {
-        updateModule(moduleId, {
-          lessons: [...module.lessons, { ...newLesson, id: result.lessonId }],
-        });
-      } else {
-        toast.error(result.error);
+      if (parsed?.modules) {
+        setModules(parsed.modules);
       }
-    } else {
-      updateModule(moduleId, { lessons: [...module.lessons, newLesson] });
+    } catch (err) {
+      console.warn("Failed to restore course draft", err);
     }
-  };
+  }, [form]);
 
-  const updateLesson = (
-    moduleId: string,
-    lessonId: string,
-    updates: Partial<CourseLesson>
-  ) => {
-    const module = modules.find((m) => m.id === moduleId);
-    if (!module) return;
+  useEffect(() => {
+    modulesRef.current = modules;
+    try {
+      localStorage.setItem(
+        draftKey,
+        JSON.stringify({ values: form.getValues(), modules }),
+      );
+    } catch (err) {
+      console.warn("Failed to store course draft", err);
+    }
+    // Update module-related publishing requirements when modules change
+    const values = form.getValues();
+    setPublishReady((prev) => ({
+      ...prev,
+      hasModules: modules.length > 0,
+      hasThreeLessons:
+        modules.length > 0 && modules.every((mod) => mod.lessons.length >= 3),
+      hasLessonTitles:
+        modules.length > 0 &&
+        modules.every(
+          (mod) =>
+            mod.lessons.length > 0 &&
+            mod.lessons.every((lesson) => lesson.title?.trim()),
+        ),
+    }));
+  }, [modules, form]);
 
-    const updatedLessons = module.lessons.map((lesson) =>
-      lesson.id === lessonId ? { ...lesson, ...updates } : lesson
-    );
-    updateModule(moduleId, { lessons: updatedLessons });
-  };
-
-  const removeLesson = (
-    e: React.MouseEvent,
-    moduleId: string,
-    lessonId: string
-  ) => {
-    e.preventDefault();
-    const module = modules.find((m) => m.id === moduleId);
-    if (!module) return;
-
-    updateModule(moduleId, {
-      lessons: module.lessons.filter((lesson) => lesson.id !== lessonId),
+  useEffect(() => {
+    const subscription = form.watch((values) => {
+      try {
+        localStorage.setItem(
+          draftKey,
+          JSON.stringify({ values, modules: modulesRef.current }),
+        );
+      } catch (err) {
+        console.warn("Failed to store course draft", err);
+      }
+      // Update publishing requirements reactively
+      setPublishReady({
+        hasTitle: Boolean(values.title && values.title.trim()),
+        hasDescription: Boolean(
+          values.description && values.description.trim(),
+        ),
+        hasCategory: Boolean(values.category && values.category.trim()),
+        hasModules: modulesRef.current.length > 0,
+        hasThreeLessons:
+          modulesRef.current.length > 0 &&
+          modulesRef.current.every((mod) => mod.lessons.length >= 3),
+        hasLessonTitles:
+          modulesRef.current.length > 0 &&
+          modulesRef.current.every(
+            (mod) =>
+              mod.lessons.length > 0 &&
+              mod.lessons.every((lesson) => lesson.title?.trim()),
+          ),
+        hasThumbnail: Boolean(values.thumbnail),
+        hasPrice: typeof values.price === "number" && values.price >= 0,
+      });
     });
-  };
+    return () => subscription.unsubscribe?.();
+  }, [form]);
 
-  const onSubmit = (
+  const onSubmit = async (
     values: z.infer<typeof courseSchema>,
-    isPublished: boolean
+    isPublished: boolean,
   ) => {
     if (isPublished) {
-      if (modules.length < 1 || modules.some((mod) => mod.lessons.length < 5)) {
+      if (modules.length < 1 || modules.some((mod) => mod.lessons.length < 3)) {
         setError(
-          "Course must have at least one module with 5 lessons to publish"
+          "Course must have at least one module with 3 lessons to publish",
         );
         toast.error(
-          "Course must have at least one module with 5 lessons to publish"
+          "Course must have at least one module with 3 lessons to publish",
         );
         return;
       }
@@ -341,20 +246,45 @@ export default function CreateCourse() {
     setError("");
     setSuccess("");
 
+    await new Promise((r) => setTimeout(r, 100));
+    const resolvedBasePrice =
+      typeof values.basePrice === "number"
+        ? values.basePrice
+        : typeof values.currentPrice === "number"
+          ? values.currentPrice
+          : (values.price ?? 0);
+    const resolvedCurrentPrice =
+      typeof values.currentPrice === "number"
+        ? values.currentPrice
+        : resolvedBasePrice;
+
     startTransition(() => {
+      console.log("Submitting modules:", modules);
       createCourse(
-        { ...values, certificate: values.certificate, isPublished },
-        modules
+        {
+          ...values,
+          certificate: values.certificate,
+          isPublished,
+          price: resolvedBasePrice,
+          basePrice: resolvedBasePrice,
+          currentPrice: resolvedCurrentPrice,
+        },
+        modules,
       )
         .then((data) => {
           if (data && "error" in data) {
             setError(data.error!);
             toast.error(data.error);
           } else {
-            form.reset();
+            form.reset(defaultValues);
             setModules([]);
+            localStorage.removeItem(draftKey);
             setSuccess("Course created successfully");
-            toast.success("Course created successfully");
+            if (isPublished && data?.requiresApproval) {
+              toast.success("Course submitted for approval");
+            } else {
+              toast.success("Course created successfully");
+            }
             router.refresh();
             if (isPublished) {
               router.push("/tutor/courses");
@@ -370,12 +300,32 @@ export default function CreateCourse() {
     });
   };
 
+  // Handler for form validation errors
+  const onFormError = (errors: any) => {
+    console.error("❌ Form validation errors:", errors);
+    const errorMessages = Object.entries(errors)
+      .map(([field, error]: [string, any]) => `${field}: ${error?.message}`)
+      .slice(0, 3) // Show first 3 errors
+      .join(", ");
+    toast.error(`Please fix form errors: ${errorMessages}`);
+  };
+
   const steps = [
-    { id: 0, title: "Basic Info", icon: BookOpen },
-    { id: 1, title: "Curriculum", icon: PlayCircle },
-    { id: 2, title: "Pricing", icon: NairaSign },
-    { id: 3, title: "Settings", icon: Settings },
+    { id: 0, title: "Course Type", icon: GraduationCap },
+    { id: 1, title: "Basic Info", icon: BookOpen },
+    { id: 2, title: "Curriculum", icon: PlayCircle },
+    { id: 3, title: "Pricing", icon: NairaSign },
+    { id: 4, title: "Settings", icon: Settings },
   ];
+
+  const handleResetBuilder = () => {
+    form.reset(defaultValues);
+    setModules([]);
+    setCurrentStep(0);
+    setError("");
+    setSuccess("");
+    localStorage.removeItem(draftKey);
+  };
 
   return (
     <div className="min-h-screen bg-background">
@@ -400,14 +350,28 @@ export default function CreateCourse() {
 
           <Form {...form}>
             <form
-              onSubmit={form.handleSubmit((data) => onSubmit(data, false))}
+              onSubmit={form.handleSubmit(
+                (data) => onSubmit(data, false),
+                onFormError,
+              )}
               className="space-y-8">
               <Card className="glass-card border-white/10 hover-glow">
                 <CardContent className="p-8">
                   <div className="flex flex-wrap gap-4 mb-8">
+                    <Button
+                      type="button"
+                      variant="outline"
+                      onClick={handleResetBuilder}
+                      className="ml-auto border-white/20 text-white hover:bg-white/10">
+                      Start again
+                    </Button>
+                  </div>
+
+                  <div className="flex flex-wrap gap-4 mb-8">
                     {steps.map((step) => (
                       <Button
                         key={step.id}
+                        type="button"
                         variant={
                           currentStep === step.id ? "default" : "outline"
                         }
@@ -423,888 +387,31 @@ export default function CreateCourse() {
                     ))}
                   </div>
 
-                  {currentStep === 0 && (
-                    <motion.div
-                      initial={{ opacity: 0 }}
-                      animate={{ opacity: 1 }}
-                      transition={{ duration: 0.5 }}>
-                      <Card className="glass-card border-white/10">
-                        <CardHeader>
-                          <CardTitle className="text-white">
-                            Basic Information
-                          </CardTitle>
-                        </CardHeader>
-                        <CardContent className="space-y-6">
-                          <FormField
-                            control={form.control}
-                            name="title"
-                            render={({ field }) => (
-                              <FormItem>
-                                <FormLabel className="text-white">
-                                  Course Title
-                                </FormLabel>
-                                <FormControl>
-                                  <Input
-                                    {...field}
-                                    className="bg-white/10 border-white/20 text-white"
-                                  />
-                                </FormControl>
-                                <FormMessage />
-                              </FormItem>
-                            )}
-                          />
-                          <FormField
-                            control={form.control}
-                            name="subtitle"
-                            render={({ field }) => (
-                              <FormItem>
-                                <FormLabel className="text-white">
-                                  Subtitle
-                                </FormLabel>
-                                <FormControl>
-                                  <Input
-                                    {...field}
-                                    className="bg-white/10 border-white/20 text-white"
-                                  />
-                                </FormControl>
-                                <FormMessage />
-                              </FormItem>
-                            )}
-                          />
-                          <FormField
-                            control={form.control}
-                            name="description"
-                            render={({ field }) => (
-                              <FormItem>
-                                <FormLabel className="text-white">
-                                  Description
-                                </FormLabel>
-                                <FormControl>
-                                  <Textarea
-                                    {...field}
-                                    className="bg-white/10 border-white/20 text-white"
-                                  />
-                                </FormControl>
-                                <FormMessage />
-                              </FormItem>
-                            )}
-                          />
-                          <FormField
-                            control={form.control}
-                            name="category"
-                            render={({ field }) => (
-                              <FormItem>
-                                <FormLabel className="text-white">
-                                  Category
-                                </FormLabel>
-                                <Select
-                                  onValueChange={field.onChange}
-                                  value={field.value}>
-                                  <FormControl>
-                                    <SelectTrigger className="bg-white/10 border-white/20 text-white">
-                                      <SelectValue />
-                                    </SelectTrigger>
-                                  </FormControl>
-                                  <SelectContent>
-                                    {categories.map((cat) => (
-                                      <SelectItem key={cat} value={cat}>
-                                        {cat}
-                                      </SelectItem>
-                                    ))}
-                                  </SelectContent>
-                                </Select>
-                                <FormMessage />
-                              </FormItem>
-                            )}
-                          />
-                          <FormField
-                            control={form.control}
-                            name="duration"
-                            render={({ field }) => (
-                              <FormItem>
-                                <FormLabel className="text-white">
-                                  Duration
-                                </FormLabel>
-                                <FormControl>
-                                  <Input
-                                    {...field}
-                                    type="number"
-                                    min={0}
-                                    placeholder="Total course Duration in minutes"
-                                    className="bg-white/10 border-white/20 text-white"
-                                    onChange={(e) => {
-                                      const val = e.target.valueAsNumber;
-                                      field.onChange(
-                                        Number.isNaN(val) ? undefined : val
-                                      );
-                                    }}
-                                  />
-                                </FormControl>
-                                <FormMessage />
-                              </FormItem>
-                            )}
-                          />
-                          <FormField
-                            control={form.control}
-                            name="level"
-                            render={({ field }) => (
-                              <FormItem>
-                                <FormLabel className="text-white">
-                                  Level
-                                </FormLabel>
-                                <Select
-                                  onValueChange={field.onChange}
-                                  value={field.value}>
-                                  <FormControl>
-                                    <SelectTrigger className="bg-white/10 border-white/20 text-white">
-                                      <SelectValue />
-                                    </SelectTrigger>
-                                  </FormControl>
-                                  <SelectContent>
-                                    {levels.map((level) => (
-                                      <SelectItem
-                                        key={level}
-                                        value={level
-                                          .toUpperCase()
-                                          .replace(" ", "_")}>
-                                        {level}
-                                      </SelectItem>
-                                    ))}
-                                  </SelectContent>
-                                </Select>
-                                <FormMessage />
-                              </FormItem>
-                            )}
-                          />
-                          <FormField
-                            control={form.control}
-                            name="language"
-                            render={({ field }) => (
-                              <FormItem>
-                                <FormLabel className="text-white">
-                                  Language
-                                </FormLabel>
-                                <Select
-                                  onValueChange={field.onChange}
-                                  value={field.value}>
-                                  <FormControl>
-                                    <SelectTrigger className="bg-white/10 border-white/20 text-white">
-                                      <SelectValue />
-                                    </SelectTrigger>
-                                  </FormControl>
-                                  <SelectContent>
-                                    <SelectItem value="English">
-                                      English
-                                    </SelectItem>
-                                    <SelectItem value="Spanish">
-                                      Spanish
-                                    </SelectItem>
-                                    <SelectItem value="French">
-                                      French
-                                    </SelectItem>
-                                    <SelectItem value="German">
-                                      German
-                                    </SelectItem>
-                                    <SelectItem value="Portuguese">
-                                      Portuguese
-                                    </SelectItem>
-                                  </SelectContent>
-                                </Select>
-                                <FormMessage />
-                              </FormItem>
-                            )}
-                          />
-                          <FormField
-                            control={form.control}
-                            name="thumbnail"
-                            render={({ field }) => (
-                              <FormItem>
-                                <FormLabel className="text-white">
-                                  Course Thumbnail
-                                </FormLabel>
-                                <FormControl>
-                                  <UploadFile
-                                    setValue={form.setValue}
-                                    fieldName="thumbnail"
-                                    uploading={uploading.thumbnail}
-                                    setUploading={(value) =>
-                                      setUploading((prev) => ({
-                                        ...prev,
-                                        thumbnail:
-                                          typeof value === "function"
-                                            ? value(prev.thumbnail)
-                                            : value,
-                                      }))
-                                    }
-                                  />
-                                </FormControl>
-                                {field.value && (
-                                  <img
-                                    src={field.value}
-                                    alt="Thumbnail"
-                                    className="mt-2 h-24 rounded"
-                                  />
-                                )}
-                                <FormMessage />
-                              </FormItem>
-                            )}
-                          />
-                          <FormField
-                            control={form.control}
-                            name="previewVideo"
-                            render={({ field }) => (
-                              <FormItem>
-                                <FormLabel className="text-white">
-                                  Preview Video
-                                </FormLabel>
-                                <FormControl>
-                                  <UploadFile
-                                    setValue={form.setValue}
-                                    fieldName="previewVideo"
-                                    uploading={uploading.video}
-                                    setUploading={(value) =>
-                                      setUploading((prev) => ({
-                                        ...prev,
-                                        thumbnail:
-                                          typeof value === "function"
-                                            ? value(prev.thumbnail)
-                                            : value,
-                                      }))
-                                    }
-                                  />
-                                </FormControl>
-                                {field.value && (
-                                  <video
-                                    src={field.value}
-                                    controls
-                                    className="mt-2 h-24 rounded"
-                                  />
-                                )}
-                                <FormMessage />
-                              </FormItem>
-                            )}
-                          />
-                        </CardContent>
-                      </Card>
-
-                      <Card className="glass-card border-white/10 mt-6">
-                        <CardHeader>
-                          <CardTitle className="text-white">Tags</CardTitle>
-                        </CardHeader>
-                        <CardContent className="space-y-4">
-                          <div className="flex gap-2">
-                            <Input
-                              value={currentTag}
-                              onChange={(e) => setCurrentTag(e.target.value)}
-                              placeholder="Add a tag"
-                              className="bg-white/10 border-white/20 text-white"
-                            />
-                            <Button
-                              type="button"
-                              onClick={addTag}
-                              className="bg-gradient-to-r from-neon-blue to-neon-purple">
-                              <Plus className="w-4 h-4" />
-                            </Button>
-                          </div>
-                          <div className="flex flex-wrap gap-2">
-                            {form.getValues("tags").map((tag) => (
-                              <Badge
-                                key={tag}
-                                className="bg-white/10 text-white">
-                                {tag}
-                                <X
-                                  className="w-3 h-3 ml-2 cursor-pointer"
-                                  onClick={(e) => removeTag(e, tag)}
-                                />
-                              </Badge>
-                            ))}
-                          </div>
-                        </CardContent>
-                      </Card>
-
-                      <Card className="glass-card border-white/10 mt-6">
-                        <CardHeader>
-                          <CardTitle className="text-white">
-                            Requirements
-                          </CardTitle>
-                        </CardHeader>
-                        <CardContent className="space-y-4">
-                          <div className="flex gap-2">
-                            <Input
-                              value={currentRequirement}
-                              onChange={(e) =>
-                                setCurrentRequirement(e.target.value)
-                              }
-                              placeholder="Add a requirement"
-                              className="bg-white/10 border-white/20 text-white"
-                            />
-                            <Button
-                              type="button"
-                              onClick={addRequirement}
-                              className="bg-gradient-to-r from-neon-blue to-neon-purple">
-                              <Plus className="w-4 h-4" />
-                            </Button>
-                          </div>
-                          <ul className="list-disc pl-5 text-gray-300">
-                            {form
-                              .getValues("requirements")
-                              .map((req, index) => (
-                                <li
-                                  key={index}
-                                  className="flex justify-between items-center">
-                                  {req}
-                                  <Button
-                                    variant="ghost"
-                                    size="sm"
-                                    onClick={(e) => removeRequirement(e, index)}
-                                    className="text-red-400">
-                                    <X className="w-4 h-4" />
-                                  </Button>
-                                </li>
-                              ))}
-                          </ul>
-                        </CardContent>
-                      </Card>
-
-                      <Card className="glass-card border-white/10 mt-6">
-                        <CardHeader>
-                          <CardTitle className="text-white">
-                            Learning Outcomes
-                          </CardTitle>
-                        </CardHeader>
-                        <CardContent className="space-y-4">
-                          <div className="flex gap-2">
-                            <Input
-                              value={currentOutcome}
-                              onChange={(e) =>
-                                setCurrentOutcome(e.target.value)
-                              }
-                              placeholder="Add a learning outcome"
-                              className="bg-white/10 border-white/20 text-white"
-                            />
-                            <Button
-                              type="button"
-                              onClick={addLearningOutcome}
-                              className="bg-gradient-to-r from-neon-blue to-neon-purple">
-                              <Plus className="w-4 h-4" />
-                            </Button>
-                          </div>
-                          <ul className="list-disc pl-5 text-gray-300">
-                            {form
-                              .getValues("outcomes")
-                              .map((outcome, index) => (
-                                <li
-                                  key={index}
-                                  className="flex justify-between items-center">
-                                  {outcome}
-                                  <Button
-                                    variant="ghost"
-                                    size="sm"
-                                    onClick={(e) =>
-                                      removeLearningOutcome(e, index)
-                                    }
-                                    className="text-red-400">
-                                    <X className="w-4 h-4" />
-                                  </Button>
-                                </li>
-                              ))}
-                          </ul>
-                        </CardContent>
-                      </Card>
-                    </motion.div>
-                  )}
+                  {currentStep === 0 && <CourseTypeSelector form={form} />}
 
                   {currentStep === 1 && (
-                    <motion.div
-                      initial={{ opacity: 0 }}
-                      animate={{ opacity: 1 }}
-                      transition={{ duration: 0.5 }}>
-                      <Card className="glass-card border-white/10">
-                        <CardHeader>
-                          <CardTitle className="text-white">
-                            Curriculum
-                          </CardTitle>
-                        </CardHeader>
-                        <CardContent className="space-y-6">
-                          <Button
-                            type="button"
-                            onClick={() => addModule()}
-                            className="w-full bg-gradient-to-r from-neon-blue to-neon-purple">
-                            <Plus className="w-4 h-4 mr-2" />
-                            Add Module
-                          </Button>
-                          {modules.map((module) => (
-                            <Card
-                              key={module.id}
-                              className="glass-card border-white/20 mt-4">
-                              <CardHeader>
-                                <div className="flex justify-between items-center">
-                                  <Input
-                                    value={module.title}
-                                    onChange={(e) =>
-                                      updateModule(module.id, {
-                                        title: e.target.value,
-                                      })
-                                    }
-                                    className="bg-transparent border-0 text-white text-lg font-semibold"
-                                  />
-                                  <Button
-                                    variant="ghost"
-                                    size="sm"
-                                    onClick={(e) => removeModule(e, module.id)}
-                                    className="text-red-400">
-                                    <X className="w-4 h-4" />
-                                  </Button>
-                                </div>
-                                <Textarea
-                                  value={module.description}
-                                  onChange={(e) =>
-                                    updateModule(module.id, {
-                                      description: e.target.value,
-                                    })
-                                  }
-                                  placeholder="Module description"
-                                  className="mt-2 bg-white/10 border-white/20 text-white"
-                                />
-                                <Textarea
-                                  value={module.content}
-                                  onChange={(e) =>
-                                    updateModule(module.id, {
-                                      content: e.target.value,
-                                    })
-                                  }
-                                  placeholder="Module content"
-                                  className="mt-2 bg-white/10 border-white/20 text-white"
-                                />
-                                <Input
-                                  type="number"
-                                  value={module.duration}
-                                  onChange={(e) =>
-                                    updateModule(module.id, {
-                                      duration: Number(e.target.value),
-                                    })
-                                  }
-                                  placeholder="Module duration (minutes)"
-                                  className="mt-2 bg-white/10 border-white/20 text-white"
-                                />
-                              </CardHeader>
-                              <CardContent>
-                                <Button
-                                  type="button"
-                                  onClick={() => addLesson(module.id)}
-                                  className="w-full bg-gradient-to-r from-neon-green to-emerald-400">
-                                  <Plus className="w-4 h-4 mr-2" />
-                                  Add Lesson
-                                </Button>
-                                {module.lessons.map((lesson) => (
-                                  <div
-                                    key={lesson.id}
-                                    className="mt-4 p-4 bg-white/5 rounded-lg">
-                                    <div className="flex space-y-3 justify-between items-center">
-                                      <Input
-                                        value={lesson.title}
-                                        onChange={(e) =>
-                                          updateLesson(module.id, lesson.id, {
-                                            title: e.target.value,
-                                          })
-                                        }
-                                        className="bg-white/10 border-white/20 border-0 text-white"
-                                      />
-                                      <Button
-                                        variant="ghost"
-                                        size="sm"
-                                        onClick={(e) =>
-                                          removeLesson(e, module.id, lesson.id)
-                                        }
-                                        className="text-red-400">
-                                        <X className="w-4 h-4" />
-                                      </Button>
-                                    </div>
-                                    <div className="flex justify-between items-center">
-                                      <Input
-                                        value={lesson.content}
-                                        onChange={(e) =>
-                                          updateLesson(module.id, lesson.id, {
-                                            content: e.target.value,
-                                          })
-                                        }
-                                        className="bg-white/10 border-white/20 border-0 text-white"
-                                      />
-                                      <Button
-                                        variant="ghost"
-                                        size="sm"
-                                        onClick={(e) =>
-                                          removeLesson(e, module.id, lesson.id)
-                                        }
-                                        className="text-red-400">
-                                        <X className="w-4 h-4" />
-                                      </Button>
-                                    </div>
-                                    <Select
-                                      value={lesson.type}
-                                      onValueChange={(value) =>
-                                        updateLesson(module.id, lesson.id, {
-                                          type: value as any,
-                                        })
-                                      }>
-                                      <SelectTrigger className="mt-2 bg-white/10 border-white/20 text-white">
-                                        <SelectValue />
-                                      </SelectTrigger>
-                                      <SelectContent>
-                                        <SelectItem value="VIDEO">
-                                          Video
-                                        </SelectItem>
-                                      </SelectContent>
-                                    </Select>
-                                    <Input
-                                      type="number"
-                                      placeholder="Duration (minutes)"
-                                      value={lesson.duration}
-                                      onChange={(e) =>
-                                        updateLesson(module.id, lesson.id, {
-                                          duration: Number(e.target.value),
-                                        })
-                                      }
-                                      className="mt-2 bg-white/10 border-white/20 text-white"
-                                    />
-                                    {lesson.type === "VIDEO" && (
-                                      <div className="space-y-3">
-                                        <Textarea
-                                          value={lesson.description || ""}
-                                          onChange={(e) =>
-                                            updateLesson(module.id, lesson.id, {
-                                              description: e.target.value,
-                                            })
-                                          }
-                                          placeholder="Lesson description"
-                                          className="mt-2 bg-white/10 border-white/20 text-white"
-                                        />
-                                        {/* <Textarea
-                                          value={lesson.content || ""}
-                                          onChange={(e) =>
-                                            updateLesson(module.id, lesson.id, {
-                                              content: e.target.value,
-                                            })
-                                          }
-                                          placeholder="Lesson content"
-                                          className="my-2 bg-white/10 border-white/20 text-white"
-                                        /> */}
-                                        <LessonUploadFile
-                                          uploading={lessonUploading}
-                                          setUploading={setLessonUploading}
-                                          onUploadSuccess={(url) => {
-                                            updateLesson(module.id, lesson.id, {
-                                              videoUrl: url,
-                                            });
-                                          }}
-                                        />
-                                      </div>
-                                    )}
-                                    {/* {lesson.type === "TEXT" && (
-                                      <Textarea
-                                        value={lesson.content || ""}
-                                        onChange={(e) =>
-                                          updateLesson(module.id, lesson.id, {
-                                            content: e.target.value,
-                                          })
-                                        }
-                                        placeholder="Lesson content"
-                                        className="mt-2 bg-white/10 border-white/20 text-white"
-                                      />
-                                    )} */}
-                                  </div>
-                                ))}
-                              </CardContent>
-                            </Card>
-                          ))}
-                        </CardContent>
-                      </Card>
-                    </motion.div>
+                    <CourseBasicInfoForm
+                      categories={categories}
+                      levels={levels}
+                    />
                   )}
 
                   {currentStep === 2 && (
-                    <motion.div
-                      initial={{ opacity: 0 }}
-                      animate={{ opacity: 1 }}
-                      transition={{ duration: 0.5 }}>
-                      <Card className="glass-card border-white/10">
-                        <CardHeader>
-                          <CardTitle className="text-white">
-                            Pricing & Monetization
-                          </CardTitle>
-                        </CardHeader>
-                        <CardContent className="space-y-6">
-                          <FormField
-                            control={form.control}
-                            name="basePrice"
-                            render={({ field }) => (
-                              <FormItem>
-                                <FormLabel className="text-white">
-                                  Base Price
-                                </FormLabel>
-                                <FormControl>
-                                  <Input
-                                    type="number"
-                                    {...field}
-                                    onChange={(e) =>
-                                      field.onChange(Number(e.target.value))
-                                    }
-                                    className="bg-white/10 border-white/20 text-white"
-                                  />
-                                </FormControl>
-                                <FormMessage />
-                              </FormItem>
-                            )}
-                          />
-                          <FormField
-                            control={form.control}
-                            name="currentPrice"
-                            render={({ field }) => (
-                              <FormItem>
-                                <FormLabel className="text-white">
-                                  Current Price
-                                </FormLabel>
-                                <FormControl>
-                                  <Input
-                                    type="number"
-                                    {...field}
-                                    onChange={(e) =>
-                                      field.onChange(Number(e.target.value))
-                                    }
-                                    className="bg-white/10 border-white/20 text-white"
-                                  />
-                                </FormControl>
-                                <FormMessage />
-                              </FormItem>
-                            )}
-                          />
-                          <FormField
-                            control={form.control}
-                            name="groupBuyingEnabled"
-                            render={({ field }) => (
-                              <FormItem className="flex items-center justify-between">
-                                <div>
-                                  <FormLabel className="text-white">
-                                    Enable Group Buying
-                                  </FormLabel>
-                                  <p className="text-sm text-gray-400">
-                                    Offer discounts for group purchases
-                                  </p>
-                                </div>
-                                <FormControl>
-                                  <Switch
-                                    checked={field.value}
-                                    onCheckedChange={field.onChange}
-                                  />
-                                </FormControl>
-                              </FormItem>
-                            )}
-                          />
-                          {form.getValues("groupBuyingEnabled") && (
-                            <FormField
-                              control={form.control}
-                              name="groupBuyingDiscount"
-                              render={({ field }) => (
-                                <FormItem>
-                                  <FormLabel className="text-white">
-                                    Group Buying Discount (%)
-                                  </FormLabel>
-                                  <FormControl>
-                                    <Input
-                                      type="number"
-                                      min="0"
-                                      max="100"
-                                      value={(field.value ?? 0) * 100}
-                                      onChange={(e) =>
-                                        field.onChange(
-                                          Number(e.target.value) / 100
-                                        )
-                                      }
-                                      className="bg-white/10 border-white/20 text-white"
-                                    />
-                                  </FormControl>
-                                  <FormMessage />
-                                </FormItem>
-                              )}
-                            />
-                          )}
-                          <FormField
-                            control={form.control}
-                            name="isFlashSale"
-                            render={({ field }) => (
-                              <FormItem className="flex items-center justify-between">
-                                <div>
-                                  <FormLabel className="text-white">
-                                    Enable Flash Sale
-                                  </FormLabel>
-                                  <p className="text-sm text-gray-400">
-                                    Temporary discount period
-                                  </p>
-                                </div>
-                                <FormControl>
-                                  <Switch
-                                    checked={field.value}
-                                    onCheckedChange={field.onChange}
-                                  />
-                                </FormControl>
-                              </FormItem>
-                            )}
-                          />
-                          {form.getValues("isFlashSale") && (
-                            <FormField
-                              control={form.control}
-                              name="flashSaleEnd"
-                              render={({ field }) => (
-                                <FormItem>
-                                  <FormLabel className="text-white">
-                                    Flash Sale End Date
-                                  </FormLabel>
-                                  <FormControl>
-                                    <Input
-                                      type="datetime-local"
-                                      value={
-                                        field.value
-                                          ? field.value.slice(0, 16)
-                                          : ""
-                                      }
-                                      onChange={(e) =>
-                                        field.onChange(e.target.value)
-                                      }
-                                    />
-                                  </FormControl>
-                                  <FormMessage />
-                                </FormItem>
-                              )}
-                            />
-                          )}
-                        </CardContent>
-                      </Card>
-                    </motion.div>
+                    <CourseCurriculumBuilder
+                      form={form}
+                      modules={modules}
+                      setModules={setModules}
+                    />
                   )}
 
-                  {currentStep === 3 && (
-                    <motion.div
-                      initial={{ opacity: 0 }}
-                      animate={{ opacity: 1 }}
-                      transition={{ duration: 0.5 }}>
-                      <Card className="glass-card border-white/10">
-                        <CardHeader>
-                          <CardTitle className="text-white">
-                            Course Settings
-                          </CardTitle>
-                        </CardHeader>
-                        <CardContent className="space-y-6">
-                          <FormField
-                            control={form.control}
-                            name="allowDiscussions"
-                            render={({ field }) => (
-                              <FormItem className="flex items-center justify-between">
-                                <div>
-                                  <FormLabel className="text-white">
-                                    Allow Discussions
-                                  </FormLabel>
-                                  <p className="text-sm text-gray-400">
-                                    Enable student discussions
-                                  </p>
-                                </div>
-                                <FormControl>
-                                  <Switch
-                                    checked={field.value}
-                                    onCheckedChange={field.onChange}
-                                  />
-                                </FormControl>
-                              </FormItem>
-                            )}
-                          />
-                          <FormField
-                            control={form.control}
-                            name="certificate"
-                            render={({ field }) => (
-                              <FormItem className="flex items-center justify-between">
-                                <div>
-                                  <FormLabel className="text-white">
-                                    Provide Certificate
-                                  </FormLabel>
-                                  <p className="text-sm text-gray-400">
-                                    Issue certificate upon completion
-                                  </p>
-                                </div>
-                                <FormControl>
-                                  <Switch
-                                    checked={field.value}
-                                    onCheckedChange={field.onChange}
-                                  />
-                                </FormControl>
-                              </FormItem>
-                            )}
-                          />
-                        </CardContent>
-                      </Card>
+                  {currentStep === 3 && <CoursePricingForm form={form} />}
 
-                      <Card className="glass-card border-white/10 mt-6">
-                        <CardHeader>
-                          <CardTitle className="text-white">
-                            Publishing Options
-                          </CardTitle>
-                        </CardHeader>
-                        <CardContent className="space-y-6">
-                          <div className="p-4 bg-yellow-500/10 border border-yellow-500/20 rounded-lg">
-                            <h4 className="text-yellow-400 font-semibold mb-2">
-                              Before Publishing
-                            </h4>
-                            <ul className="text-sm text-gray-300 space-y-1">
-                              <li>• Add at least 5 lessons</li>
-                              <li>• Upload course thumbnail</li>
-                              <li>• Set course price</li>
-                              <li>• Review all content</li>
-                            </ul>
-                          </div>
-                          <div className="space-y-4">
-                            <Button
-                              type="submit"
-                              onClick={() =>
-                                form.handleSubmit((data) =>
-                                  onSubmit(data, false)
-                                )()
-                              }
-                              className="w-full bg-gradient-to-r from-gray-600 to-gray-700 hover:from-gray-500 hover:to-gray-600">
-                              <Save className="w-4 h-4 mr-2" />
-                              Save as Draft
-                            </Button>
-                            <Button
-                              type="button"
-                              onClick={() =>
-                                form.handleSubmit(
-                                  (data) => {
-                                    console.log("✅ Validated data:", data);
-                                    onSubmit(data, true);
-                                  },
-                                  (errors) => {
-                                    console.error(
-                                      "❌ Validation errors:",
-                                      errors
-                                    );
-                                    toast.error(
-                                      "Validation failed, check console for details"
-                                    );
-                                  }
-                                )()
-                              }
-                              className="w-full bg-gradient-to-r from-neon-green to-emerald-400"
-                              disabled={
-                                !form.getValues("title") ||
-                                !form.getValues("description") ||
-                                modules.length === 0 ||
-                                modules.some((mod) => mod.lessons.length < 5) ||
-                                !form.getValues("thumbnail")
-                              }>
-                              <Eye className="w-4 h-4 mr-2" />
-                              Publish Course
-                            </Button>
-                          </div>
-                        </CardContent>
-                      </Card>
-                    </motion.div>
+                  {currentStep === 4 && (
+                    <CourseSettingsForm
+                      form={form}
+                      onSubmit={onSubmit}
+                      modules={modules}
+                    />
                   )}
 
                   <div className="flex justify-between pt-8 border-t border-white/10">
@@ -1320,10 +427,13 @@ export default function CreateCourse() {
                     </Button>
                     <div className="flex gap-4">
                       <Button
-                        type="button"
                         onClick={() =>
-                          form.handleSubmit((data) => onSubmit(data, false))()
+                          form.handleSubmit(
+                            (data) => onSubmit(data, false),
+                            onFormError,
+                          )()
                         }
+                        type="submit"
                         variant="outline"
                         className="border-white/20 text-white hover:bg-white/10 bg-transparent">
                         <Save className="w-4 h-4 mr-2" />
@@ -1334,7 +444,7 @@ export default function CreateCourse() {
                           type="button"
                           onClick={() =>
                             setCurrentStep(
-                              Math.min(steps.length - 1, currentStep + 1)
+                              Math.min(steps.length - 1, currentStep + 1),
                             )
                           }
                           className="bg-gradient-to-r from-neon-blue to-neon-purple">
@@ -1344,33 +454,84 @@ export default function CreateCourse() {
                         <Button
                           type="button"
                           onClick={() =>
-                            form.handleSubmit(
-                              (data) => {
-                                console.log("✅ Validated data:", data);
-                                onSubmit(data, true);
-                              },
-                              (errors) => {
-                                console.error("❌ Validation errors:", errors);
-                                toast.error(
-                                  "Validation failed, check console for details"
-                                );
-                              }
-                            )()
+                            form.handleSubmit((data) => {
+                              console.log("✅ Validated data:", data);
+                              onSubmit(data, true);
+                            }, onFormError)()
                           }
-                          className="bg-gradient-to-r from-neon-green to-emerald-400"
+                          className={`bg-gradient-to-r from-neon-green to-emerald-400 flex items-center justify-center ${
+                            isPending ? "opacity-80 cursor-not-allowed" : ""
+                          }`}
                           disabled={
-                            !form.getValues("title") ||
-                            !form.getValues("description") ||
-                            modules.length === 0 ||
-                            modules.some((mod) => mod.lessons.length < 3) ||
-                            !form.getValues("thumbnail")
+                            isPending ||
+                            !publishReady.hasTitle ||
+                            !publishReady.hasDescription ||
+                            !publishReady.hasCategory ||
+                            !publishReady.hasModules ||
+                            !publishReady.hasThreeLessons ||
+                            !publishReady.hasLessonTitles ||
+                            !publishReady.hasThumbnail
                           }>
-                          <Eye className="w-4 h-4 mr-2" />
-                          Publish Course
+                          {isPending ? (
+                            <>
+                              <Spinner className="size-6 text-green-500" />
+                              Publishing...
+                            </>
+                          ) : (
+                            <>
+                              <Eye className="w-4 h-4 mr-2" />
+                              Publish Course
+                            </>
+                          )}
                         </Button>
                       )}
                     </div>
                   </div>
+
+                  {/* Publishing Requirements Checklist */}
+                  {currentStep === 4 && (
+                    <div className="mt-6 p-4 bg-white/5 border border-white/10 rounded-lg">
+                      <h4 className="text-white font-semibold mb-3">
+                        Publishing Checklist
+                      </h4>
+                      <ul className="space-y-2 text-sm">
+                        <li
+                          className={`flex items-center gap-2 ${publishReady.hasTitle ? "text-green-400" : "text-red-400"}`}>
+                          {publishReady.hasTitle ? "✓" : "✗"} Course title
+                        </li>
+                        <li
+                          className={`flex items-center gap-2 ${publishReady.hasDescription ? "text-green-400" : "text-red-400"}`}>
+                          {publishReady.hasDescription ? "✓" : "✗"} Course
+                          description
+                        </li>
+                        <li
+                          className={`flex items-center gap-2 ${publishReady.hasCategory ? "text-green-400" : "text-red-400"}`}>
+                          {publishReady.hasCategory ? "✓" : "✗"} Category
+                          selected
+                        </li>
+                        <li
+                          className={`flex items-center gap-2 ${publishReady.hasModules ? "text-green-400" : "text-red-400"}`}>
+                          {publishReady.hasModules ? "✓" : "✗"} At least 1
+                          module
+                        </li>
+                        <li
+                          className={`flex items-center gap-2 ${publishReady.hasThreeLessons ? "text-green-400" : "text-red-400"}`}>
+                          {publishReady.hasThreeLessons ? "✓" : "✗"} At least 3
+                          lessons per module
+                        </li>
+                        <li
+                          className={`flex items-center gap-2 ${publishReady.hasLessonTitles ? "text-green-400" : "text-red-400"}`}>
+                          {publishReady.hasLessonTitles ? "✓" : "✗"} All lessons
+                          have titles
+                        </li>
+                        <li
+                          className={`flex items-center gap-2 ${publishReady.hasThumbnail ? "text-green-400" : "text-red-400"}`}>
+                          {publishReady.hasThumbnail ? "✓" : "✗"} Course
+                          thumbnail uploaded
+                        </li>
+                      </ul>
+                    </div>
+                  )}
                 </CardContent>
               </Card>
             </form>

@@ -1,13 +1,22 @@
 "use client";
 
-import { useState, useRef, useEffect } from "react";
+import { useState, useRef, useEffect, useCallback } from "react";
 import { motion, AnimatePresence } from "framer-motion";
-import { Bot, Send, X, Sparkles, Minimize2, Maximize2 } from "lucide-react";
+import {
+  Bot,
+  Send,
+  X,
+  Sparkles,
+  Minimize2,
+  Maximize2,
+  AlertCircle,
+} from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { Avatar, AvatarFallback } from "@/components/ui/avatar";
+import ReactMarkdown from "react-markdown";
 
 interface Message {
   id: string;
@@ -36,18 +45,30 @@ export function LessonAIAssistant({
   onMinimize,
   isMinimized = false,
 }: LessonAIAssistantProps) {
-  const [messages, setMessages] = useState<Message[]>([
-    {
-      id: "1",
+  const welcomeMessage = useCallback(
+    (title: string): Message => ({
+      id: "welcome",
       type: "ai",
-      content: `Hi! I'm your AI learning assistant for "₦{lessonTitle}". I'm here to help you understand the concepts, answer questions, and provide additional insights. What would you like to know?`,
+      content: `Hi! I'm your AI learning assistant for "${title}". I'm here to help you understand the concepts, answer questions, and provide additional insights. What would you like to know?`,
       timestamp: new Date().toISOString(),
-    },
+    }),
+    [],
+  );
+
+  const [messages, setMessages] = useState<Message[]>([
+    welcomeMessage(lessonTitle),
   ]);
   const [inputValue, setInputValue] = useState("");
   const [isLoading, setIsLoading] = useState(false);
   const messagesEndRef = useRef<HTMLDivElement>(null);
   const inputRef = useRef<HTMLInputElement>(null);
+
+  // Reset chat when lesson changes
+  useEffect(() => {
+    setMessages([welcomeMessage(lessonTitle)]);
+    setInputValue("");
+    setIsLoading(false);
+  }, [lessonId, lessonTitle, welcomeMessage]);
 
   const scrollToBottom = () => {
     messagesEndRef.current?.scrollIntoView({ behavior: "smooth" });
@@ -77,28 +98,46 @@ export function LessonAIAssistant({
     setInputValue("");
     setIsLoading(true);
 
-    // Simulate AI response
-    setTimeout(() => {
+    try {
+      // Build conversation history for the API (exclude welcome message)
+      const history = [...messages, userMessage]
+        .filter((m) => m.id !== "welcome")
+        .map((m) => ({
+          role: m.type === "user" ? ("user" as const) : ("assistant" as const),
+          content: m.content,
+        }));
+
+      const res = await fetch(`/api/lessons/${lessonId}/chat`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ history }),
+      });
+
+      const data = await res.json();
+
       const aiMessage: Message = {
         id: (Date.now() + 1).toString(),
         type: "ai",
-        content: generateAIResponse(inputValue, lessonTitle),
+        content: res.ok
+          ? data.reply
+          : data.error || "Something went wrong. Please try again.",
         timestamp: new Date().toISOString(),
       };
-      setMessages((prev) => [...prev, aiMessage]);
-      setIsLoading(false);
-    }, 1500);
-  };
 
-  const generateAIResponse = (question: string, lesson: string): string => {
-    // This would be replaced with actual AI API call
-    const responses = [
-      `Great question about ₦{lesson}! Let me break this down for you...`,
-      `That's an excellent point to clarify in ₦{lesson}. Here's what you need to know...`,
-      `I can see why that might be confusing in ₦{lesson}. Let me explain it differently...`,
-      `Perfect! This is a key concept in ₦{lesson}. Here's the detailed explanation...`,
-    ];
-    return responses[Math.floor(Math.random() * responses.length)];
+      setMessages((prev) => [...prev, aiMessage]);
+    } catch {
+      setMessages((prev) => [
+        ...prev,
+        {
+          id: (Date.now() + 1).toString(),
+          type: "ai",
+          content: "Network error. Please check your connection and try again.",
+          timestamp: new Date().toISOString(),
+        },
+      ]);
+    } finally {
+      setIsLoading(false);
+    }
   };
 
   const quickQuestions = [
@@ -138,7 +177,7 @@ export function LessonAIAssistant({
                 </div>
                 <div>
                   <h3 className="text-white font-semibold text-sm">
-                    AI Assistant
+                    PalmAsk AI Student Assistant
                   </h3>
                   <p className="text-gray-400 text-xs truncate max-w-48">
                     {lessonTitle}
@@ -188,9 +227,9 @@ export function LessonAIAssistant({
                             ? "bg-gradient-to-r from-neon-blue to-neon-purple text-white"
                             : "bg-white/10 text-gray-100 border border-white/20"
                         }`}>
-                        <p className="text-sm leading-relaxed">
-                          {message.content}
-                        </p>
+                        <div className="text-sm leading-relaxed prose prose-invert prose-sm max-w-none">
+                          <ReactMarkdown>{message.content}</ReactMarkdown>
+                        </div>
                         <p className="text-xs opacity-70 mt-1">
                           {new Date(message.timestamp).toLocaleTimeString([], {
                             hour: "2-digit",

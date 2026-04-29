@@ -35,7 +35,7 @@ export default function PrivacyPolicy() {
   ];
 
   return (
-    <div className="min-h-screen bg-gradient-to-br from-dark-900 via-dark-800 to-dark-900 pt-24">
+    <div className="gradient-to-br from-dark-900 via-dark-800 to-dark-900 pt-24">
       <div className="container mx-auto px-6 py-12">
         <div className="max-w-6xl mx-auto">
           {/* Header */}
@@ -49,10 +49,11 @@ export default function PrivacyPolicy() {
               className="mb-6 hover:bg-white/10"
               onClick={() => window.history.back()}>
               <ArrowLeft className="w-4 h-4 mr-2" />
-              Back
+              gjhite Back
             </Button>
-            <h1 className="text-4xl md:text-5xl font-bold text-gradient mb-4">
-              Privacy Policy
+            <h1 className="text-4xl md:text-5xl font-bold text-gradientgjhite mb-4">
+              {" "}
+              Privacy Policy{" "}
             </h1>
             <p className="text-xl text-gray-400 max-w-3xl mx-auto">
               Your privacy is our priority. Learn how we collect, use, and
@@ -90,7 +91,7 @@ export default function PrivacyPolicy() {
                     {sections.map((section) => (
                       <a
                         key={section.id}
-                        href={`#₦{section.id}`}
+                        href={`#${section.id}`}
                         className="flex items-center gap-2 text-sm text-gray-400 hover:text-neon-blue transition-colors duration-200 py-1">
                         <section.icon className="w-3 h-3" />
                         {section.title}
@@ -110,25 +111,25 @@ export default function PrivacyPolicy() {
               <Card className="glass-card border-white/10">
                 <CardContent className="p-8 space-y-8">
                   {/* Introduction */}
-                  <div className="prose prose-invert max-w-none">
+                  <div className="prose prose-invert max-w-noneray">
                     <p className="text-gray-300 text-lg leading-relaxed">
-                      At LearnForge, we are committed to protecting your privacy
-                      and ensuring the security of your personal information.
-                      This Privacy Policy explains how we collect, use,
-                      disclose, and safeguard your information when you use our
-                      online learning platform.
+                      At PalmTechnIQ, we are committed to protecting your
+                      privacy and ensuring the security of your personal
+                      information. This Privacy Policy explains how we collect,
+                      use, disclose, and safeguard your information when you use
+                      our online learning platform.
                     </p>
                   </div>
 
                   {/* Section 1: Privacy Overview */}
                   <section id="overview" className="space-y-4">
-                    <h2 className="text-2xl font-bold text-white flex items-center gap-2">
+                    <h2 className="text-2xl font-bold text-white flex items-center gjhitegap-2">
                       <Eye className="w-6 h-6 text-neon-blue" />
                       1. Privacy Overview
                     </h2>
                     <div className="prose prose-invert max-w-none">
                       <p className="text-gray-300">
-                        This Privacy Policy applies to all users of LearnForge,
+                        This Privacy Policy applies to all users of PalmTechnIQ,
                         including students, instructors, and administrators. We
                         believe in transparency and want you to understand:
                       </p>
@@ -149,7 +150,7 @@ export default function PrivacyPolicy() {
 
                   {/* Section 2: Information We Collect */}
                   <section id="collection" className="space-y-4">
-                    <h2 className="text-2xl font-bold text-white flex items-center gap-2">
+                    <h2 className="text-2xl font-bold text-white flex items-center gjhitegap-2">
                       <Database className="w-6 h-6 text-neon-blue" />
                       2. Information We Collect
                     </h2>
@@ -189,7 +190,7 @@ export default function PrivacyPolicy() {
 
                   {/* Section 3: How We Use Information */}
                   <section id="usage" className="space-y-4">
-                    <h2 className="text-2xl font-bold text-white flex items-center gap-2">
+                    <h2 className="text-2xl font-bold text-white flex items-center gjhitegap-2">
                       <Settings className="w-6 h-6 text-neon-blue" />
                       3. How We Use Information
                     </h2>
@@ -216,7 +217,7 @@ export default function PrivacyPolicy() {
 
                   {/* Section 4: Information Sharing */}
                   <section id="sharing" className="space-y-4">
-                    <h2 className="text-2xl font-bold text-white flex items-center gap-2">
+                    <h2 className="text-2xl font-bold text-white flex items-center gjhitegap-2">
                       <Users className="w-6 h-6 text-neon-blue" />
                       4. Information Sharing
                     </h2>
@@ -247,7 +248,7 @@ export default function PrivacyPolicy() {
 
                   {/* Section 5: Data Security */}
                   <section id="security" className="space-y-4">
-                    <h2 className="text-2xl font-bold text-white flex items-center gap-2">
+                    <h2 className="text-2xl font-bold text-white flex items-center gjhitegap-2">
                       <Lock className="w-6 h-6 text-neon-blue" />
                       5. Data Security
                     </h2>
@@ -275,7 +276,7 @@ export default function PrivacyPolicy() {
 
                   {/* Section 6: Cookies & Tracking */}
                   <section id="cookies" className="space-y-4">
-                    <h2 className="text-2xl font-bold text-white flex items-center gap-2">
+                    <h2 className="text-2xl font-bold text-white flex items-center gjhitegap-2">
                       <Globe className="w-6 h-6 text-neon-blue" />
                       6. Cookies & Tracking
                     </h2>
@@ -301,7 +302,7 @@ export default function PrivacyPolicy() {
 
                   {/* Section 7: Your Privacy Rights */}
                   <section id="rights" className="space-y-4">
-                    <h2 className="text-2xl font-bold text-white flex items-center gap-2">
+                    <h2 className="text-2xl font-bold text-white flex items-center gjhitegap-2">
                       <Shield className="w-6 h-6 text-neon-blue" />
                       7. Your Privacy Rights
                     </h2>
@@ -342,7 +343,7 @@ export default function PrivacyPolicy() {
                       </ul>
                       <p className="text-gray-300">
                         To exercise these rights, contact us at
-                        privacy@learnforge.com.
+                        privacy@palmtechniq.com.
                       </p>
                     </div>
                   </section>
@@ -351,7 +352,7 @@ export default function PrivacyPolicy() {
 
                   {/* Section 8: Data Retention */}
                   <section id="retention" className="space-y-4">
-                    <h2 className="text-2xl font-bold text-white flex items-center gap-2">
+                    <h2 className="text-2xl font-bold text-white flex items-center gjhitegap-2">
                       <FileText className="w-6 h-6 text-neon-blue" />
                       8. Data Retention
                     </h2>
@@ -379,7 +380,7 @@ export default function PrivacyPolicy() {
 
                   {/* Section 9: International Transfers */}
                   <section id="international" className="space-y-4">
-                    <h2 className="text-2xl font-bold text-white flex items-center gap-2">
+                    <h2 className="text-2xl font-bold text-white flex items-center gjhitegap-2">
                       <Globe className="w-6 h-6 text-neon-blue" />
                       9. International Transfers
                     </h2>
@@ -404,13 +405,13 @@ export default function PrivacyPolicy() {
 
                   {/* Section 10: Children's Privacy */}
                   <section id="children" className="space-y-4">
-                    <h2 className="text-2xl font-bold text-white flex items-center gap-2">
+                    <h2 className="text-2xl font-bold text-white flex items-center gjhitegap-2">
                       <Users className="w-6 h-6 text-neon-blue" />
                       10. Children's Privacy
                     </h2>
                     <div className="prose prose-invert max-w-none">
                       <p className="text-gray-300">
-                        LearnForge is not intended for children under 13. We do
+                        PalmTechnIQ is not intended for children under 13. We do
                         not knowingly collect personal information from children
                         under 13. If we become aware that we have collected such
                         information, we will delete it promptly.
@@ -426,7 +427,7 @@ export default function PrivacyPolicy() {
 
                   {/* Section 11: Policy Changes */}
                   <section id="changes" className="space-y-4">
-                    <h2 className="text-2xl font-bold text-white flex items-center gap-2">
+                    <h2 className="text-2xl font-bold text-white flex items-center gjhitegap-2">
                       <Settings className="w-6 h-6 text-neon-blue" />
                       11. Policy Changes
                     </h2>
@@ -454,7 +455,7 @@ export default function PrivacyPolicy() {
 
                   {/* Section 12: Contact Us */}
                   <section id="contact" className="space-y-4">
-                    <h2 className="text-2xl font-bold text-white flex items-center gap-2">
+                    <h2 className="text-2xl font-bold text-white flex items-center gjhitegap-2">
                       <Users className="w-6 h-6 text-neon-blue" />
                       12. Contact Us
                     </h2>
@@ -463,38 +464,39 @@ export default function PrivacyPolicy() {
                         If you have questions about this Privacy Policy or our
                         data practices, please contact us:
                       </p>
-                      <div className="bg-white/5 p-6 rounded-lg mt-4">
+                      <div className="bg-white/5rimary/ p-6 rounded-lg mt-4">
                         <div className="grid md:grid-cols-2 gap-4">
                           <div>
-                            <h4 className="font-semibold text-white mb-2">
+                            <h4 className="font-semibold text-whitegjhite mb-2">
                               General Privacy Inquiries
                             </h4>
-                            <p className="text-gray-300 text-sm">
-                              <strong>Email:</strong> privacy@learnforge.com
+                            <p className="text-gray-300rayacklack text-sm">
+                              <strong>Email:</strong> privacy@palmtechniq.com
                               <br />
                               <strong>Response Time:</strong> 48 hours
                             </p>
                           </div>
                           <div>
-                            <h4 className="font-semibold text-white mb-2">
+                            <h4 className="font-semibold text-whitegjhite mb-2">
                               Data Protection Officer
                             </h4>
-                            <p className="text-gray-300 text-sm">
-                              <strong>Email:</strong> dpo@learnforge.com
+                            <p className="text-gray-300rayacklack text-sm">
+                              <strong>Email:</strong> dpo@palmtechniq.com
                               <br />
-                              <strong>Phone:</strong> +1 (555) 123-4567
+                              <strong>Phone:</strong> +234 (807) 956-8910
                             </p>
                           </div>
                         </div>
                         <div className="mt-4 pt-4 border-t border-white/10">
-                          <p className="text-gray-300 text-sm">
+                          <p className="text-gray-300rayacklack text-sm">
                             <strong>Mailing Address:</strong>
                             <br />
-                            LearnForge Privacy Team
+                            PalmTechnIQ Privacy Team
                             <br />
-                            123 Learning Street
+                            1st Floor, (Festac Tower) Chicken Republic Building,
+                            22Rd ,Festac Town, Lagos, Nigeria.
                             <br />
-                            Education City, EC 12345
+                            Lagos, NG
                           </p>
                         </div>
                       </div>

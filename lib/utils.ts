@@ -140,4 +140,17 @@ export const formatTime = (seconds: number) => {
   }
 };
 
+export const formatDurationMinutes = (minutes?: number) => {
+  const normalized =
+    typeof minutes === "number" ? minutes : Number(minutes ?? 0);
+  if (!Number.isFinite(normalized) || normalized <= 0) return "0 min";
+  const hrs = Math.floor(normalized / 60);
+  const mins = Math.round(normalized % 60);
+  if (hrs <= 0) return `${mins} min`;
+  if (mins <= 0) return `${hrs} hr${hrs === 1 ? "" : "s"}`;
+  return `${hrs} hr${hrs === 1 ? "" : "s"} ${mins} min${
+    mins === 1 ? "" : "s"
+  }`;
+};
+
 export const isExternal = (url: string) => /^https?:\/\//i.test(url);

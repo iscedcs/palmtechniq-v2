@@ -7,7 +7,7 @@ import { User } from "@prisma/client";
  * @returns User object or null
  */
 export default async function getUserByEmail(
-  email: string
+  email: string,
 ): Promise<User | null> {
   try {
     const user = await db.user.findUnique({
@@ -18,7 +18,7 @@ export default async function getUserByEmail(
     return user;
   } catch (error) {
     if (process.env.NODE_ENV !== "production") {
-      console.error(`Error fetching user by email ₦{email}:`, error);
+      console.error(`Error fetching user by email ${email}:`, error);
     }
     return null;
   }

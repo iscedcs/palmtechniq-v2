@@ -15,7 +15,7 @@ interface CyberToploaderProps {
 }
 
 export function CyberToploader({
-  color = "linear-gradient(90deg, #00D4FF 0%, #8B5CF6 50%, #F472B6 100%)",
+  color = "linear-gradient(90deg, #00343d 0%, #27ba55 50%, #000000 100%)",
   height = 4,
   showSpinner = false,
   crawlSpeed = 200,

@@ -1,17 +1,21 @@
 import { paystackVerify } from "@/actions/paystack";
 import { db } from "@/lib/db";
 import { notify } from "@/lib/notify";
-import { getIO } from "@/lib/socket";
+import {
+  computeCheckoutTotals,
+  DEFAULT_VAT_RATE,
+} from "@/lib/payments/pricing";
+import { createZoomMeeting } from "@/lib/zoom-integration";
+import { resolveTutorReferralCode } from "@/lib/referral";
+import { sendCRMPurchaseEvent } from "@/lib/meta-conversions";
+import { trackEvent, PLATFORM_EVENTS } from "@/lib/analytics/track";
 
 export async function finalizePaystackByReference(reference: string) {
   const tx = await db.transaction.findFirst({
     where: { transactionId: reference },
-    select: {
-      id: true,
-      userId: true,
-      courseId: true,
-      status: true,
-      amount: true,
+    include: {
+      lineItems: true,
+      promoCode: true,
     },
   });
   if (!tx) return { ok: false, reason: "tx_not_found" };
@@ -23,7 +27,10 @@ export async function finalizePaystackByReference(reference: string) {
   if (v.status !== "success") {
     await db.transaction.update({
       where: { id: tx.id },
-      data: { status: "FAILED", metadata: { verify: v } },
+      data: {
+        status: "FAILED",
+        metadata: { ...((tx.metadata as any) || {}), verify: v },
+      },
     });
     return { ok: false, reason: "failed" };
   }
@@ -32,58 +39,397 @@ export async function finalizePaystackByReference(reference: string) {
     console.log({ v });
   }
 
-  await db.$transaction(async (px) => {
+  // Track successful payment verification
+  trackEvent(PLATFORM_EVENTS.CHECKOUT_COMPLETED, {
+    userId: tx.userId,
+    entityType: "transaction",
+    entityId: tx.id,
+    metadata: { reference, courseId: tx.courseId },
+    value: tx.amount,
+  });
+
+  await db.$transaction(async (px: any) => {
     await px.transaction.update({
       where: { id: tx.id },
       data: {
         status: "COMPLETED",
         paymentId: v.reference,
         paymentDate: new Date(v.paid_at),
-        metadata: { verify: v },
+        metadata: { ...((tx.metadata as any) || {}), verify: v },
       },
     });
 
-    if (tx.courseId) {
-      await px.enrollment.upsert({
-        where: {
-          userId_courseId: { userId: tx.userId, courseId: tx.courseId },
+    const metadata = (v.metadata || tx.metadata || {}) as any;
+    const isMentorshipPayment = metadata?.productType === "MENTORSHIP";
+    if (isMentorshipPayment) {
+      const mentorshipSessionId = metadata?.mentorshipSessionId as
+        | string
+        | undefined;
+      if (mentorshipSessionId) {
+        const session = await px.mentorshipSession.findUnique({
+          where: { id: mentorshipSessionId },
+          include: {
+            student: { select: { email: true, name: true } },
+            tutor: { select: { email: true, name: true } },
+          },
+        });
+
+        if (session) {
+          let meetingUrl = session.meetingUrl;
+
+          // Create Zoom meeting if not already created
+          if (!meetingUrl) {
+            try {
+              const zoomMeeting = await createZoomMeeting({
+                topic: session.title,
+                startTime: session.scheduledAt.toISOString(),
+                duration: session.duration,
+                mentorEmail: session.tutor.email,
+                studentEmail: session.student.email,
+                description: session.description || undefined,
+              });
+              meetingUrl = zoomMeeting.joinUrl;
+
+              // Log Zoom creation for troubleshooting
+              console.log(
+                `[Zoom Meeting Created] Session: ${mentorshipSessionId}, Meeting ID: ${zoomMeeting.meetingId}`,
+              );
+            } catch (error) {
+              // Fallback to manual meeting URL - log error but don't fail the payment
+              console.error(
+                `[Zoom Meeting Creation Failed] Session: ${mentorshipSessionId}, Error: ${error}`,
+              );
+              meetingUrl = null; // Will prompt tutor to add manually
+            }
+          }
+
+          await px.mentorshipSession.update({
+            where: { id: mentorshipSessionId },
+            data: {
+              status: "SCHEDULED",
+              meetingUrl: meetingUrl || undefined,
+              paymentStatus: "PAID",
+              notes: `PAYMENT_CONFIRMED | ${new Date(v.paid_at).toISOString()}`,
+            },
+          });
+
+          // Emit notifications to both student and tutor
+          const tutorShare =
+            tx.tutorShareAmount ?? Number(((tx.amount || 0) * 0.7).toFixed(2));
+
+          await notify.user(session.studentId, {
+            type: "payment",
+            title: "Mentorship Booking Confirmed",
+            message: `Your mentorship session "${session.title}" has been paid. The meeting will start at the scheduled time.`,
+            actionUrl: `/mentorship/session/${mentorshipSessionId}`,
+            actionLabel: "View Session",
+          });
+
+          await notify.user(session.tutorId, {
+            type: "payment",
+            title: "Mentorship Payment Received",
+            message: `Payment received for "${session.title}". You've earned ₦${tutorShare.toLocaleString()}.`,
+            actionUrl: `/tutor/mentorship`,
+            actionLabel: "View Sessions",
+          });
+        }
+      }
+
+      const tutorId = metadata?.tutorUserId as string | undefined;
+      const tutorShare =
+        tx.tutorShareAmount ?? Number(((tx.amount || 0) * 0.7).toFixed(2));
+      if (tutorId && tutorShare > 0) {
+        await px.user.update({
+          where: { id: tutorId },
+          data: {
+            walletBalance: {
+              increment: tutorShare,
+            },
+          },
+        });
+      }
+      return;
+    }
+
+    const groupPurchaseId = metadata.groupPurchaseId ?? tx.groupPurchaseId;
+
+    const isGroupPurchase = Boolean(groupPurchaseId);
+    if (isGroupPurchase) {
+      await px.groupPurchase.update({
+        where: { id: groupPurchaseId },
+        data: {
+          status: "ACTIVE",
+          paidAt: new Date(v.paid_at),
         },
-        create: { userId: tx.userId, courseId: tx.courseId, status: "ACTIVE" },
+      });
+    }
+
+    const courseIds = Array.isArray(metadata.courseIds)
+      ? metadata.courseIds
+      : tx.courseId
+        ? [tx.courseId]
+        : [];
+
+    let lineItems = tx.lineItems;
+    if (!lineItems || lineItems.length === 0) {
+      const courses = await px.course.findMany({
+        where: { id: { in: courseIds } },
+        select: {
+          id: true,
+          basePrice: true,
+          currentPrice: true,
+          price: true,
+          tutor: { select: { userId: true } },
+        },
+      });
+      const promo =
+        tx.promoCode &&
+        tx.promoType &&
+        tx.promoDiscountType &&
+        tx.promoDiscountValue !== null &&
+        tx.promoDiscountValue !== undefined
+          ? {
+              id: tx.promoCode.id,
+              code: tx.promoCode.code,
+              promoType: tx.promoType,
+              discountType: tx.promoDiscountType,
+              discountValue: tx.promoDiscountValue,
+              isGlobal: tx.promoCode.isGlobal,
+              courseId: tx.promoCode.courseId,
+              creatorId: tx.promoCode.creatorId,
+            }
+          : null;
+
+      // Resolve referral if present on the transaction
+      const referralTutorId = tx.referralCode
+        ? await resolveTutorReferralCode(tx.referralCode)
+        : null;
+
+      const totals = computeCheckoutTotals({
+        courses: courses.map((course: any) => ({
+          id: course.id,
+          tutorId: course.tutor.userId,
+          basePrice: course.basePrice,
+          currentPrice: course.currentPrice,
+          price: course.price,
+        })),
+        promo,
+        vatRate: DEFAULT_VAT_RATE,
+        referralTutorId,
+      });
+
+      await px.transaction.update({
+        where: { id: tx.id },
+        data: {
+          subtotalAmount: totals.subtotalAmount,
+          discountAmount: totals.discountAmount,
+          vatAmount: totals.vatAmount,
+          tutorShareAmount: totals.tutorShareAmount,
+          platformShareAmount: totals.platformShareAmount,
+        },
+      });
+
+      lineItems = await Promise.all(
+        totals.lineItems.map((item) =>
+          px.transactionLineItem.create({
+            data: {
+              transactionId: tx.id,
+              courseId: item.courseId,
+              tutorId: item.tutorId,
+              basePrice: item.basePrice,
+              discountedPrice: item.discountedPrice,
+              discountAmount: item.discountAmount,
+              vatAmount: item.vatAmount,
+              totalAmount: item.totalAmount,
+              tutorShareAmount: item.tutorShareAmount,
+              platformShareAmount: item.platformShareAmount,
+              isReferralPurchase: item.isReferralPurchase,
+              promoCodeId: item.promoCodeId ?? undefined,
+              promoType: item.promoType,
+              promoDiscountType: item.promoDiscountType,
+              promoDiscountValue: item.promoDiscountValue ?? undefined,
+            },
+          }),
+        ),
+      );
+    }
+
+    if (!isGroupPurchase && courseIds.length > 0) {
+      for (const courseId of courseIds) {
+        await px.enrollment.upsert({
+          where: {
+            userId_courseId: { userId: tx.userId, courseId },
+          },
+          create: {
+            userId: tx.userId,
+            courseId,
+            status: "ACTIVE",
+            enrolledAt: new Date(),
+          },
+          update: {},
+        });
+      }
+
+      await px.cartItem.deleteMany({
+        where: {
+          userId: tx.userId,
+          courseId: { in: courseIds },
+        },
+      });
+    }
+
+    if (tx.vatAmount && tx.vatAmount > 0) {
+      await px.vatLedger.upsert({
+        where: { transactionId: tx.id },
+        create: {
+          transactionId: tx.id,
+          amount: tx.vatAmount,
+          currency: tx.currency,
+        },
         update: {},
       });
     }
 
-    const user = await px.user.findUnique({
-      where: { id: tx.userId },
-      select: { role: true },
-    });
-    if (user && user.role === "USER") {
-      await px.user.update({
+    if (tx.promoCodeId) {
+      const existingRedemption = await px.promoRedemption.findFirst({
+        where: { promoCodeId: tx.promoCodeId, transactionId: tx.id },
+        select: { id: true },
+      });
+      if (!existingRedemption) {
+        await px.promoRedemption.create({
+          data: {
+            promoCodeId: tx.promoCodeId,
+            userId: tx.userId,
+            transactionId: tx.id,
+            courseId: tx.courseId ?? undefined,
+          },
+        });
+      }
+    }
+
+    if (lineItems && lineItems.length > 0) {
+      for (const item of lineItems) {
+        await px.tutorEarning.create({
+          data: {
+            tutorId: item.tutorId,
+            transactionId: tx.id,
+            transactionLineItemId: item.id,
+            courseId: item.courseId,
+            amount: item.tutorShareAmount,
+            splitPercent: item.isReferralPurchase
+              ? 0.5
+              : item.promoType === "PLATFORM"
+                ? 0.2
+                : item.promoType === "INSTRUCTOR"
+                  ? 0.5
+                  : 0.2,
+            status: "AVAILABLE",
+          },
+        });
+
+        await px.user.update({
+          where: { id: item.tutorId },
+          data: {
+            walletBalance: {
+              increment: item.tutorShareAmount,
+            },
+          },
+        });
+      }
+    }
+
+    if (!isGroupPurchase) {
+      const user = await px.user.findUnique({
         where: { id: tx.userId },
-        data: { role: "STUDENT" },
+        select: { role: true },
       });
-      await px.student.upsert({
-        where: { userId: tx.userId },
-        update: {},
-        create: { userId: tx.userId, interests: [], goals: [] },
-      });
+      if (user && user.role === "USER") {
+        await px.user.update({
+          where: { id: tx.userId },
+          data: { role: "STUDENT" },
+        });
+        await px.student.upsert({
+          where: { userId: tx.userId },
+          update: {},
+          create: { userId: tx.userId, interests: [], goals: [] },
+        });
+      }
     }
   });
 
-  try {
-    const io = getIO();
-    if (io) {
-      io.to(`user:${tx.userId}`).emit("auth:refresh");
+  const metadata = (v.metadata || tx.metadata || {}) as any;
+  if (metadata?.productType === "MENTORSHIP") {
+    await notify.user(tx.userId, {
+      type: "success",
+      title: "Mentorship Booking Confirmed",
+      message: "Payment successful. Your mentorship booking is now confirmed.",
+      actionUrl: "/student/mentorship",
+      actionLabel: "View Sessions",
+      metadata: { category: "mentorship_payment_success", reference },
+    });
 
-      const sockets = await io.in(`user:${tx.userId}`).fetchSockets();
-      sockets.forEach((s) => {
-        s.leave(`role:USER`);
-        s.join(`role:STUDENT`);
-        if (tx.courseId) s.join(`course:${tx.courseId}`);
+    if (metadata?.tutorUserId) {
+      await notify.user(metadata.tutorUserId, {
+        type: "payment",
+        title: "New Mentorship Booking",
+        message: "A new mentorship session has been paid and scheduled.",
+        actionUrl: "/tutor/mentorship",
+        actionLabel: "Manage Sessions",
+        metadata: { category: "mentorship_booking_paid", reference },
       });
     }
-  } catch (error) {
-    console.warn("socket post-finalize error", error);
+    return { ok: true, mentorshipSessionId: metadata?.mentorshipSessionId };
+  }
+
+  const groupPurchaseId = metadata.groupPurchaseId ?? tx.groupPurchaseId;
+  if (groupPurchaseId) {
+    const groupPurchase = await db.groupPurchase.findUnique({
+      where: { id: groupPurchaseId },
+      select: { inviteCode: true },
+    });
+
+    await notify.user(tx.userId, {
+      type: "success",
+      title: "Group Purchase Started",
+      message:
+        "Your group is live. Share your invite link to unlock access faster.",
+      actionUrl: groupPurchase?.inviteCode
+        ? `/group/${groupPurchase.inviteCode}`
+        : "/student",
+      actionLabel: "View Group",
+      metadata: { category: "group_purchase_started", courseId: tx.courseId },
+    });
+    return { ok: true, courseId: tx.courseId, groupPurchaseId };
+  }
+
+  const course = await db.course.findUnique({
+    where: { id: tx.courseId! },
+    select: {
+      title: true,
+      tutor: { select: { userId: true } },
+    },
+  });
+
+  // Send Purchase event to Meta Conversions API (non-blocking)
+  const buyer = await db.user.findUnique({
+    where: { id: tx.userId },
+    select: { email: true, name: true, phone: true },
+  });
+  if (buyer?.email) {
+    sendCRMPurchaseEvent(
+      {
+        email: buyer.email,
+        phone: buyer.phone ?? undefined,
+        firstName: buyer.name?.split(" ")[0],
+        lastName: buyer.name?.split(" ").slice(1).join(" ") || undefined,
+        externalId: tx.userId,
+      },
+      {
+        currency: tx.currency ?? "NGN",
+        value: tx.amount,
+        contentName: course?.title ?? "Course Purchase",
+      },
+    ).catch(() => {});
   }
 
   await notify.user(tx.userId, {
@@ -92,8 +438,18 @@ export async function finalizePaystackByReference(reference: string) {
     message: "Your enrollment is confirmed. Welcome aboard!",
     actionUrl: "/student",
     actionLabel: "Go to Dashboard",
-    metadata: { courseId: tx.courseId, reference },
+    metadata: { category: "payment_success", courseId: tx.courseId, reference },
   });
+
+  // Notify only the course owner (tutor), not all tutors
+  if (course?.tutor?.userId) {
+    await notify.user(course.tutor.userId, {
+      type: "payment",
+      title: "Course Purchase",
+      message: `Your course ${course.title} has been purchased`,
+      metadata: { category: "payment_received", courseId: tx.courseId },
+    });
+  }
 
   return { ok: true, courseId: tx.courseId };
 }

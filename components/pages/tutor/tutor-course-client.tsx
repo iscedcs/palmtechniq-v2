@@ -54,7 +54,7 @@ export function TutorCoursesClient({ courses }: { courses: any[] }) {
                 show: {
                   opacity: 1,
                   transition: {
-                    staggerChildren: 0.1, // 👈 animate cards one by one
+                    staggerChildren: 0.1,
                   },
                 },
               }}>

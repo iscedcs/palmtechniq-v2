@@ -1,27 +1,17 @@
 "use client";
 
-import { motion } from "framer-motion";
-import { Card, CardContent } from "@/components/ui/card";
-import { Badge } from "@/components/ui/badge";
-import { Button } from "@/components/ui/button";
-import { Avatar, AvatarImage, AvatarFallback } from "@/components/ui/avatar";
+import { addToCart } from "@/actions/cart";
+import { trackAddToCart } from "@/lib/fbpixel";
 import {
-  Play,
-  TrendingUp,
-  Users,
-  Clock,
-  Star,
-  Award,
-  MapPin,
-  Search,
-} from "lucide-react";
-import React, { useState } from "react";
-import {
-  FlashSaleTimer,
   CoursePreviewModal,
+  FlashSaleTimer,
+  TrustSignals,
 } from "@/components/conversion-features";
 import { DynamicPriceDisplay } from "@/components/dynamic-pricing";
-import { formatTime, generateRandomAvatar } from "@/lib/utils";
+import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
+import { Badge } from "@/components/ui/badge";
+import { Button } from "@/components/ui/button";
+import { Card, CardContent } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import {
   Select,
@@ -30,22 +20,42 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
+import { formatDurationMinutes, generateRandomAvatar } from "@/lib/utils";
+import { motion } from "framer-motion";
+import {
+  Clock,
+  Filter,
+  Play,
+  Search,
+  ShoppingCart,
+  Star,
+  TrendingUp,
+  Users,
+  X,
+} from "lucide-react";
+import { useSession } from "next-auth/react";
 import Link from "next/link";
+import { useRouter } from "next/navigation";
+import { useState } from "react";
+import { toast } from "sonner";
 
 export default function CoursesGrid({
   courses,
   categories,
 }: {
-  courses: any[];
+  courses: CourseItem[];
   categories: { id: string; name: string }[];
 }) {
+  const { data: session, status } = useSession();
+  const router = useRouter();
+
   const [searchTerm, setSearchTerm] = useState("");
   const [selectedCategory, setSelectedCategory] = useState("all");
   const [sortBy, setSortBy] = useState("popular");
-  const [showGroupBuying, setShowGroupBuying] = useState<number | null>(null);
+  const [showGroupBuying, setShowGroupBuying] = useState<string | null>(null);
   const [previewModal, setPreviewModal] = useState<{
     isOpen: boolean;
-    course: any;
+    course: CourseItem | null;
   }>({ isOpen: false, course: null });
 
   const filteredCourses = courses
@@ -54,8 +64,11 @@ export default function CoursesGrid({
       const matchesSearch =
         course.title.toLowerCase().includes(searchLower) ||
         course.description.toLowerCase().includes(searchLower) ||
-        (course.tags || []).some((tag: string) =>
-          tag.toLowerCase().includes(searchLower)
+        (course.tags || []).some((tag: any) =>
+          (tag?.name || tag || "")
+            .toString()
+            .toLowerCase()
+            .includes(searchLower),
         ) ||
         (course.tutor?.user?.name || "").toLowerCase().includes(searchLower);
       const matchesCategory =
@@ -65,85 +78,175 @@ export default function CoursesGrid({
 
       return matchesSearch && matchesCategory;
     })
-    .sort((a: any, b: any) => {
+    .sort((a, b) => {
+      // Helper to get display price (currentPrice if > 0, else basePrice)
+      const getDisplayPrice = (course: CourseItem) =>
+        course.currentPrice && course.currentPrice > 0
+          ? course.currentPrice
+          : (course.basePrice ?? course.price ?? 0);
+
       switch (sortBy) {
         case "rating":
-          return (b.averageRating || 0) - (a.averageRating || 0);
+          return b.averageRating! - a.averageRating!;
         case "price-low":
-          return (a.currentPrice || 0) - (b.currentPrice || 0);
+          return getDisplayPrice(a) - getDisplayPrice(b);
         case "price-high":
-          return (b.currentPrice || 0) - (a.currentPrice || 0);
+          return getDisplayPrice(b) - getDisplayPrice(a);
         case "popular":
         default:
-          return (b.totalStudents || 0) - (a.totalStudents || 0);
+          return b.totalStudents! - a.totalStudents!;
       }
     });
 
+  const clearFilters = () => {
+    setSearchTerm("");
+    setSelectedCategory("all");
+    setSortBy("popular");
+  };
+
+  const hasActiveFilters =
+    searchTerm || selectedCategory !== "all" || sortBy !== "popular";
+
   return (
-    <div className="">
-      <section className="min-h-screen bg-background">
-        <section className="py-8 border-b border-white/10">
-          <div className="container mx-auto px-6">
-            <div className="flex flex-col lg:flex-row gap-6 items-center">
-              <div className="relative flex-1 max-w-md">
-                <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400 w-5 h-5" />
-                <Input
-                  placeholder="Search courses, instructors, or topics..."
-                  value={searchTerm}
-                  onChange={(e) => setSearchTerm(e.target.value)}
-                  className="pl-10 glass-card border-white/20 focus:border-neon-blue/50"
-                />
-              </div>
+    <div className="min-h-screen bg-background">
+      {/* Hero Section with Search */}
+      <section className="pt-32 pb-8 relative overflow-hidden">
+        <div className="absolute inset-0 cyber-grid opacity-20" />
+        <motion.div
+          className="absolute top-20 left-20 w-72 h-72 bg-neon-blue/10 rounded-full blur-3xl"
+          animate={{
+            scale: [1, 1.2, 1],
+            opacity: [0.3, 0.6, 0.3],
+          }}
+          transition={{
+            duration: 4,
+            repeat: Number.POSITIVE_INFINITY,
+            ease: "easeInOut",
+          }}
+        />
 
-              <div className="flex gap-4">
-                <Select
-                  value={selectedCategory}
-                  onValueChange={setSelectedCategory}>
-                  <SelectTrigger className="w-40 glass-card border-white/20">
-                    <SelectValue placeholder="Category" />
-                  </SelectTrigger>
-                  <SelectContent>
-                    {categories.map((cat) => (
-                      <SelectItem key={cat.id} value={cat.name}>
-                        {cat.name}
-                      </SelectItem>
-                    ))}
-                  </SelectContent>
-                </Select>
-
-                <Select value={sortBy} onValueChange={setSortBy}>
-                  <SelectTrigger className="w-40 glass-card border-white/20">
-                    <SelectValue placeholder="Sort by" />
-                  </SelectTrigger>
-                  <SelectContent>
-                    <SelectItem value="popular">Most Popular</SelectItem>
-                    <SelectItem value="rating">Highest Rated</SelectItem>
-                    <SelectItem value="price-low">
-                      Price: Low to High
-                    </SelectItem>
-                    <SelectItem value="price-high">
-                      Price: High to Low
-                    </SelectItem>
-                  </SelectContent>
-                </Select>
-              </div>
+        <div className="container mx-auto px-6 relative z-10">
+          <motion.div
+            initial={{ opacity: 0, y: 30 }}
+            animate={{ opacity: 1, y: 0 }}
+            transition={{ duration: 0.8 }}
+            className="text-center mb-8">
+            <h1 className="text-4xl md:text-6xl font-bold mb-4">
+              <span className="text-gradient">Discover</span>{" "}
+              <span className="text-white">Courses</span>
+            </h1>
+            <p className="text-lg text-gray-300 max-w-2xl mx-auto mb-8">
+              From crash courses to masterclasses - find the perfect learning
+              path for your goals{" "}
+            </p>
+            <TrustSignals />
+            {/* Search Bar - Prominent */}
+            <div className="max-w-2xl mx-auto relative">
+              <Search className="absolute left-4 top-1/2 transform -translate-y-1/2 text-gray-400 w-5 h-5" />
+              <Input
+                placeholder="Search courses, instructors, or topics..."
+                value={searchTerm}
+                onChange={(e) => setSearchTerm(e.target.value)}
+                className="pl-12 pr-4 py-6 text-lg glass-card border-white/20 focus:border-neon-blue/50 rounded-xl"
+              />
+              {searchTerm && (
+                <button
+                  onClick={() => setSearchTerm("")}
+                  className="absolute right-4 top-1/2 transform -translate-y-1/2 text-gray-400 hover:text-white">
+                  <X className="w-5 h-5" />
+                </button>
+              )}
             </div>
-          </div>
-        </section>
+          </motion.div>
+
+          {/* Category Chips */}
+          <motion.div
+            initial={{ opacity: 0, y: 20 }}
+            animate={{ opacity: 1, y: 0 }}
+            transition={{ duration: 0.6, delay: 0.2 }}
+            className="flex flex-wrap justify-center gap-3 mb-6">
+            <button
+              onClick={() => setSelectedCategory("all")}
+              className={`px-4 py-2 rounded-full text-sm font-medium transition-all duration-300 ${
+                selectedCategory === "all"
+                  ? "bg-neon-blue text-white shadow-lg shadow-neon-blue/30"
+                  : "bg-white/10 text-gray-300 hover:bg-white/20 border border-white/10"
+              }`}>
+              All Courses
+            </button>
+            {categories.map((cat) => (
+              <button
+                key={cat.id}
+                onClick={() => setSelectedCategory(cat.name)}
+                className={`px-4 py-2 rounded-full text-sm font-medium transition-all duration-300 ${
+                  selectedCategory === cat.name
+                    ? "bg-neon-blue text-white shadow-lg shadow-neon-blue/30"
+                    : "bg-white/10 text-gray-300 hover:bg-white/20 border border-white/10"
+                }`}>
+                {cat.name}
+              </button>
+            ))}
+          </motion.div>
+
+          {/* Sort & Filter Row */}
+          <motion.div
+            initial={{ opacity: 0 }}
+            animate={{ opacity: 1 }}
+            transition={{ duration: 0.6, delay: 0.3 }}
+            className="flex items-center justify-between max-w-5xl mx-auto">
+            <div className="flex items-center gap-2 text-sm text-gray-400">
+              <span className="font-medium text-white">
+                {filteredCourses.length}
+              </span>
+              <span>courses found</span>
+              {hasActiveFilters && (
+                <button
+                  onClick={clearFilters}
+                  className="ml-2 text-neon-blue hover:underline flex items-center gap-1">
+                  <X className="w-3 h-3" />
+                  Clear filters
+                </button>
+              )}
+            </div>
+            <div className="flex items-center gap-2">
+              <Filter className="w-4 h-4 text-gray-400" />
+              <Select value={sortBy} onValueChange={setSortBy}>
+                <SelectTrigger className="w-44 glass-card border-white/20 text-sm">
+                  <SelectValue placeholder="Sort by" />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="popular">Most Popular</SelectItem>
+                  <SelectItem value="rating">Highest Rated</SelectItem>
+                  <SelectItem value="price-low">Price: Low → High</SelectItem>
+                  <SelectItem value="price-high">Price: High → Low</SelectItem>
+                </SelectContent>
+              </Select>
+            </div>
+          </motion.div>
+        </div>
+      </section>
+
+      {/* Courses Grid */}
+      <section className="pb-20">
         <div className="container mx-auto px-6">
           <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-8">
             {filteredCourses.length === 0 ? (
               <div className="col-span-full text-center text-gray-400 py-16">
-                No courses match your search/filter.
+                <p className="text-lg mb-2">No courses match your search</p>
+                <button
+                  onClick={clearFilters}
+                  className="text-neon-blue hover:underline">
+                  Clear all filters
+                </button>
               </div>
             ) : (
-              filteredCourses.map((course: any, index: number) => (
+              filteredCourses.map((course, index) => (
                 <motion.div
                   key={course.id}
                   initial={{ opacity: 0, y: 50 }}
                   animate={{ opacity: 1, y: 0 }}
                   transition={{ duration: 0.6, delay: index * 0.1 }}
-                  whileHover={{ scale: 1.05, rotateY: 5 }}
+                  whileHover={{ scale: 1.02 }}
                   className="group cursor-pointer">
                   <Card className="glass-card hover-glow h-full border-white/10 overflow-hidden relative">
                     <div className="relative">
@@ -182,112 +285,178 @@ export default function CoursesGrid({
                       </div>
 
                       <div className="absolute top-4 right-4 flex flex-col gap-2 items-end">
-                        {course.isFlashSale && course.flashSaleEnd && (
-                          <FlashSaleTimer endTime={course.flashSaleEnd} />
-                        )}
+                        {course.isFlashSale &&
+                          course.flashSaleEnd &&
+                          new Date(course.flashSaleEnd).getTime() >
+                            Date.now() && (
+                            <FlashSaleTimer endTime={course.flashSaleEnd} />
+                          )}
                       </div>
                     </div>
-                    <Link href={`/courses/${course.id}`}>
-                      <CardContent className="p-6">
-                        <h3 className="text-xl font-bold text-white mb-2 group-hover:text-gradient transition-all duration-300">
-                          {course.title}
-                        </h3>
+                    <CardContent className="p-6">
+                      <h3 className="text-xl font-bold text-white mb-2 group-hover:text-gradient transition-all duration-300">
+                        {course.title}
+                      </h3>
 
-                        <div className="flex items-center mb-4">
-                          <Avatar className="w-8 h-8 mr-3">
-                            <AvatarImage
-                              src={
-                                course.tutor?.user?.image ||
-                                generateRandomAvatar()
-                              }
-                              alt={course.tutor?.user?.name || "Instructor"}
-                            />
-                            <AvatarFallback>
-                              {course.tutor?.user?.name?.charAt(0) || "?"}
-                            </AvatarFallback>
-                          </Avatar>
-                          <span className="text-gray-300 text-sm">
-                            {course.tutor?.user?.name}
-                          </span>
-                        </div>
-
-                        <p className="text-gray-400 text-sm mb-4">
-                          {course.description.slice(0, 120)}...
-                        </p>
-
-                        {/* Social Proof */}
-                        <div className="flex items-center justify-between mb-4 text-sm">
-                          <div className="flex items-center text-yellow-400">
-                            <Star className="w-4 h-4 fill-current mr-1" />
-                            {course.averageRating || 0}
-                          </div>
-                          <div className="flex items-center text-gray-400">
-                            <Users className="w-4 h-4 mr-1" />
-                            {course.totalStudents || 0}
-                          </div>
-                          <div className="flex items-center text-gray-400">
-                            <Clock className="w-4 h-4 mr-1" />
-                            {course.duration || 0} mins
-                          </div>
-                        </div>
-
-                        {/* Tags */}
-                        <div className="flex flex-wrap gap-2 mb-4">
-                          {course.tags?.map((tag: any) => (
-                            <Badge
-                              key={tag.id}
-                              variant="outline"
-                              className="text-xs border-white/20 text-gray-300">
-                              {tag.name}
-                            </Badge>
-                          ))}
-                        </div>
-
-                        {/* Pricing */}
-                        <div className="mb-4">
-                          <DynamicPriceDisplay
-                            priceChangeIn={
-                              course.priceChangeIn ||
-                              (course.flashSaleEnd ? formatTime : 0)
+                      <div className="flex items-center mb-4">
+                        <Avatar className="w-8 h-8 mr-3">
+                          <AvatarImage
+                            src={
+                              course.tutor?.user?.image ||
+                              generateRandomAvatar()
                             }
-                            basePrice={course.basePrice}
-                            currentPrice={course.currentPrice}
-                            demandLevel={course.demandLevel}
+                            alt={course.tutor?.user?.name || "Instructor"}
                           />
-                        </div>
+                          <AvatarFallback>
+                            {course.tutor?.user?.name?.charAt(0) || "?"}
+                          </AvatarFallback>
+                        </Avatar>
+                        <span className="text-gray-300 text-sm">
+                          {course.tutor?.user?.name}
+                        </span>
+                      </div>
 
-                        {/* Group Buying Option */}
-                        {course.groupBuyingEnabled && (
-                          <div className="mb-4">
-                            <Button
-                              variant="outline"
-                              size="sm"
-                              className="w-full border-yellow-500/30 text-yellow-400 hover:bg-yellow-500/10 bg-transparent"
-                              onClick={() =>
-                                setShowGroupBuying(
-                                  showGroupBuying === course.id
-                                    ? null
-                                    : course.id
+                      <p className="text-gray-400 text-sm mb-4">
+                        {course.description.slice(0, 120)}...
+                      </p>
+
+                      {/* Social Proof */}
+                      <div className="flex items-center justify-between mb-4 text-sm">
+                        <div className="flex items-center text-yellow-400">
+                          <Star className="w-4 h-4 fill-current mr-1" />
+                          {course.averageRating}
+                        </div>
+                        <div className="flex items-center text-gray-400">
+                          <Users className="w-4 h-4 mr-1" />
+                          {course.enrollments || 0}
+                        </div>
+                        <div className="flex items-center text-gray-400">
+                          <Clock className="w-4 h-4 mr-1" />
+                          {formatDurationMinutes(course.duration!)}
+                        </div>
+                      </div>
+
+                      {/* Tags */}
+                      <div className="flex flex-wrap gap-2 mb-4">
+                        {course.tags?.map((tag) => (
+                          <Badge
+                            key={tag.id}
+                            variant="outline"
+                            className="text-xs border-white/20 text-gray-300">
+                            {tag.name}
+                          </Badge>
+                        ))}
+                      </div>
+
+                      {/* Pricing */}
+                      <div className="mb-4">
+                        <DynamicPriceDisplay
+                          priceChangeIn={
+                            course.flashSaleEnd
+                              ? Math.max(
+                                  0,
+                                  (new Date(course.flashSaleEnd).getTime() -
+                                    Date.now()) /
+                                    60000,
                                 )
-                              }>
-                              <Users className="w-4 h-4 mr-2" />
-                              Group Buying Available - Save up to 50%!
-                            </Button>
-                          </div>
-                        )}
-                        <div className="flex items-center justify-between">
-                          <Button className="flex-1 bg-gradient-to-r from-neon-blue to-neon-purple text-white mr-2">
-                            Enroll Now
+                              : null
+                          }
+                          basePrice={course.basePrice}
+                          currentPrice={course.currentPrice}
+                          demandLevel={course.demandLevel}
+                        />
+                      </div>
+
+                      {/* Group Buying Option */}
+                      {course.groupBuyingEnabled && (
+                        <div className="mb-4">
+                          <Button
+                            variant="outline"
+                            size="sm"
+                            className="w-full border-yellow-500/30 text-yellow-400 hover:bg-yellow-500/10 bg-transparent"
+                            onClick={() =>
+                              setShowGroupBuying(
+                                showGroupBuying === course.id
+                                  ? null
+                                  : course.id,
+                              )
+                            }>
+                            <Users className="w-4 h-4 mr-2" />
+                            Group Buying Available - Save up to 50%!
                           </Button>
+                        </div>
+                      )}
+                      <div className="flex items-center gap-2 justify-between">
+                        <Button
+                          asChild
+                          className="flex-1 bg-gradient-to-r from-neon-blue to-neon-purple text-white mr-2">
+                          <Link href={`/courses/${course.id}`}>Enroll Now</Link>
+                        </Button>
+                        {course.groupBuyingEnabled && (
                           <Button
                             variant="outline"
                             size="icon"
-                            className="border-white/20 text-white hover:bg-white/10 bg-transparent">
+                            className="border-yellow-500/30 text-yellow-400 hover:bg-yellow-500/10 bg-transparent"
+                            title="Group buying available">
                             <Users className="w-4 h-4" />
                           </Button>
-                        </div>
-                      </CardContent>
-                    </Link>
+                        )}
+                        <motion.button
+                          whileTap={{ scale: 0.9 }}
+                          onClick={async () => {
+                            if (status === "unauthenticated") {
+                              toast(
+                                "Please sign in to add items to your cart.",
+                                {
+                                  description:
+                                    "Sign in or create an account to continue.",
+                                },
+                              );
+                              router.push("/login");
+                              return;
+                            }
+
+                            try {
+                              const res = await addToCart(course.id);
+                              if (res?.success) {
+                                trackAddToCart({
+                                  content_ids: [course.id],
+                                  content_name: course.title,
+                                  content_type: "product",
+                                  currency: "NGN",
+                                  value:
+                                    course.currentPrice ?? course.price ?? 0,
+                                });
+                                toast.success(
+                                  `${course.title} added to your cart`,
+                                  {
+                                    description:
+                                      "View cart or continue shopping.",
+                                  },
+                                );
+                                // Notify other UI (e.g. cart drawer) to refresh
+                                if (typeof window !== "undefined") {
+                                  window.dispatchEvent(
+                                    new Event("cart-updated"),
+                                  );
+                                }
+                              } else {
+                                toast.error(
+                                  res?.message || "Failed to add to cart",
+                                );
+                              }
+                            } catch (err) {
+                              console.error(err);
+                              toast.error(
+                                "Something went wrong while adding to cart",
+                              );
+                            }
+                          }}
+                          className=" border rounded-lg p-3 border-white/20 text-white bg-transparent hover:bg-white/10 flex items-center justify-center">
+                          <ShoppingCart className="w-4 h-4" />
+                        </motion.button>
+                      </div>
+                    </CardContent>
                   </Card>
                 </motion.div>
               ))

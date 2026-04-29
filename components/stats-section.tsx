@@ -70,7 +70,7 @@ export function StatsSection() {
   const stats = [
     {
       icon: Users,
-      value: 1000,
+      value: 200,
       label: "Active Learners",
       suffix: "+",
       color: "from-neon-blue to-cyan-400",
@@ -91,7 +91,7 @@ export function StatsSection() {
     },
     {
       icon: Star,
-      value: 4.9,
+      value: 4.5,
       label: "Average Rating",
       suffix: "/5",
       color: "from-neon-orange to-yellow-400",
@@ -103,19 +103,21 @@ export function StatsSection() {
       <div className="absolute inset-0 bg-gradient-to-r from-neon-blue/5 via-transparent to-neon-purple/5" />
 
       <div className="container mx-auto px-6 relative z-10">
-        <motion.div
+        {/* <motion.div
           initial={{ opacity: 0, y: 30 }}
           whileInView={{ opacity: 1, y: 0 }}
           transition={{ duration: 0.8 }}
           viewport={{ once: true }}
           className="text-center mb-16">
           <h2 className="text-4xl md:text-5xl font-bold text-white mb-4">
-            Trusted by <span className="text-gradient">Thousands</span>
+            Trusted by{" "}
+            <span className="text-gradient">Professionals & Thousands</span>
           </h2>
           <p className="text-xl text-gray-300">
-            Join the fastest-growing learning community in the world
+            Join thousands of learners and trusted by industry professionals
+            worldwide
           </p>
-        </motion.div>
+        </motion.div> */}
 
         <div className="grid grid-cols-2 md:grid-cols-4 gap-8 md:gap-12">
           {stats.map((stat, index) => (

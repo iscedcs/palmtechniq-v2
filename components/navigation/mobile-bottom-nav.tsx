@@ -4,21 +4,18 @@ import type React from "react";
 
 import { useState, useEffect } from "react";
 import { motion } from "framer-motion";
-import { usePathname } from "next/navigation";
+import { usePathname, useRouter } from "next/navigation";
 import Link from "next/link";
 import {
   Home,
   BookOpen,
   Search,
   User,
-  ShoppingCart,
   Settings,
   BarChart3,
   Users,
 } from "lucide-react";
-import { Badge } from "@/components/ui/badge";
 import type { UserRole } from "@/types/user";
-import { useCartStore } from "@/lib/store/cart-store";
 import { useNotificationsStore } from "@/lib/store/notifications-store";
 import { useSession } from "next-auth/react";
 
@@ -27,8 +24,8 @@ interface NavItem {
   label: string;
   icon: React.ComponentType<{ className?: string }>;
   href: string;
-  badge?: number;
   roles: UserRole[];
+  isSpecial?: boolean;
 }
 
 const navigationItems: NavItem[] = [
@@ -37,21 +34,22 @@ const navigationItems: NavItem[] = [
     label: "Home",
     icon: Home,
     href: "/",
-    roles: ["USER", "STUDENT", "TUTOR", "ADMIN"],
+    roles: ["USER", "STUDENT", "MENTOR", "TUTOR", "ADMIN"],
   },
   {
     id: "courses",
     label: "Courses",
     icon: BookOpen,
     href: "/courses",
-    roles: ["USER", "STUDENT", "TUTOR", "ADMIN"],
+    roles: ["USER", "STUDENT", "MENTOR", "TUTOR", "ADMIN"],
   },
   {
     id: "search",
     label: "Search",
     icon: Search,
     href: "/search",
-    roles: ["USER", "STUDENT", "TUTOR", "ADMIN"],
+    roles: ["USER", "STUDENT", "MENTOR", "TUTOR", "ADMIN"],
+    isSpecial: true,
   },
   {
     id: "dashboard",
@@ -65,7 +63,7 @@ const navigationItems: NavItem[] = [
     label: "Dashboard",
     icon: Users,
     href: "/tutor",
-    roles: ["TUTOR"],
+    roles: ["MENTOR", "TUTOR"],
   },
   {
     id: "admin-dashboard",
@@ -79,28 +77,22 @@ const navigationItems: NavItem[] = [
     label: "Profile",
     icon: User,
     href: "/profile",
-    roles: ["USER", "STUDENT", "TUTOR", "ADMIN"],
+    roles: ["USER", "STUDENT", "MENTOR", "TUTOR", "ADMIN"],
   },
 ];
-
-interface MobileBottomNavProps {
-  userRole: UserRole;
-}
 
 export function MobileBottomNav() {
   const { data: session, status } = useSession();
   const pathname = usePathname();
+  const router = useRouter();
   const [isVisible, setIsVisible] = useState(true);
   const [lastScrollY, setLastScrollY] = useState(0);
 
-  const { getTotalItems } = useCartStore();
-  const { getUnreadCount }: any = useNotificationsStore();
+  const unreadNotifications = useNotificationsStore(
+    (state) => state.unreadCount,
+  );
 
   const userRole = (session?.user.role || "USER") as UserRole;
-  const cartItems = getTotalItems();
-  const unreadNotifications = useNotificationsStore(
-    (state) => state.unreadCount
-  );
 
   useEffect(() => {
     const handleScroll = () => {
@@ -120,25 +112,11 @@ export function MobileBottomNav() {
   }, [lastScrollY]);
 
   // Filter navigation items based on user role
-  let visibleItems = navigationItems
-    .filter((item) => item.roles.includes(userRole))
-    .slice(0, 5); // Limit to 5 items for mobile
+  let visibleItems = navigationItems.filter((item) =>
+    item.roles.includes(userRole),
+  );
 
-  // Add cart and notifications for appropriate roles
-  if (userRole === "STUDENT" || userRole === "USER") {
-    // Replace one item with cart if not already present
-    if (!visibleItems.find((item) => item.id === "cart")) {
-      visibleItems[visibleItems.length - 1] = {
-        id: "cart",
-        label: "Cart",
-        icon: ShoppingCart,
-        href: "/cart",
-        badge: cartItems,
-        roles: ["USER", "STUDENT"],
-      };
-    }
-  }
-
+  // Handle unauthenticated state
   if (status !== "authenticated") {
     visibleItems = visibleItems.map((item) =>
       item.id === "profile"
@@ -149,7 +127,7 @@ export function MobileBottomNav() {
             href: "/login",
             roles: ["USER"],
           }
-        : item
+        : item,
     );
   }
 
@@ -157,7 +135,12 @@ export function MobileBottomNav() {
     if (href === "/") {
       return pathname === "/";
     }
-    return pathname.startsWith(href);
+    return pathname?.startsWith(href);
+  };
+
+  const handleSearchClick = (e: React.MouseEvent) => {
+    e.preventDefault();
+    router.push("/search");
   };
 
   return (
@@ -173,9 +156,28 @@ export function MobileBottomNav() {
         transition={{ duration: 0.3, ease: "easeInOut" }}>
         <div className="glass-card border-t border-white/10 backdrop-blur-2xl">
           <div className="flex items-center justify-around px-2 py-2">
-            {visibleItems.map((item, index) => {
+            {visibleItems.map((item) => {
               const Icon = item.icon;
               const active = isActive(item.href);
+
+              // Handle special search item
+              if (item.isSpecial) {
+                return (
+                  <button
+                    key={item.id}
+                    onClick={handleSearchClick}
+                    className="relative flex flex-col items-center justify-center p-2 min-w-0 flex-1">
+                    <motion.div
+                      className="relative flex flex-col items-center justify-center transition-all duration-200 text-gray-400"
+                      whileTap={{ scale: 0.95 }}>
+                      <Icon className="w-5 h-5 text-gray-400" />
+                      <span className="text-xs mt-1 font-medium text-gray-400 truncate max-w-full">
+                        {item.label}
+                      </span>
+                    </motion.div>
+                  </button>
+                );
+              }
 
               return (
                 <Link
@@ -183,7 +185,7 @@ export function MobileBottomNav() {
                   href={item.href}
                   className="relative flex flex-col items-center justify-center p-2 min-w-0 flex-1">
                   <motion.div
-                    className={`relative flex flex-col items-center justify-center transition-all duration-200 ₦{
+                    className={`relative flex flex-col items-center justify-center transition-all duration-200 ${
                       active ? "text-neon-blue" : "text-gray-400"
                     }`}
                     whileTap={{ scale: 0.95 }}
@@ -203,25 +205,17 @@ export function MobileBottomNav() {
                       />
                     )}
 
-                    {/* Icon with badge */}
+                    {/* Icon with notification badge */}
                     <div className="relative">
                       <Icon
-                        className={`w-5 h-5 transition-colors ₦{
+                        className={`w-5 h-5 transition-colors ${
                           active ? "text-neon-blue" : "text-gray-400"
                         }`}
                       />
 
-                      {/* Badge */}
-                      {item.badge && item.badge > 0 && (
-                        <Badge
-                          variant="destructive"
-                          className="absolute -top-2 -right-2 w-5 h-5 p-0 flex items-center justify-center text-xs bg-red-500 border-0">
-                          {item.badge > 99 ? "99+" : item.badge}
-                        </Badge>
-                      )}
-
-                      {/* Special notification badge */}
+                      {/* Notification badge for profile */}
                       {item.id === "profile" &&
+                        typeof unreadNotifications === "number" &&
                         unreadNotifications > 0 &&
                         status === "authenticated" && (
                           <div className="absolute -top-1 -right-1 w-3 h-3 bg-red-500 rounded-full border-2 border-gray-900" />
@@ -230,7 +224,7 @@ export function MobileBottomNav() {
 
                     {/* Label */}
                     <span
-                      className={`text-xs mt-1 font-medium transition-colors truncate max-w-full ₦{
+                      className={`text-xs mt-1 font-medium transition-colors truncate max-w-full ${
                         active ? "text-neon-blue" : "text-gray-400"
                       }`}>
                       {item.label}

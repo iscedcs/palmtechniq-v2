@@ -10,6 +10,7 @@ export const publicRoutes = [
   "/courses/[slug]", // Individual course pages are public for viewing
   "/mentorship", // External mentorship page is public
   "/apply", // Application page is public
+  "/become-a-tutor",
   "/terms",
   "/privacy",
   "/api/chat",
@@ -18,6 +19,12 @@ export const publicRoutes = [
   "/faq",
   "/podcast",
   "/awareness-program",
+  "/features/ai-interview",
+  "/features/mentorship",
+  "/enroll",
+  "/enroll/verify",
+  "/verify-certificate",
+  "/certificate/[id]",
 ];
 
 /**
@@ -54,15 +61,55 @@ export const protectedRoutes = [
   "/tutor/profile",
   "/tutor/wallet",
   "/tutor/reviews",
+  "/mentor",
+  "/mentor/mentorship",
+  "/mentor/mentorship/schedule",
+  "/mentor/profile",
+  "/mentor/wallet",
+  "/courses/[courseId]/checkout",
+  "/courses/[courseId]/learn",
+  "/courses/[courseId]/learn/[lessonId]",
+  "/courses/[courseId]/quiz",
+  "/courses/[courseId]/quiz/[quizId]",
   "/admin",
+  "/admin/finance",
+  "/admin/users",
+  "/admin/users/[userId]",
+  "/admin/courses",
+  "/admin/advisor",
+  "/admin/applications",
+  "/admin/mentorship",
+  "/admin/settings",
+  "/admin/promotions",
   "/settings",
+  "/tutor/promotions",
+  "/documentation",
+  "/change-password",
+  "/superior",
+  "/superior/testers",
+  "/superior/admins",
+  "/superior/settings",
+  "/analytics",
 ];
 
 /**
  * Admin-only routes
  * @type {string[]}
  */
-export const adminRoutes = ["/admin"];
+export const adminRoutes = [
+  "/admin",
+  "/admin/finance",
+  "/admin/users",
+  "/admin/users/[userId]",
+  "/admin/courses",
+  "/admin/advisor",
+  "/admin/applications",
+  "/admin/mentorship",
+  "/admin/settings",
+  "/admin/promotions",
+  "/analytics",
+  "/admin/analytics",
+];
 
 /**
  * Tutor-only routes
@@ -81,6 +128,18 @@ export const tutorRoutes = [
 ];
 
 /**
+ * Mentor-only routes
+ * @type {string[]}
+ */
+export const mentorRoutes = [
+  "/mentor",
+  "/mentor/mentorship",
+  "/mentor/mentorship/schedule",
+  "/mentor/profile",
+  "/mentor/wallet",
+];
+
+/**
  * Student-only routes
  * @type {string[]}
  */
@@ -92,6 +151,24 @@ export const studentRoutes = [
   "/student/profile",
   "/student/progress",
 ];
+
+/**
+ * Superior-only routes (super admin)
+ * @type {string[]}
+ */
+export const superiorRoutes = [
+  "/superior",
+  "/superior/testers",
+  "/superior/admins",
+  "/superior/settings",
+  "/analytics",
+];
+
+/**
+ * Documentation routes - accessible by TESTER and SUPERIOR only
+ * @type {string[]}
+ */
+export const documentationRoutes = ["/documentation"];
 
 /**
  * Routes that require payment/enrollment
@@ -112,14 +189,22 @@ export const apiAuthPrefix = "/api/auth";
  * The default redirect path after logging in based on user role
  * @type {Record<string, string>}
  */
-export type UserRole = "STUDENT" | "TUTOR" | "ADMIN" | "USER";
-export const DEFAULT_LOGIN_REDIRECTS: Record<UserRole, string> & {
-  USER: string;
-} = {
+export type UserRole =
+  | "STUDENT"
+  | "MENTOR"
+  | "TUTOR"
+  | "ADMIN"
+  | "USER"
+  | "TESTER"
+  | "SUPERIOR";
+export const DEFAULT_LOGIN_REDIRECTS: Record<UserRole, string> = {
   STUDENT: "/student",
+  MENTOR: "/mentor/mentorship",
   TUTOR: "/tutor",
   ADMIN: "/admin",
   USER: "/courses",
+  TESTER: "/documentation",
+  SUPERIOR: "/superior",
 };
 
 /**

@@ -71,8 +71,11 @@ export function LoginForm() {
         await update();
         setSuccess(result.success);
         toast.success(result.success);
-        // router.push(String(result.redirectUrl));
-        router.refresh();
+        if (result.redirectUrl) {
+          router.push(String(result.redirectUrl));
+        } else {
+          router.refresh();
+        }
       }
       setIsLoading(false);
     });

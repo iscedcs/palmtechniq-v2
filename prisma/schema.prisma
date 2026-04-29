@@ -4,63 +4,91 @@ generator client {
 
 datasource db {
   provider = "postgresql"
-  url      = env("DATABASE_URL")
 }
 
 model User {
-  id                String              @id @default(cuid())
-  email             String              @unique
-  name              String
-  avatar            String?
-  role              UserRole            @default(USER)
-  isActive          Boolean             @default(true)
-  createdAt         DateTime            @default(now())
-  updatedAt         DateTime            @updatedAt
-  bio               String?
-  location          String?
-  website           String?
-  socialLinks       Json?
-  preferences       Json?
-  timezone          String?
-  language          String              @default("en")
-  emailVerified     DateTime?
-  phone             String?
-  password          String?
-  isVerified        Boolean             @default(false)
-  verificationToken String              @default("")
-  bankName          String?             @map("bank_name")
-  accountNumber     String?             @map("account_number")
-  subaccountCode    String?             @map("subaccount_code")
-  recipientCode     String?             @map("recipient_code")
-  walletBalance     Float               @default(0)
-  image             String?
-  accounts          Account[]
-  adminProfile      Admin?
-  AIRecommendation  AIRecommendation[]
-  cartItems         CartItem[]
-  certificates      Certificate[]
-  createdCourses    Course[]            @relation("CourseCreator")
-  ownedCourses      Course[]            @relation("CourseOwner")
-  discussionReplies DiscussionReply[]
-  discussions       Discussion[]
-  enrollments       Enrollment[]
-  LearningPath      LearningPath[]
-  mentorSessions    MentorshipSession[] @relation("StudentSessions")
-  tutoredSessions   MentorshipSession[] @relation("TutorSessions")
-  notifications     Notification[]
-  paymentMethod     PaymentMethod[]
-  ProgressMilestone ProgressMilestone[]
-  QuizAnswer        QuizAnswer[]
-  reports           Report[]
-  reviews           Review[]
-  sessions          Session[]
-  studentProfile    Student?
-  submissions       Submission[]
-  transactions      Transaction[]
-  tutorProfile      Tutor?
-  analytics         UserAnalytics[]
-  UserSkill         UserSkill[]
-  wishlist          Wishlist[]
+  id                      String                   @id @default(cuid())
+  email                   String                   @unique
+  name                    String
+  avatar                  String?
+  role                    UserRole                 @default(USER)
+  isActive                Boolean                  @default(true)
+  createdAt               DateTime                 @default(now())
+  updatedAt               DateTime                 @updatedAt
+  bio                     String?
+  location                String?
+  website                 String?
+  socialLinks             Json?
+  preferences             Json?
+  timezone                String?
+  language                String                   @default("en")
+  emailVerified           DateTime?
+  phone                   String?
+  password                String?
+  isVerified              Boolean                  @default(false)
+  verificationToken       String                   @default("")
+  mustChangePassword      Boolean                  @default(false)
+  invitedBy               String?
+  bankName                String?                  @map("bank_name")
+  accountNumber           String?                  @map("account_number")
+  subaccountCode          String?                  @map("subaccount_code")
+  recipientCode           String?                  @map("recipient_code")
+  walletBalance           Float                    @default(0)
+  image                   String?
+  failedLoginAttempts     Int                      @default(0)
+  accountLockedUntil      DateTime?
+  lastLoginAt             DateTime?
+  lastLoginIp             String?
+  lastFailedLoginAt       DateTime?
+  lastFailedLoginIp       String?
+  accounts                Account[]
+  adminProfile            Admin?
+  advisorFollowUps        AdvisorFollowUp[]
+  advisorSessions         AdvisorSession[]
+  AIRecommendation        AIRecommendation[]
+  cartItems               CartItem[]
+  certificates            Certificate[]
+  createdCourses          Course[]                 @relation("CourseCreator")
+  ownedCourses            Course[]                 @relation("CourseOwner")
+  discussionReplies       DiscussionReply[]
+  discussions             Discussion[]
+  enrollments             Enrollment[]
+  groupMemberships        GroupMember[]
+  createdGroupPurchases   GroupPurchase[]          @relation("GroupPurchaseCreator")
+  LearningPath            LearningPath[]
+  mentorshipPackageOrders MentorshipPackageOrder[] @relation("StudentPackageOrders")
+  mentoredPackageOrders   MentorshipPackageOrder[] @relation("TutorPackageOrders")
+  mentorshipPackages      MentorshipPackage[]      @relation("MentorPackages")
+  mentorSessions          MentorshipSession[]      @relation("StudentSessions")
+  tutoredSessions         MentorshipSession[]      @relation("TutorSessions")
+  notifications           Notification[]
+  paymentMethod           PaymentMethod[]
+  ProgressMilestone       ProgressMilestone[]
+  allowedPromoCodes       PromoCodeUser[]
+  createdPromoCodes       PromoCode[]              @relation("PromoCreator")
+  promoRedemptions        PromoRedemption[]
+  QuizAnswer              QuizAnswer[]
+  reports                 Report[]
+  reviewReactions         ReviewReaction[]
+  reviews                 Review[]
+  sessions                Session[]
+  studentProfile          Student?
+  submissions             Submission[]
+  taskSubmissions         TaskSubmission[]
+  transactionLineItems    TransactionLineItem[]
+  transactions            Transaction[]
+  tutorEarnings           TutorEarning[]
+  tutorProfile            Tutor?
+  analytics               UserAnalytics[]
+  UserSkill               UserSkill[]
+  wishlist                Wishlist[]
+  approvedWithdrawals     WithdrawalRequest[]      @relation("WithdrawalApprover")
+  withdrawalRequests      WithdrawalRequest[]
+  programEnrollments      ProgramEnrollment[]
+  promotions              CoursePromotion[]        @relation("PromotionCreator")
+  blogLikes               BlogLike[]               @relation("UserBlogLikes")
+  blogViews               BlogView[]               @relation("UserBlogViews")
+  blogBookmarks           BlogBookmark[]           @relation("UserBlogBookmarks")
 
   @@map("users")
 }
@@ -108,6 +136,7 @@ model Tutor {
   completionRate Float     @default(0)
   availability   Json?
   timezone       String?
+  referralCode   String?   @unique @map("referral_code")
   Course         Course[]
   user           User      @relation(fields: [userId], references: [id], onDelete: Cascade)
 
@@ -126,65 +155,75 @@ model Admin {
 }
 
 model Course {
-  id                  String             @id @default(cuid())
-  title               String
-  slug                String?            @unique
-  description         String
-  thumbnail           String?
-  trailer             String?
-  price               Float
-  salePrice           Float?
-  currency            String             @default("NGN")
-  level               CourseLevel        @default(BEGINNER)
-  status              CourseStatus       @default(DRAFT)
-  language            String             @default("en")
-  duration            Int?
-  totalLessons        Int                @default(0)
-  totalQuizzes        Int                @default(0)
-  totalProjects       Int                @default(0)
-  requirements        String[]
-  outcomes            String[]
-  targetAudience      String[]
-  metaTitle           String?
-  metaDescription     String?
-  publishedAt         DateTime?
-  createdAt           DateTime           @default(now())
-  updatedAt           DateTime           @updatedAt
-  virtualPrice        Float?
-  physicalPrice       Float?
-  certificate         Boolean?           @default(false)
-  categoryId          String
-  creatorId           String
-  ownerId             String?
-  basePrice           Float?
-  currentPrice        Float?
-  demandLevel         String?
-  flashSaleEnd        DateTime?
-  groupBuyingDiscount Float?
-  groupBuyingEnabled  Boolean            @default(false)
-  isFlashSale         Boolean            @default(false)
-  previewVideo        String?
-  subtitle            String
-  tutorId             String
-  allowDiscussions    Boolean            @default(false)
-  tags                CourseTag[]
-  AIRecommendation    AIRecommendation[] @relation("CourseRecommendations")
-  cartItems           CartItem[]
-  certificates        Certificate[]
-  analytics           CourseAnalytics[]
-  modules             CourseModule[]
-  category            Category           @relation(fields: [categoryId], references: [id])
-  creator             User               @relation("CourseCreator", fields: [creatorId], references: [id])
-  owner               User?              @relation("CourseOwner", fields: [ownerId], references: [id])
-  tutor               Tutor              @relation(fields: [tutorId], references: [id])
-  discussions         Discussion[]
-  enrollments         Enrollment[]
-  LearningPath        LearningPath[]
-  projects            Project[]
-  reviews             Review[]
-  Skill               Skill[]
-  transactions        Transaction[]
-  wishlist            Wishlist[]
+  id                     String                  @id @default(cuid())
+  title                  String
+  slug                   String?                 @unique
+  description            String
+  thumbnail              String?
+  trailer                String?
+  price                  Float
+  salePrice              Float?
+  currency               String                  @default("NGN")
+  level                  CourseLevel             @default(BEGINNER)
+  status                 CourseStatus            @default(DRAFT)
+  language               String                  @default("en")
+  duration               Int?
+  totalLessons           Int                     @default(0)
+  totalQuizzes           Int                     @default(0)
+  totalProjects          Int                     @default(0)
+  requirements           String[]
+  outcomes               String[]
+  targetAudience         String[]
+  metaTitle              String?
+  metaDescription        String?
+  publishedAt            DateTime?
+  createdAt              DateTime                @default(now())
+  updatedAt              DateTime                @updatedAt
+  virtualPrice           Float?
+  physicalPrice          Float?
+  certificate            Boolean?                @default(false)
+  categoryId             String
+  creatorId              String
+  ownerId                String?
+  basePrice              Float?
+  currentPrice           Float?
+  demandLevel            String?
+  flashSaleEnd           DateTime?
+  groupBuyingDiscount    Float?
+  groupBuyingEnabled     Boolean                 @default(false)
+  isFlashSale            Boolean                 @default(false)
+  previewVideo           String?
+  subtitle               String
+  tutorId                String
+  allowDiscussions       Boolean                 @default(false)
+  tags                   CourseTag[]
+  advisorRecommendations AdvisorRecommendation[]
+  AIRecommendation       AIRecommendation[]      @relation("CourseRecommendations")
+  cartItems              CartItem[]
+  certificates           Certificate[]
+  analytics              CourseAnalytics[]
+  modules                CourseModule[]
+  category               Category                @relation(fields: [categoryId], references: [id])
+  creator                User                    @relation("CourseCreator", fields: [creatorId], references: [id])
+  owner                  User?                   @relation("CourseOwner", fields: [ownerId], references: [id])
+  tutor                  Tutor                   @relation(fields: [tutorId], references: [id])
+  discussions            Discussion[]
+  enrollments            Enrollment[]
+  groupPurchases         GroupPurchase[]
+  groupTiers             GroupTier[]
+  LearningPath           LearningPath[]
+  projects               Project[]
+  promoCodes             PromoCode[]
+  promoRedemptions       PromoRedemption[]
+  reviews                Review[]
+  Skill                  Skill[]
+  tasks                  Task[]
+  transactionLineItems   TransactionLineItem[]
+  transactions           Transaction[]
+  tutorEarnings          TutorEarning[]
+  wishlist               Wishlist[]
+  mentorshipSessions     MentorshipSession[]
+  promotions             CoursePromotion[]
 
   @@map("courses")
 }
@@ -197,20 +236,21 @@ model CourseTag {
 }
 
 model Category {
-  id          String     @id @default(cuid())
-  name        String     @unique
-  slug        String     @unique
-  description String?
-  icon        String?
-  color       String?
-  isActive    Boolean    @default(true)
-  sortOrder   Int        @default(0)
-  parentId    String?
-  createdAt   DateTime   @default(now())
-  updatedAt   DateTime   @updatedAt
-  parent      Category?  @relation("CategoryHierarchy", fields: [parentId], references: [id])
-  children    Category[] @relation("CategoryHierarchy")
-  courses     Course[]
+  id                     String                  @id @default(cuid())
+  name                   String                  @unique
+  slug                   String                  @unique
+  description            String?
+  icon                   String?
+  color                  String?
+  isActive               Boolean                 @default(true)
+  sortOrder              Int                     @default(0)
+  parentId               String?
+  createdAt              DateTime                @default(now())
+  updatedAt              DateTime                @updatedAt
+  advisorRecommendations AdvisorRecommendation[]
+  parent                 Category?               @relation("CategoryHierarchy", fields: [parentId], references: [id])
+  children               Category[]              @relation("CategoryHierarchy")
+  courses                Course[]
 
   @@map("categories")
 }
@@ -228,8 +268,9 @@ model CourseModule {
   content     String?
   course      Course     @relation(fields: [courseId], references: [id], onDelete: Cascade)
   lessons     Lesson[]
-  quizzes     Quiz[]
+  projects    Project[]
   resources   Resource[]
+  tasks       Task[]
 
   @@map("course_modules")
 }
@@ -247,30 +288,13 @@ model Lesson {
   moduleId    String
   createdAt   DateTime         @default(now())
   updatedAt   DateTime         @updatedAt
+  isLocked    Boolean          @default(false)
   progress    LessonProgress[]
   module      CourseModule     @relation(fields: [moduleId], references: [id], onDelete: Cascade)
+  quiz        Quiz?
   resources   Resource[]
 
   @@map("lessons")
-}
-
-model Enrollment {
-  id                String           @id @default(cuid())
-  progress          Float            @default(0)
-  status            EnrollmentStatus @default(ACTIVE)
-  completedAt       DateTime?
-  certificateIssued Boolean          @default(false)
-  userId            String
-  courseId          String
-  enrolledAt        DateTime         @default(now())
-  updatedAt         DateTime         @updatedAt
-  course            Course           @relation(fields: [courseId], references: [id], onDelete: Cascade)
-  user              User             @relation(fields: [userId], references: [id], onDelete: Cascade)
-  lessonProgress    LessonProgress[]
-  quizAttempts      QuizAttempt[]
-
-  @@unique([userId, courseId])
-  @@map("enrollments")
 }
 
 model LessonProgress {
@@ -290,6 +314,27 @@ model LessonProgress {
   @@map("lesson_progress")
 }
 
+model Enrollment {
+  id                String           @id @default(cuid())
+  progress          Float            @default(0)
+  status            EnrollmentStatus @default(ACTIVE)
+  completedAt       DateTime?
+  certificateIssued Boolean          @default(false)
+  userId            String
+  courseId          String
+  enrolledAt        DateTime         @default(now())
+  updatedAt         DateTime         @updatedAt
+  groupPurchaseId   String?
+  course            Course           @relation(fields: [courseId], references: [id], onDelete: Cascade)
+  groupPurchase     GroupPurchase?   @relation(fields: [groupPurchaseId], references: [id])
+  user              User             @relation(fields: [userId], references: [id], onDelete: Cascade)
+  lessonProgress    LessonProgress[]
+  quizAttempts      QuizAttempt[]
+
+  @@unique([userId, courseId])
+  @@map("enrollments")
+}
+
 model Quiz {
   id           String        @id @default(cuid())
   title        String
@@ -298,15 +343,15 @@ model Quiz {
   passingScore Int           @default(70)
   maxAttempts  Int           @default(3)
   isActive     Boolean       @default(true)
-  moduleId     String
   createdAt    DateTime      @default(now())
   updatedAt    DateTime      @updatedAt
+  lessonId     String        @unique
   questions    Question[]
+  lesson       Lesson        @relation(fields: [lessonId], references: [id], onDelete: Cascade)
   QuizAnswer   QuizAnswer[]
   attempts     QuizAttempt[]
-  module       CourseModule  @relation(fields: [moduleId], references: [id], onDelete: Cascade)
 
-  @@map("quizzes")
+  @@map("quiz")
 }
 
 model Question {
@@ -338,25 +383,46 @@ model QuizAttempt {
   enrollmentId String
   createdAt    DateTime   @default(now())
   updatedAt    DateTime   @updatedAt
+  attempts     Int        @default(1)
+  passed       Boolean?   @default(false)
   enrollment   Enrollment @relation(fields: [enrollmentId], references: [id], onDelete: Cascade)
   quiz         Quiz       @relation(fields: [quizId], references: [id], onDelete: Cascade)
 
   @@map("quiz_attempts")
 }
 
+model QuizAnswer {
+  id             String   @id @default(cuid())
+  userId         String
+  quizId         String
+  questionId     String
+  selectedAnswer String
+  isCorrect      Boolean
+  aiExplanation  String?
+  submittedAt    DateTime @default(now())
+  question       Question @relation(fields: [questionId], references: [id], onDelete: Cascade)
+  quiz           Quiz     @relation(fields: [quizId], references: [id], onDelete: Cascade)
+  user           User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@map("quiz_answers")
+}
+
 model Project {
-  id           String       @id @default(cuid())
+  id           String        @id @default(cuid())
   title        String
   description  String
   requirements String[]
-  difficulty   CourseLevel  @default(BEGINNER)
-  points       Int          @default(100)
+  difficulty   CourseLevel   @default(BEGINNER)
+  points       Int           @default(100)
   dueDate      DateTime?
-  isActive     Boolean      @default(true)
+  isActive     Boolean       @default(true)
   courseId     String
-  createdAt    DateTime     @default(now())
-  updatedAt    DateTime     @updatedAt
-  course       Course       @relation(fields: [courseId], references: [id], onDelete: Cascade)
+  createdAt    DateTime      @default(now())
+  updatedAt    DateTime      @updatedAt
+  moduleId     String?
+  scope        ProjectScope  @default(COURSE)
+  course       Course        @relation(fields: [courseId], references: [id], onDelete: Cascade)
+  module       CourseModule? @relation(fields: [moduleId], references: [id], onDelete: Cascade)
   resources    Resource[]
   submissions  Submission[]
 
@@ -385,20 +451,47 @@ model Submission {
   @@map("submissions")
 }
 
-model QuizAnswer {
-  id             String   @id @default(cuid())
-  userId         String
-  quizId         String
-  questionId     String
-  selectedAnswer String
-  isCorrect      Boolean
-  aiExplanation  String?
-  submittedAt    DateTime @default(now())
-  question       Question @relation(fields: [questionId], references: [id], onDelete: Cascade)
-  quiz           Quiz     @relation(fields: [quizId], references: [id], onDelete: Cascade)
-  user           User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+model Task {
+  id             String             @id @default(cuid())
+  title          String
+  description    String
+  requirements   String[]
+  points         Int                @default(100)
+  dueDate        DateTime?
+  isActive       Boolean            @default(true)
+  submissionType TaskSubmissionType @default(TEXT)
+  courseId       String
+  moduleId       String
+  createdAt      DateTime           @default(now())
+  updatedAt      DateTime           @updatedAt
+  resources      Resource[]
+  submissions    TaskSubmission[]
+  course         Course             @relation(fields: [courseId], references: [id], onDelete: Cascade)
+  module         CourseModule       @relation(fields: [moduleId], references: [id], onDelete: Cascade)
 
-  @@map("quiz_answers")
+  @@map("tasks")
+}
+
+model TaskSubmission {
+  id        String           @id @default(cuid())
+  content   String?
+  fileUrl   String?
+  githubUrl String?
+  liveUrl   String?
+  notes     String?
+  status    SubmissionStatus @default(PENDING)
+  score     Float?
+  feedback  String?
+  gradedAt  DateTime?
+  userId    String
+  taskId    String
+  createdAt DateTime         @default(now())
+  updatedAt DateTime         @updatedAt
+  task      Task             @relation(fields: [taskId], references: [id], onDelete: Cascade)
+  user      User             @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@unique([userId, taskId])
+  @@map("task_submissions")
 }
 
 model LearningPath {
@@ -470,28 +563,147 @@ model AIRecommendation {
   @@map("ai_recommendations")
 }
 
+model AdvisorSession {
+  id           String            @id @default(cuid())
+  sessionToken String            @unique
+  userId       String?
+  createdAt    DateTime          @default(now())
+  updatedAt    DateTime          @updatedAt
+  followUps    AdvisorFollowUp[]
+  user         User?             @relation(fields: [userId], references: [id])
+  turns        AdvisorTurn[]
+
+  @@index([userId])
+  @@map("advisor_sessions")
+}
+
+model AdvisorTurn {
+  id               String                  @id @default(cuid())
+  advisorSessionId String
+  userMessage      String
+  assistantMessage String
+  createdAt        DateTime                @default(now())
+  followUps        AdvisorFollowUp[]
+  recommendations  AdvisorRecommendation[]
+  advisorSession   AdvisorSession          @relation(fields: [advisorSessionId], references: [id], onDelete: Cascade)
+
+  @@index([advisorSessionId, createdAt])
+  @@map("advisor_turns")
+}
+
+model AdvisorRecommendation {
+  id            String      @id @default(cuid())
+  advisorTurnId String
+  courseId      String?
+  categoryId    String?
+  reason        String
+  rank          Int         @default(0)
+  createdAt     DateTime    @default(now())
+  advisorTurn   AdvisorTurn @relation(fields: [advisorTurnId], references: [id], onDelete: Cascade)
+  category      Category?   @relation(fields: [categoryId], references: [id])
+  course        Course?     @relation(fields: [courseId], references: [id])
+
+  @@index([advisorTurnId, rank])
+  @@index([courseId])
+  @@index([categoryId])
+  @@map("advisor_recommendations")
+}
+
+model AdvisorFollowUp {
+  id               String                @id @default(cuid())
+  advisorSessionId String
+  advisorTurnId    String?
+  userId           String?
+  name             String
+  email            String
+  note             String?
+  status           AdvisorFollowUpStatus @default(NEW)
+  createdAt        DateTime              @default(now())
+  updatedAt        DateTime              @updatedAt
+  advisorSession   AdvisorSession        @relation(fields: [advisorSessionId], references: [id], onDelete: Cascade)
+  advisorTurn      AdvisorTurn?          @relation(fields: [advisorTurnId], references: [id])
+  user             User?                 @relation(fields: [userId], references: [id])
+
+  @@index([advisorSessionId, createdAt])
+  @@index([status, createdAt])
+  @@index([email])
+  @@map("advisor_follow_ups")
+}
+
 model MentorshipSession {
-  id          String        @id @default(cuid())
-  title       String
-  description String?
-  duration    Int
-  price       Float
-  status      SessionStatus @default(SCHEDULED)
-  meetingUrl  String?
-  notes       String?
-  feedback    String?
-  rating      Int?
-  scheduledAt DateTime
-  startedAt   DateTime?
-  endedAt     DateTime?
-  studentId   String
-  tutorId     String
-  createdAt   DateTime      @default(now())
-  updatedAt   DateTime      @updatedAt
-  student     User          @relation("StudentSessions", fields: [studentId], references: [id], onDelete: Cascade)
-  tutor       User          @relation("TutorSessions", fields: [tutorId], references: [id], onDelete: Cascade)
+  id                String                  @id @default(cuid())
+  title             String
+  description       String?
+  duration          Int
+  price             Float
+  status            SessionStatus           @default(SCHEDULED)
+  meetingUrl        String?
+  notes             String?
+  feedback          String?
+  rating            Int?
+  scheduledAt       DateTime
+  startedAt         DateTime?
+  endedAt           DateTime?
+  studentId         String
+  tutorId           String
+  courseId          String?
+  createdAt         DateTime                @default(now())
+  updatedAt         DateTime                @updatedAt
+  bookingMode       MentorshipBookingMode   @default(INSTANT)
+  packageName       String?
+  packageSessions   Int?
+  paymentStatus     MentorshipPaymentStatus @default(PENDING)
+  approvalNotes     String?
+  rejectedAt        DateTime?
+  approvalDeadline  DateTime?
+  isOffering        Boolean                 @default(false)
+  offeringSessionId String? // Reference to original offering if this is a booking
+  bookingStartTime  DateTime? // When student selected to start within offering
+  bookingEndTime    DateTime? // When student selected to end (for time slot booking)
+  student           User                    @relation("StudentSessions", fields: [studentId], references: [id], onDelete: Cascade)
+  tutor             User                    @relation("TutorSessions", fields: [tutorId], references: [id], onDelete: Cascade)
+  course            Course?                 @relation(fields: [courseId], references: [id], onDelete: SetNull)
+  offering          MentorshipSession?      @relation("OfferingBookings", fields: [offeringSessionId], references: [id], onDelete: Cascade)
+  bookings          MentorshipSession[]     @relation("OfferingBookings")
+  transactions      Transaction[]
 
   @@map("mentorship_sessions")
+}
+
+model MentorshipPackage {
+  id              String                   @id @default(cuid())
+  tutorId         String
+  name            String
+  description     String?
+  sessionsCount   Int
+  sessionDuration Int
+  basePrice       Float
+  packagePrice    Float
+  isActive        Boolean                  @default(true)
+  createdAt       DateTime                 @default(now())
+  updatedAt       DateTime                 @updatedAt
+  orders          MentorshipPackageOrder[]
+  tutor           User                     @relation("MentorPackages", fields: [tutorId], references: [id], onDelete: Cascade)
+
+  @@map("mentorship_packages")
+}
+
+model MentorshipPackageOrder {
+  id                String                       @id @default(cuid())
+  packageId         String
+  studentId         String
+  tutorId           String
+  sessionsTotal     Int
+  sessionsRemaining Int
+  status            MentorshipPackageOrderStatus @default(ACTIVE)
+  createdAt         DateTime                     @default(now())
+  updatedAt         DateTime                     @updatedAt
+  package           MentorshipPackage            @relation(fields: [packageId], references: [id], onDelete: Cascade)
+  student           User                         @relation("StudentPackageOrders", fields: [studentId], references: [id], onDelete: Cascade)
+  tutor             User                         @relation("TutorPackageOrders", fields: [tutorId], references: [id], onDelete: Cascade)
+  transactions      Transaction[]
+
+  @@map("mentorship_package_orders")
 }
 
 model Registration {
@@ -525,21 +737,37 @@ model ProgramRegistration {
 }
 
 model Review {
-  id           String   @id @default(cuid())
+  id           String           @id @default(cuid())
   rating       Int
   comment      String?
-  isPublic     Boolean  @default(true)
+  isPublic     Boolean          @default(true)
   userId       String
   courseId     String
   tutorName    String
   reviewerName String
-  createdAt    DateTime @default(now())
-  updatedAt    DateTime @updatedAt
-  course       Course   @relation(fields: [courseId], references: [id], onDelete: Cascade)
-  user         User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  createdAt    DateTime         @default(now())
+  updatedAt    DateTime         @updatedAt
+  respondedAt  DateTime?
+  responseText String?
+  reactions    ReviewReaction[]
+  course       Course           @relation(fields: [courseId], references: [id], onDelete: Cascade)
+  user         User             @relation(fields: [userId], references: [id], onDelete: Cascade)
 
   @@unique([userId, courseId])
   @@map("reviews")
+}
+
+model ReviewReaction {
+  id        String             @id @default(cuid())
+  type      ReviewReactionType
+  reviewId  String
+  userId    String
+  createdAt DateTime           @default(now())
+  review    Review             @relation(fields: [reviewId], references: [id], onDelete: Cascade)
+  user      User               @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@unique([reviewId, userId, type])
+  @@map("review_reactions")
 }
 
 model CartItem {
@@ -557,30 +785,200 @@ model CartItem {
 }
 
 model Transaction {
-  id                String            @id @default(cuid())
-  amount            Float
-  currency          String            @default("NGN")
-  status            TransactionStatus @default(PENDING)
-  paymentMethod     String?
-  paymentId         String?
-  description       String?
-  metadata          Json?
-  userId            String
-  courseId          String?
-  transactionId     String
-  paymentDate       DateTime          @default(now())
-  verifiedAt        DateTime          @updatedAt
-  bankNameUsed      String?           @map("bank_name_used")
-  accountNumberUsed String?           @map("account_number_used")
-  recipientCodeUsed String?           @map("recipient_code_used")
-  walletBalanceUsed Float?            @map("wallet_balance_used")
-  isBankTransaction Boolean           @default(false)
-  createdAt         DateTime          @default(now())
-  updatedAt         DateTime          @updatedAt
-  course            Course?           @relation(fields: [courseId], references: [id])
-  user              User              @relation(fields: [userId], references: [id], onDelete: Cascade)
+  id                       String                  @id @default(cuid())
+  amount                   Float
+  currency                 String                  @default("NGN")
+  status                   TransactionStatus       @default(PENDING)
+  paymentMethod            String?
+  paymentId                String?
+  description              String?
+  metadata                 Json?
+  userId                   String
+  courseId                 String?
+  transactionId            String
+  paymentDate              DateTime                @default(now())
+  verifiedAt               DateTime                @updatedAt
+  bankNameUsed             String?                 @map("bank_name_used")
+  accountNumberUsed        String?                 @map("account_number_used")
+  recipientCodeUsed        String?                 @map("recipient_code_used")
+  walletBalanceUsed        Float?                  @map("wallet_balance_used")
+  isBankTransaction        Boolean                 @default(false)
+  createdAt                DateTime                @default(now())
+  updatedAt                DateTime                @updatedAt
+  groupPurchaseId          String?
+  discountAmount           Float?
+  platformShareAmount      Float?
+  promoCodeId              String?
+  promoDiscountType        PromoDiscountType?
+  promoDiscountValue       Float?
+  promoType                PromoType?
+  subtotalAmount           Float?
+  tutorShareAmount         Float?
+  vatAmount                Float?
+  mentorshipPackageOrderId String?
+  mentorshipSessionId      String?
+  referralCode             String?                 @map("referral_code")
+  isReferralPurchase       Boolean                 @default(false) @map("is_referral_purchase")
+  promoRedemptions         PromoRedemption[]
+  lineItems                TransactionLineItem[]
+  course                   Course?                 @relation(fields: [courseId], references: [id])
+  groupPurchase            GroupPurchase?          @relation(fields: [groupPurchaseId], references: [id])
+  mentorshipPackageOrder   MentorshipPackageOrder? @relation(fields: [mentorshipPackageOrderId], references: [id])
+  mentorshipSession        MentorshipSession?      @relation(fields: [mentorshipSessionId], references: [id])
+  promoCode                PromoCode?              @relation(fields: [promoCodeId], references: [id])
+  user                     User                    @relation(fields: [userId], references: [id], onDelete: Cascade)
+  tutorEarnings            TutorEarning[]
+  vatEntries               VatLedger?
 
   @@map("transactions")
+}
+
+model TransactionLineItem {
+  id                  String             @id @default(cuid())
+  transactionId       String
+  courseId            String
+  tutorId             String
+  basePrice           Float
+  discountedPrice     Float
+  discountAmount      Float
+  vatAmount           Float
+  totalAmount         Float
+  tutorShareAmount    Float
+  platformShareAmount Float
+  promoCodeId         String?
+  promoType           PromoType?
+  promoDiscountType   PromoDiscountType?
+  promoDiscountValue  Float?
+  isReferralPurchase  Boolean            @default(false) @map("is_referral_purchase")
+  createdAt           DateTime           @default(now())
+  updatedAt           DateTime           @updatedAt
+  course              Course             @relation(fields: [courseId], references: [id])
+  promoCode           PromoCode?         @relation(fields: [promoCodeId], references: [id])
+  transaction         Transaction        @relation(fields: [transactionId], references: [id], onDelete: Cascade)
+  tutor               User               @relation(fields: [tutorId], references: [id], onDelete: Cascade)
+  tutorEarnings       TutorEarning[]
+
+  @@map("transaction_line_items")
+}
+
+model PromoCode {
+  id             String                @id @default(cuid())
+  code           String                @unique
+  promoType      PromoType
+  discountType   PromoDiscountType
+  discountValue  Float
+  isActive       Boolean               @default(true)
+  isGlobal       Boolean               @default(false)
+  startsAt       DateTime?
+  endsAt         DateTime?
+  maxRedemptions Int?
+  perUserLimit   Int?
+  courseId       String?
+  creatorId      String?
+  createdAt      DateTime              @default(now())
+  updatedAt      DateTime              @updatedAt
+  allowedUsers   PromoCodeUser[]
+  course         Course?               @relation(fields: [courseId], references: [id])
+  creator        User?                 @relation("PromoCreator", fields: [creatorId], references: [id], onDelete: Cascade)
+  redemptions    PromoRedemption[]
+  lineItems      TransactionLineItem[]
+  transactions   Transaction[]
+
+  @@map("promo_codes")
+}
+
+model PromoCodeUser {
+  id          String    @id @default(cuid())
+  promoCodeId String
+  userId      String
+  createdAt   DateTime  @default(now())
+  promoCode   PromoCode @relation(fields: [promoCodeId], references: [id], onDelete: Cascade)
+  user        User      @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@unique([promoCodeId, userId])
+  @@map("promo_code_users")
+}
+
+model PromoRedemption {
+  id            String      @id @default(cuid())
+  promoCodeId   String
+  userId        String
+  transactionId String
+  courseId      String?
+  redeemedAt    DateTime    @default(now())
+  course        Course?     @relation(fields: [courseId], references: [id])
+  promoCode     PromoCode   @relation(fields: [promoCodeId], references: [id], onDelete: Cascade)
+  transaction   Transaction @relation(fields: [transactionId], references: [id], onDelete: Cascade)
+  user          User        @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@map("promo_redemptions")
+}
+
+model TutorEarning {
+  id                    String              @id @default(cuid())
+  tutorId               String
+  transactionId         String
+  transactionLineItemId String
+  courseId              String
+  amount                Float
+  splitPercent          Float
+  status                TutorEarningStatus  @default(AVAILABLE)
+  availableAt           DateTime?
+  createdAt             DateTime            @default(now())
+  updatedAt             DateTime            @updatedAt
+  course                Course              @relation(fields: [courseId], references: [id])
+  transaction           Transaction         @relation(fields: [transactionId], references: [id], onDelete: Cascade)
+  transactionLineItem   TransactionLineItem @relation(fields: [transactionLineItemId], references: [id], onDelete: Cascade)
+  tutor                 User                @relation(fields: [tutorId], references: [id], onDelete: Cascade)
+
+  @@map("tutor_earnings")
+}
+
+model VatLedger {
+  id            String      @id @default(cuid())
+  transactionId String      @unique
+  amount        Float
+  currency      String      @default("NGN")
+  status        VatStatus   @default(PENDING)
+  remittedAt    DateTime?
+  createdAt     DateTime    @default(now())
+  transaction   Transaction @relation(fields: [transactionId], references: [id], onDelete: Cascade)
+
+  @@map("vat_ledger")
+}
+
+model WithdrawalRequest {
+  id           String           @id @default(cuid())
+  userId       String
+  amount       Float
+  status       WithdrawalStatus @default(PENDING)
+  requestedAt  DateTime         @default(now())
+  approvedAt   DateTime?
+  approvedById String?
+  rejectedAt   DateTime?
+  adminNote    String?
+  paidAt       DateTime?
+  payout       Payout?
+  approvedBy   User?            @relation("WithdrawalApprover", fields: [approvedById], references: [id])
+  user         User             @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@map("withdrawal_requests")
+}
+
+model Payout {
+  id                  String            @id @default(cuid())
+  withdrawalRequestId String            @unique
+  amount              Float
+  status              PayoutStatus      @default(PENDING)
+  transferReference   String?
+  transferCode        String?
+  recipientCode       String?
+  processedAt         DateTime?
+  createdAt           DateTime          @default(now())
+  updatedAt           DateTime          @updatedAt
+  withdrawalRequest   WithdrawalRequest @relation(fields: [withdrawalRequestId], references: [id], onDelete: Cascade)
+
+  @@map("payouts")
 }
 
 model PaymentMethod {
@@ -669,9 +1067,11 @@ model Resource {
   projectId   String?
   createdAt   DateTime      @default(now())
   updatedAt   DateTime      @updatedAt
+  taskId      String?
   lesson      Lesson?       @relation(fields: [lessonId], references: [id], onDelete: Cascade)
   module      CourseModule? @relation(fields: [moduleId], references: [id], onDelete: Cascade)
   project     Project?      @relation(fields: [projectId], references: [id], onDelete: Cascade)
+  task        Task?         @relation(fields: [taskId], references: [id], onDelete: Cascade)
 
   @@map("resources")
 }
@@ -817,11 +1217,237 @@ model PasswordResetToken {
   @@unique([email, token])
 }
 
+model LoginAttempt {
+  id        String   @id @default(cuid())
+  ipAddress String
+  email     String?
+  success   Boolean  @default(false)
+  userAgent String?
+  createdAt DateTime @default(now())
+
+  @@index([ipAddress])
+  @@index([email])
+  @@index([createdAt])
+  @@map("login_attempts")
+}
+
+model IPBlacklist {
+  id          String    @id @default(cuid())
+  ipAddress   String    @unique
+  reason      String?
+  blockedAt   DateTime  @default(now())
+  unblockedAt DateTime?
+  isActive    Boolean   @default(true)
+
+  @@index([ipAddress])
+  @@map("ip_blacklist")
+}
+
+model GroupTier {
+  id              String          @id @default(cuid())
+  courseId        String
+  size            Int
+  groupPrice      Float
+  cashbackPercent Float           @default(0)
+  isActive        Boolean         @default(true)
+  createdAt       DateTime        @default(now())
+  updatedAt       DateTime        @updatedAt
+  groupPurchases  GroupPurchase[]
+  course          Course          @relation(fields: [courseId], references: [id], onDelete: Cascade)
+
+  @@map("group_tiers")
+}
+
+model GroupPurchase {
+  id                String              @id @default(cuid())
+  courseId          String
+  tierId            String
+  creatorId         String
+  inviteCode        String              @unique
+  status            GroupPurchaseStatus @default(PENDING_PAYMENT)
+  memberCount       Int                 @default(1)
+  memberLimit       Int
+  groupPrice        Float
+  cashbackTotal     Float               @default(0)
+  cashbackPerMember Float               @default(0)
+  cashbackEarned    Float               @default(0)
+  cashbackReleased  Boolean             @default(false)
+  paidAt            DateTime?
+  completedAt       DateTime?
+  createdAt         DateTime            @default(now())
+  updatedAt         DateTime            @updatedAt
+  enrollments       Enrollment[]
+  members           GroupMember[]
+  course            Course              @relation(fields: [courseId], references: [id], onDelete: Cascade)
+  creator           User                @relation("GroupPurchaseCreator", fields: [creatorId], references: [id], onDelete: Cascade)
+  tier              GroupTier           @relation(fields: [tierId], references: [id], onDelete: Cascade)
+  transactions      Transaction[]
+
+  @@map("group_purchases")
+}
+
+model GroupMember {
+  id              String          @id @default(cuid())
+  groupPurchaseId String
+  userId          String
+  role            GroupMemberRole @default(MEMBER)
+  joinedAt        DateTime        @default(now())
+  groupPurchase   GroupPurchase   @relation(fields: [groupPurchaseId], references: [id], onDelete: Cascade)
+  user            User            @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@unique([groupPurchaseId, userId])
+  @@map("group_members")
+}
+
+model ProfessionalProgram {
+  id             String          @id @default(cuid())
+  name           String
+  slug           String          @unique
+  description    String?
+  duration       ProgramDuration
+  fullPrice      Float // Full payment price in Naira
+  installTotal   Float // Total when paying in installments
+  firstInstall   Float // 70% of installTotal
+  secondInstall  Float // 30% of installTotal
+  isActive       Boolean         @default(true)
+  careerOutcomes String[] // Array of career outcomes
+  curriculum     String[] // Key topics covered
+  createdAt      DateTime        @default(now())
+  updatedAt      DateTime        @updatedAt
+
+  cohorts     ProgramCohort[]
+  enrollments ProgramEnrollment[]
+
+  @@map("professional_programs")
+}
+
+model ProgramCohort {
+  id            String    @id @default(cuid())
+  cycleNumber   Int // Sequential cycle number (e.g., 42)
+  year          Int // Full year (e.g., 2026)
+  month         Int // 1–12
+  quarterLabel  String // e.g., "Q2"
+  phoneticLabel String // e.g., "Delta"
+  displayName   String // e.g., "Cycle 42 · 26Q2 Delta"
+  startDate     DateTime
+  endDate       DateTime?
+  seatLimit     Int       @default(30)
+  seatsTaken    Int       @default(0)
+  isOpen        Boolean   @default(true)
+  programId     String
+  createdAt     DateTime  @default(now())
+  updatedAt     DateTime  @updatedAt
+
+  program     ProfessionalProgram @relation(fields: [programId], references: [id], onDelete: Cascade)
+  enrollments ProgramEnrollment[]
+
+  @@unique([programId, cycleNumber])
+  @@map("program_cohorts")
+}
+
+model ProgramEnrollment {
+  id                   String                  @id @default(cuid())
+  fullName             String
+  email                String
+  phone                String
+  dateOfBirth          DateTime?
+  highestQualification String?
+  learningMode         LearningMode            @default(VIRTUAL)
+  paymentPlan          PaymentPlanType         @default(FULL_PAYMENT)
+  status               ProgramEnrollmentStatus @default(PENDING_PAYMENT)
+  totalAmount          Float
+  amountPaid           Float                   @default(0)
+  notes                String?
+
+  programId String
+  cohortId  String
+  userId    String? // Linked after account provisioning
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  program      ProfessionalProgram  @relation(fields: [programId], references: [id], onDelete: Cascade)
+  cohort       ProgramCohort        @relation(fields: [cohortId], references: [id], onDelete: Cascade)
+  user         User?                @relation(fields: [userId], references: [id], onDelete: SetNull)
+  installments InstallmentPayment[]
+
+  @@map("program_enrollments")
+}
+
+model InstallmentPayment {
+  id              String            @id @default(cuid())
+  enrollmentId    String
+  installmentNo   Int // 1 or 2
+  amount          Float
+  dueDate         DateTime
+  paidAt          DateTime?
+  status          InstallmentStatus @default(PENDING)
+  paystackRef     String?           @unique
+  transactionData Json?
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  enrollment ProgramEnrollment @relation(fields: [enrollmentId], references: [id], onDelete: Cascade)
+
+  @@map("installment_payments")
+}
+
+enum ReviewReactionType {
+  HELPFUL
+  LIKE
+  REPORT
+}
+
+enum AdvisorFollowUpStatus {
+  NEW
+  CONTACTED
+  CLOSED
+}
+
+enum PromoType {
+  PLATFORM
+  INSTRUCTOR
+}
+
+enum PromoDiscountType {
+  PERCENTAGE
+  FIXED
+}
+
+enum TutorEarningStatus {
+  PENDING
+  AVAILABLE
+  PAID
+}
+
+enum WithdrawalStatus {
+  PENDING
+  APPROVED
+  REJECTED
+  PAID
+}
+
+enum PayoutStatus {
+  PENDING
+  PROCESSING
+  COMPLETED
+  FAILED
+}
+
+enum VatStatus {
+  PENDING
+  REMITTED
+}
+
 enum UserRole {
   USER
   STUDENT
   TUTOR
   ADMIN
+  MENTOR
+  TESTER
+  SUPERIOR
 }
 
 enum AdminLevel {
@@ -857,6 +1483,19 @@ enum EnrollmentStatus {
   SUSPENDED
 }
 
+enum ProjectScope {
+  COURSE
+  MODULE
+}
+
+enum TaskSubmissionType {
+  FILE
+  GITHUB
+  LINK
+  TEXT
+  QUIZ
+}
+
 enum LessonType {
   VIDEO
   TEXT
@@ -881,11 +1520,30 @@ enum SubmissionStatus {
 }
 
 enum SessionStatus {
+  PENDING_MENTOR_REVIEW
   SCHEDULED
   IN_PROGRESS
   COMPLETED
   CANCELLED
   NO_SHOW
+  REJECTED
+}
+
+enum MentorshipBookingMode {
+  INSTANT
+  REQUEST
+}
+
+enum MentorshipPaymentStatus {
+  PENDING
+  PAID
+  FAILED
+}
+
+enum MentorshipPackageOrderStatus {
+  ACTIVE
+  EXHAUSTED
+  CANCELLED
 }
 
 enum TransactionStatus {
@@ -894,6 +1552,19 @@ enum TransactionStatus {
   FAILED
   REFUNDED
   CANCELLED
+}
+
+enum GroupPurchaseStatus {
+  PENDING_PAYMENT
+  ACTIVE
+  COMPLETED
+  EXPIRED
+  CANCELLED
+}
+
+enum GroupMemberRole {
+  CREATOR
+  MEMBER
 }
 
 enum PaymentType {
@@ -950,4 +1621,172 @@ enum Language {
   ES
   FR
   DE
+}
+
+enum CertificateType {
+  CertificateOfCompletion
+  ProfessionalCertification
+  MicroCredentials
+}
+
+enum PaymentStatus {
+  SUCCESSFUL
+  FAILED
+  PENDING
+}
+
+enum ProgramType {
+  CRASH_COURSE
+  THREE_MONTHS
+  SIX_MONTHS
+  ONE_YEAR
+}
+
+// ─── Professional Program Enrollment ────────────────────────────────────────
+
+enum ProgramDuration {
+  ONE_MONTH
+  THREE_MONTHS
+  SIX_MONTHS
+  ONE_YEAR
+}
+
+enum LearningMode {
+  PHYSICAL
+  VIRTUAL
+}
+
+enum ProgramEnrollmentStatus {
+  PENDING_PAYMENT
+  FIRST_INSTALLMENT_PAID
+  FULLY_PAID
+  ACTIVE
+  COMPLETED
+  CANCELLED
+  DROPPED
+}
+
+enum PaymentPlanType {
+  FULL_PAYMENT
+  INSTALLMENT
+}
+
+enum InstallmentStatus {
+  PENDING
+  PAID
+  OVERDUE
+  CANCELLED
+}
+
+// ─── Course Promotion / Ad System ───────────────────────────────────────────
+
+model PlatformSettings {
+  id        String   @id @default("platform_settings")
+  settings  Json     @default("{}")
+  updatedAt DateTime @updatedAt
+
+  @@map("platform_settings")
+}
+
+model CoursePromotion {
+  id                String          @id @default(cuid())
+  courseId          String
+  course            Course          @relation(fields: [courseId], references: [id], onDelete: Cascade)
+  promotedBy        String
+  promoter          User            @relation("PromotionCreator", fields: [promotedBy], references: [id])
+  type              PromotionType
+  status            PromotionStatus @default(PENDING_PAYMENT)
+  headline          String?
+  description       String?
+  ctaText           String?         @default("Enroll Now")
+  promoPrice        Float?
+  originalPrice     Float?
+  startDate         DateTime
+  endDate           DateTime
+  fee               Float           @default(0)
+  feePaid           Boolean         @default(false)
+  paystackReference String?         @unique
+  impressions       Int             @default(0)
+  clicks            Int             @default(0)
+  priority          Int             @default(0)
+  createdAt         DateTime        @default(now())
+  updatedAt         DateTime        @updatedAt
+
+  @@index([status, startDate, endDate])
+  @@index([courseId])
+  @@map("course_promotions")
+}
+
+enum PromotionType {
+  ADMIN
+  TUTOR
+}
+
+enum PromotionStatus {
+  PENDING_PAYMENT
+  PENDING
+  ACTIVE
+  EXPIRED
+  REJECTED
+  CANCELLED
+}
+
+model VolunteerCertificate {
+  id             String   @id @default(cuid())
+  certCode       String   @unique
+  volunteerName  String
+  eventName      String
+  role           String?
+  description    String?
+  issuedAt       DateTime @default(now())
+  isRevoked      Boolean  @default(false)
+  certificateUrl String   @default("")
+  createdAt      DateTime @default(now())
+  updatedAt      DateTime @updatedAt
+
+  @@map("volunteer_certificates")
+}
+
+// ─── Blog Engagement ───────────────────────────────────────────────
+
+model BlogLike {
+  id           String   @id @default(cuid())
+  sanityPostId String
+  userId       String?
+  sessionId    String
+  createdAt    DateTime @default(now())
+
+  user User? @relation("UserBlogLikes", fields: [userId], references: [id], onDelete: SetNull)
+
+  @@unique([sanityPostId, sessionId])
+  @@index([sanityPostId])
+  @@map("blog_likes")
+}
+
+model BlogView {
+  id           String   @id @default(cuid())
+  sanityPostId String
+  userId       String?
+  sessionId    String
+  createdAt    DateTime @default(now())
+
+  user User? @relation("UserBlogViews", fields: [userId], references: [id], onDelete: SetNull)
+
+  @@unique([sanityPostId, sessionId])
+  @@index([sanityPostId])
+  @@map("blog_views")
+}
+
+model BlogBookmark {
+  id           String   @id @default(cuid())
+  sanityPostId String
+  userId       String
+  createdAt    DateTime @default(now())
+
+  user User @relation("UserBlogBookmarks", fields: [userId], references: [id], onDelete: Cascade)
+
+  @@unique([sanityPostId, userId])
+  @@index([sanityPostId])
+  @@index([userId])
+  @@map("blog_bookmarks")
 }

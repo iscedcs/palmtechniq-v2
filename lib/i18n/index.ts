@@ -1,20 +1,30 @@
-"use client"
+"use client";
 
-import { create } from "zustand"
-import { persist } from "zustand/middleware"
+import { create } from "zustand";
+import { persist } from "zustand/middleware";
 
 // ================================
 // TYPES
 // ================================
 
-export type Locale = "en" | "es" | "fr" | "de" | "pt" | "zh" | "ja" | "ko" | "ar" | "hi"
+export type Locale =
+  | "en"
+  | "es"
+  | "fr"
+  | "de"
+  | "pt"
+  | "zh"
+  | "ja"
+  | "ko"
+  | "ar"
+  | "hi";
 
 export interface Translation {
-  [key: string]: string | Translation
+  [key: string]: string | Translation;
 }
 
 export interface Translations {
-  [locale: string]: Translation
+  [locale: string]: Translation;
 }
 
 // ================================
@@ -382,21 +392,21 @@ const translations: Translations = {
     // ... more Spanish translations
   },
   // ... more languages
-}
+};
 
 // ================================
 // I18N STORE
 // ================================
 
 interface I18nState {
-  locale: Locale
-  translations: Translation
-  setLocale: (locale: Locale) => void
-  t: (key: string, params?: Record<string, string | number>) => string
-  formatNumber: (value: number) => string
-  formatCurrency: (value: number, currency?: string) => string
-  formatDate: (date: Date, options?: Intl.DateTimeFormatOptions) => string
-  formatRelativeTime: (date: Date) => string
+  locale: Locale;
+  translations: Translation;
+  setLocale: (locale: Locale) => void;
+  t: (key: string, params?: Record<string, string | number>) => string;
+  formatNumber: (value: number) => string;
+  formatCurrency: (value: number, currency?: string) => string;
+  formatDate: (date: Date, options?: Intl.DateTimeFormatOptions) => string;
+  formatRelativeTime: (date: Date) => string;
 }
 
 export const useI18nStore = create<I18nState>()(
@@ -409,82 +419,86 @@ export const useI18nStore = create<I18nState>()(
         set({
           locale,
           translations: translations[locale] || translations.en,
-        })
+        });
       },
 
       t: (key: string, params?: Record<string, string | number>) => {
-        const state = get()
-        const keys = key.split(".")
-        let value: any = state.translations
+        const state = get();
+        const keys = key.split(".");
+        let value: any = state.translations;
 
         for (const k of keys) {
           if (value && typeof value === "object" && k in value) {
-            value = value[k]
+            value = value[k];
           } else {
             // Fallback to English if key not found
-            value = translations.en
+            value = translations.en;
             for (const fallbackKey of keys) {
               if (value && typeof value === "object" && fallbackKey in value) {
-                value = value[fallbackKey]
+                value = value[fallbackKey];
               } else {
-                return key // Return key if not found in fallback
+                return key; // Return key if not found in fallback
               }
             }
-            break
+            break;
           }
         }
 
         if (typeof value !== "string") {
-          return key
+          return key;
         }
 
         // Replace parameters
         if (params) {
           return value.replace(/\{\{(\w+)\}\}/g, (match, paramKey) => {
-            return params[paramKey]?.toString() || match
-          })
+            return params[paramKey]?.toString() || match;
+          });
         }
 
-        return value
+        return value;
       },
 
       formatNumber: (value: number) => {
-        const state = get()
-        return new Intl.NumberFormat(state.locale).format(value)
+        const state = get();
+        return new Intl.NumberFormat(state.locale).format(value);
       },
 
-      formatCurrency: (value: number, currency = "USD") => {
-        const state = get()
+      formatCurrency: (value: number, currency = "NGN") => {
+        const state = get();
         return new Intl.NumberFormat(state.locale, {
           style: "currency",
           currency,
-        }).format(value)
+        }).format(value);
       },
 
       formatDate: (date: Date, options?: Intl.DateTimeFormatOptions) => {
-        const state = get()
-        return new Intl.DateTimeFormat(state.locale, options).format(date)
+        const state = get();
+        return new Intl.DateTimeFormat(state.locale, options).format(date);
       },
 
       formatRelativeTime: (date: Date) => {
-        const state = get()
-        const now = new Date()
-        const diffInSeconds = Math.floor((now.getTime() - date.getTime()) / 1000)
+        const state = get();
+        const now = new Date();
+        const diffInSeconds = Math.floor(
+          (now.getTime() - date.getTime()) / 1000,
+        );
 
-        const rtf = new Intl.RelativeTimeFormat(state.locale, { numeric: "auto" })
+        const rtf = new Intl.RelativeTimeFormat(state.locale, {
+          numeric: "auto",
+        });
 
         if (diffInSeconds < 60) {
-          return rtf.format(-diffInSeconds, "second")
+          return rtf.format(-diffInSeconds, "second");
         } else if (diffInSeconds < 3600) {
-          return rtf.format(-Math.floor(diffInSeconds / 60), "minute")
+          return rtf.format(-Math.floor(diffInSeconds / 60), "minute");
         } else if (diffInSeconds < 86400) {
-          return rtf.format(-Math.floor(diffInSeconds / 3600), "hour")
+          return rtf.format(-Math.floor(diffInSeconds / 3600), "hour");
         } else if (diffInSeconds < 2592000) {
-          return rtf.format(-Math.floor(diffInSeconds / 86400), "day")
+          return rtf.format(-Math.floor(diffInSeconds / 86400), "day");
         } else if (diffInSeconds < 31536000) {
-          return rtf.format(-Math.floor(diffInSeconds / 2592000), "month")
+          return rtf.format(-Math.floor(diffInSeconds / 2592000), "month");
         } else {
-          return rtf.format(-Math.floor(diffInSeconds / 31536000), "year")
+          return rtf.format(-Math.floor(diffInSeconds / 31536000), "year");
         }
       },
     }),
@@ -495,7 +509,7 @@ export const useI18nStore = create<I18nState>()(
       }),
     },
   ),
-)
+);
 
 // ================================
 // LANGUAGE SELECTOR COMPONENT
@@ -512,14 +526,22 @@ export const languages: { code: Locale; name: string; flag: string }[] = [
   { code: "ko", name: "한국어", flag: "🇰🇷" },
   { code: "ar", name: "العربية", flag: "🇸🇦" },
   { code: "hi", name: "हिन्दी", flag: "🇮🇳" },
-]
+];
 
 // ================================
 // HOOKS
 // ================================
 
 export function useTranslation() {
-  const { t, locale, setLocale, formatNumber, formatCurrency, formatDate, formatRelativeTime } = useI18nStore()
+  const {
+    t,
+    locale,
+    setLocale,
+    formatNumber,
+    formatCurrency,
+    formatDate,
+    formatRelativeTime,
+  } = useI18nStore();
 
   return {
     t,
@@ -529,10 +551,10 @@ export function useTranslation() {
     formatCurrency,
     formatDate,
     formatRelativeTime,
-  }
+  };
 }
 
 export function useLocale() {
-  const { locale, setLocale } = useI18nStore()
-  return { locale, setLocale }
+  const { locale, setLocale } = useI18nStore();
+  return { locale, setLocale };
 }

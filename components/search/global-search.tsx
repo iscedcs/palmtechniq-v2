@@ -10,14 +10,16 @@ import {
   BookOpen,
   User,
   ArrowRight,
+  Loader,
 } from "lucide-react";
+import Image from "next/image";
+import { useRouter } from "next/navigation";
 import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { useDebounce } from "@/hooks/use-debounce";
 import { useSearchStore } from "@/lib/store/search-store";
-import { generateRandomAvatar } from "@/lib/utils";
 
 interface SearchResult {
   id: string;
@@ -32,48 +34,6 @@ interface SearchResult {
   url: string;
 }
 
-const mockSearchResults: SearchResult[] = [
-  {
-    id: "1",
-    type: "course",
-    title: "Advanced React Development",
-    subtitle: "by Sarah Johnson",
-    image: "/placeholder.svg?height=60&width=80",
-    rating: 4.8,
-    students: 1247,
-    price: 89.99,
-    level: "Advanced",
-    url: "/courses/advanced-react",
-  },
-  {
-    id: "2",
-    type: "course",
-    title: "Python for Data Science",
-    subtitle: "by Dr. Michael Chen",
-    image: "/placeholder.svg?height=60&width=80",
-    rating: 4.9,
-    students: 987,
-    price: 79.99,
-    level: "Intermediate",
-    url: "/courses/python-data-science",
-  },
-  {
-    id: "3",
-    type: "user",
-    title: "Sarah Johnson",
-    subtitle: "Senior React Developer & Instructor",
-    image: generateRandomAvatar(),
-    url: "/tutors/sarah-johnson",
-  },
-  {
-    id: "4",
-    type: "category",
-    title: "Web Development",
-    subtitle: "234 courses available",
-    url: "/categories/web-development",
-  },
-];
-
 const popularSearches = [
   "React",
   "Python",
@@ -86,9 +46,11 @@ const popularSearches = [
 ];
 
 export function GlobalSearch() {
+  const router = useRouter();
   const [isOpen, setIsOpen] = useState(false);
   const [results, setResults] = useState<SearchResult[]>([]);
   const [isLoading, setIsLoading] = useState(false);
+  const [error, setError] = useState<string | null>(null);
   const inputRef = useRef<HTMLInputElement>(null);
   const containerRef = useRef<HTMLDivElement>(null);
 
@@ -102,26 +64,48 @@ export function GlobalSearch() {
 
   const debouncedQuery = useDebounce(query, 300);
 
-  // Handle search
+  // Fetch search results from API
   useEffect(() => {
-    if (debouncedQuery.trim()) {
-      setIsLoading(true);
-      // Simulate API call
-      setTimeout(() => {
-        const filteredResults = mockSearchResults.filter(
-          (result) =>
-            result.title.toLowerCase().includes(debouncedQuery.toLowerCase()) ||
-            result.subtitle
-              ?.toLowerCase()
-              .includes(debouncedQuery.toLowerCase())
+    async function fetchResults() {
+      if (!debouncedQuery.trim()) {
+        setResults([]);
+        setError(null);
+        return;
+      }
+
+      try {
+        setIsLoading(true);
+        setError(null);
+
+        const response = await fetch(
+          `/api/search?q=${encodeURIComponent(debouncedQuery)}`,
+          {
+            method: "GET",
+            headers: {
+              "Content-Type": "application/json",
+            },
+          },
         );
-        setResults(filteredResults);
+
+        if (!response.ok) {
+          throw new Error("Failed to fetch search results");
+        }
+
+        const data = await response.json();
+        setResults(data.results || []);
+      } catch (err) {
+        setError(
+          err instanceof Error
+            ? err.message
+            : "An error occurred during search",
+        );
+        setResults([]);
+      } finally {
         setIsLoading(false);
-      }, 500);
-    } else {
-      setResults([]);
-      setIsLoading(false);
+      }
     }
+
+    fetchResults();
   }, [debouncedQuery]);
 
   // Handle click outside
@@ -160,15 +144,20 @@ export function GlobalSearch() {
     if (searchQuery.trim()) {
       addRecentSearch(searchQuery);
       setIsOpen(false);
-      // Navigate to search results page
-      window.location.href = `/search?q=₦{encodeURIComponent(searchQuery)}`;
+      router.push(`/search?q=${encodeURIComponent(searchQuery)}`);
     }
   };
 
   const handleResultClick = (result: SearchResult) => {
     addRecentSearch(result.title);
     setIsOpen(false);
-    window.location.href = result.url;
+    router.push(result.url);
+  };
+
+  const handleKeyDown = (e: React.KeyboardEvent<HTMLInputElement>) => {
+    if (e.key === "Enter") {
+      handleSearch(query);
+    }
   };
 
   const getResultIcon = (type: string) => {
@@ -205,6 +194,7 @@ export function GlobalSearch() {
           placeholder="Search courses, instructors, topics... (⌘K)"
           value={query}
           onChange={(e) => setQuery(e.target.value)}
+          onKeyDown={handleKeyDown}
           onFocus={() => setIsOpen(true)}
           className="pl-10 pr-12 glass-card border-white/20 focus:border-neon-blue/50 transition-all duration-200"
         />
@@ -231,17 +221,27 @@ export function GlobalSearch() {
             {/* Loading State */}
             {isLoading && (
               <div className="p-4 text-center">
-                <div className="w-6 h-6 border-2 border-neon-blue border-t-transparent rounded-full animate-spin mx-auto mb-2" />
+                <Loader className="w-6 h-6 animate-spin text-neon-blue mx-auto mb-2" />
                 <p className="text-gray-400 text-sm">Searching...</p>
               </div>
             )}
 
+            {/* Error State */}
+            {error && (
+              <div className="p-4 text-center">
+                <p className="text-red-400 text-sm">{error}</p>
+                <p className="text-gray-500 text-xs mt-2">
+                  Please try again or contact support
+                </p>
+              </div>
+            )}
+
             {/* Search Results */}
-            {!isLoading && results.length > 0 && (
+            {!isLoading && !error && results.length > 0 && (
               <div className="max-h-96 overflow-y-auto">
                 <div className="p-2">
                   <p className="text-xs text-gray-400 px-3 py-2 font-medium">
-                    Search Results
+                    Search Results ({results.length})
                   </p>
                   {results.map((result, index) => (
                     <motion.div
@@ -253,22 +253,22 @@ export function GlobalSearch() {
                       onClick={() => handleResultClick(result)}>
                       <div className="flex items-center gap-3">
                         {result.type === "user" ? (
-                          <Avatar className="w-10 h-10">
-                            <AvatarImage
-                              src={result.image || generateRandomAvatar()}
-                            />
+                          <Avatar className="w-10 h-10 flex-shrink-0">
+                            <AvatarImage src={result.image} />
                             <AvatarFallback>
                               {result.title.charAt(0)}
                             </AvatarFallback>
                           </Avatar>
-                        ) : result.type === "course" ? (
-                          <img
-                            src={result.image || generateRandomAvatar()}
+                        ) : result.type === "course" && result.image ? (
+                          <Image
+                            src={result.image}
                             alt={result.title}
-                            className="w-12 h-8 rounded object-cover"
+                            width={48}
+                            height={32}
+                            className="w-12 h-8 rounded object-cover flex-shrink-0"
                           />
                         ) : (
-                          <div className="w-10 h-10 rounded-lg bg-gradient-to-r from-neon-blue to-neon-purple flex items-center justify-center">
+                          <div className="w-10 h-10 rounded-lg bg-gradient-to-r from-neon-blue to-neon-purple flex items-center justify-center flex-shrink-0">
                             {getResultIcon(result.type)}
                           </div>
                         )}
@@ -281,8 +281,8 @@ export function GlobalSearch() {
                             {result.level && (
                               <Badge
                                 variant="outline"
-                                className={`text-xs px-1 py-0 ₦{getLevelColor(
-                                  result.level
+                                className={`text-xs px-2 py-0 ${getLevelColor(
+                                  result.level,
                                 )}`}>
                                 {result.level}
                               </Badge>
@@ -314,7 +314,7 @@ export function GlobalSearch() {
                           )}
                         </div>
 
-                        <ArrowRight className="w-4 h-4 text-gray-400" />
+                        <ArrowRight className="w-4 h-4 text-gray-400 flex-shrink-0" />
                       </div>
                     </motion.div>
                   ))}
@@ -323,20 +323,20 @@ export function GlobalSearch() {
             )}
 
             {/* No Results */}
-            {!isLoading && query && results.length === 0 && (
+            {!isLoading && !error && query && results.length === 0 && (
               <div className="p-6 text-center">
                 <Search className="w-12 h-12 text-gray-600 mx-auto mb-3" />
                 <p className="text-gray-400 mb-2">
                   No results found for "{query}"
                 </p>
                 <p className="text-gray-500 text-sm">
-                  Try searching for courses, instructors, or topics
+                  Try different keywords or explore our categories
                 </p>
               </div>
             )}
 
             {/* Recent Searches & Popular */}
-            {!isLoading && !query && (
+            {!isLoading && !error && !query && (
               <div className="max-h-96 overflow-y-auto">
                 {/* Recent Searches */}
                 {recentSearches.length > 0 && (
@@ -350,7 +350,7 @@ export function GlobalSearch() {
                         variant="ghost"
                         size="sm"
                         onClick={clearRecentSearches}
-                        className="text-xs text-gray-500 hover:text-gray-400">
+                        className="text-xs text-gray-500 hover:text-gray-400 h-auto p-0">
                         Clear
                       </Button>
                     </div>
@@ -359,8 +359,8 @@ export function GlobalSearch() {
                         key={index}
                         className="px-3 py-2 rounded-lg hover:bg-white/5 cursor-pointer transition-colors flex items-center gap-3"
                         onClick={() => handleSearch(search)}>
-                        <Clock className="w-4 h-4 text-gray-500" />
-                        <span className="text-gray-300">{search}</span>
+                        <Clock className="w-4 h-4 text-gray-500 flex-shrink-0" />
+                        <span className="text-gray-300 truncate">{search}</span>
                       </div>
                     ))}
                   </div>

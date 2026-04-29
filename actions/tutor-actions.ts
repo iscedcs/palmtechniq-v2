@@ -5,11 +5,18 @@ import { auth } from "@/auth";
 import { db } from "@/lib/db";
 import slugify from "slugify";
 
-import { courseSchema, lessonSchema, moduleSchema } from "@/schemas";
+import {
+  courseSchema,
+  courseDraftSchema,
+  lessonSchema,
+  moduleSchema,
+} from "@/schemas";
 import { z } from "zod";
 import { toSlug } from "@/lib/utils";
+import { getTutorReferralCode } from "@/lib/referral";
 import { notify } from "@/lib/notify";
-import { getIO } from "@/lib/socket";
+import { recomputeCourseDurations } from "@/lib/course-duration";
+import { getProgramBySlug } from "@/data/programs";
 
 export async function createCourse(data: any, modulesData: any[] = []) {
   const session = await auth();
@@ -20,14 +27,20 @@ export async function createCourse(data: any, modulesData: any[] = []) {
   // console.log("Looking for tutor with userId:", session.user.id);
 
   try {
-    const validatedData = courseSchema.safeParse({
+    // Use relaxed validation for drafts, strict validation for publishing
+    const isPublishing = Boolean(data.isPublished);
+    const schemaToUse = isPublishing ? courseSchema : courseDraftSchema;
+
+    const validatedData = schemaToUse.safeParse({
       ...data,
-      level: data.level.toUpperCase().replace(" ", "_"),
+      level: data.level?.toUpperCase().replace(" ", "_") || "BEGINNER",
       flashSaleEnd: data.flashSaleEnd ? new Date(data.flashSaleEnd) : undefined,
     });
 
     if (!validatedData.success) {
-      return { error: validatedData.error.issues[0].message };
+      const errorMessage = validatedData.error.issues[0].message;
+      console.error("Validation error:", errorMessage);
+      return { error: errorMessage };
     }
 
     // const tutors = await db.tutor.findMany();
@@ -44,138 +57,275 @@ export async function createCourse(data: any, modulesData: any[] = []) {
 
     if (!tutor) {
       throw new Error(
-        "Tutor profile not found for this user. Please contact support."
+        "Tutor profile not found for this user. Please contact support.",
       );
     }
 
-    const course = await db.course.create({
-      data: {
-        title: validatedData.data.title,
-        subtitle: validatedData.data.subtitle,
-        description: validatedData.data.description,
-        category: {
-          connect: { name: validatedData.data.category },
-        },
-        level: validatedData.data.level as any,
-        language: validatedData.data.language,
-        price: validatedData.data.price,
-        basePrice: validatedData.data.basePrice,
-        currentPrice:
-          validatedData.data.currentPrice || validatedData.data.price,
-        demandLevel:
-          validatedData.data.basePrice && validatedData.data.currentPrice
-            ? validatedData.data.currentPrice <
-              validatedData.data.basePrice * 0.7
-              ? "high"
-              : validatedData.data.currentPrice <
-                validatedData.data.basePrice * 0.9
-              ? "medium"
-              : "low"
-            : undefined,
-        requirements: validatedData.data.requirements,
-        outcomes: validatedData.data.outcomes,
-
-        isFlashSale: validatedData.data.isFlashSale,
-        duration: validatedData.data.duration,
-        flashSaleEnd: validatedData.data.flashSaleEnd,
-
-        publishedAt: validatedData.data.isPublished ? new Date() : null,
-        slug: toSlug(validatedData.data.title),
-
-        groupBuyingEnabled: validatedData.data.groupBuyingEnabled,
-        groupBuyingDiscount: validatedData.data.groupBuyingDiscount,
-        thumbnail: validatedData.data.thumbnail,
-        previewVideo: validatedData.data.previewVideo,
-        status: validatedData.data.isPublished ? "PUBLISHED" : "DRAFT",
-        creator: { connect: { id: session.user.id } },
-        tutor: { connect: { id: tutor.id } },
-      },
-    });
-
-    // Create tags
-    if (validatedData.data.tags.length > 0) {
-      await db.courseTag.createMany({
-        data: validatedData.data.tags.map((tag) => ({
-          courseId: course.id,
-          name: tag,
-        })),
-      });
+    // Category is required for course creation
+    if (
+      !validatedData.data.category ||
+      validatedData.data.category.trim() === ""
+    ) {
+      return { error: "Please select a category for your course" };
     }
 
-    // Create modules and lessons
-    for (const mod of modulesData) {
-      const validatedModule = moduleSchema.safeParse(mod);
+    const result = await db.$transaction(
+      async (tx: any) => {
+        const resolvedBasePrice =
+          typeof validatedData.data.basePrice === "number"
+            ? validatedData.data.basePrice
+            : typeof validatedData.data.currentPrice === "number"
+              ? validatedData.data.currentPrice
+              : (validatedData.data.price ?? 0);
+        const resolvedCurrentPrice =
+          typeof validatedData.data.currentPrice === "number"
+            ? validatedData.data.currentPrice
+            : resolvedBasePrice;
 
-      if (!validatedModule.success) {
-        throw new Error(validatedModule.error.issues[0].message);
-      }
+        const categoryName = validatedData.data.category as string;
 
-      const newModule = await db.courseModule.create({
-        data: {
-          title: validatedModule.data.title,
-          description: validatedModule.data.description,
-          sortOrder: validatedModule.data.sortOrder,
-          duration: validatedModule.data.duration || 0,
-          isPublished: validatedModule.data.isPublished,
-          courseId: course.id,
-        },
-      });
+        // Handle program course linking
+        const courseType = validatedData.data.courseType || "REGULAR";
+        const programSlug = validatedData.data.programSlug;
+        let programConnect: { connect: { id: string } } | undefined;
 
-      for (const lesson of mod.lessons || []) {
-        const validatedLesson = lessonSchema.safeParse(lesson);
-        if (!validatedLesson.success) {
-          throw new Error(validatedLesson.error.issues[0].message);
+        if (courseType === "PROGRAM" && programSlug) {
+          const programDef = getProgramBySlug(programSlug);
+          if (!programDef) {
+            throw new Error("Invalid program selected");
+          }
+
+          // Check if a course already exists for this program
+          const existingProgramCourse = await tx.course.findFirst({
+            where: {
+              program: { slug: programSlug },
+              courseType: "PROGRAM",
+            },
+          });
+          if (existingProgramCourse) {
+            throw new Error(
+              `A program course already exists for "${programDef.name} (${programDef.durationLabel})". Only one course per program is allowed.`,
+            );
+          }
+
+          // Upsert the ProfessionalProgram record
+          const program = await tx.professionalProgram.upsert({
+            where: { slug: programSlug },
+            update: {},
+            create: {
+              name: programDef.name,
+              slug: programDef.slug,
+              duration: programDef.duration as any,
+              fullPrice: programDef.fullPrice,
+              installTotal: programDef.installTotal,
+              firstInstall: programDef.firstInstall,
+              secondInstall: programDef.secondInstall,
+              careerOutcomes: programDef.careerOutcomes,
+              curriculum: programDef.curriculum,
+            },
+          });
+          programConnect = { connect: { id: program.id } };
         }
-        await db.lesson.create({
+
+        const course = await tx.course.create({
           data: {
-            title: validatedLesson.data.title,
-            lessonType: validatedLesson.data.lessonType,
-            duration: validatedLesson.data.duration,
-            content: validatedLesson.data.content,
-            videoUrl: validatedLesson.data.videoUrl,
-            sortOrder: validatedLesson.data.sortOrder,
-            description: validatedLesson.data.description,
-            isPreview: validatedLesson.data.isPreview,
-            moduleId: newModule.id,
+            title: validatedData.data.title,
+            subtitle: validatedData.data.subtitle || "",
+            description: validatedData.data.description || "",
+            category: {
+              connectOrCreate: {
+                where: { name: categoryName },
+                create: { name: categoryName, slug: toSlug(categoryName) },
+              },
+            },
+            level: validatedData.data.level as any,
+            language: validatedData.data.language,
+            price: resolvedBasePrice,
+            basePrice: resolvedBasePrice,
+            currentPrice: resolvedCurrentPrice,
+            demandLevel:
+              resolvedBasePrice && resolvedCurrentPrice
+                ? resolvedCurrentPrice < resolvedBasePrice * 0.7
+                  ? "high"
+                  : resolvedCurrentPrice < resolvedBasePrice * 0.9
+                    ? "medium"
+                    : "low"
+                : undefined,
+            requirements: validatedData.data.requirements,
+            outcomes: validatedData.data.outcomes,
+
+            isFlashSale: validatedData.data.isFlashSale,
+            allowDiscussions: validatedData.data.allowDiscussions ?? false,
+            certificate: validatedData.data.certificate ?? false,
+            duration: 0,
+            flashSaleEnd: validatedData.data.flashSaleEnd,
+
+            publishedAt: null,
+            slug: toSlug(validatedData.data.title),
+
+            groupBuyingEnabled: validatedData.data.groupBuyingEnabled,
+            groupBuyingDiscount: validatedData.data.groupBuyingDiscount,
+            thumbnail: validatedData.data.thumbnail,
+            previewVideo: validatedData.data.previewVideo,
+            status: "DRAFT",
+            courseType: courseType as any,
+            ...(programConnect ? { program: programConnect } : {}),
+            creator: { connect: { id: session.user.id } },
+            tutor: { connect: { id: tutor.id } },
           },
         });
-      }
-    }
 
+        const groupTiers = validatedData.data.groupTiers ?? [];
+        if (validatedData.data.groupBuyingEnabled && groupTiers.length > 0) {
+          await tx.groupTier.createMany({
+            data: groupTiers.map((tier) => ({
+              courseId: course.id,
+              size: tier.size,
+              groupPrice: tier.groupPrice,
+              cashbackPercent: tier.cashbackPercent ?? 0,
+              isActive: tier.isActive ?? true,
+            })),
+          });
+        }
+
+        // Create tags
+        if (validatedData.data.tags.length > 0) {
+          await tx.courseTag.createMany({
+            data: validatedData.data.tags.map((tag) => ({
+              courseId: course.id,
+              name: tag,
+            })),
+          });
+        }
+
+        // Create modules and lessons
+        const shouldValidateContent = validatedData.data.isPublished;
+        for (const mod of modulesData) {
+          const modulePayload = {
+            title: mod.title ?? "",
+            description: mod.description ?? "",
+            content: mod.content ?? "",
+            sortOrder: typeof mod.sortOrder === "number" ? mod.sortOrder : 0,
+            duration: typeof mod.duration === "number" ? mod.duration : 0,
+            isPublished: Boolean(mod.isPublished),
+          };
+          const validatedModule = shouldValidateContent
+            ? moduleSchema.safeParse(modulePayload)
+            : ({ success: true, data: modulePayload } as const);
+
+          if (!validatedModule.success) {
+            throw new Error(validatedModule.error.issues[0].message);
+          }
+
+          const newModule = await tx.courseModule.create({
+            data: {
+              title: validatedModule.data.title,
+              description: validatedModule.data.description,
+              content: validatedModule.data.content,
+              sortOrder: validatedModule.data.sortOrder,
+              duration: 0,
+              isPublished: validatedModule.data.isPublished,
+              courseId: course.id,
+            },
+          });
+
+          for (const lesson of mod.lessons || []) {
+            const lessonPayload = {
+              title: lesson.title ?? "",
+              lessonType: lesson.lessonType ?? "VIDEO",
+              duration:
+                typeof lesson.duration === "number" ? lesson.duration : 0,
+              content: lesson.content ?? "",
+              description: lesson.description ?? "",
+              videoUrl: lesson.videoUrl ?? "",
+              sortOrder:
+                typeof lesson.sortOrder === "number" ? lesson.sortOrder : 0,
+              isPreview: Boolean(lesson.isPreview),
+            };
+            const validatedLesson = shouldValidateContent
+              ? lessonSchema.safeParse(lessonPayload)
+              : ({ success: true, data: lessonPayload } as const);
+
+            if (!validatedLesson.success) {
+              throw new Error(validatedLesson.error.issues[0].message);
+            }
+            await tx.lesson.create({
+              data: {
+                title: validatedLesson.data.title,
+                lessonType: validatedLesson.data.lessonType,
+                duration: validatedLesson.data.duration ?? 0,
+                content: validatedLesson.data.content,
+                videoUrl: validatedLesson.data.videoUrl || null,
+                sortOrder: validatedLesson.data.sortOrder,
+                description: validatedLesson.data.description,
+                isPreview: validatedLesson.data.isPreview,
+                moduleId: newModule.id,
+              },
+            });
+          }
+        }
+
+        await recomputeCourseDurations(tx, course.id);
+
+        return course;
+      },
+      { timeout: 30000 },
+    );
+
+    const requestedPublish = Boolean(validatedData.data.isPublished);
     await notify.user(session.user.id, {
       type: "success",
       title: "Course Created",
-      message: `“${course.title}” has been created${
-        validatedData.data.isPublished ? " and published" : ""
+      message: `“${result.title}” has been created${
+        requestedPublish ? " and submitted for approval" : ""
       }.`,
-      actionUrl: `/tutor/courses/${course.id}/edit`,
+      actionUrl: `/tutor/courses/${result.id}/edit`,
       actionLabel: "Continue Editing",
-      metadata: { courseId: course.id },
+      metadata: { category: "course_created", courseId: result.id },
     });
 
-    if (validatedData.data.isPublished) {
-      await notify.role("STUDENT", {
-        type: "course",
-        title: "New Course is Live",
-        message: `“${course.title}” is now available.`,
-        actionUrl: `/courses/${course.id}`,
-        actionLabel: "View Course",
-        metadata: {
-          courseId: course.id,
-          category: validatedData.data.category,
-        },
+    if (requestedPublish) {
+      await notify.role("ADMIN", {
+        type: "info",
+        title: "Course awaiting approval",
+        message: `Tutor submitted “${result.title}” for approval.`,
+        actionUrl: `/admin/courses`,
+        actionLabel: "Review Course",
+        metadata: { category: "course_review", courseId: result.id },
       });
     }
 
-    return { success: true, courseId: course.id };
-  } catch (error) {
-    console.error("Error creating course:", error);
     return {
-      error:
-        error instanceof z.ZodError
-          ? error.issues[0].message
-          : "Failed to create course",
+      success: true,
+      courseId: result.id,
+      requiresApproval: requestedPublish,
     };
+  } catch (error: any) {
+    console.error("Error creating course:", error);
+
+    // Provide more specific error messages
+    let errorMessage = "Failed to create course";
+
+    if (error instanceof z.ZodError) {
+      errorMessage = error.issues[0].message;
+    } else if (error instanceof Error) {
+      // Handle specific Prisma/database errors
+      if (error.message.includes("Unique constraint")) {
+        errorMessage = "A course with this title already exists";
+      } else if (
+        error.message.includes("Foreign key constraint") ||
+        error.message.includes("Record to connect not found")
+      ) {
+        errorMessage =
+          "Invalid category selected. Please select a valid category.";
+      } else if (error.message.includes("Tutor profile not found")) {
+        errorMessage = error.message;
+      } else {
+        errorMessage = error.message || "Failed to create course";
+      }
+    }
+
+    return { error: errorMessage };
   }
 }
 
@@ -191,36 +341,36 @@ export async function addModuleToCourse(courseId: string, moduleData: any) {
       return { error: "Unauthorized" };
     }
 
-    const validatedModule = moduleSchema.safeParse(moduleData);
-    if (!validatedModule.success) {
-      return { error: validatedModule.error.issues[0].message };
-    }
+    const modulePayload = {
+      title: moduleData.title ?? "",
+      description: moduleData.description ?? "",
+      content: moduleData.content ?? "",
+      duration:
+        typeof moduleData.duration === "number" ? moduleData.duration : 0,
+      sortOrder:
+        typeof moduleData.sortOrder === "number" ? moduleData.sortOrder : 0,
+      isPublished: Boolean(moduleData.isPublished),
+    };
 
     const newModule = await db.courseModule.create({
       data: {
-        title: validatedModule.data.title,
-        description: validatedModule.data.description,
-        duration: validatedModule.data.duration || 0,
-        sortOrder: validatedModule.data.sortOrder,
-        isPublished: validatedModule.data.isPublished,
+        title: modulePayload.title,
+        description: modulePayload.description,
+        duration: 0,
+        sortOrder: modulePayload.sortOrder,
+        isPublished: modulePayload.isPublished,
         courseId,
       },
     });
+    await recomputeCourseDurations(db, courseId);
 
-    const io = getIO();
-    if (io) {
-      const sockets = await io.in(`course:${courseId}`).allSockets();
-      console.log(
-        `course:${courseId} ${newModule.id} sockets = ${sockets.size}`
-      );
-    }
     await notify.course(courseId, {
       type: "info",
       title: "New Module Added",
       message: `Module “${newModule.title}” was added to “${course?.title}”.`,
       actionUrl: `/courses/${courseId}`,
       actionLabel: "Open Course",
-      metadata: { courseId, moduleId: newModule.id },
+      metadata: { category: "course_update", courseId, moduleId: newModule.id },
     });
 
     return { success: true, moduleId: newModule.id };
@@ -232,7 +382,7 @@ export async function addModuleToCourse(courseId: string, moduleData: any) {
 
 export async function removeModuleFromCourse(
   courseId: string,
-  moduleId: string
+  moduleId: string,
 ) {
   const session = await auth();
   if (!session?.user?.id) {
@@ -249,6 +399,7 @@ export async function removeModuleFromCourse(
     }
 
     await db.courseModule.delete({ where: { id: moduleId } });
+    await recomputeCourseDurations(db, courseId);
 
     await notify.course(courseId, {
       type: "warning",
@@ -256,7 +407,7 @@ export async function removeModuleFromCourse(
       message: `Module “${module.title}” was removed from “${module.course.title}”.`,
       actionUrl: `/courses/${courseId}`,
       actionLabel: "Open Course",
-      metadata: { courseId, moduleId },
+      metadata: { category: "course_update", courseId, moduleId },
     });
 
     return { success: true };
@@ -268,7 +419,7 @@ export async function removeModuleFromCourse(
 export async function addLessonToModule(
   courseId: string,
   moduleId: string,
-  lessonData: any
+  lessonData: any,
 ) {
   const session = await auth();
   if (!session?.user?.id) {
@@ -284,39 +435,46 @@ export async function addLessonToModule(
       return { error: "Unauthorized" };
     }
 
-    const validatedLesson = lessonSchema.safeParse(lessonData);
-    if (!validatedLesson.success) {
-      return { error: validatedLesson.error.issues[0].message };
-    }
+    const lessonPayload = {
+      title: lessonData.title ?? "",
+      lessonType: lessonData.lessonType ?? "VIDEO",
+      duration:
+        typeof lessonData.duration === "number" ? lessonData.duration : 0,
+      content: lessonData.content ?? "",
+      description: lessonData.description ?? "",
+      videoUrl: lessonData.videoUrl ?? "",
+      sortOrder:
+        typeof lessonData.sortOrder === "number" ? lessonData.sortOrder : 0,
+      isPreview: Boolean(lessonData.isPreview),
+    };
 
     const newLesson = await db.lesson.create({
       data: {
-        title: validatedLesson.data.title,
-        lessonType: validatedLesson.data.lessonType,
-        duration: validatedLesson.data.duration,
-        content: validatedLesson.data.content,
-        videoUrl: validatedLesson.data.videoUrl,
-        sortOrder: validatedLesson.data.sortOrder,
-        description: validatedLesson.data.description,
-        isPreview: validatedLesson.data.isPreview,
+        title: lessonPayload.title,
+        lessonType: lessonPayload.lessonType,
+        duration: lessonPayload.duration ?? 0,
+        content: lessonPayload.content,
+        videoUrl: lessonPayload.videoUrl,
+        sortOrder: lessonPayload.sortOrder,
+        description: lessonPayload.description,
+        isPreview: lessonPayload.isPreview,
         moduleId,
       },
     });
+    await recomputeCourseDurations(db, courseId);
 
-    const io = getIO();
-    if (io) {
-      const sockets = await io.in(`course:${courseId}`).allSockets();
-      console.log(
-        `course:${courseId},${newLesson.id} sockets = ${sockets.size}`
-      );
-    }
     await notify.course(courseId, {
       type: "info",
       title: "New Lesson Added",
       message: `Lesson “${newLesson.title}” was added to module “${module?.title}”.`,
       actionUrl: `/courses/${courseId}`,
       actionLabel: "Open Course",
-      metadata: { courseId, moduleId, lessonId: newLesson.id },
+      metadata: {
+        category: "course_update",
+        courseId,
+        moduleId,
+        lessonId: newLesson.id,
+      },
     });
 
     return { success: true, lessonId: newLesson.id };
@@ -326,10 +484,49 @@ export async function addLessonToModule(
   }
 }
 
+export async function updateLessonVideo(
+  lessonId: string,
+  videoUrl: string,
+  duration?: number,
+) {
+  const session = await auth();
+  if (!session?.user?.id) {
+    return { error: "Unauthorized" };
+  }
+
+  if (!lessonId || !videoUrl) {
+    return { error: "Lesson ID and video URL are required" };
+  }
+
+  const lesson = await db.lesson.findUnique({
+    where: { id: lessonId },
+    include: {
+      module: { include: { course: { include: { tutor: true } } } },
+    },
+  });
+
+  if (!lesson) return { error: "Lesson not found" };
+  if (lesson.module.course.tutor?.userId !== session.user.id) {
+    return { error: "Unauthorized" };
+  }
+
+  await db.lesson.update({
+    where: { id: lessonId },
+    data: {
+      videoUrl,
+      duration: typeof duration === "number" ? duration : lesson.duration,
+    },
+  });
+
+  await recomputeCourseDurations(db, lesson.module.courseId);
+
+  return { success: true };
+}
+
 export async function removeLessonFromModule(
   courseId: string,
   moduleId: string,
-  lessonId: string
+  lessonId: string,
 ) {
   const session = await auth();
   if (!session?.user?.id) {
@@ -347,6 +544,7 @@ export async function removeLessonFromModule(
     }
 
     await db.lesson.delete({ where: { id: lessonId } });
+    await recomputeCourseDurations(db, courseId);
 
     await notify.course(courseId, {
       type: "warning",
@@ -354,7 +552,7 @@ export async function removeLessonFromModule(
       message: `Lesson “${lesson.title}” was removed from module “${lesson.module.title}” in “${lesson.module.course.title}” .`,
       actionUrl: `/courses/${courseId}`,
       actionLabel: "Open Course",
-      metadata: { courseId, moduleId, lessonId },
+      metadata: { category: "course_update", courseId, moduleId, lessonId },
     });
 
     return { success: true };
@@ -364,9 +562,80 @@ export async function removeLessonFromModule(
   }
 }
 
+export async function reorderLessons(
+  courseId: string,
+  moduleId: string,
+  lessonIds: string[],
+) {
+  const session = await auth();
+  if (!session?.user?.id) {
+    return { error: "Unauthorized" };
+  }
+
+  try {
+    const mod = await db.courseModule.findUnique({
+      where: { id: moduleId },
+      include: { course: true },
+    });
+
+    if (!mod || mod.course.creatorId !== session.user.id) {
+      return { error: "Unauthorized" };
+    }
+
+    if (mod.courseId !== courseId) {
+      return { error: "Module does not belong to this course" };
+    }
+
+    await db.$transaction(
+      lessonIds.map((id, index) =>
+        db.lesson.update({
+          where: { id },
+          data: { sortOrder: index },
+        }),
+      ),
+    );
+
+    return { success: true };
+  } catch (error) {
+    console.error("Error reordering lessons:", error);
+    return { error: "Failed to reorder lessons" };
+  }
+}
+
+export async function reorderModules(courseId: string, moduleIds: string[]) {
+  const session = await auth();
+  if (!session?.user?.id) {
+    return { error: "Unauthorized" };
+  }
+
+  try {
+    const course = await db.course.findUnique({
+      where: { id: courseId },
+    });
+
+    if (!course || course.creatorId !== session.user.id) {
+      return { error: "Unauthorized" };
+    }
+
+    await db.$transaction(
+      moduleIds.map((id, index) =>
+        db.courseModule.update({
+          where: { id },
+          data: { sortOrder: index },
+        }),
+      ),
+    );
+
+    return { success: true };
+  } catch (error) {
+    console.error("Error reordering modules:", error);
+    return { error: "Failed to reorder modules" };
+  }
+}
+
 export async function uploadCourseFile(
   formData: FormData,
-  type: "thumbnail" | "video"
+  type: "thumbnail" | "video",
 ) {
   const session = await auth();
   if (!session?.user?.id || session.user.role !== "TUTOR") {
@@ -386,6 +655,7 @@ export async function uploadCourseFile(
         filename: file.name,
         contentType: file.type,
         type,
+        visibility: "public",
       }),
     });
 
@@ -399,7 +669,7 @@ export async function uploadCourseFile(
 
     const uploadFormData = new FormData();
     Object.entries(fields).forEach(([key, value]) =>
-      uploadFormData.append(key, value as string)
+      uploadFormData.append(key, value as string),
     );
     uploadFormData.append("file", file);
 
@@ -430,5 +700,23 @@ export async function getCategories() {
   } catch (error) {
     console.error("Error fetching categories:", error);
     return { error: "Failed to fetch categories" };
+  }
+}
+
+/**
+ * Get or generate the current tutor's referral code.
+ */
+export async function getMyReferralCode() {
+  try {
+    const session = await auth();
+    if (!session?.user?.id) return { error: "Unauthorized" };
+
+    const code = await getTutorReferralCode(session.user.id);
+    if (!code) return { error: "Tutor profile not found" };
+
+    return { success: true, referralCode: code };
+  } catch (error) {
+    console.error("Error getting referral code:", error);
+    return { error: "Failed to get referral code" };
   }
 }

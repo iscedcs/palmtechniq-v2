@@ -51,7 +51,8 @@ export default function TermsOfService() {
               Terms of Service
             </h1>
             <p className="text-xl text-gray-400 max-w-3xl mx-auto">
-              Please read these terms carefully before using LearnForge platform
+              Please read these terms carefully before using PalmTechnIQ
+              platform
             </p>
             <div className="flex items-center justify-center gap-4 mt-6">
               <Badge
@@ -85,7 +86,7 @@ export default function TermsOfService() {
                     {sections.map((section) => (
                       <a
                         key={section.id}
-                        href={`#₦{section.id}`}
+                        href={`#${section.id}`}
                         className="flex items-center gap-2 text-sm text-gray-400 hover:text-neon-blue transition-colors duration-200 py-1">
                         <section.icon className="w-3 h-3" />
                         {section.title}
@@ -107,9 +108,9 @@ export default function TermsOfService() {
                   {/* Introduction */}
                   <div className="prose prose-invert max-w-none">
                     <p className="text-gray-300 text-lg leading-relaxed">
-                      Welcome to LearnForge! These Terms of Service ("Terms")
+                      Welcome to PalmTechnIQ! These Terms of Service ("Terms")
                       govern your use of our online learning platform and
-                      services. By accessing or using LearnForge, you agree to
+                      services. By accessing or using PalmTechnIQ, you agree to
                       be bound by these Terms.
                     </p>
                   </div>
@@ -123,7 +124,7 @@ export default function TermsOfService() {
                     <div className="prose prose-invert max-w-none">
                       <p className="text-gray-300">
                         By creating an account, accessing, or using any part of
-                        LearnForge, you acknowledge that you have read,
+                        PalmTechnIQ, you acknowledge that you have read,
                         understood, and agree to be bound by these Terms. If you
                         do not agree to these Terms, you may not use our
                         services.
@@ -148,7 +149,8 @@ export default function TermsOfService() {
                     </h2>
                     <div className="prose prose-invert max-w-none">
                       <p className="text-gray-300">
-                        LearnForge is an online learning platform that provides:
+                        PalmTechnIQ is an online learning platform that
+                        provides:
                       </p>
                       <ul className="text-gray-300 space-y-2 ml-6">
                         <li>
@@ -178,7 +180,7 @@ export default function TermsOfService() {
                     </h2>
                     <div className="prose prose-invert max-w-none">
                       <p className="text-gray-300">
-                        To access certain features of LearnForge, you must
+                        To access certain features of PalmTechnIQ, you must
                         create an account. You agree to:
                       </p>
                       <ul className="text-gray-300 space-y-2 ml-6">
@@ -209,7 +211,7 @@ export default function TermsOfService() {
                     </h2>
                     <div className="prose prose-invert max-w-none">
                       <p className="text-gray-300">
-                        Payment terms for LearnForge services:
+                        Payment terms for PalmTechnIQ services:
                       </p>
                       <ul className="text-gray-300 space-y-2 ml-6">
                         <li>
@@ -220,7 +222,7 @@ export default function TermsOfService() {
                           • Subscription fees are billed monthly or annually
                         </li>
                         <li>
-                          • All prices are in USD unless otherwise specified
+                          • All prices are in NGN unless otherwise specified
                         </li>
                         <li>
                           • Refunds are subject to our 30-day money-back
@@ -279,7 +281,7 @@ export default function TermsOfService() {
                       <p className="text-gray-300">
                         Your privacy is important to us. Our Privacy Policy
                         explains how we collect, use, and protect your
-                        information. By using LearnForge, you consent to our
+                        information. By using PalmTechnIQ, you consent to our
                         data practices as described in our Privacy Policy.
                       </p>
                       <p className="text-gray-300">
@@ -327,8 +329,8 @@ export default function TermsOfService() {
                     </h2>
                     <div className="prose prose-invert max-w-none">
                       <p className="text-gray-300">
-                        LearnForge is provided "as is" without warranties of any
-                        kind. We do not guarantee:
+                        PalmTechnIQ is provided "as is" without warranties of
+                        any kind. We do not guarantee:
                       </p>
                       <ul className="text-gray-300 space-y-2 ml-6">
                         <li>• Uninterrupted or error-free service</li>
@@ -349,10 +351,10 @@ export default function TermsOfService() {
                     </h2>
                     <div className="prose prose-invert max-w-none">
                       <p className="text-gray-300">
-                        To the maximum extent permitted by law, LearnForge shall
-                        not be liable for any indirect, incidental, special, or
-                        consequential damages arising from your use of our
-                        services.
+                        To the maximum extent permitted by law, PalmTechnIQ
+                        shall not be liable for any indirect, incidental,
+                        special, or consequential damages arising from your use
+                        of our services.
                       </p>
                       <p className="text-gray-300">
                         Our total liability shall not exceed the amount you paid
@@ -394,12 +396,13 @@ export default function TermsOfService() {
                       </p>
                       <div className="bg-white/5 p-4 rounded-lg mt-4">
                         <p className="text-gray-300">
-                          <strong>Email:</strong> legal@learnforge.com
+                          <strong>Email:</strong> legal@palmtechniq.com
                           <br />
-                          <strong>Address:</strong> 123 Learning Street,
-                          Education City, EC 12345
+                          <strong>Address:</strong> 1st Floor, (Festac Tower)
+                          Chicken Republic Building, 22Rd ,Festac Town, Lagos,
+                          Nigeria.
                           <br />
-                          <strong>Phone:</strong> +1 (555) 123-4567
+                          <strong>Phone:</strong> +234 (807) 956-8910
                         </p>
                       </div>
                     </div>

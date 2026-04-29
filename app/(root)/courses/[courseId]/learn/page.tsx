@@ -1,16 +1,20 @@
-import CourseLearningPageClient from "@/components/pages/courses/courseId/learn/course-learning-page";
+import { redirect } from "next/navigation";
 import { getCourseWithModules } from "@/data/course";
+import CourseNotFoundSkeleton from "@/components/shared/skeleton/course-not-found-skeleton";
 
-export default async function CourseLearningPageServer(props: {
+export default async function RedirectToFirstLesson({
+  params,
+}: {
   params: Promise<{ courseId: string }>;
 }) {
-  const { courseId } = await props.params;
-
-  const courseData = await getCourseWithModules(courseId);
-
-  if (!courseData) {
-    return <div>Course not found</div>;
+  const { courseId } = await params;
+  const course = await getCourseWithModules(courseId);
+  if (!course) {
+    return <CourseNotFoundSkeleton />;
   }
 
-  return <CourseLearningPageClient courseData={courseData} />;
+  const firstLesson = course.modules[0]?.lessons[0];
+  if (!firstLesson) return <div>No lessons available</div>;
+
+  redirect(`/courses/${courseId}/learn/${firstLesson.id}`);
 }

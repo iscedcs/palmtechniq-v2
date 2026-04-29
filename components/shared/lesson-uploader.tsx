@@ -1,107 +1,102 @@
 "use client";
 import { Input } from "@/components/ui/input";
-import { Loader2 } from "lucide-react";
-import React, { Dispatch, SetStateAction, useState } from "react";
+import { Upload } from "lucide-react";
+import React, { useState, useRef } from "react";
 import { Button } from "../ui/button";
 import { toast } from "sonner";
+import { useUploadStore } from "@/stores/upload-store";
 
 interface LessonUploadFileProps {
   onUploadSuccess: (url: string) => void;
-  uploading: boolean;
-  setUploading: Dispatch<SetStateAction<boolean>>;
+  onDuration?: (minutes: number) => void;
 }
 
 export default function LessonUploadFile({
   onUploadSuccess,
-  uploading,
-  setUploading,
+  onDuration,
 }: LessonUploadFileProps) {
   const [file, setFile] = useState<File | null>(null);
+  const inputRef = useRef<HTMLInputElement>(null);
+  const startUpload = useUploadStore((s) => s.startUpload);
 
   const handleFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
-    setFile(e.target.files?.[0] || null);
+    const selected = e.target.files?.[0] || null;
+    setFile(selected);
+
+    if (selected) {
+      const url = URL.createObjectURL(selected);
+      const video = document.createElement("video");
+      video.preload = "metadata";
+      video.src = url;
+      video.onloadedmetadata = () => {
+        const isPortrait = video.videoHeight > video.videoWidth;
+        if (isPortrait) {
+          toast.error(
+            "Please upload a landscape (16:9) video. Portrait videos become Shorts.",
+          );
+          setFile(null);
+          e.target.value = "";
+          URL.revokeObjectURL(url);
+          return;
+        }
+
+        const minutes = Math.ceil(video.duration / 60);
+        if (onDuration) {
+          onDuration(minutes);
+        }
+        URL.revokeObjectURL(url);
+      };
+    }
   };
 
-  const handleUpload = async () => {
+  const handleUpload = () => {
     if (!file) {
       toast.error("Please select a file to upload.");
       return;
     }
 
-    setUploading(true);
-
-    try {
-      const response = await fetch(
-        `${process.env.NEXT_PUBLIC_URL}/api/upload`,
-        {
-          method: "POST",
-          headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({
-            filename: file.name,
-            contentType: file.type,
-            type: "video",
-          }),
-        }
-      );
-
-      const data = await response.json();
-      if (!response.ok) {
-        toast.error(data.error || "Server error");
-        return;
-      }
-
-      const uploadUrl = data.url;
-      const fields = data.fields;
-      const fileUrl = `${data.url}${data.fields.key}`;
-
-      const formData = new FormData();
-      Object.entries(fields).forEach(([key, value]) =>
-        formData.append(key, value as string)
-      );
-      formData.append("file", file);
-
-      const uploadResponse = await fetch(uploadUrl, {
-        method: "POST",
-        body: formData,
-      });
-
-      if (uploadResponse.ok) {
-        onUploadSuccess(fileUrl);
+    // Start upload in background via global store
+    startUpload(file, {
+      name: file.name,
+      onComplete: (embedUrl) => {
+        onUploadSuccess(embedUrl);
         toast.success("Lesson video uploaded successfully!");
-        setFile(null);
-      } else {
-        toast.error("Upload failed.");
-      }
-    } catch (error) {
-      console.error("Unexpected Error:", error);
-      toast.error("An unexpected error occurred.");
-    } finally {
-      setUploading(false);
+      },
+    });
+
+    // Clear the form immediately so user can upload more
+    setFile(null);
+    if (inputRef.current) {
+      inputRef.current.value = "";
     }
+
+    toast.info("Upload started! You can continue adding more lessons.");
   };
 
   return (
-    <div className="flex flex-col gap-2">
+    <div className="flex flex-col gap-3">
       <Input
+        ref={inputRef}
         type="file"
         accept="video/*"
-        disabled={uploading}
         onChange={handleFileChange}
         className="shadow-lg bg-white/10 border-white/20 text-white"
       />
+
       {file && (
         <Button
           type="button"
           onClick={handleUpload}
-          disabled={uploading}
           className="bg-gradient-to-r from-primary to-neon-purple">
-          {uploading ? (
-            <Loader2 className="h-4 w-4 animate-spin" />
-          ) : (
-            "Upload Lesson Video"
-          )}
+          <Upload className="mr-2 h-4 w-4" />
+          Start Upload
         </Button>
       )}
+
+      <p className="text-xs text-white/50">
+        💡 Uploads run in the background. You can upload multiple videos at
+        once.
+      </p>
     </div>
   );
 }

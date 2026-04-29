@@ -26,3 +26,71 @@ type IUndoToastOptions = {
   dismissLabel?: string;
   onUndo: () => Promise<void> | void;
 };
+
+type CourseItem = {
+  id: string;
+  title: string;
+  description: string;
+  category?: string | null;
+  categoryId?: string | null;
+  thumbnail: string | null;
+  level: string;
+  tutor?: { user?: { name?: string; image?: string | null } };
+  tags: { id: string; name: string }[];
+  averageRating?: number;
+  totalStudents?: number;
+  price: number;
+  currentPrice: number | null;
+  previewVideo: string;
+  groupBuyingEnabled: boolean;
+  enrollments?: number;
+  basePrice: number;
+  currentPrice: number;
+  demandLevel?: string | null;
+  discount: number | null;
+  duration: number | null;
+  demandLevel?: string;
+  flashSaleEnd?: Date | null;
+  isFlashSale?: boolean;
+};
+
+interface ApplicationData {
+  applicationType: "tutor" | "mentor" | "";
+  personalInfo: {
+    firstName: string;
+    lastName: string;
+    email: string;
+    phone: string;
+    location: string;
+    timezone: string;
+    linkedin: string;
+    website: string;
+    bio: string;
+  };
+  professional: {
+    currentRole: string;
+    company: string;
+    experience: string;
+    industry: string;
+    skills: string[];
+    achievements: string[];
+    resume: File | null;
+    resumeUrl: string;
+    portfolio: string;
+  };
+  teaching: {
+    subjects: string[];
+    experience: string;
+    approach: string;
+    availability: string[];
+    hourlyRate: number;
+    languages: string[];
+    certifications: string[];
+  };
+  motivation: {
+    why: string;
+    goals: string;
+    commitment: string;
+    references: string;
+  };
+}

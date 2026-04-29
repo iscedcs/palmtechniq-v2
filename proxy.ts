@@ -9,9 +9,13 @@ import {
   protectedRoutes,
   adminRoutes,
   tutorRoutes,
+  mentorRoutes,
   studentRoutes,
   paymentRoutes,
+  superiorRoutes,
+  documentationRoutes,
 } from "@/routes";
+import { NextResponse } from "next/server";
 
 // Initialize authentication with the provided configuration
 const { auth } = NextAuth(authConfig);
@@ -40,12 +44,49 @@ export default auth((req) => {
   const isProtectedRoute = matchesRoute(nextUrl.pathname, protectedRoutes);
   const isAdminRoute = matchesRoute(nextUrl.pathname, adminRoutes);
   const isTutorRoute = matchesRoute(nextUrl.pathname, tutorRoutes);
+  const isMentorRoute = matchesRoute(nextUrl.pathname, mentorRoutes);
   const isStudentRoute = matchesRoute(nextUrl.pathname, studentRoutes);
   const isPaymentRoute = matchesRoute(nextUrl.pathname, paymentRoutes);
+  const isSuperiorRoute =
+    matchesRoute(nextUrl.pathname, superiorRoutes) ||
+    nextUrl.pathname.startsWith("/superior");
+  const isDocumentationRoute =
+    matchesRoute(nextUrl.pathname, documentationRoutes) ||
+    nextUrl.pathname.startsWith("/documentation");
+  const isChangePasswordRoute = nextUrl.pathname === "/change-password";
 
   // Allow API authentication routes to proceed
   if (isApiAuthRoute) {
     return;
+  }
+
+  function addSecurityHeaders(response: NextResponse): NextResponse {
+    const csp = `
+    default-src 'self';
+    script-src 'self' 'unsafe-inline' 'unsafe-eval' https:;
+    style-src 'self' 'unsafe-inline' https:;
+    img-src 'self' data: blob: https:;
+    media-src 'self' blob: https:;
+    font-src 'self' data: https:;
+    connect-src 'self' https: wss:;
+    frame-src 'self' https://www.youtube.com https://www.youtube-nocookie.com;
+    form-action 'self' https://www.facebook.com;
+    object-src 'none';
+    frame-ancestors 'none';
+    base-uri 'self';
+  `.replace(/\n/g, "");
+
+    response.headers.set("Content-Security-Policy", csp);
+    response.headers.set("X-DNS-Prefetch-Control", "on");
+    response.headers.set(
+      "Strict-Transport-Security",
+      "max-age=63072000; includeSubDomains; preload",
+    );
+    response.headers.set("X-Frame-Options", "SAMEORIGIN");
+    response.headers.set("X-Content-Type-Options", "nosniff");
+    response.headers.set("Referrer-Policy", "strict-origin-when-cross-origin");
+
+    return response;
   }
 
   // Handle authentication routes
@@ -57,7 +98,6 @@ export default auth((req) => {
             userRole as keyof typeof DEFAULT_LOGIN_REDIRECTS
           ]
         : DEFAULT_LOGIN_REDIRECT;
-      console.log("Redirecting from auth route to:", redirectPath);
 
       return Response.redirect(new URL(redirectPath, nextUrl));
     }
@@ -69,8 +109,22 @@ export default auth((req) => {
     return; // Allow access to public routes
   }
 
+  // Handle change-password route
+  if (isChangePasswordRoute) {
+    if (!isLoggedIn) {
+      return Response.redirect(new URL("/login", nextUrl));
+    }
+    // Allow access - the page itself checks mustChangePassword
+    return;
+  }
+
   // Handle protected routes
-  if (isProtectedRoute || isPaymentRoute) {
+  if (
+    isProtectedRoute ||
+    isPaymentRoute ||
+    isDocumentationRoute ||
+    isSuperiorRoute
+  ) {
     if (!isLoggedIn) {
       // Redirect to login with callback URL
       let callbackUrl = nextUrl.pathname;
@@ -79,21 +133,70 @@ export default auth((req) => {
       }
       const encodedCallbackUrl = encodeURIComponent(callbackUrl);
       return Response.redirect(
-        new URL(`/login?callbackUrl=${encodedCallbackUrl}`, nextUrl)
+        new URL(`/login?callbackUrl=${encodedCallbackUrl}`, nextUrl),
       );
     }
 
+    // Forced password change: redirect to /change-password if mustChangePassword is true
+    const mustChangePassword = (authObj as any)?.mustChangePassword;
+    if (mustChangePassword && !isChangePasswordRoute) {
+      return Response.redirect(new URL("/change-password", nextUrl));
+    }
+
     // Role-based access control for protected routes
-    if (isAdminRoute && userRole !== "ADMIN") {
+    if (isAdminRoute && userRole !== "ADMIN" && userRole !== "SUPERIOR") {
       return Response.redirect(new URL("/courses", nextUrl));
     }
 
-    if (isTutorRoute && userRole !== "TUTOR" && userRole !== "ADMIN") {
+    // Superior routes: only SUPERIOR can access
+    if (isSuperiorRoute && userRole !== "SUPERIOR") {
+      const redirectPath = userRole
+        ? DEFAULT_LOGIN_REDIRECTS[
+            userRole as keyof typeof DEFAULT_LOGIN_REDIRECTS
+          ]
+        : DEFAULT_LOGIN_REDIRECT;
+      return Response.redirect(new URL(redirectPath, nextUrl));
+    }
+
+    // Documentation routes: only TESTER and SUPERIOR can access
+    if (
+      isDocumentationRoute &&
+      userRole !== "TESTER" &&
+      userRole !== "SUPERIOR"
+    ) {
+      const redirectPath = userRole
+        ? DEFAULT_LOGIN_REDIRECTS[
+            userRole as keyof typeof DEFAULT_LOGIN_REDIRECTS
+          ]
+        : DEFAULT_LOGIN_REDIRECT;
+      return Response.redirect(new URL(redirectPath, nextUrl));
+    }
+
+    if (
+      isTutorRoute &&
+      userRole !== "TUTOR" &&
+      userRole !== "MENTOR" &&
+      userRole !== "ADMIN"
+    ) {
       return Response.redirect(new URL("/courses", nextUrl));
     }
 
-    if (isStudentRoute && userRole !== "STUDENT" && userRole !== "ADMIN") {
+    if (
+      isMentorRoute &&
+      userRole !== "MENTOR" &&
+      userRole !== "TUTOR" &&
+      userRole !== "ADMIN"
+    ) {
       return Response.redirect(new URL("/courses", nextUrl));
+    }
+
+    if (isStudentRoute && userRole !== "STUDENT") {
+      const redirectPath = userRole
+        ? DEFAULT_LOGIN_REDIRECTS[
+            userRole as keyof typeof DEFAULT_LOGIN_REDIRECTS
+          ]
+        : DEFAULT_LOGIN_REDIRECT;
+      return Response.redirect(new URL(redirectPath, nextUrl));
     }
 
     return;
@@ -128,9 +231,13 @@ export const config = {
     // Specifically match protected route patterns
     "/student/:path*",
     "/tutor/:path*",
+    "/mentor/:path*",
     "/admin/:path*",
+    "/superior/:path*",
+    "/documentation/:path*",
     "/courses/:path*/learn",
     "/settings/:path*",
     "/auth/:path*",
+    "/change-password",
   ],
 };

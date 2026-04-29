@@ -91,10 +91,18 @@ export function AuthLayout({
         <div className="w-full max-w-md mx-auto">
           {/* Mobile Logo */}
           <div className="lg:hidden flex items-center justify-center mb-8">
-            <div className="w-12 h-12 rounded-xl bg-gradient-to-r from-neon-blue to-neon-purple flex items-center justify-center mr-3">
-              <Brain className="w-6 h-6 text-white" />
+            <div className="w-24 h-24 rounded-2xl bg-gradient-to-r from-black to-black flex items-center justify-center mb-6 mx-auto">
+              <Image
+                src="/assets/standalone.png"
+                alt=""
+                width={100}
+                height={100}
+                className="w-10 h-10"
+              />
             </div>
-            <span className="text-2xl font-bold text-gradient">LearnForge</span>
+            <span className="text-2xl font-bold text-gradient">
+              PalmTechnIQ
+            </span>
           </div>
 
           {/* Back Button */}

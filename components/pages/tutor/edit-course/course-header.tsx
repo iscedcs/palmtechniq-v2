@@ -36,11 +36,15 @@ export function CourseHeader({ course, form, modules }: CourseHeaderProps) {
     setIsSaving(true);
     try {
       const res = await updateCourse(course.id, values, modules, isPublished);
-      if (res.success) {
-        toast.success("Course updated successfully!");
-        startTransition(() => router.refresh());
+      if ("error" in res) {
+        toast.error(res.error);
       } else {
-        toast.error("");
+        if (isPublished && res.requiresApproval) {
+          toast.success("Course submitted for approval");
+        } else {
+          toast.success("Course updated successfully!");
+        }
+        startTransition(() => router.refresh());
       }
     } catch {
       toast.error("Failed to save changes");
@@ -53,11 +57,14 @@ export function CourseHeader({ course, form, modules }: CourseHeaderProps) {
     setIsPublishing(true);
     try {
       const res = await publishCourse(course.id);
-      if (res.success) {
-        toast.success("Course published successfully!");
+      if ("error" in res) {
+        toast.error(res.error);
+      } else if (res.requiresApproval) {
+        toast.success("Course submitted for approval");
         startTransition(() => router.refresh());
       } else {
-        toast.error(res.error);
+        toast.success("Course published successfully!");
+        startTransition(() => router.refresh());
       }
     } catch {
       toast.error("Failed to publish course");

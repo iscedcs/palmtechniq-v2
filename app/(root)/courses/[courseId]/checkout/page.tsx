@@ -1,29 +1,59 @@
 import { beginCheckout } from "@/actions/checkout";
+import { beginGroupCheckout } from "@/actions/group-purchase";
 import CheckoutCoursePage from "@/components/pages/courses/checkout/checkout-course";
 import { getCourseById } from "@/data/course";
 import { generateRandomAvatar } from "@/lib/utils";
 import { redirect } from "next/navigation";
+import { db } from "@/lib/db";
+import { cookies } from "next/headers";
+import { REFERRAL_COOKIE_NAME } from "@/lib/referral";
+import type { Metadata } from "next";
+
+export const metadata: Metadata = {
+  title: "Checkout",
+  robots: { index: false, follow: false },
+};
 
 export default async function CheckoutPage({
   params,
+  searchParams,
 }: {
   params: Promise<{ courseId: string }>;
+  searchParams?: Promise<{ groupTierId?: string }>;
 }) {
   const { courseId } = await params;
+  const resolvedSearchParams = (await searchParams) ?? {};
   const course = await getCourseById(courseId);
 
   if (!course) redirect("/courses");
 
-  const totalLessonDuration = course.modules?.reduce((sum, module) => {
-    return (
-      sum +
-      module.lessons.reduce((lessonSum, lesson) => {
-        return lessonSum + (lesson.duration || 0);
-      }, 0)
-    );
-  }, 0);
+  const groupTierId =
+    typeof resolvedSearchParams.groupTierId === "string"
+      ? resolvedSearchParams.groupTierId
+      : undefined;
+  const groupTier = groupTierId
+    ? await db.groupTier.findFirst({
+        where: { id: groupTierId, courseId: course.id, isActive: true },
+      })
+    : null;
 
-  const totalLessons = course.modules?.reduce((sum, module) => {
+  if (groupTierId && !groupTier) {
+    redirect(`/courses/${courseId}`);
+  }
+
+  const totalLessonDuration = course.modules?.reduce(
+    (sum: number, module: any) => {
+      return (
+        sum +
+        module.lessons.reduce((lessonSum: number, lesson: any) => {
+          return lessonSum + (lesson.duration || 0);
+        }, 0)
+      );
+    },
+    0,
+  );
+
+  const totalLessons = course.modules?.reduce((sum: number, module: any) => {
     return sum + module.lessons.length;
   }, 0);
 
@@ -45,23 +75,44 @@ export default async function CheckoutPage({
         totalLesson={totalLessons}
         rating={
           course.reviews?.length
-            ? course.reviews.reduce((s, r) => s + r.rating, 0) /
+            ? course.reviews.reduce((s: any, r: any) => s + r.rating, 0) /
               course.reviews.length
             : 0
         }
         pricing={{
-          basePrice: course.basePrice ?? course.currentPrice ?? 0,
-          currentPrice: course.currentPrice ?? 0,
-          discountPercent:
-            course.groupBuyingDiscount && course.groupBuyingDiscount > 0
+          basePrice: groupTier?.groupPrice ?? course.basePrice ?? 0,
+          currentPrice:
+            groupTier?.groupPrice ??
+            (course.currentPrice && course.currentPrice > 0
+              ? course.currentPrice
+              : course.basePrice) ??
+            0,
+          discountPercent: groupTier
+            ? undefined
+            : course.groupBuyingDiscount && course.groupBuyingDiscount > 0
               ? course.groupBuyingDiscount
               : undefined,
           vatRate: 0.075,
           currency: "NGN",
         }}
-        onProceed={async () => {
+        groupTier={
+          groupTier
+            ? {
+                size: groupTier.size,
+                groupPrice: groupTier.groupPrice,
+                cashbackPercent: groupTier.cashbackPercent ?? 0,
+              }
+            : undefined
+        }
+        onProceed={async (promoCode?: string) => {
           "use server";
-          await beginCheckout(course.id);
+          if (groupTier) {
+            await beginGroupCheckout(course.id, groupTier.id);
+            return;
+          }
+          const cookieStore = await cookies();
+          const referralCode = cookieStore.get(REFERRAL_COOKIE_NAME)?.value;
+          await beginCheckout(course.id, promoCode, referralCode);
         }}
       />
     </div>

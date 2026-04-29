@@ -8,8 +8,12 @@ import { TutorCourseActionsMenu } from "./shared/tutor-course-actions-menu";
 import { TutorCourseStatsRow } from "./shared/tutor-course-stats-row";
 import { TutorCourseProgress } from "./shared/tutor-course-progress";
 import Image from "next/image";
-import { generateRandomAvatar } from "@/lib/utils";
+import { formatDurationMinutes, generateRandomAvatar } from "@/lib/utils";
 import { motion } from "framer-motion";
+import { LinkIcon, Check } from "lucide-react";
+import { useState, useTransition } from "react";
+import { getMyReferralCode } from "@/actions/tutor-actions";
+import { toast } from "sonner";
 
 interface TutorCourseCardProps {
   course: {
@@ -30,9 +34,26 @@ interface TutorCourseCardProps {
 }
 
 export function TutorCourseCard({ course }: TutorCourseCardProps) {
+  const [copied, setCopied] = useState(false);
+  const [isPending, startTransition] = useTransition();
+  const fallbackThumbnail = generateRandomAvatar();
+
   if (!course) return null;
 
-  const fallbackThumbnail = generateRandomAvatar();
+  const handleCopyReferralLink = () => {
+    startTransition(async () => {
+      const res = await getMyReferralCode();
+      if (res.error || !res.referralCode) {
+        toast.error(res.error || "Could not generate referral link");
+        return;
+      }
+      const referralUrl = `${window.location.origin}/courses/${course.id}?ref=${res.referralCode}`;
+      await navigator.clipboard.writeText(referralUrl);
+      setCopied(true);
+      toast.success("Referral link copied! Share to earn 50% on enrollments.");
+      setTimeout(() => setCopied(false), 2000);
+    });
+  };
 
   return (
     <motion.div
@@ -70,7 +91,7 @@ export function TutorCourseCard({ course }: TutorCourseCardProps) {
 
           <p className="text-sm text-gray-400 mt-1">
             📚 {course.lessonsCount} lessons • ⏱{" "}
-            {Math.round(course.duration / 60)} hours
+            {formatDurationMinutes(course.duration)}
           </p>
 
           <TutorCourseStatsRow
@@ -85,11 +106,19 @@ export function TutorCourseCard({ course }: TutorCourseCardProps) {
             updatedAt={course.updatedAt}
           />
 
-          <div className="flex justify-between items-center mt-4">
+          <div className="flex justify-between items-center mt-4 gap-2">
             <Button
               variant="outline"
-              className="border-white/20 text-white hover:bg-white/10">
-              Manage
+              size="sm"
+              disabled={isPending}
+              onClick={handleCopyReferralLink}
+              className="border-white/20 text-white hover:bg-white/10 bg-transparent text-xs">
+              {copied ? (
+                <Check className="w-3 h-3 mr-1 text-green-400" />
+              ) : (
+                <LinkIcon className="w-3 h-3 mr-1" />
+              )}
+              {copied ? "Copied!" : "Referral Link"}
             </Button>
             <Button
               asChild

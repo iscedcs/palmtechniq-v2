@@ -5,6 +5,7 @@ import { Play, X } from "lucide-react";
 import { motion } from "framer-motion";
 import { Button } from "@/components/ui/button";
 import Image from "next/image";
+import { isYoutubeUrl, toYoutubeEmbedUrl } from "@/lib/youtube";
 
 export default function CoursePreview({
   thumbnail,
@@ -14,6 +15,8 @@ export default function CoursePreview({
   previewVideo?: string;
 }) {
   const [isOpen, setIsOpen] = useState(false);
+  const isYoutube = previewVideo ? isYoutubeUrl(previewVideo) : false;
+  const previewSrc = previewVideo ? toYoutubeEmbedUrl(previewVideo) : "";
 
   return (
     <div className="relative w-full  h-[70vh] rounded-lg overflow-hidden">
@@ -69,12 +72,22 @@ export default function CoursePreview({
               </Button>
             </div>
 
-            <video
-              src={previewVideo}
-              controls
-              autoPlay
-              className="w-full h-[70vh] object-cover"
-            />
+            {isYoutube ? (
+              <iframe
+                src={`${previewSrc}?autoplay=1`}
+                title="Course preview"
+                allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture"
+                allowFullScreen
+                className="w-full h-[70vh]"
+              />
+            ) : (
+              <video
+                src={previewVideo}
+                controls
+                autoPlay
+                className="w-full h-[70vh] object-cover"
+              />
+            )}
           </motion.div>
         </motion.div>
       )}

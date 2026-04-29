@@ -8,6 +8,12 @@ import Link from "next/link";
 import { LiveChatWidget } from "./conversion-features";
 
 export function HeroSection() {
+  const scrollToDemo = () => {
+    const demoSection = document.getElementById("demo-section");
+    if (demoSection) {
+      demoSection.scrollIntoView({ behavior: "smooth" });
+    }
+  };
   return (
     <div className="min-h-screen bg-background">
       <LiveChatWidget />
@@ -64,21 +70,29 @@ export function HeroSection() {
               <span className="text-gradient">Dominate.</span>
             </motion.h1>
 
-            <motion.p
+            {/* <motion.p
               initial={{ opacity: 0, y: 30 }}
               animate={{ opacity: 1, y: 0 }}
               transition={{ duration: 0.8, delay: 0.4 }}
-              className="text-xl md:text-2xl text-gray-300 mb-12 max-w-3xl mx-auto leading-relaxed">
-              Experience the next generation of e-learning with AI-powered
-              interviews, personalized mentorship, and immersive virtual &
-              physical learning environments.
+              className="text-xl md:text-2xl text-gray-300 mb-4 max-w-3xl mx-auto leading-relaxed">
+              The most comprehensive platform for aspiring and seasoned
+              professionals
+            </motion.p> */}
+
+            <motion.p
+              initial={{ opacity: 0, y: 20 }}
+              animate={{ opacity: 1, y: 0 }}
+              transition={{ duration: 0.8, delay: 0.5 }}
+              className="text-xl md:text-2xl text-gray-400 mb-12 max-w-3xl mx-auto leading-relaxed">
+              AI-powered interviews, expert mentorship, real-world projects, and
+              hybrid learning environments designed for the industry.
             </motion.p>
 
             <motion.div
               initial={{ opacity: 0, y: 30 }}
               animate={{ opacity: 1, y: 0 }}
               transition={{ duration: 0.8, delay: 0.6 }}
-              className="flex flex-col sm:flex-row gap-6 justify-center items-center mb-16">
+              className="flex flex-col sm:flex-row gap-6 justify-center items-center mb-20">
               <Link href="/courses">
                 <Button
                   size="lg"
@@ -90,9 +104,10 @@ export function HeroSection() {
               </Link>
 
               <Button
-                variant="outline"
                 size="lg"
-                className="border-2 border-white/20 hover:border-neon-blue/50 text-white hover:text-neon-blue px-8 py-4 text-lg font-semibold rounded-2xl hover-glow group backdrop-blur-sm">
+                variant="outline"
+                onClick={scrollToDemo}
+                className="border-2 border-neon-blue/50 hover:border-neon-blue text-white hover:bg-neon-blue/10 px-8 py-4 text-lg font-semibold rounded-2xl transition-all duration-300 group">
                 <Play className="mr-2 w-5 h-5 group-hover:scale-110 transition-transform" />
                 Watch Demo
               </Button>
@@ -103,13 +118,19 @@ export function HeroSection() {
               initial={{ opacity: 0, y: 40 }}
               animate={{ opacity: 1, y: 0 }}
               transition={{ duration: 1, delay: 0.8 }}
-              className="grid grid-cols-1 md:grid-cols-3 gap-8 max-w-4xl mx-auto">
+              className="grid grid-cols-1 md:grid-cols-4 gap-6 max-w-5xl mx-auto">
               {[
                 {
                   icon: Zap,
-                  title: "AI-Powered Learning",
+                  title: "AI Interview Coach",
                   description:
-                    "Personalized curriculum with AI interviews and profile building",
+                    "Practice with adaptive AI simulating real interview scenarios",
+                },
+                {
+                  icon: Target,
+                  title: "Industry Mentorship",
+                  description:
+                    "Learn from leaders & get personalized career guidance",
                 },
                 {
                   icon: Target,
@@ -119,8 +140,9 @@ export function HeroSection() {
                 },
                 {
                   icon: Sparkles,
-                  title: "Expert Mentorship",
-                  description: "1-on-1 sessions with industry professionals",
+                  title: "Real Projects",
+                  description:
+                    "Build portfolio with hands-on industry projects",
                 },
               ].map((feature, index) => (
                 <motion.div
@@ -128,12 +150,14 @@ export function HeroSection() {
                   initial={{ opacity: 0, y: 20 }}
                   animate={{ opacity: 1, y: 0 }}
                   transition={{ duration: 0.6, delay: 1 + index * 0.2 }}
-                  className="glass-card p-6 hover-glow group cursor-pointer">
-                  <feature.icon className="w-12 h-12 text-neon-blue mb-4 group-hover:scale-110 transition-transform" />
-                  <h3 className="text-xl font-semibold text-white mb-2">
+                  className="glass-card p-6 hover:shadow-lg hover:shadow-neon-blue/20 group cursor-pointer border border-white/10 hover:border-neon-blue/30 transition-all">
+                  <feature.icon className="w-12 h-12 text-neon-blue mb-4 group-hover:scale-110 group-hover:rotate-12 transition-transform" />
+                  <h2 className="text-lg font-semibold text-white mb-2 group-hover:text-neon-blue transition-colors">
                     {feature.title}
-                  </h3>
-                  <p className="text-gray-400">{feature.description}</p>
+                  </h2>
+                  <p className="text-sm text-gray-400 group-hover:text-gray-300 transition-colors">
+                    {feature.description}
+                  </p>
                 </motion.div>
               ))}
             </motion.div>
