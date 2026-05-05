@@ -14,6 +14,7 @@ import { ShareButtons } from "@/components/pages/blog/share-buttons";
 import { ViewTracker } from "@/components/pages/blog/view-tracker";
 import { BookmarkButton } from "@/components/pages/blog/bookmark-button";
 import { AuthorCard } from "@/components/pages/blog/author-card";
+import { CommentsSection } from "@/components/pages/blog/comments-section";
 import { RelatedPosts } from "@/components/pages/blog/related-posts";
 
 export const revalidate = 60;
@@ -322,7 +323,6 @@ export default async function BlogPostPage({ params }: Props) {
         {JSON.stringify(breadcrumbJsonLd)}
       </script>
       <ReadingProgressBar />
-      <ViewTracker postId={post._id} />
 
       {/* Hero with image */}
       <section className="relative pt-24 pb-12 overflow-hidden">
@@ -387,6 +387,7 @@ export default async function BlogPostPage({ params }: Props) {
                 <span>{post.readingTime} min read</span>
               </div>
             )}
+            <ViewTracker postId={post._id} />
           </div>
 
           {/* Action bar */}
@@ -435,6 +436,10 @@ export default async function BlogPostPage({ params }: Props) {
               <AuthorCard author={post.author} />
             </div>
           )}
+
+          <div className="mt-12">
+            <CommentsSection postId={post._id} postSlug={post.slug.current} />
+          </div>
 
           {/* Related posts */}
           {relatedTopics.length > 0 && (

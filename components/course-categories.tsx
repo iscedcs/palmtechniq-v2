@@ -146,9 +146,9 @@ export function CourseCategoriesSection() {
                     {category.title}
                   </h3>
 
-                  <Badge className="bg-white/10 text-white border-white/20">
+                  {/* <Badge className="bg-white/10 text-white border-white/20">
                     {category.courses} courses
-                  </Badge>
+                  </Badge> */}
 
                   {/* Hover Gradient */}
                   <motion.div
