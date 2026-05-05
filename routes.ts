@@ -15,6 +15,7 @@ export const publicRoutes = [
   "/privacy",
   "/api/chat",
   "/blog",
+  "/blog/[slug]",
   "/docs",
   "/faq",
   "/podcast",

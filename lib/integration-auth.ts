@@ -67,5 +67,4 @@ export function assertIntegrationAccess(req: NextRequest) {
   if (!validPrimary && !validRotated) {
     throw new IntegrationAuthError("Invalid integration key.", 401);
   }
-
 }

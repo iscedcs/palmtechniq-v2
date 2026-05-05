@@ -89,6 +89,7 @@ model User {
   blogLikes               BlogLike[]               @relation("UserBlogLikes")
   blogViews               BlogView[]               @relation("UserBlogViews")
   blogBookmarks           BlogBookmark[]           @relation("UserBlogBookmarks")
+  blogComments            BlogComment[]            @relation("UserBlogComments")
 
   @@map("users")
 }
@@ -1789,4 +1790,19 @@ model BlogBookmark {
   @@index([sanityPostId])
   @@index([userId])
   @@map("blog_bookmarks")
+}
+
+model BlogComment {
+  id           String   @id @default(cuid())
+  sanityPostId String
+  userId       String
+  content      String
+  createdAt    DateTime @default(now())
+  updatedAt    DateTime @updatedAt
+
+  user User @relation("UserBlogComments", fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([sanityPostId, createdAt])
+  @@index([userId])
+  @@map("blog_comments")
 }
