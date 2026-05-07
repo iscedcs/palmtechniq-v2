@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useTransition } from "react";
+import { useEffect, useMemo, useState, useTransition } from "react";
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { motion, AnimatePresence } from "framer-motion";
@@ -54,6 +54,8 @@ import {
   Sparkles,
   Shield,
   TrendingUp,
+  Link as LinkIcon,
+  Copy,
 } from "lucide-react";
 
 const STEPS = [
@@ -72,9 +74,22 @@ const DURATION_FILTERS = [
   { label: "1 Year", value: "1 Year" },
 ];
 
-export function EnrollmentWizard() {
-  const [step, setStep] = useState(0);
-  const [durationFilter, setDurationFilter] = useState("all");
+export function EnrollmentWizard({
+  initialProgramSlug,
+}: {
+  initialProgramSlug?: string;
+}) {
+  const preselectedProgram = useMemo(
+    () => PROGRAMS.find((p) => p.slug === initialProgramSlug),
+    [initialProgramSlug],
+  );
+  const hasPreselectedProgram = Boolean(preselectedProgram);
+  const minStep = hasPreselectedProgram ? 1 : 0;
+
+  const [step, setStep] = useState(minStep);
+  const [durationFilter, setDurationFilter] = useState(
+    preselectedProgram?.durationLabel ?? "all",
+  );
   const [isPending, startTransition] = useTransition();
 
   const cohorts: CohortOption[] = getAvailableCohorts();
@@ -82,7 +97,7 @@ export function EnrollmentWizard() {
   const form = useForm<EnrollmentFormData>({
     resolver: zodResolver(enrollmentSchema),
     defaultValues: {
-      programSlug: "",
+      programSlug: preselectedProgram?.slug ?? "",
       fullName: "",
       email: "",
       phone: "",
@@ -96,13 +111,38 @@ export function EnrollmentWizard() {
     mode: "onChange",
   });
 
+  useEffect(() => {
+    if (!preselectedProgram) return;
+    form.setValue("programSlug", preselectedProgram.slug, {
+      shouldValidate: true,
+    });
+    setDurationFilter(preselectedProgram.durationLabel);
+    setStep((s) => (s < 1 ? 1 : s));
+  }, [form, preselectedProgram]);
+
   const selectedSlug = form.watch("programSlug");
   const selectedProgram = PROGRAMS.find((p) => p.slug === selectedSlug);
   const paymentPlan = form.watch("paymentPlan");
   const selectedCohort = cohorts.find(
     (c) => c.value === form.watch("cohortValue"),
   );
-  const progress = ((step + 1) / STEPS.length) * 100;
+  const visibleSteps = hasPreselectedProgram ? STEPS.slice(1) : STEPS;
+  const visibleStepIndex = hasPreselectedProgram ? step - 1 : step;
+  const progress = ((visibleStepIndex + 1) / visibleSteps.length) * 100;
+
+  function getProgramShareLink(slug: string) {
+    if (typeof window === "undefined") return `/enroll/${slug}`;
+    return `${window.location.origin}/enroll/${slug}`;
+  }
+
+  async function handleCopyProgramLink(slug: string) {
+    try {
+      await navigator.clipboard.writeText(getProgramShareLink(slug));
+      toast.success("Program enrollment link copied");
+    } catch {
+      toast.error("Could not copy link. Please copy manually.");
+    }
+  }
 
   const programsByDuration = getProgramsByDuration();
   const filteredPrograms =
@@ -136,11 +176,11 @@ export function EnrollmentWizard() {
     }
 
     const valid = await form.trigger(fieldsToValidate);
-    if (valid) setStep((s) => Math.min(s + 1, STEPS.length - 1));
+    if (valid) setStep((s) => Math.min(s + 1, 4));
   }
 
   function prevStep() {
-    setStep((s) => Math.max(s - 1, 0));
+    setStep((s) => Math.max(s - 1, minStep));
   }
 
   // ── Submit handler ──
@@ -187,15 +227,18 @@ export function EnrollmentWizard() {
       <div className="mb-8">
         <Progress value={progress} className="h-1.5 mb-6" />
         <div className="flex justify-between">
-          {STEPS.map((s, i) => {
+          {visibleSteps.map((s, i) => {
+            const absoluteIndex = hasPreselectedProgram ? i + 1 : i;
             const Icon = s.icon;
-            const isActive = i === step;
-            const isComplete = i < step;
+            const isActive = absoluteIndex === step;
+            const isComplete = absoluteIndex < step;
             return (
               <button
                 key={s.label}
                 type="button"
-                onClick={() => i < step && setStep(i)}
+                onClick={() =>
+                  absoluteIndex < step && setStep(absoluteIndex)
+                }
                 className={`flex flex-col items-center gap-1.5 text-xs transition-all ${
                   isActive
                     ? "text-neon-blue"
@@ -234,13 +277,15 @@ export function EnrollmentWizard() {
               animate={{ opacity: 1, x: 0 }}
               exit={{ opacity: 0, x: -30 }}
               transition={{ duration: 0.25 }}>
-              {step === 0 && (
+              {step === 0 && !hasPreselectedProgram && (
                 <StepProgramSelection
                   form={form}
                   filteredPrograms={filteredPrograms}
                   durationFilter={durationFilter}
                   setDurationFilter={setDurationFilter}
                   selectedProgram={selectedProgram}
+                  onCopyProgramLink={handleCopyProgramLink}
+                  getProgramShareLink={getProgramShareLink}
                 />
               )}
 
@@ -275,13 +320,13 @@ export function EnrollmentWizard() {
               type="button"
               variant="ghost"
               onClick={prevStep}
-              disabled={step === 0}
+              disabled={step === minStep}
               className="text-gray-400 hover:text-white">
               <ArrowLeft className="w-4 h-4 mr-2" />
               Back
             </Button>
 
-            {step < STEPS.length - 1 ? (
+            {step < 4 ? (
               <Button
                 type="button"
                 onClick={nextStep}
@@ -321,12 +366,16 @@ function StepProgramSelection({
   durationFilter,
   setDurationFilter,
   selectedProgram,
+  onCopyProgramLink,
+  getProgramShareLink,
 }: {
   form: any;
   filteredPrograms: ProgramDefinition[];
   durationFilter: string;
   setDurationFilter: (f: string) => void;
   selectedProgram?: ProgramDefinition;
+  onCopyProgramLink: (slug: string) => void;
+  getProgramShareLink: (slug: string) => string;
 }) {
   return (
     <div className="space-y-6">
@@ -431,6 +480,26 @@ function StepProgramSelection({
           initial={{ opacity: 0, y: 10 }}
           animate={{ opacity: 1, y: 0 }}
           className="rounded-xl border border-neon-blue/20 bg-neon-blue/5 p-4">
+          <div className="mb-3 rounded-lg border border-neon-blue/30 bg-gray-950/50 p-3">
+            <p className="text-xs uppercase tracking-wider text-gray-400 mb-2">
+              Share this program link
+            </p>
+            <div className="flex flex-col sm:flex-row gap-2">
+              <div className="flex-1 rounded-md border border-gray-700 bg-gray-900 px-3 py-2 text-xs text-gray-300 break-all">
+                <LinkIcon className="inline-block w-3 h-3 mr-1.5 text-neon-blue" />
+                {getProgramShareLink(selectedProgram.slug)}
+              </div>
+              <Button
+                type="button"
+                variant="outline"
+                className="border-neon-blue/40 text-neon-blue hover:bg-neon-blue/10"
+                onClick={() => onCopyProgramLink(selectedProgram.slug)}>
+                <Copy className="w-3.5 h-3.5 mr-1.5" />
+                Copy Link
+              </Button>
+            </div>
+          </div>
+
           <h4 className="text-sm font-semibold text-neon-blue mb-2">
             Curriculum Highlights
           </h4>
