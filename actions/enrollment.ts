@@ -33,6 +33,30 @@ function generateTempPassword(length = 12): string {
   return Array.from(bytes, (byte) => chars[byte % chars.length]).join("");
 }
 
+function getSecondInstallmentDueDate(
+  firstPaymentDate: Date,
+  duration: "ONE_MONTH" | "THREE_MONTHS" | "SIX_MONTHS" | "ONE_YEAR",
+): Date {
+  const dueDate = new Date(firstPaymentDate);
+
+  switch (duration) {
+    case "ONE_MONTH":
+      dueDate.setDate(dueDate.getDate() + 15);
+      break;
+    case "THREE_MONTHS":
+      dueDate.setDate(dueDate.getDate() + 45);
+      break;
+    case "SIX_MONTHS":
+      dueDate.setMonth(dueDate.getMonth() + 3);
+      break;
+    case "ONE_YEAR":
+      dueDate.setMonth(dueDate.getMonth() + 6);
+      break;
+  }
+
+  return dueDate;
+}
+
 /**
  * Provision a user account after successful enrollment payment.
  * - If user already exists, links enrollment to existing user.
@@ -136,9 +160,39 @@ export async function submitEnrollment(data: EnrollmentFormData) {
   const totalAmount = isInstallment
     ? programDef.installTotal
     : programDef.fullPrice;
-  const firstPaymentAmount = isInstallment
-    ? programDef.firstInstall
-    : programDef.fullPrice;
+
+  // For installments, honour the student's custom first payment or fall back
+  // to the default 70% (firstInstall). Enforce a minimum floor of 50% of the
+  // installment total so the unpaid balance never exceeds what has been paid.
+  const minFirstPayment = Math.ceil(programDef.installTotal * 0.5);
+
+  let firstPaymentAmount: number;
+  let secondPaymentAmount: number;
+
+  if (isInstallment) {
+    const custom = form.customFirstPayment;
+    if (custom !== undefined) {
+      if (custom < minFirstPayment) {
+        return {
+          success: false,
+          error: `Minimum first installment is ${new Intl.NumberFormat("en-NG", { style: "currency", currency: "NGN", minimumFractionDigits: 0 }).format(minFirstPayment)}`,
+        };
+      }
+      if (custom >= programDef.installTotal) {
+        return {
+          success: false,
+          error: "First installment must be less than the total installment amount",
+        };
+      }
+      firstPaymentAmount = custom;
+    } else {
+      firstPaymentAmount = programDef.firstInstall;
+    }
+    secondPaymentAmount = programDef.installTotal - firstPaymentAmount;
+  } else {
+    firstPaymentAmount = programDef.fullPrice;
+    secondPaymentAmount = 0;
+  }
 
   // ── Upsert program in DB ──
   const program = await db.professionalProgram.upsert({
@@ -219,26 +273,27 @@ export async function submitEnrollment(data: EnrollmentFormData) {
 
   // ── Create installment schedule ──
   const now = new Date();
-  // 2nd installment due 1 month after cohort start date
-  const cohortStart = new Date(cohortParts.year, cohortParts.month - 1, 1);
-  const secondInstallmentDue = new Date(cohortStart);
-  secondInstallmentDue.setMonth(secondInstallmentDue.getMonth() + 1);
+  const secondInstallmentDue = getSecondInstallmentDueDate(
+    now,
+    programDef.duration,
+  );
 
   if (isInstallment) {
-    // Two installments: 70% now, 30% one month after classes start
+    // Two installments: flexible first amount, remainder due halfway through
+    // the program duration, measured from the first payment date.
     await db.installmentPayment.createMany({
       data: [
         {
           enrollmentId: enrollment.id,
           installmentNo: 1,
-          amount: programDef.firstInstall,
+          amount: firstPaymentAmount,
           dueDate: now,
           paystackRef: reference,
         },
         {
           enrollmentId: enrollment.id,
           installmentNo: 2,
-          amount: programDef.secondInstall,
+          amount: secondPaymentAmount,
           dueDate: secondInstallmentDue,
         },
       ],
