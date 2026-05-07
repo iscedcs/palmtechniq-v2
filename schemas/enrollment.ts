@@ -27,6 +27,9 @@ export const enrollmentSchema = z.object({
   paymentPlan: z.enum(["FULL_PAYMENT", "INSTALLMENT"], {
     message: "Please select a payment plan",
   }),
+  // Flexible installment: custom first payment amount (kobo-free naira integer)
+  // Validated server-side against the program's minimum floor (30% of installTotal)
+  customFirstPayment: z.number().int().positive().optional(),
 
   // Step 5 — Confirmation
   agreeToTerms: z.literal(true, {

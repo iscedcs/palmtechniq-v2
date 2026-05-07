@@ -74,6 +74,23 @@ const DURATION_FILTERS = [
   { label: "1 Year", value: "1 Year" },
 ];
 
+function getMinFirstPayment(installTotal: number) {
+  return Math.ceil(installTotal * 0.5);
+}
+
+function getSecondInstallmentTimingLabel(duration: ProgramDefinition["duration"]) {
+  switch (duration) {
+    case "ONE_MONTH":
+      return "15 days after your first payment";
+    case "THREE_MONTHS":
+      return "45 days after your first payment";
+    case "SIX_MONTHS":
+      return "3 months after your first payment";
+    case "ONE_YEAR":
+      return "6 months after your first payment";
+  }
+}
+
 export function EnrollmentWizard({
   initialProgramSlug,
 }: {
@@ -106,6 +123,7 @@ export function EnrollmentWizard({
       cohortValue: "",
       learningMode: "VIRTUAL",
       paymentPlan: "FULL_PAYMENT",
+      customFirstPayment: undefined,
       agreeToTerms: undefined,
     },
     mode: "onChange",
@@ -123,6 +141,7 @@ export function EnrollmentWizard({
   const selectedSlug = form.watch("programSlug");
   const selectedProgram = PROGRAMS.find((p) => p.slug === selectedSlug);
   const paymentPlan = form.watch("paymentPlan");
+  const customFirstPayment = form.watch("customFirstPayment");
   const selectedCohort = cohorts.find(
     (c) => c.value === form.watch("cohortValue"),
   );
@@ -172,6 +191,18 @@ export function EnrollmentWizard({
         break;
       case 3:
         fieldsToValidate = ["paymentPlan"];
+        // Also validate custom amount when installment is chosen
+        if (form.getValues("paymentPlan") === "INSTALLMENT") {
+          const prog = PROGRAMS.find((p) => p.slug === form.getValues("programSlug"));
+          const floor = prog ? getMinFirstPayment(prog.installTotal) : 0;
+          const custom = form.getValues("customFirstPayment");
+          if (custom !== undefined && custom < floor) {
+            form.setError("customFirstPayment", {
+              message: `Minimum first payment is ₦${floor.toLocaleString("en-NG")}`,
+            });
+            return;
+          }
+        }
         break;
     }
 
@@ -300,6 +331,7 @@ export function EnrollmentWizard({
                   form={form}
                   selectedProgram={selectedProgram}
                   paymentPlan={paymentPlan}
+                  customFirstPayment={customFirstPayment}
                 />
               )}
 
@@ -447,8 +479,8 @@ function StepProgramSelection({
                           </span>
                           {program.installTotal > program.fullPrice && (
                             <span className="text-xs text-gray-500">
-                              or {formatNaira(program.firstInstall)} +{" "}
-                              {formatNaira(program.secondInstall)}
+                              or from {formatNaira(getMinFirstPayment(program.installTotal))} now
+                              (installment total {formatNaira(program.installTotal)})
                             </span>
                           )}
                         </div>
@@ -768,14 +800,30 @@ function StepPaymentPlan({
   form,
   selectedProgram,
   paymentPlan,
+  customFirstPayment,
 }: {
   form: any;
   selectedProgram?: ProgramDefinition;
   paymentPlan: string;
+  customFirstPayment?: number;
 }) {
   if (!selectedProgram) return null;
 
   const savings = selectedProgram.installTotal - selectedProgram.fullPrice;
+  const minFirstPayment = getMinFirstPayment(selectedProgram.installTotal);
+  const secondInstallmentTiming = getSecondInstallmentTimingLabel(
+    selectedProgram.duration,
+  );
+  const effectiveFirst =
+    customFirstPayment !== undefined && customFirstPayment > 0
+      ? customFirstPayment
+      : selectedProgram.firstInstall;
+  const effectiveSecond = selectedProgram.installTotal - effectiveFirst;
+  const isCustomValid =
+    customFirstPayment !== undefined
+      ? customFirstPayment >= minFirstPayment &&
+        customFirstPayment < selectedProgram.installTotal
+      : true;
 
   return (
     <div className="space-y-6">
@@ -849,10 +897,10 @@ function StepPaymentPlan({
                       />
                       <div>
                         <p className="font-semibold text-white">
-                          2-Part Installment (70/30)
+                          Flexible Installment
                         </p>
                         <p className="text-sm text-gray-400 mt-0.5">
-                          70% now, 30% one month after classes start
+                          Pay any amount now (min {formatNaira(minFirstPayment)}), balance due {secondInstallmentTiming}
                         </p>
                       </div>
                     </div>
@@ -865,23 +913,85 @@ function StepPaymentPlan({
                     <motion.div
                       initial={{ opacity: 0, height: 0 }}
                       animate={{ opacity: 1, height: "auto" }}
-                      className="mt-4 ml-7 space-y-2 border-t border-gray-800 pt-3">
-                      <div className="flex justify-between text-sm">
-                        <span className="text-gray-400">
-                          1st Installment (due now)
-                        </span>
-                        <span className="font-semibold text-white">
-                          {formatNaira(selectedProgram.firstInstall)}
-                        </span>
+                      className="mt-4 ml-7 space-y-4 border-t border-gray-800 pt-4">
+
+                      {/* Custom first payment input */}
+                      <FormField
+                        control={form.control}
+                        name="customFirstPayment"
+                        render={({ field: amtField }) => (
+                          <FormItem>
+                            <div className="flex items-center justify-between mb-1">
+                              <label className="text-sm text-gray-300 font-medium">
+                                How much can you pay now?
+                              </label>
+                              <span className="text-xs text-gray-500">
+                                Min: {formatNaira(minFirstPayment)}
+                              </span>
+                            </div>
+                            <FormControl>
+                              <div className="relative">
+                                <span className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400 text-sm font-semibold">
+                                  ₦
+                                </span>
+                                <input
+                                  type="number"
+                                  min={minFirstPayment}
+                                  max={selectedProgram.installTotal - 1}
+                                  step={1000}
+                                  placeholder={selectedProgram.firstInstall.toString()}
+                                  value={amtField.value ?? ""}
+                                  onChange={(e) => {
+                                    const val = e.target.value;
+                                    amtField.onChange(
+                                      val === "" ? undefined : parseInt(val, 10),
+                                    );
+                                  }}
+                                  className="w-full pl-7 pr-4 py-2.5 rounded-lg bg-gray-800 border border-gray-700 text-white text-sm focus:outline-none focus:border-neon-blue focus:ring-1 focus:ring-neon-blue/40 [appearance:textfield] [&::-webkit-outer-spin-button]:appearance-none [&::-webkit-inner-spin-button]:appearance-none"
+                                />
+                              </div>
+                            </FormControl>
+                            <FormMessage />
+                          </FormItem>
+                        )}
+                      />
+
+                      {/* Live breakdown */}
+                      <div className="space-y-2 bg-gray-900/60 rounded-lg p-3 border border-gray-800">
+                        <div className="flex justify-between text-sm">
+                          <span className="text-gray-400">You pay now</span>
+                          <span
+                            className={`font-semibold ${isCustomValid ? "text-white" : "text-red-400"}`}>
+                            {customFirstPayment !== undefined && customFirstPayment > 0
+                              ? formatNaira(effectiveFirst)
+                              : <span className="text-gray-500 italic">enter amount above</span>}
+                          </span>
+                        </div>
+                        <div className="flex justify-between text-sm">
+                          <span className="text-gray-400">Balance ({secondInstallmentTiming})</span>
+                          <span className="font-semibold text-white">
+                            {customFirstPayment !== undefined && customFirstPayment > 0
+                              ? formatNaira(effectiveSecond)
+                              : formatNaira(selectedProgram.installTotal - selectedProgram.firstInstall)}
+                          </span>
+                        </div>
+                        <div className="flex justify-between text-sm border-t border-gray-700 pt-2 mt-1">
+                          <span className="text-gray-400">Total</span>
+                          <span className="font-semibold text-white">
+                            {formatNaira(selectedProgram.installTotal)}
+                          </span>
+                        </div>
                       </div>
-                      <div className="flex justify-between text-sm">
-                        <span className="text-gray-400">
-                          2nd Installment (1 month after start)
-                        </span>
-                        <span className="font-semibold text-white">
-                          {formatNaira(selectedProgram.secondInstall)}
-                        </span>
-                      </div>
+
+                      {/* Floor warning */}
+                      {customFirstPayment !== undefined &&
+                        customFirstPayment > 0 &&
+                        customFirstPayment < minFirstPayment && (
+                          <p className="text-xs text-red-400 flex items-center gap-1">
+                            <span>⚠</span>
+                            Minimum first payment is {formatNaira(minFirstPayment)}
+                          </p>
+                        )}
                     </motion.div>
                   )}
                 </Label>
@@ -918,9 +1028,18 @@ function StepReview({
   if (!selectedProgram) return null;
 
   const isInstallment = paymentPlan === "INSTALLMENT";
+  const secondInstallmentTiming = getSecondInstallmentTimingLabel(
+    selectedProgram.duration,
+  );
+  const customFirst: number | undefined = values.customFirstPayment;
   const payNow = isInstallment
-    ? selectedProgram.firstInstall
+    ? (customFirst !== undefined && customFirst > 0
+        ? customFirst
+        : selectedProgram.firstInstall)
     : selectedProgram.fullPrice;
+  const payLater = isInstallment
+    ? selectedProgram.installTotal - payNow
+    : 0;
 
   return (
     <div className="space-y-6">
@@ -1006,7 +1125,7 @@ function StepReview({
             <div className="flex justify-between">
               <span className="text-gray-400">Plan</span>
               <span className="text-white font-medium">
-                {isInstallment ? "Installment (70/30)" : "Full Payment"}
+                {isInstallment ? "Flexible Installment" : "Full Payment"}
               </span>
             </div>
             {isInstallment && (
@@ -1019,10 +1138,10 @@ function StepReview({
                 </div>
                 <div className="flex justify-between">
                   <span className="text-gray-400">
-                    2nd Installment (1 month after start)
+                    Balance ({secondInstallmentTiming})
                   </span>
                   <span className="text-white">
-                    {formatNaira(selectedProgram.secondInstall)}
+                    {formatNaira(payLater)}
                   </span>
                 </div>
               </>
