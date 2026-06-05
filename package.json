@@ -16,23 +16,6 @@
   "prisma": {
     "seed": "ts-node app/prisma/seed.js"
   },
-  "pnpm": {
-    "overrides": {
-      "@auth/core": "0.40.0",
-      "minimatch": "10.2.3",
-      "hono": ">=4.12.12",
-      "@hono/node-server": ">=1.19.13",
-      "flatted": ">=3.4.2",
-      "lodash": ">=4.18.0",
-      "fast-xml-parser": ">=5.5.7",
-      "effect": ">=3.20.0",
-      "socket.io-parser": ">=4.2.6",
-      "picomatch": ">=4.0.4",
-      "brace-expansion": ">=5.0.5",
-      "defu": ">=6.1.5",
-      "@portabletext/sanity-bridge": "1.2.14"
-    }
-  },
   "dependencies": {
     "@auth/prisma-adapter": "^2.10.0",
     "@aws-sdk/client-s3": "^3.993.0",
