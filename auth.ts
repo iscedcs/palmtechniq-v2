@@ -43,7 +43,7 @@ const nodeConfig: NextAuthConfig = {
     }),
   ],
 
-  adapter: PrismaAdapter(db),
+  adapter: PrismaAdapter(db as any) as any,
 
   events: {
     async linkAccount({ user }) {

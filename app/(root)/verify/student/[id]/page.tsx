@@ -60,7 +60,10 @@ export default function VerifyStudentPage() {
           setResult(data);
         }
       } catch {
-        setResult({ valid: false, error: "Something went wrong. Please try again." });
+        setResult({
+          valid: false,
+          error: "Something went wrong. Please try again.",
+        });
       } finally {
         setLoading(false);
       }
@@ -76,7 +79,7 @@ export default function VerifyStudentPage() {
   };
 
   return (
-    <div className="min-h-screen bg-background">
+    <div className="min-h-screen bg-background pt-24 pb-10 px-4 md:px-8">
       {/* Hero */}
       <section className="relative py-24 overflow-hidden">
         <div className="absolute inset-0 cyber-grid opacity-10" />
@@ -91,8 +94,7 @@ export default function VerifyStudentPage() {
             initial={{ opacity: 0, y: 20 }}
             animate={{ opacity: 1, y: 0 }}
             transition={{ duration: 0.8 }}
-            className="text-center max-w-3xl mx-auto"
-          >
+            className="text-center max-w-3xl mx-auto">
             <div className="inline-flex items-center gap-2 px-4 py-2 rounded-full bg-neon-blue/10 border border-neon-blue/20 mb-6">
               <GraduationCap className="w-4 h-4 text-neon-blue" />
               <span className="text-sm text-neon-blue font-medium">
@@ -120,8 +122,7 @@ export default function VerifyStudentPage() {
                 initial={{ opacity: 0 }}
                 animate={{ opacity: 1 }}
                 exit={{ opacity: 0 }}
-                className="flex flex-col items-center gap-4 py-12"
-              >
+                className="flex flex-col items-center gap-4 py-12">
                 <Loader2 className="w-10 h-10 text-neon-blue animate-spin" />
                 <p className="text-gray-400">Verifying student identity...</p>
               </motion.div>
@@ -132,8 +133,7 @@ export default function VerifyStudentPage() {
                 key="error"
                 initial={{ opacity: 0, y: 20 }}
                 animate={{ opacity: 1, y: 0 }}
-                exit={{ opacity: 0, y: -20 }}
-              >
+                exit={{ opacity: 0, y: -20 }}>
                 <Card className="glass-card border-red-500/30 p-8 text-center">
                   <ShieldX className="w-16 h-16 text-red-400 mx-auto mb-4" />
                   <h2 className="text-xl font-semibold text-white mb-2">
@@ -151,8 +151,7 @@ export default function VerifyStudentPage() {
                 key="result"
                 initial={{ opacity: 0, y: 20 }}
                 animate={{ opacity: 1, y: 0 }}
-                exit={{ opacity: 0, y: -20 }}
-              >
+                exit={{ opacity: 0, y: -20 }}>
                 <Card className="glass-card border-white/10 overflow-hidden">
                   {/* Status banner */}
                   <div
@@ -160,8 +159,7 @@ export default function VerifyStudentPage() {
                       result.student.isActive
                         ? "bg-green-500/10 border-b border-green-500/20"
                         : "bg-yellow-500/10 border-b border-yellow-500/20"
-                    }`}
-                  >
+                    }`}>
                     <ShieldCheck
                       className={`w-6 h-6 ${
                         result.student.isActive
@@ -175,8 +173,7 @@ export default function VerifyStudentPage() {
                           result.student.isActive
                             ? "text-green-400"
                             : "text-yellow-400"
-                        }`}
-                      >
+                        }`}>
                         {result.student.isActive
                           ? "Verified Student"
                           : "Inactive Student"}
@@ -214,16 +211,15 @@ export default function VerifyStudentPage() {
                         <div className="flex items-center gap-2 mt-1">
                           <Badge
                             variant="outline"
-                            className="border-neon-blue/40 text-neon-blue"
-                          >
+                            className="border-neon-blue/40 text-neon-blue">
                             <Star className="w-3 h-3 mr-1" />
                             {result.student.rank}
                           </Badge>
                           <Badge
                             variant="outline"
-                            className="border-neon-purple/40 text-neon-purple"
-                          >
-                            {levelLabel[result.student.level] || result.student.level}
+                            className="border-neon-purple/40 text-neon-purple">
+                            {levelLabel[result.student.level] ||
+                              result.student.level}
                           </Badge>
                         </div>
                       </div>
@@ -236,10 +232,12 @@ export default function VerifyStudentPage() {
                         <div>
                           <p className="text-xs text-gray-400">Member Since</p>
                           <p className="text-sm font-semibold text-white">
-                            {new Date(result.student.memberSince).toLocaleDateString(
-                              "en-US",
-                              { month: "long", year: "numeric" },
-                            )}
+                            {new Date(
+                              result.student.memberSince,
+                            ).toLocaleDateString("en-US", {
+                              month: "long",
+                              year: "numeric",
+                            })}
                           </p>
                         </div>
                       </div>
@@ -257,7 +255,9 @@ export default function VerifyStudentPage() {
                       <div className="glass-card rounded-lg p-4 flex items-center gap-3">
                         <BookOpen className="w-5 h-5 text-green-400" />
                         <div>
-                          <p className="text-xs text-gray-400">Courses Started</p>
+                          <p className="text-xs text-gray-400">
+                            Courses Started
+                          </p>
                           <p className="text-sm font-semibold text-white">
                             {result.student.coursesStarted}
                           </p>
@@ -286,8 +286,7 @@ export default function VerifyStudentPage() {
                             <Badge
                               key={course}
                               variant="secondary"
-                              className="bg-white/5 text-gray-300 border border-white/10"
-                            >
+                              className="bg-white/5 text-gray-300 border border-white/10">
                               {course}
                             </Badge>
                           ))}

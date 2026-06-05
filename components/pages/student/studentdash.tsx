@@ -23,6 +23,7 @@ import {
 } from "lucide-react";
 import React from "react";
 import Link from "next/link";
+import StudentProgramEnrollments from "@/components/enrollment/student-program-enrollments";
 
 type StudentDashboardProps = {
   studentData: {
@@ -579,6 +580,13 @@ export default function StudentDashboardClient({
 
             {/* Sidebar */}
             <div className="space-y-8">
+              {/* Student Programs (quick access) */}
+              <motion.div
+                initial={{ opacity: 0, x: 50 }}
+                animate={{ opacity: 1, x: 0 }}
+                transition={{ duration: 0.8, delay: 0.35 }}>
+                <StudentProgramEnrollments />
+              </motion.div>
               {/* Upcoming Mentorships */}
               <motion.div
                 initial={{ opacity: 0, x: 50 }}
