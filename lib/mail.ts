@@ -366,6 +366,90 @@ export async function sendAdminEnrollmentNotification(params: {
   }
 }
 
+// ============ PROGRAM BALANCE PAYMENT EMAILS ============
+export async function sendBalancePaymentConfirmation(params: {
+  enrollmentId: string;
+  programName: string;
+  fullName: string;
+  email: string;
+  amount: number;
+  reference: string;
+}) {
+  try {
+    const resend = new Resend(process.env.RESEND_API_KEY!);
+    const domain = process.env.NEXT_PUBLIC_URL || "https://palmtechniq.com";
+
+    const subject = `Balance Payment Confirmed — ${params.programName} | PalmTechnIQ`;
+    const text = [
+      `Hello ${params.fullName},`,
+      "",
+      `Your balance payment of ₦${params.amount.toLocaleString("en-NG")} for ${params.programName} has been received and confirmed.`,
+      "",
+      `Transaction Reference: ${params.reference}`,
+      "",
+      "You are now fully enrolled in the program and have access to all course materials.",
+      "",
+      `Login to your dashboard: ${domain}/student`,
+      "",
+      "If you have any questions, please contact our support team.",
+      "",
+      "Best regards,",
+      "The PalmTechnIQ Team",
+    ].join("\n");
+
+    await resend.emails.send({
+      from: process.env.FROM_EMAIL_ADDRESS!,
+      to: params.email,
+      subject,
+      text,
+    });
+  } catch (error) {
+    console.error("[sendBalancePaymentConfirmation] Failed to send email:", error);
+  }
+}
+
+export async function sendAdminBalancePaymentNotification(params: {
+  enrollmentId: string;
+  programName: string;
+  studentName: string;
+  studentEmail: string;
+  amount: number;
+  reference: string;
+}) {
+  try {
+    const resend = new Resend(process.env.RESEND_API_KEY!);
+    const adminEmail =
+      process.env.ADMIN_EMAIL_ADDRESS || "admin@palmtechniq.com";
+    const domain = process.env.NEXT_PUBLIC_URL || "https://palmtechniq.com";
+
+    const subject = `[Balance Payment] ${params.studentName} — ${params.programName}`;
+    const text = [
+      "Balance Payment Received",
+      "",
+      `Student: ${params.studentName}`,
+      `Email: ${params.studentEmail}`,
+      `Program: ${params.programName}`,
+      `Amount: ₦${params.amount.toLocaleString("en-NG")}`,
+      `Reference: ${params.reference}`,
+      `Enrollment ID: ${params.enrollmentId}`,
+      "",
+      `View enrollment: ${domain}/admin/enrollments/${params.enrollmentId}`,
+    ].join("\n");
+
+    await resend.emails.send({
+      from: process.env.FROM_EMAIL_ADDRESS!,
+      to: adminEmail,
+      subject,
+      text,
+    });
+  } catch (error) {
+    console.error(
+      "[sendAdminBalancePaymentNotification] Failed to send email:",
+      error,
+    );
+  }
+}
+
 // ============ TESTER INVITE EMAIL ============
 export async function sendTesterInviteEmail(
   email: string,

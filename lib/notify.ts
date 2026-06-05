@@ -9,6 +9,7 @@ export type NotificationPayload = {
     | "error"
     | "course"
     | "payment"
+    | "paymaent"
     | "system";
   title: string;
   message: string;
