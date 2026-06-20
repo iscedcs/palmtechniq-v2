@@ -49,7 +49,7 @@ export default function PrivacyPolicy() {
               className="mb-6 hover:bg-white/10"
               onClick={() => window.history.back()}>
               <ArrowLeft className="w-4 h-4 mr-2" />
-              gjhite Back
+              Back
             </Button>
             <h1 className="text-4xl md:text-5xl font-bold text-gradientgjhite mb-4">
               {" "}
@@ -64,7 +64,7 @@ export default function PrivacyPolicy() {
                 variant="outline"
                 className="border-neon-blue text-neon-blue">
                 <Calendar className="w-3 h-3 mr-1" />
-                Last Updated: January 15, 2024
+                Last Updated: June 20, 2026
               </Badge>
               <Badge
                 variant="outline"

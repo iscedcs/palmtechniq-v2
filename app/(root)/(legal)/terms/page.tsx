@@ -59,7 +59,7 @@ export default function TermsOfService() {
                 variant="outline"
                 className="border-neon-blue text-neon-blue">
                 <Calendar className="w-3 h-3 mr-1" />
-                Last Updated: January 15, 2024
+                Last Updated: June 20, 2026
               </Badge>
               <Badge
                 variant="outline"
