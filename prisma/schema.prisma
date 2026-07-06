@@ -90,6 +90,8 @@ model User {
   blogViews               BlogView[]               @relation("UserBlogViews")
   blogBookmarks           BlogBookmark[]           @relation("UserBlogBookmarks")
   blogComments            BlogComment[]            @relation("UserBlogComments")
+  bootcampEnrollments     BootcampEnrollment[]     @relation("UserBootcampEnrollments")
+  bootcampTeams           BootcampTeam[]           @relation("UserBootcampTeams")
 
   @@map("users")
 }
@@ -167,6 +169,7 @@ model Course {
   currency               String                  @default("NGN")
   level                  CourseLevel             @default(BEGINNER)
   status                 CourseStatus            @default(DRAFT)
+  courseType             CourseType              @default(REGULAR)
   language               String                  @default("en")
   duration               Int?
   totalLessons           Int                     @default(0)
@@ -1477,6 +1480,11 @@ enum CourseStatus {
   SUSPENDED
 }
 
+enum CourseType {
+  REGULAR
+  PROGRAM
+}
+
 enum EnrollmentStatus {
   ACTIVE
   COMPLETED
@@ -1805,4 +1813,109 @@ model BlogComment {
   @@index([sanityPostId, createdAt])
   @@index([userId])
   @@map("blog_comments")
+}
+
+// ==========================================
+// BOOTCAMP SUBDOMAIN MODULE (ISOLATED)
+// ==========================================
+
+model Bootcamp {
+  id          String    @id @default(cuid())
+  slug        String    @unique // e.g., "summer-2026"
+  title       String // e.g., "Summer Bootcamp 2026"
+  subtitle    String?
+  description String?
+  startDate   DateTime?
+  endDate     DateTime?
+  isActive    Boolean   @default(true)
+  maxSeats    Int?      @default(500)
+  createdAt   DateTime  @default(now())
+  updatedAt   DateTime  @updatedAt
+
+  tracks      BootcampTrack[]
+  tiers       BootcampTier[]
+  enrollments BootcampEnrollment[]
+  teams       BootcampTeam[]
+
+  @@map("bootcamps")
+}
+
+model BootcampTrack {
+  id          String  @id @default(cuid())
+  bootcampId  String
+  name        String // e.g., "AI & LLM Engineering"
+  slug        String // e.g., "ai-llm-engineering"
+  description String?
+  icon        String?
+  sortOrder   Int     @default(0)
+  curriculum  Json? // Structured syllabus breakdown
+
+  bootcamp    Bootcamp             @relation(fields: [bootcampId], references: [id], onDelete: Cascade)
+  enrollments BootcampEnrollment[]
+
+  @@unique([bootcampId, slug])
+  @@map("bootcamp_tracks")
+}
+
+model BootcampTier {
+  id            String   @id @default(cuid())
+  bootcampId    String
+  name          String // e.g., "Immersive Pro", "Virtual Scholar"
+  price         Float // e.g., 150000 NGN
+  currency      String   @default("NGN")
+  features      String[]
+  isMostPopular Boolean  @default(false)
+
+  bootcamp    Bootcamp             @relation(fields: [bootcampId], references: [id], onDelete: Cascade)
+  enrollments BootcampEnrollment[]
+
+  @@map("bootcamp_tiers")
+}
+
+enum BootcampEnrollmentStatus {
+  PENDING_PAYMENT
+  PAID_CONFIRMED
+  SCHOLARSHIP_REVIEW
+  REJECTED
+  COMPLETED
+}
+
+model BootcampEnrollment {
+  id         String @id @default(cuid())
+  bootcampId String
+  trackId    String
+  tierId     String
+  userId     String // Required link to main User model as single source of truth
+
+  status     BootcampEnrollmentStatus @default(PENDING_PAYMENT)
+  paymentId  String? // Paystack/Stripe transaction reference
+  amountPaid Float                    @default(0)
+  enrolledAt DateTime                 @default(now())
+  updatedAt  DateTime                 @updatedAt
+
+  bootcamp Bootcamp      @relation(fields: [bootcampId], references: [id], onDelete: Cascade)
+  track    BootcampTrack @relation(fields: [trackId], references: [id], onDelete: Restrict)
+  tier     BootcampTier  @relation(fields: [tierId], references: [id], onDelete: Restrict)
+  user     User          @relation("UserBootcampEnrollments", fields: [userId], references: [id], onDelete: Cascade)
+
+  @@unique([bootcampId, userId])
+  @@index([status, enrolledAt])
+  @@map("bootcamp_enrollments")
+}
+
+model BootcampTeam {
+  id           String  @id @default(cuid())
+  bootcampId   String
+  leaderId     String // Required link to User as team leader
+  name         String // Team Name for Hackathon Demo Day
+  projectTitle String
+  pitchDeckUrl String?
+  githubUrl    String?
+  liveUrl      String?
+  score        Float?
+
+  bootcamp Bootcamp @relation(fields: [bootcampId], references: [id], onDelete: Cascade)
+  leader   User     @relation("UserBootcampTeams", fields: [leaderId], references: [id], onDelete: Cascade)
+
+  @@map("bootcamp_teams")
 }

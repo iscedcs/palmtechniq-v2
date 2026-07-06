@@ -8,6 +8,8 @@ export const publicRoutes = [
   "/contact",
   "/courses",
   "/courses/[slug]", // Individual course pages are public for viewing
+  "/bootcamp",
+  "/bootcamp/[...slug]",
   "/mentorship", // External mentorship page is public
   "/apply", // Application page is public
   "/become-a-tutor",
