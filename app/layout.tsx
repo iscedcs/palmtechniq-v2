@@ -1,6 +1,7 @@
 import { auth } from "@/auth";
 import { Navigation } from "@/components/navigation";
 import { MobileBottomNav } from "@/components/navigation/mobile-bottom-nav";
+import { ConditionalNavigation } from "@/components/navigation/conditional-navigation";
 import { ThemeProvider } from "@/components/theme-provider";
 import { Toaster } from "sonner";
 import { AnalyticsProvider } from "@/lib/analytics/analytics-provider";
@@ -220,10 +221,14 @@ export default async function MainRootLayout({
                     crawlSpeed={150}
                     speed={300}>
                     <div className="flex flex-col min-h-screen">
-                      <Navigation />
+                      <ConditionalNavigation>
+                        <Navigation />
+                      </ConditionalNavigation>
                       <main className="flex-1">{children}</main>
 
-                      <MobileBottomNav />
+                      <ConditionalNavigation>
+                        <MobileBottomNav />
+                      </ConditionalNavigation>
                     </div>
                   </ToploaderProvider>
                   <Toaster richColors />

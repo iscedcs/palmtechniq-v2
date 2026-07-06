@@ -22,6 +22,20 @@ const { auth } = NextAuth(authConfig);
 
 export default auth((req) => {
   const { nextUrl } = req;
+  const hostname = req.headers.get("host") || "";
+
+  // If accessing via bootcamp subdomain (e.g. bootcamp.palmtechniq.com or bootcamp.localhost), rewrite to /bootcamp path
+  if (
+    hostname.startsWith("bootcamp.") &&
+    !nextUrl.pathname.startsWith("/bootcamp") &&
+    !nextUrl.pathname.startsWith("/api") &&
+    !nextUrl.pathname.startsWith("/_next")
+  ) {
+    return NextResponse.rewrite(
+      new URL(`/bootcamp${nextUrl.pathname === "/" ? "" : nextUrl.pathname}`, req.url)
+    );
+  }
+
   const authObj = req.auth;
   const isLoggedIn = !!req.auth;
 
