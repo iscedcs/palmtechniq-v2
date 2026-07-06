@@ -52,6 +52,7 @@ type CourseItem = {
   demandLevel?: string;
   flashSaleEnd?: Date | null;
   isFlashSale?: boolean;
+  createdAt?: Date | string | null;
 };
 
 interface ApplicationData {
