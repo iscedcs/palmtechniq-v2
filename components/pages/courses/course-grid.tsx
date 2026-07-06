@@ -51,7 +51,7 @@ export default function CoursesGrid({
 
   const [searchTerm, setSearchTerm] = useState("");
   const [selectedCategory, setSelectedCategory] = useState("all");
-  const [sortBy, setSortBy] = useState("popular");
+  const [sortBy, setSortBy] = useState("latest");
   const [showGroupBuying, setShowGroupBuying] = useState<string | null>(null);
   const [previewModal, setPreviewModal] = useState<{
     isOpen: boolean;
@@ -86,6 +86,11 @@ export default function CoursesGrid({
           : (course.basePrice ?? course.price ?? 0);
 
       switch (sortBy) {
+        case "latest":
+          return (
+            new Date(b.createdAt ?? 0).getTime() -
+            new Date(a.createdAt ?? 0).getTime()
+          );
         case "rating":
           return b.averageRating! - a.averageRating!;
         case "price-low":
@@ -93,19 +98,23 @@ export default function CoursesGrid({
         case "price-high":
           return getDisplayPrice(b) - getDisplayPrice(a);
         case "popular":
-        default:
           return b.totalStudents! - a.totalStudents!;
+        default:
+          return (
+            new Date(b.createdAt ?? 0).getTime() -
+            new Date(a.createdAt ?? 0).getTime()
+          );
       }
     });
 
   const clearFilters = () => {
     setSearchTerm("");
     setSelectedCategory("all");
-    setSortBy("popular");
+    setSortBy("latest");
   };
 
   const hasActiveFilters =
-    searchTerm || selectedCategory !== "all" || sortBy !== "popular";
+    searchTerm || selectedCategory !== "all" || sortBy !== "latest";
 
   return (
     <div className="min-h-screen bg-background">
@@ -215,6 +224,7 @@ export default function CoursesGrid({
                   <SelectValue placeholder="Sort by" />
                 </SelectTrigger>
                 <SelectContent>
+                  <SelectItem value="latest">Latest</SelectItem>
                   <SelectItem value="popular">Most Popular</SelectItem>
                   <SelectItem value="rating">Highest Rated</SelectItem>
                   <SelectItem value="price-low">Price: Low → High</SelectItem>
