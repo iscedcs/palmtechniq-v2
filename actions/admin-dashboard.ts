@@ -41,6 +41,7 @@ export async function getAdminDashboardData() {
     draftCourses,
     suspendedUsers,
     monthlyRevenueAgg,
+    totalRevenueAgg,
     totalEnrollments,
     completedEnrollments,
     users,
@@ -63,6 +64,10 @@ export async function getAdminDashboardData() {
     db.user.count({ where: { isActive: false } }),
     db.transaction.aggregate({
       where: { status: "COMPLETED", paymentDate: { gte: monthStart } },
+      _sum: { amount: true },
+    }),
+    db.transaction.aggregate({
+      where: { status: "COMPLETED" },
       _sum: { amount: true },
     }),
     db.enrollment.count(),
@@ -172,7 +177,7 @@ export async function getAdminDashboardData() {
     },
     {
       title: "Monthly Revenue",
-      value: formatTransactionCurrency(monthlyRevenue),
+      value: formatCurrency(monthlyRevenue),
       change: "",
       trend: "up",
       icon: "NairaSign",
@@ -318,7 +323,11 @@ export async function getAdminDashboardData() {
   }
   const analyticsStats = [
     {
-      label: "Total Revenue",
+      label: "Total Revenue (All Time)",
+      value: formatCurrency(totalRevenueAgg._sum.amount ?? 0),
+    },
+    {
+      label: "Monthly Revenue",
       value: formatCurrency(monthlyRevenue),
     },
     {
@@ -331,7 +340,7 @@ export async function getAdminDashboardData() {
     },
     {
       label: "Pending Revenue",
-      value: formatTransactionCurrency(pendingRevenueAgg._sum.amount ?? 0),
+      value: formatCurrency(pendingRevenueAgg._sum.amount ?? 0),
     },
     {
       label: "Active Tutors",
@@ -364,7 +373,7 @@ export async function getAdminDashboardData() {
     title: course.title,
     status: course.status,
     price: course.currentPrice ?? course.basePrice ?? course.price ?? 0,
-    revenue: ((revenueByCourse.get(course.id) as number) ?? 0) / 100,
+    revenue: (revenueByCourse.get(course.id) as number) ?? 0,
     enrollments: (enrollmentCountByCourse.get(course.id) as number) ?? 0,
     tutor: course.tutor?.user?.name || "Tutor",
     createdAt: formatDate(course.createdAt),
@@ -720,7 +729,7 @@ export async function getAdminCoursesPageData(params?: {
       course.currentPrice && course.currentPrice > 0
         ? course.currentPrice
         : (course.basePrice ?? course.price ?? 0),
-    revenue: ((revenueByCourse.get(course.id) as number) ?? 0) / 100,
+    revenue: (revenueByCourse.get(course.id) as number) ?? 0,
     enrollments: (enrollmentCountByCourse.get(course.id) as number) ?? 0,
     tutor: course.tutor?.user?.name || "Tutor",
     createdAt: formatDate(course.createdAt),

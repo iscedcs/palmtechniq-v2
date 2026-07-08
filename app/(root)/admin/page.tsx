@@ -434,6 +434,15 @@ export default function AdminDashboard() {
               </Link>
             </Button>
             <Button
+              asChild
+              variant="outline"
+              className="border-neon-purple/50 hover:bg-neon-purple/10 bg-transparent">
+              <Link href="/admin/transactions">
+                <FileText className="w-4 h-4 mr-2" />
+                Transactions
+              </Link>
+            </Button>
+            <Button
               variant="outline"
               onClick={handleExportData}
               className="border-neon-blue/50 hover:bg-neon-blue/10 bg-transparent">
