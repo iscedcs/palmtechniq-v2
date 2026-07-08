@@ -1,5 +1,4 @@
 import { Server as HttpServer } from "http";
-import { NextApiRequest } from "next";
 import { getToken } from "next-auth/jwt";
 import { Server as IOServer } from "socket.io";
 import { db } from "./db";
@@ -42,6 +41,7 @@ export function initIO(server: HttpServer) {
       },
     });
 
+    
     io.use(async (socket, next) => {
       try {
         const req = socket.request as any;
@@ -92,12 +92,6 @@ export function initIO(server: HttpServer) {
           role,
         );
       }
-
-      socket.emit("notification", {
-        type: "info",
-        title: "Connected",
-        message: "You are now connected to the notification service",
-      });
 
       socket.on("disconnect", () => {
         if (!isProd) {

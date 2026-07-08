@@ -111,6 +111,14 @@ export const useNotificationsStore = create<NotificationsState>()(
       },
 
       markAsRead: (id) => {
+        const notification = get().notifications.find((n) => n.id === id);
+        if (notification?.metadata?.dbId) {
+          fetch("/api/notifications", {
+            method: "PATCH",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({ ids: [notification.metadata.dbId] }),
+          }).catch(console.error);
+        }
         set((state) => ({
           notifications: state.notifications.map((n) =>
             n.id === id ? { ...n, isRead: true } : n
@@ -119,6 +127,11 @@ export const useNotificationsStore = create<NotificationsState>()(
       },
 
       markAllAsRead: () => {
+        fetch("/api/notifications", {
+          method: "PATCH",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ markAllRead: true }),
+        }).catch(console.error);
         set((state) => ({
           notifications: state.notifications.map((n) => ({
             ...n,
@@ -128,12 +141,23 @@ export const useNotificationsStore = create<NotificationsState>()(
       },
 
       removeNotification: (id) => {
+        const notification = get().notifications.find((n) => n.id === id);
+        if (notification?.metadata?.dbId) {
+          fetch(`/api/notifications?id=${notification.metadata.dbId}`, {
+            method: "DELETE",
+          }).catch(console.error);
+        }
         set((state) => ({
           notifications: state.notifications.filter((n) => n.id !== id),
         }));
       },
 
-      clearAll: () => set({ notifications: [] }),
+      clearAll: () => {
+        fetch("/api/notifications?clearAll=true", {
+          method: "DELETE",
+        }).catch(console.error);
+        set({ notifications: [] });
+      },
 
       toggleDropdown: () => set((s) => ({ isOpen: !s.isOpen })),
       openDropdown: () => set({ isOpen: true }),

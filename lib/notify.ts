@@ -1,5 +1,6 @@
 import { db } from "./db";
 import { NotificationType } from "@prisma/client";
+import { getIO } from "./socket";
 
 export type NotificationPayload = {
   type:
@@ -9,7 +10,6 @@ export type NotificationPayload = {
     | "error"
     | "course"
     | "payment"
-    | "paymaent"
     | "system";
   title: string;
   message: string;
@@ -36,7 +36,7 @@ const mapNotificationType = (
 
 export const notify = {
   /**
-   * Send notification to a specific user (persisted to DB for polling)
+   * Send notification to a specific user (persisted to DB + real-time push)
    */
   user: async (userId: string, p: NotificationPayload) => {
     try {
@@ -53,13 +53,26 @@ export const notify = {
           },
         },
       });
+
+      // Real-time push via Socket.IO (getIO() called at runtime, not module load)
+      const io = getIO();
+      if (io) {
+        io.to(`user:${userId}`).emit("notification", {
+          type: p.type,
+          title: p.title,
+          message: p.message,
+          actionUrl: p.actionUrl,
+          actionLabel: p.actionLabel,
+          metadata: p.metadata,
+        });
+      }
     } catch (error) {
       console.error("Failed to create notification:", error);
     }
   },
 
   /**
-   * Send notification to all users with a specific role
+   * Send notification to all users with a specific role (persisted + real-time push)
    */
   role: async (role: string, p: NotificationPayload) => {
     try {
@@ -85,13 +98,26 @@ export const notify = {
           })),
         });
       }
+
+      // Real-time push to all sockets in the role room
+      const io = getIO();
+      if (io) {
+        io.to(`role:${role}`).emit("notification", {
+          type: p.type,
+          title: p.title,
+          message: p.message,
+          actionUrl: p.actionUrl,
+          actionLabel: p.actionLabel,
+          metadata: p.metadata,
+        });
+      }
     } catch (error) {
       console.error("Failed to create role notifications:", error);
     }
   },
 
   /**
-   * Send notification to all users enrolled in a course
+   * Send notification to all users enrolled in a course (persisted + real-time push)
    */
   course: async (courseId: string, p: NotificationPayload) => {
     try {
@@ -116,6 +142,19 @@ export const notify = {
               ...p.metadata,
             },
           })),
+        });
+      }
+
+      // Real-time push to all sockets in the course room
+      const io = getIO();
+      if (io) {
+        io.to(`course:${courseId}`).emit("notification", {
+          type: p.type,
+          title: p.title,
+          message: p.message,
+          actionUrl: p.actionUrl,
+          actionLabel: p.actionLabel,
+          metadata: p.metadata,
         });
       }
     } catch (error) {

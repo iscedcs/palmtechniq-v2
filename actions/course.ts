@@ -321,7 +321,7 @@ export async function updateCourse(
       type: "info",
       title: "Course Updated",
       message: `Tutor updated "${course.title}". Review changes.`,
-      actionUrl: `/courses/${courseId}/review`,
+      actionUrl: `/admin/courses`,
       actionLabel: "Review Changes",
       metadata: { category: "course_update", courseId },
     });
