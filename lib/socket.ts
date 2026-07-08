@@ -93,12 +93,6 @@ export function initIO(server: HttpServer) {
         );
       }
 
-      socket.emit("notification", {
-        type: "info",
-        title: "Connected",
-        message: "You are now connected to the notification service",
-      });
-
       socket.on("disconnect", () => {
         if (!isProd) {
           console.log("Socket disconnected:", socket.id);
