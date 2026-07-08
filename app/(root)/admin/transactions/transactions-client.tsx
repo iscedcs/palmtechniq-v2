@@ -73,7 +73,7 @@ export default function TransactionsClient({
   };
 
   const setFilter = (status: string | null) => {
-    const params = new URLSearchParams(searchParams.toString());
+    const params = new URLSearchParams(searchParams?.toString());
     if (status) params.set("status", status);
     else params.delete("status");
     params.delete("page"); // Reset page on filter
@@ -240,7 +240,7 @@ export default function TransactionsClient({
                 className="border-white/10 bg-white/5 hover:bg-white/10 text-white"
                 disabled={pagination.page <= 1}
                 onClick={() => {
-                  const params = new URLSearchParams(searchParams.toString());
+                  const params = new URLSearchParams(searchParams?.toString());
                   params.set("page", (pagination.page - 1).toString());
                   router.push(`?${params.toString()}`);
                 }}>
@@ -253,7 +253,7 @@ export default function TransactionsClient({
                 className="border-white/10 bg-white/5 hover:bg-white/10 text-white"
                 disabled={pagination.page >= pagination.totalPages}
                 onClick={() => {
-                  const params = new URLSearchParams(searchParams.toString());
+                  const params = new URLSearchParams(searchParams?.toString());
                   params.set("page", (pagination.page + 1).toString());
                   router.push(`?${params.toString()}`);
                 }}>
