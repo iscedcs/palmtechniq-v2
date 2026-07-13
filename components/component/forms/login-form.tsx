@@ -68,11 +68,15 @@ export function LoginForm() {
         setError(result.error);
         toast.error(result.error);
       } else if (result?.success) {
+        // Refresh the session token in the client context first
         await update();
         setSuccess(result.success);
         toast.success(result.success);
         if (result.redirectUrl) {
+          // Push to destination, then refresh so server components
+          // (Navbar, layouts) re-render with the updated session
           router.push(String(result.redirectUrl));
+          router.refresh();
         } else {
           router.refresh();
         }
