@@ -300,53 +300,148 @@ export default function AdminApplicationsClient({
           </DialogHeader>
 
           {selected && (
-            <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-              <div className="space-y-3">
-                <div className="flex items-center gap-2">
-                  <FileText className="w-4 h-4 text-neon-blue" />
-                  <p className="font-medium">{selected.name}</p>
+            <div className="grid grid-cols-1 lg:grid-cols-2 gap-6 max-h-[75vh] overflow-y-auto pr-2">
+              <div className="space-y-5 text-sm">
+                <div className="border-b border-white/10 pb-3">
+                  <div className="flex items-center justify-between">
+                    <div className="flex items-center gap-2">
+                      <FileText className="w-4 h-4 text-neon-blue" />
+                      <p className="font-semibold text-base text-white">{selected.name}</p>
+                    </div>
+                    <Badge className="capitalize bg-white/10 text-white border-white/20">
+                      {selected.applicationType}
+                    </Badge>
+                  </div>
+                  {selected.payload.courseType && (
+                    <p className="text-xs text-neon-purple mt-1">
+                      Course Type: <span className="font-medium text-white">{selected.payload.courseType}</span>
+                    </p>
+                  )}
+                  <p className="text-xs text-gray-400 mt-1">
+                    Submitted: {formatDate(selected.submittedAt)}
+                  </p>
                 </div>
-                <p className="text-sm text-gray-300">{selected.email}</p>
-                <p className="text-sm text-gray-300">
-                  Type:{" "}
-                  <span className="uppercase">{selected.applicationType}</span>
-                </p>
-                <p className="text-sm text-gray-300">
-                  Role: {selected.currentRole || "N/A"}
-                </p>
-                <p className="text-sm text-gray-300">
-                  Industry: {selected.industry || "N/A"}
-                </p>
-                <p className="text-sm text-gray-300">
-                  Experience: {selected.experience || "N/A"}
-                </p>
-                <p className="text-sm text-gray-300">
-                  Submitted: {formatDate(selected.submittedAt)}
-                </p>
-                {selected.reviewedAt ? (
-                  <p className="text-sm text-gray-300">
-                    Last reviewed: {formatDate(selected.reviewedAt)}
+
+                {/* Personal details */}
+                <div className="space-y-1.5">
+                  <p className="text-xs uppercase tracking-wider text-gray-400 font-semibold">
+                    Contact & Location
                   </p>
-                ) : null}
-                {selected.resumeUrl ? (
-                  <Button
-                    asChild
-                    size="sm"
-                    variant="outline"
-                    className="border-neon-blue/50 bg-transparent text-white hover:bg-neon-blue/10"
-                  >
-                    <a
-                      href={selected.resumeUrl}
-                      target="_blank"
-                      rel="noopener noreferrer"
-                    >
-                      Open Resume
-                    </a>
-                  </Button>
-                ) : (
-                  <p className="text-xs text-yellow-400">
-                    Resume file missing in this submission.
+                  <p className="text-gray-300">Email: <span className="text-white">{selected.email}</span></p>
+                  <p className="text-gray-300">Phone: <span className="text-white">{selected.payload.personalInfo?.phone || selected.phone || "N/A"}</span></p>
+                  {selected.payload.personalInfo?.location && (
+                    <p className="text-gray-300">
+                      Location: <span className="text-white">{selected.payload.personalInfo.location}</span>{" "}
+                      {selected.payload.personalInfo.timezone && `(${selected.payload.personalInfo.timezone})`}
+                    </p>
+                  )}
+                  {selected.payload.personalInfo?.linkedin && (
+                    <p className="text-gray-300 truncate">
+                      LinkedIn:{" "}
+                      <a
+                        href={selected.payload.personalInfo.linkedin}
+                        target="_blank"
+                        rel="noopener noreferrer"
+                        className="text-neon-blue hover:underline"
+                      >
+                        {selected.payload.personalInfo.linkedin}
+                      </a>
+                    </p>
+                  )}
+                </div>
+
+                {/* Professional details */}
+                <div className="space-y-1.5 border-t border-white/10 pt-3">
+                  <p className="text-xs uppercase tracking-wider text-gray-400 font-semibold">
+                    Professional Profile
                   </p>
+                  <p className="text-gray-300">
+                    Current Role: <span className="text-white">{selected.currentRole || "N/A"}</span>
+                    {selected.payload.professional?.company ? ` at ${selected.payload.professional.company}` : ""}
+                  </p>
+                  <p className="text-gray-300">Industry: <span className="text-white">{selected.industry || "N/A"}</span></p>
+                  <p className="text-gray-300">Experience: <span className="text-white">{selected.experience || "N/A"} years</span></p>
+
+                  {selected.payload.professional?.skills && selected.payload.professional.skills.length > 0 && (
+                    <div className="pt-1">
+                      <span className="text-gray-400 text-xs block mb-1">Skills:</span>
+                      <div className="flex flex-wrap gap-1">
+                        {selected.payload.professional.skills.map((skill) => (
+                          <span key={skill} className="bg-white/10 text-white px-2 py-0.5 rounded text-xs">
+                            {skill}
+                          </span>
+                        ))}
+                      </div>
+                    </div>
+                  )}
+
+                  <div className="pt-2">
+                    {selected.resumeUrl ? (
+                      <Button
+                        asChild
+                        size="sm"
+                        variant="outline"
+                        className="border-neon-blue/50 bg-transparent text-white hover:bg-neon-blue/10"
+                      >
+                        <a
+                          href={selected.resumeUrl}
+                          target="_blank"
+                          rel="noopener noreferrer"
+                        >
+                          Open Resume ({selected.resumeFileName || "Document"})
+                        </a>
+                      </Button>
+                    ) : (
+                      <p className="text-xs text-yellow-400">
+                        Resume file missing in this submission.
+                      </p>
+                    )}
+                  </div>
+                </div>
+
+                {/* Teaching details */}
+                {selected.payload.teaching && (
+                  <div className="space-y-1.5 border-t border-white/10 pt-3">
+                    <p className="text-xs uppercase tracking-wider text-gray-400 font-semibold">
+                      Teaching & Subjects
+                    </p>
+                    {selected.payload.teaching.subjects && selected.payload.teaching.subjects.length > 0 && (
+                      <p className="text-gray-300">
+                        Subjects: <span className="text-white">{selected.payload.teaching.subjects.join(", ")}</span>
+                      </p>
+                    )}
+                    {selected.payload.teaching.languages && selected.payload.teaching.languages.length > 0 && (
+                      <p className="text-gray-300">
+                        Languages: <span className="text-white">{selected.payload.teaching.languages.join(", ")}</span>
+                      </p>
+                    )}
+                    {selected.payload.teaching.hourlyRate && (
+                      <p className="text-gray-300">
+                        Hourly Rate: <span className="text-white">₦{selected.payload.teaching.hourlyRate}/hour</span>
+                      </p>
+                    )}
+                    {selected.payload.teaching.availability && selected.payload.teaching.availability.length > 0 && (
+                      <p className="text-gray-300">
+                        Availability: <span className="text-white">{selected.payload.teaching.availability.join(", ")}</span>
+                      </p>
+                    )}
+                    {selected.payload.teaching.approach && (
+                      <div className="pt-1">
+                        <span className="text-gray-400 text-xs block mb-1">Teaching Approach:</span>
+                        <p className="text-gray-200 bg-white/5 p-2.5 rounded text-xs leading-relaxed">
+                          {selected.payload.teaching.approach}
+                        </p>
+                      </div>
+                    )}
+                    {selected.payload.teaching.why && (
+                      <div className="pt-1">
+                        <span className="text-gray-400 text-xs block mb-1">Motivation (Why teach with us?):</span>
+                        <p className="text-gray-200 bg-white/5 p-2.5 rounded text-xs leading-relaxed">
+                          {selected.payload.teaching.why}
+                        </p>
+                      </div>
+                    )}
+                  </div>
                 )}
               </div>
 

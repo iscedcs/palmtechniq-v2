@@ -41,24 +41,25 @@ function isRateLimited(key: string): boolean {
 
 const applicationSchema = z.object({
   applicationType: z.enum(["tutor", "mentor"]),
+  courseType: z.string().optional().default(""),
   personalInfo: z.object({
     firstName: z.string().trim().min(1).max(80),
     lastName: z.string().trim().min(1).max(80),
     email: z.string().trim().email().max(150),
     phone: z.string().trim().max(40).optional().default(""),
     location: z.string().trim().min(1).max(120),
-    timezone: z.string().trim().min(1).max(80),
+    timezone: z.string().trim().max(80).optional().default(""),
     linkedin: z.string().trim().max(300).optional().default(""),
     website: z.string().trim().max(300).optional().default(""),
-    bio: z.string().trim().min(20).max(2500),
+    bio: z.string().trim().min(10).max(2500),
   }),
   professional: z.object({
     currentRole: z.string().trim().min(1).max(120),
     company: z.string().trim().max(120).optional().default(""),
     experience: z.string().trim().min(1).max(40),
     industry: z.string().trim().min(1).max(80),
-    skills: z.array(z.string().trim().min(1).max(80)).max(40),
-    achievements: z.array(z.string().trim().min(1).max(200)).max(40),
+    skills: z.array(z.string().trim().min(1).max(80)).max(40).default([]),
+    achievements: z.array(z.string().trim().min(1).max(200)).max(40).default([]),
     portfolio: z.string().trim().max(300).optional().default(""),
     resumeFileName: z.string().trim().max(200).optional().default(""),
     resumeUrl: z.string().trim().url().max(2000),
@@ -71,26 +72,18 @@ const applicationSchema = z.object({
       .optional(),
   }),
   teaching: z.object({
-    subjects: z.array(z.string().trim().min(1).max(100)).min(1).max(40),
-    experience: z.string().trim().min(1).max(60),
-    approach: z.string().trim().min(20).max(2500),
-    availability: z.array(z.string().trim().min(1).max(80)).min(1).max(20),
-    hourlyRate: z.number().min(0).max(1_000_000),
-    languages: z.array(z.string().trim().min(1).max(50)).min(1).max(20),
-    certifications: z.array(z.string().trim().min(1).max(120)).max(30),
+    subjects: z.array(z.string().trim().min(1).max(100)).max(40).default([]),
+    experience: z.string().trim().max(60).optional().default(""),
+    approach: z.string().trim().max(2500).optional().default(""),
+    availability: z.array(z.string().trim().min(1).max(80)).max(20).default([]),
+    hourlyRate: z.number().min(0).max(1_000_000).optional().default(0),
+    languages: z.array(z.string().trim().min(1).max(50)).max(20).default([]),
+    certifications: z.array(z.string().trim().min(1).max(120)).max(30).default([]),
   }),
   motivation: z.object({
-    why: z
-      .string()
-      .trim()
-      .min(20, "Please explain your motivation in at least 20 characters")
-      .max(2500),
-    goals: z
-      .string()
-      .trim()
-      .min(20, "Please describe your goals properly (min 20 characters)")
-      .max(2500),
-    commitment: z.string().trim().min(1).max(80),
+    why: z.string().trim().max(2500).optional().default(""),
+    goals: z.string().trim().max(2500).optional().default(""),
+    commitment: z.string().trim().max(80).optional().default(""),
     references: z.string().trim().max(2500).optional().default(""),
   }),
 });

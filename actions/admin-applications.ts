@@ -13,18 +13,35 @@ export type AdminApplicationStatus =
 
 type ParsedApplicationPayload = {
   applicationType: "tutor" | "mentor";
+  courseType?: string;
   personalInfo?: {
     firstName?: string;
     lastName?: string;
     email?: string;
     phone?: string;
+    location?: string;
+    timezone?: string;
+    linkedin?: string;
   };
   professional?: {
     currentRole?: string;
+    company?: string;
     industry?: string;
     experience?: string;
+    skills?: string[];
+    achievements?: string[];
     resumeUrl?: string;
     resumeFileName?: string;
+  };
+  teaching?: {
+    subjects?: string[];
+    experience?: string;
+    languages?: string[];
+    approach?: string;
+    availability?: string[];
+    hourlyRate?: string;
+    why?: string;
+    goals?: string;
   };
   status?: AdminApplicationStatus;
   adminReview?: {
