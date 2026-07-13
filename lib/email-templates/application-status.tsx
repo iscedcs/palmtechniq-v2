@@ -33,7 +33,7 @@ function statusMeta(status: ApplicationStatus) {
     case "APPROVED":
       return {
         label: "Approved",
-        badgeBg: "#16a34a",       // green-600
+        badgeBg: "#16a34a", // green-600
         badgeText: "#ffffff",
         icon: "✅",
         headline: "Congratulations — You're In!",
@@ -41,7 +41,7 @@ function statusMeta(status: ApplicationStatus) {
     case "REJECTED":
       return {
         label: "Not Approved",
-        badgeBg: "#dc2626",       // red-600
+        badgeBg: "#dc2626", // red-600
         badgeText: "#ffffff",
         icon: "❌",
         headline: "Application Outcome",
@@ -49,7 +49,7 @@ function statusMeta(status: ApplicationStatus) {
     case "UNDER_REVIEW":
       return {
         label: "Under Review",
-        badgeBg: "#d97706",       // amber-600
+        badgeBg: "#d97706", // amber-600
         badgeText: "#ffffff",
         icon: "🔍",
         headline: "We're Reviewing Your Application",
@@ -57,7 +57,7 @@ function statusMeta(status: ApplicationStatus) {
     default:
       return {
         label: "Pending",
-        badgeBg: "#6b7280",       // gray-500
+        badgeBg: "#6b7280", // gray-500
         badgeText: "#ffffff",
         icon: "🕐",
         headline: "Application Received",
@@ -127,7 +127,7 @@ const ApplicationStatusEmail = ({
   status = "UNDER_REVIEW",
   adminNote,
   portalUrl = "https://palmtechniq.com",
-  supportEmail = "palmtechniq@gmail.com",
+  supportEmail = "support@palmtechniq.com",
 }: ApplicationStatusEmailProps) => {
   const year = new Date().getFullYear();
   const meta = statusMeta(status);
@@ -145,7 +145,6 @@ const ApplicationStatusEmail = ({
 
         <Body className="w-full bg-gray-50 font-sans">
           <Container className="w-full mx-auto max-w-2xl">
-
             {/* ── Header / Logo ───────────────────────────────────────── */}
             <Section className="bg-[#021A1A] text-center py-8">
               <Img
@@ -160,18 +159,15 @@ const ApplicationStatusEmail = ({
             {/* ── Status Banner ────────────────────────────────────────── */}
             <Section
               style={{ backgroundColor: meta.badgeBg }}
-              className="py-6 px-8 text-center"
-            >
+              className="py-6 px-8 text-center">
               <Text
                 className="text-2xl font-bold m-0"
-                style={{ color: meta.badgeText }}
-              >
+                style={{ color: meta.badgeText }}>
                 {meta.icon}&nbsp;&nbsp;{meta.headline}
               </Text>
               <Text
                 className="text-sm mt-2 mb-0 uppercase tracking-widest font-semibold opacity-90"
-                style={{ color: meta.badgeText }}
-              >
+                style={{ color: meta.badgeText }}>
                 {roleLabel} Application — {meta.label}
               </Text>
             </Section>
@@ -223,8 +219,7 @@ const ApplicationStatusEmail = ({
                     borderRadius: "9999px",
                     display: "inline-block",
                     textDecoration: "none",
-                  }}
-                >
+                  }}>
                   {info.ctaLabel}
                 </Button>
               </Section>
@@ -235,8 +230,7 @@ const ApplicationStatusEmail = ({
                 Questions? Reply to this email or contact us at{" "}
                 <a
                   href={`mailto:${supportEmail}`}
-                  style={{ color: "#021A1A", fontWeight: 600 }}
-                >
+                  style={{ color: "#021A1A", fontWeight: 600 }}>
                   {supportEmail}
                 </a>
                 . We're always happy to help.
@@ -264,8 +258,7 @@ const ApplicationStatusEmail = ({
                 <Column align="center">
                   <Button
                     href="https://www.facebook.com/profile.php?id=61561459226438&mibextid=ZbWKwL"
-                    className="m-2 rounded-full bg-green-600 p-2"
-                  >
+                    className="m-2 rounded-full bg-green-600 p-2">
                     <Img
                       width="20"
                       height="20"
@@ -275,8 +268,7 @@ const ApplicationStatusEmail = ({
                   </Button>
                   <Button
                     href="https://www.linkedin.com/company/palmtechniq/"
-                    className="m-2 rounded-full bg-green-600 p-2"
-                  >
+                    className="m-2 rounded-full bg-green-600 p-2">
                     <Img
                       width="20"
                       height="20"
@@ -286,8 +278,7 @@ const ApplicationStatusEmail = ({
                   </Button>
                   <Button
                     href="https://www.instagram.com/palmtechniq/"
-                    className="m-2 rounded-full bg-green-600 p-2"
-                  >
+                    className="m-2 rounded-full bg-green-600 p-2">
                     <Img
                       width="20"
                       height="20"
@@ -315,7 +306,6 @@ const ApplicationStatusEmail = ({
                 </Text>
               </Section>
             </Section>
-
           </Container>
         </Body>
       </Html>
