@@ -45,12 +45,16 @@ export default function ApplicationPage() {
   const [newSkill, setNewSkill] = useState("");
   const [newAchievement, setNewAchievement] = useState("");
   const signedInEmail = session?.user?.email?.trim() ?? "";
+  const signedInFirstName = (session?.user as any)?.firstName ?? session?.user?.name?.split(" ")[0] ?? "";
+  const signedInLastName = (session?.user as any)?.lastName ?? session?.user?.name?.split(" ").slice(1).join(" ") ?? "";
+  const signedInPhone = (session?.user as any)?.phone ?? "";
   const signedInRole = session?.user?.role ?? "USER";
   const isStudentApplicant = signedInRole === "STUDENT";
-  const shouldLockEmail = Boolean(signedInEmail) && !isStudentApplicant;
+  const shouldLockProfile = Boolean(signedInEmail) && !isStudentApplicant;
 
   const [applicationData, setApplicationData] = useState<ApplicationData>({
     applicationType: "",
+    courseType: "",
     personalInfo: {
       firstName: "",
       lastName: "",
@@ -94,31 +98,34 @@ export default function ApplicationPage() {
   const progress = (currentStep / totalSteps) * 100;
 
   useEffect(() => {
+    // Auto-detect timezone on mount
+    const detectedTimezone = Intl.DateTimeFormat().resolvedOptions().timeZone;
+    if (detectedTimezone) {
+      setApplicationData((prev) => ({
+        ...prev,
+        personalInfo: {
+          ...prev.personalInfo,
+          timezone: prev.personalInfo.timezone || detectedTimezone,
+        },
+      }));
+    }
+  }, []);
+
+  useEffect(() => {
     if (!signedInEmail) return;
     setApplicationData((prev) => {
-      if (shouldLockEmail) {
-        if (prev.personalInfo.email === signedInEmail) return prev;
-        return {
-          ...prev,
-          personalInfo: {
-            ...prev.personalInfo,
-            email: signedInEmail,
-          },
-        };
-      }
-
-      if (!prev.personalInfo.email) {
-        return {
-          ...prev,
-          personalInfo: {
-            ...prev.personalInfo,
-            email: signedInEmail,
-          },
-        };
-      }
-      return prev;
+      const updates = { ...prev.personalInfo };
+      if (shouldLockProfile || !prev.personalInfo.email) updates.email = signedInEmail;
+      if (shouldLockProfile || !prev.personalInfo.firstName) updates.firstName = signedInFirstName;
+      if (shouldLockProfile || !prev.personalInfo.lastName) updates.lastName = signedInLastName;
+      if ((shouldLockProfile && signedInPhone) || (!prev.personalInfo.phone && signedInPhone)) updates.phone = signedInPhone;
+      
+      return {
+        ...prev,
+        personalInfo: updates,
+      };
     });
-  }, [signedInEmail, shouldLockEmail]);
+  }, [signedInEmail, signedInFirstName, signedInLastName, signedInPhone, shouldLockProfile]);
 
   const industries = [
     "Technology",
@@ -158,15 +165,57 @@ export default function ApplicationPage() {
   ];
 
   const timezones = [
+    "WAT (West Africa / Lagos)",
     "PST (Pacific)",
     "MST (Mountain)",
     "CST (Central)",
     "EST (Eastern)",
-    "GMT (London)",
+    "GMT (London / UTC)",
     "CET (Central Europe)",
+    "CAT (Central Africa)",
+    "EAT (East Africa)",
+    "IST (India)",
     "JST (Japan)",
     "AEST (Australia)",
   ];
+
+  const inferTimezone = (loc: string): string => {
+    const l = loc.toLowerCase();
+    if (l.includes("nigeria") || l.includes("lagos") || l.includes("abuja") || l.includes("ghana") || l.includes("accra")) {
+      return "WAT (West Africa / Lagos)";
+    }
+    if (l.includes("uk") || l.includes("london") || l.includes("england") || l.includes("britain")) {
+      return "GMT (London / UTC)";
+    }
+    if (l.includes("california") || l.includes("los angeles") || l.includes("san francisco") || l.includes("seattle") || l.includes("pst")) {
+      return "PST (Pacific)";
+    }
+    if (l.includes("new york") || l.includes("florida") || l.includes("toronto") || l.includes("est")) {
+      return "EST (Eastern)";
+    }
+    if (l.includes("chicago") || l.includes("texas") || l.includes("cst")) {
+      return "CST (Central)";
+    }
+    if (l.includes("kenya") || l.includes("nairobi") || l.includes("uganda")) {
+      return "EAT (East Africa)";
+    }
+    if (l.includes("south africa") || l.includes("johannesburg") || l.includes("cape town")) {
+      return "CAT (Central Africa)";
+    }
+    if (l.includes("india") || l.includes("delhi") || l.includes("mumbai")) {
+      return "IST (India)";
+    }
+    if (l.includes("germany") || l.includes("france") || l.includes("berlin") || l.includes("paris") || l.includes("europe")) {
+      return "CET (Central Europe)";
+    }
+    if (l.includes("japan") || l.includes("tokyo")) {
+      return "JST (Japan)";
+    }
+    if (l.includes("australia") || l.includes("sydney") || l.includes("melbourne")) {
+      return "AEST (Australia)";
+    }
+    return applicationData.personalInfo.timezone || "WAT (West Africa / Lagos)";
+  };
 
   const addSkill = () => {
     if (
@@ -227,9 +276,66 @@ export default function ApplicationPage() {
     }));
   };
 
+  const validateStep = (step: number) => {
+    switch (step) {
+      case 1:
+        if (!applicationData.applicationType) {
+          toast.error("Please select an application type.");
+          return false;
+        }
+        if (applicationData.applicationType === "tutor" && !applicationData.courseType) {
+          toast.error("Please select a course type.");
+          return false;
+        }
+        return true;
+      case 2:
+        if (!applicationData.personalInfo.firstName || !applicationData.personalInfo.lastName || !applicationData.personalInfo.email || !applicationData.personalInfo.location || !applicationData.personalInfo.bio) {
+          toast.error("Please fill in all required personal information fields.");
+          return false;
+        }
+        return true;
+      case 3:
+        if (!applicationData.professional.currentRole || !applicationData.professional.experience || !applicationData.professional.industry || applicationData.professional.skills.length === 0 || !applicationData.professional.resumeUrl) {
+          toast.error("Please fill in all required professional background fields and upload a resume.");
+          return false;
+        }
+        return true;
+      case 4:
+        if (applicationData.applicationType === "tutor" && applicationData.courseType === "PROGRAM") {
+          if (applicationData.teaching.subjects.length === 0 || applicationData.teaching.availability.length === 0) {
+            toast.error("Please select at least one subject and availability.");
+            return false;
+          }
+        }
+        if ((applicationData.applicationType === "mentor" || applicationData.courseType === "PROGRAM") && !applicationData.teaching.approach) {
+          toast.error("Please provide your teaching/mentoring approach.");
+          return false;
+        }
+        if (applicationData.teaching.languages.length === 0) {
+          toast.error("Please select at least one language.");
+          return false;
+        }
+        if (applicationData.applicationType === "mentor" && !applicationData.teaching.hourlyRate) {
+          toast.error("Please provide your desired hourly rate.");
+          return false;
+        }
+        return true;
+      case 5:
+        if ((applicationData.applicationType === "mentor" || applicationData.courseType === "PROGRAM") && !applicationData.motivation.why) {
+          toast.error("Please provide your motivation.");
+          return false;
+        }
+        return true;
+      default:
+        return true;
+    }
+  };
+
   const handleNext = () => {
-    if (currentStep < totalSteps) {
-      setCurrentStep(currentStep + 1);
+    if (validateStep(currentStep)) {
+      if (currentStep < totalSteps) {
+        setCurrentStep(currentStep + 1);
+      }
     }
   };
 
@@ -264,53 +370,28 @@ export default function ApplicationPage() {
 
     setIsUploadingResume(true);
     try {
-      const signedUploadRes = await fetch("/api/upload", {
+      const formData = new FormData();
+      formData.append("file", file);
+      formData.append("filename", file.name);
+      formData.append("contentType", file.type);
+      formData.append("visibility", "public");
+
+      const uploadRes = await fetch("/api/upload", {
         method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({
-          filename: file.name,
-          contentType: file.type,
-          visibility: "public",
-        }),
+        body: formData,
       });
 
-      const signedUploadData = await signedUploadRes.json().catch(() => null);
-      if (
-        !signedUploadRes.ok ||
-        !signedUploadData?.success ||
-        !signedUploadData?.url ||
-        !signedUploadData?.fields?.key
-      ) {
-        throw new Error(
-          signedUploadData?.error || "Failed to initialize upload",
-        );
+      const uploadData = await uploadRes.json().catch(() => null);
+      if (!uploadRes.ok || !uploadData?.success || !uploadData?.fileUrl) {
+        throw new Error(uploadData?.error || "Failed to upload resume");
       }
-
-      const uploadFormData = new FormData();
-      Object.entries(signedUploadData.fields).forEach(([key, value]) => {
-        uploadFormData.append(key, String(value));
-      });
-      uploadFormData.append("file", file);
-
-      const uploadRes = await fetch(signedUploadData.url, {
-        method: "POST",
-        body: uploadFormData,
-      });
-      if (!uploadRes.ok) {
-        throw new Error("Failed to upload resume");
-      }
-
-      const uploadUrl = String(signedUploadData.url);
-      const objectKey = String(signedUploadData.fields.key);
-      const separator = uploadUrl.endsWith("/") ? "" : "/";
-      const resumeUrl = `${uploadUrl}${separator}${objectKey}`;
 
       setApplicationData((prev) => ({
         ...prev,
         professional: {
           ...prev.professional,
           resume: file,
-          resumeUrl,
+          resumeUrl: uploadData.fileUrl,
         },
       }));
       toast.success("Resume uploaded successfully.");
@@ -325,6 +406,9 @@ export default function ApplicationPage() {
   };
 
   const submitApplication = async () => {
+    if (!validateStep(5)) {
+      return;
+    }
     if (!applicationData.professional.resumeUrl) {
       toast.error("Please upload your resume before submitting.");
       return;
@@ -408,6 +492,7 @@ export default function ApplicationPage() {
                   setApplicationData((prev) => ({
                     ...prev,
                     applicationType: "tutor",
+                    courseType: prev.courseType || "REGULAR",
                   }))
                 }>
                 <Card className="glass-card border-white/10 hover-glow h-full">
@@ -447,6 +532,31 @@ export default function ApplicationPage() {
                           Student analytics & insights
                         </span>
                       </div>
+
+                      {applicationData.applicationType === "tutor" && (
+                        <div className="mt-6 p-4 bg-white/5 rounded-lg border border-white/10" onClick={(e) => e.stopPropagation()}>
+                          <Label className="text-white mb-3 block text-sm font-semibold">Course Type *</Label>
+                          <RadioGroup
+                            value={applicationData.courseType}
+                            onValueChange={(value) =>
+                              setApplicationData((prev) => ({
+                                ...prev,
+                                courseType: value as "REGULAR" | "PROGRAM",
+                              }))
+                            }
+                            className="flex flex-col gap-3"
+                          >
+                            <div className="flex items-center space-x-2">
+                              <RadioGroupItem value="REGULAR" id="course-regular" className="border-white/20" />
+                              <Label htmlFor="course-regular" className="text-white cursor-pointer">Regular Courses</Label>
+                            </div>
+                            <div className="flex items-center space-x-2">
+                              <RadioGroupItem value="PROGRAM" id="course-program" className="border-white/20" />
+                              <Label htmlFor="course-program" className="text-white cursor-pointer">Program Courses</Label>
+                            </div>
+                          </RadioGroup>
+                        </div>
+                      )}
                     </div>
                   </CardContent>
                 </Card>
@@ -515,7 +625,7 @@ export default function ApplicationPage() {
                 className="text-center">
                 <Badge className="bg-neon-green/20 text-neon-green border-neon-green/30 text-lg px-4 py-2">
                   {applicationData.applicationType === "tutor"
-                    ? "Tutor"
+                    ? applicationData.courseType === "PROGRAM" ? "Program Tutor" : "Regular Tutor"
                     : "Mentor"}{" "}
                   Application Selected
                 </Badge>
@@ -542,6 +652,7 @@ export default function ApplicationPage() {
                 <Input
                   id="firstName"
                   value={applicationData.personalInfo.firstName}
+                  disabled={shouldLockProfile}
                   onChange={(e) =>
                     setApplicationData((prev) => ({
                       ...prev,
@@ -562,6 +673,7 @@ export default function ApplicationPage() {
                 <Input
                   id="lastName"
                   value={applicationData.personalInfo.lastName}
+                  disabled={shouldLockProfile}
                   onChange={(e) =>
                     setApplicationData((prev) => ({
                       ...prev,
@@ -583,7 +695,7 @@ export default function ApplicationPage() {
                   id="email"
                   type="email"
                   value={applicationData.personalInfo.email}
-                  disabled={shouldLockEmail}
+                  disabled={shouldLockProfile}
                   onChange={(e) =>
                     setApplicationData((prev) => ({
                       ...prev,
@@ -595,9 +707,9 @@ export default function ApplicationPage() {
                   }
                   className="mt-1 bg-white/10 border-white/20 text-white"
                 />
-                {shouldLockEmail && (
+                {shouldLockProfile && (
                   <p className="text-xs text-gray-400 mt-1">
-                    Email is locked to your signed-in account.
+                    Email and profile details are locked to your signed-in account.
                   </p>
                 )}
               </div>
@@ -609,6 +721,7 @@ export default function ApplicationPage() {
                 <Input
                   id="phone"
                   value={applicationData.personalInfo.phone}
+                  disabled={shouldLockProfile && Boolean(signedInPhone)}
                   onChange={(e) =>
                     setApplicationData((prev) => ({
                       ...prev,
@@ -630,15 +743,18 @@ export default function ApplicationPage() {
                   id="location"
                   placeholder="City, Country"
                   value={applicationData.personalInfo.location}
-                  onChange={(e) =>
+                  onChange={(e) => {
+                    const value = e.target.value;
+                    const newTz = inferTimezone(value);
                     setApplicationData((prev) => ({
                       ...prev,
                       personalInfo: {
                         ...prev.personalInfo,
-                        location: e.target.value,
+                        location: value,
+                        timezone: newTz,
                       },
-                    }))
-                  }
+                    }));
+                  }}
                   className="mt-1 bg-white/10 border-white/20 text-white"
                 />
               </div>
@@ -765,7 +881,7 @@ export default function ApplicationPage() {
 
               <div>
                 <Label htmlFor="company" className="text-white">
-                  Company *
+                  Company
                 </Label>
                 <Input
                   id="company"
@@ -970,51 +1086,50 @@ export default function ApplicationPage() {
             </div>
 
             <div className="max-w-4xl mx-auto space-y-6">
-              <div>
-                <Label className="text-white">
-                  {applicationData.applicationType === "tutor"
-                    ? "Subjects You Can Teach"
-                    : "Areas You Can Mentor In"}{" "}
-                  *
-                </Label>
-                <div className="grid grid-cols-2 md:grid-cols-3 gap-3 mt-3">
-                  {subjects.map((subject) => (
-                    <div key={subject} className="flex items-center space-x-2">
-                      <Checkbox
-                        id={subject}
-                        checked={applicationData.teaching.subjects.includes(
-                          subject,
-                        )}
-                        onCheckedChange={(checked) => {
-                          if (checked) {
-                            setApplicationData((prev) => ({
-                              ...prev,
-                              teaching: {
-                                ...prev.teaching,
-                                subjects: [...prev.teaching.subjects, subject],
-                              },
-                            }));
-                          } else {
-                            setApplicationData((prev) => ({
-                              ...prev,
-                              teaching: {
-                                ...prev.teaching,
-                                subjects: prev.teaching.subjects.filter(
-                                  (s) => s !== subject,
-                                ),
-                              },
-                            }));
-                          }
-                        }}
-                        className="border-white/20"
-                      />
-                      <Label htmlFor={subject} className="text-white text-sm">
-                        {subject}
-                      </Label>
-                    </div>
-                  ))}
+              {applicationData.applicationType === "tutor" && applicationData.courseType === "PROGRAM" && (
+                <div>
+                  <Label className="text-white">
+                    Subjects You Can Teach *
+                  </Label>
+                  <div className="grid grid-cols-2 md:grid-cols-3 gap-3 mt-3">
+                    {subjects.map((subject) => (
+                      <div key={subject} className="flex items-center space-x-2">
+                        <Checkbox
+                          id={subject}
+                          checked={applicationData.teaching.subjects.includes(
+                            subject,
+                          )}
+                          onCheckedChange={(checked) => {
+                            if (checked) {
+                              setApplicationData((prev) => ({
+                                ...prev,
+                                teaching: {
+                                  ...prev.teaching,
+                                  subjects: [...prev.teaching.subjects, subject],
+                                },
+                              }));
+                            } else {
+                              setApplicationData((prev) => ({
+                                ...prev,
+                                teaching: {
+                                  ...prev.teaching,
+                                  subjects: prev.teaching.subjects.filter(
+                                    (s) => s !== subject,
+                                  ),
+                                },
+                              }));
+                            }
+                          }}
+                          className="border-white/20"
+                        />
+                        <Label htmlFor={subject} className="text-white text-sm">
+                          {subject}
+                        </Label>
+                      </div>
+                    ))}
+                  </div>
                 </div>
-              </div>
+              )}
 
               <div>
                 <Label className="text-white">
@@ -1065,82 +1180,87 @@ export default function ApplicationPage() {
                 </RadioGroup>
               </div>
 
-              <div>
-                <Label htmlFor="approach" className="text-white">
-                  Your{" "}
-                  {applicationData.applicationType === "tutor"
-                    ? "Teaching"
-                    : "Mentoring"}{" "}
-                  Approach *
-                </Label>
-                <Textarea
-                  id="approach"
-                  placeholder={`Describe your ${
-                    applicationData.applicationType === "tutor"
-                      ? "teaching"
-                      : "mentoring"
-                  } philosophy and methods...`}
-                  value={applicationData.teaching.approach}
-                  onChange={(e) =>
-                    setApplicationData((prev) => ({
-                      ...prev,
-                      teaching: { ...prev.teaching, approach: e.target.value },
-                    }))
-                  }
-                  className="mt-1 bg-white/10 border-white/20 text-white min-h-[120px]"
-                />
-              </div>
+              {(applicationData.applicationType === "mentor" ||
+                applicationData.courseType === "PROGRAM") && (
+                <div>
+                  <Label htmlFor="approach" className="text-white">
+                    Your{" "}
+                    {applicationData.applicationType === "tutor"
+                      ? "Teaching"
+                      : "Mentoring"}{" "}
+                    Approach *
+                  </Label>
+                  <Textarea
+                    id="approach"
+                    placeholder={`Describe your ${
+                      applicationData.applicationType === "tutor"
+                        ? "teaching"
+                        : "mentoring"
+                    } philosophy and methods...`}
+                    value={applicationData.teaching.approach}
+                    onChange={(e) =>
+                      setApplicationData((prev) => ({
+                        ...prev,
+                        teaching: { ...prev.teaching, approach: e.target.value },
+                      }))
+                    }
+                    className="mt-1 bg-white/10 border-white/20 text-white min-h-[120px]"
+                  />
+                </div>
+              )}
 
               <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-                <div>
-                  <Label className="text-white">Availability *</Label>
-                  <div className="space-y-2 mt-3">
-                    {[
-                      "Weekday Mornings",
-                      "Weekday Afternoons",
-                      "Weekday Evenings",
-                      "Weekends",
-                    ].map((time) => (
-                      <div key={time} className="flex items-center space-x-2">
-                        <Checkbox
-                          id={time}
-                          checked={applicationData.teaching.availability.includes(
-                            time,
-                          )}
-                          onCheckedChange={(checked) => {
-                            if (checked) {
-                              setApplicationData((prev) => ({
-                                ...prev,
-                                teaching: {
-                                  ...prev.teaching,
-                                  availability: [
-                                    ...prev.teaching.availability,
-                                    time,
-                                  ],
-                                },
-                              }));
-                            } else {
-                              setApplicationData((prev) => ({
-                                ...prev,
-                                teaching: {
-                                  ...prev.teaching,
-                                  availability:
-                                    prev.teaching.availability.filter(
-                                      (t) => t !== time,
-                                    ),
-                                },
-                              }));
-                            }
-                          }}
-                          className="border-white/20"
-                        />
-                        <Label htmlFor={time} className="text-white text-sm">
-                          {time}
-                        </Label>
-                      </div>
-                    ))}
+                {applicationData.applicationType === "tutor" && applicationData.courseType === "PROGRAM" && (
+                  <div>
+                    <Label className="text-white">Availability *</Label>
+                    <div className="space-y-2 mt-3">
+                      {[
+                        "Weekday Mornings",
+                        "Weekday Afternoons",
+                        "Weekday Evenings",
+                        "Weekends",
+                      ].map((time) => (
+                        <div key={time} className="flex items-center space-x-2">
+                          <Checkbox
+                            id={time}
+                            checked={applicationData.teaching.availability.includes(
+                              time,
+                            )}
+                            onCheckedChange={(checked) => {
+                              if (checked) {
+                                setApplicationData((prev) => ({
+                                  ...prev,
+                                  teaching: {
+                                    ...prev.teaching,
+                                    availability: [
+                                      ...prev.teaching.availability,
+                                      time,
+                                    ],
+                                  },
+                                }));
+                              } else {
+                                setApplicationData((prev) => ({
+                                  ...prev,
+                                  teaching: {
+                                    ...prev.teaching,
+                                    availability:
+                                      prev.teaching.availability.filter(
+                                        (t) => t !== time,
+                                      ),
+                                  },
+                                }));
+                              }
+                            }}
+                            className="border-white/20"
+                          />
+                          <Label htmlFor={time} className="text-white text-sm">
+                            {time}
+                          </Label>
+                        </div>
+                      ))}
+                    </div>
                   </div>
-                </div>
+                )}
 
                 {applicationData.applicationType === "mentor" && (
                   <div>
@@ -1236,87 +1356,26 @@ export default function ApplicationPage() {
             </div>
 
             <div className="max-w-4xl mx-auto space-y-6">
-              <div>
-                <Label htmlFor="why" className="text-white">
-                  Why do you want to become a {applicationData.applicationType}{" "}
-                  on our platform? *
-                </Label>
-                <Textarea
-                  id="why"
-                  placeholder="Share your motivation and what drives you to teach/mentor others..."
-                  value={applicationData.motivation.why}
-                  onChange={(e) =>
-                    setApplicationData((prev) => ({
-                      ...prev,
-                      motivation: { ...prev.motivation, why: e.target.value },
-                    }))
-                  }
-                  className="mt-1 bg-white/10 border-white/20 text-white min-h-[120px]"
-                />
-              </div>
-
-              <div>
-                <Label htmlFor="goals" className="text-white">
-                  What are your goals as a {applicationData.applicationType}? *
-                </Label>
-                <Textarea
-                  id="goals"
-                  placeholder="Describe what you hope to achieve and how you plan to help students/mentees..."
-                  value={applicationData.motivation.goals}
-                  onChange={(e) =>
-                    setApplicationData((prev) => ({
-                      ...prev,
-                      motivation: { ...prev.motivation, goals: e.target.value },
-                    }))
-                  }
-                  className="mt-1 bg-white/10 border-white/20 text-white min-h-[120px]"
-                />
-              </div>
-
-              <div>
-                <Label htmlFor="commitment" className="text-white">
-                  How much time can you commit per week? *
-                </Label>
-                <Select
-                  value={applicationData.motivation.commitment}
-                  onValueChange={(value) =>
-                    setApplicationData((prev) => ({
-                      ...prev,
-                      motivation: { ...prev.motivation, commitment: value },
-                    }))
-                  }>
-                  <SelectTrigger className="mt-1 bg-white/10 border-white/20 text-white">
-                    <SelectValue placeholder="Select time commitment" />
-                  </SelectTrigger>
-                  <SelectContent>
-                    <SelectItem value="5-10">5-10 hours per week</SelectItem>
-                    <SelectItem value="10-20">10-20 hours per week</SelectItem>
-                    <SelectItem value="20-30">20-30 hours per week</SelectItem>
-                    <SelectItem value="30+">30+ hours per week</SelectItem>
-                  </SelectContent>
-                </Select>
-              </div>
-
-              <div>
-                <Label htmlFor="references" className="text-white">
-                  Professional References (Optional)
-                </Label>
-                <Textarea
-                  id="references"
-                  placeholder="Provide contact information for 2-3 professional references who can vouch for your expertise..."
-                  value={applicationData.motivation.references}
-                  onChange={(e) =>
-                    setApplicationData((prev) => ({
-                      ...prev,
-                      motivation: {
-                        ...prev.motivation,
-                        references: e.target.value,
-                      },
-                    }))
-                  }
-                  className="mt-1 bg-white/10 border-white/20 text-white min-h-[100px]"
-                />
-              </div>
+              {(applicationData.applicationType === "mentor" || applicationData.courseType === "PROGRAM") && (
+                <div>
+                  <Label htmlFor="why" className="text-white">
+                    Why do you want to become a {applicationData.applicationType}{" "}
+                    on our platform? *
+                  </Label>
+                  <Textarea
+                    id="why"
+                    placeholder="Share your motivation and what drives you to teach/mentor others..."
+                    value={applicationData.motivation.why}
+                    onChange={(e) =>
+                      setApplicationData((prev) => ({
+                        ...prev,
+                        motivation: { ...prev.motivation, why: e.target.value },
+                      }))
+                    }
+                    className="mt-1 bg-white/10 border-white/20 text-white min-h-[120px]"
+                  />
+                </div>
+              )}
 
               <div className="bg-white/5 p-6 rounded-lg border border-white/10">
                 <h3 className="text-white font-semibold mb-4">
