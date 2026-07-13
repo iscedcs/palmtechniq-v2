@@ -235,15 +235,80 @@ export async function updateTutorMentorApplicationStatus(input: {
     };
   }
 
-  const eventDef = input.status === "APPROVED" ? PLATFORM_EVENTS.APPLICATION_APPROVED
-    : input.status === "REJECTED" ? PLATFORM_EVENTS.APPLICATION_REJECTED
-    : null;
+  // ── Privilege upgrade on APPROVED ──────────────────────────────────────────
+  if (input.status === "APPROVED") {
+    const applicantEmail = updatedPayload.personalInfo?.email?.trim();
+    if (applicantEmail) {
+      const applicantUser = await db.user.findUnique({
+        where: { email: applicantEmail },
+        select: { id: true },
+      });
+
+      if (applicantUser) {
+        const newRole =
+          updatedPayload.applicationType === "mentor" ? "MENTOR" : "TUTOR";
+
+        // Build seeded values from the submitted application payload
+        const rawSkills = updatedPayload.professional?.skills ?? [];
+        const seedTitle =
+          updatedPayload.professional?.currentRole?.trim() || "Tutor";
+        const seedExperience = (() => {
+          const exp = updatedPayload.professional?.experience ?? "";
+          const match = String(exp).match(/\d+/);
+          return match ? parseInt(match[0], 10) : 0;
+        })();
+
+        await db.$transaction([
+          // 1. Upgrade the user's role
+          db.user.update({
+            where: { id: applicantUser.id },
+            data: { role: newRole as any },
+          }),
+          // 2. Provision the Tutor profile row
+          db.tutor.upsert({
+            where: { userId: applicantUser.id },
+            create: {
+              userId: applicantUser.id,
+              title: seedTitle,
+              expertise: rawSkills,
+              experience: seedExperience,
+              education: [],
+              certifications: [],
+              isVerified: true,
+              verifiedAt: new Date(),
+            },
+            update: {
+              // Only backfill if the existing record has empty values
+              isVerified: true,
+              verifiedAt: new Date(),
+            },
+          }),
+        ]);
+      } else {
+        // User hasn't registered an account yet — log but do not block approval
+        console.warn(
+          `[Approval] No User account found for approved applicant email: ${applicantEmail}. ` +
+            `Tutor record will be provisioned when they sign up.`,
+        );
+      }
+    }
+  }
+
+  const eventDef =
+    input.status === "APPROVED"
+      ? PLATFORM_EVENTS.APPLICATION_APPROVED
+      : input.status === "REJECTED"
+        ? PLATFORM_EVENTS.APPLICATION_REJECTED
+        : null;
   if (eventDef) {
     trackEvent(eventDef, {
       userId: session.user.id,
       entityType: "application",
       entityId: input.registrationId,
-      metadata: { applicationType: updatedPayload.applicationType, status: input.status },
+      metadata: {
+        applicationType: updatedPayload.applicationType,
+        status: input.status,
+      },
     });
   }
 

@@ -214,20 +214,26 @@ export async function sendTutorMentorApplicationStatusNotification(params: {
   status: ApplicationStatus;
   adminNote?: string;
 }) {
+  const { default: ApplicationStatusEmail } = await import(
+    "./email-templates/application-status"
+  );
   const resend = new Resend(process.env.RESEND_API_KEY!);
   const applicantName = params.firstName?.trim() || "there";
   const statusLabel = formatStatusLabel(params.status);
-  const portalUrl = `${process.env.NEXT_PUBLIC_URL || "https://palmtechniq.com"}/apply`;
+  const portalUrl = `${process.env.NEXT_PUBLIC_URL || "https://palmtechniq.com"}/tutor/profile`;
   const supportEmail =
     process.env.SUPPORT_EMAIL_ADDRESS ||
     process.env.TO_EMAIL_ADDRESS ||
-    "support@palmtechniq.com";
+    "palmtechniq@gmail.com";
+
+  const subject = `Your ${params.applicationType} application is ${statusLabel} — PalmTechnIQ`;
+
+  // Plain-text fallback
   const guidanceLines = buildApplicationStatusGuidance({
     status: params.status,
     applicationType: params.applicationType,
     portalUrl,
   });
-  const subject = `Your ${params.applicationType} application is now ${statusLabel}`;
   const text = [
     `Hi ${applicantName},`,
     "",
@@ -246,9 +252,17 @@ export async function sendTutorMentorApplicationStatusNotification(params: {
     .join("\n");
 
   await resend.emails.send({
-    from: "PalmTechnIQ <support@palmtechniq.com>",
+    from: process.env.FROM_EMAIL_ADDRESS || "PalmTechnIQ <support@palmtechniq.com>",
     to: params.email,
     subject,
+    react: ApplicationStatusEmail({
+      firstName: applicantName,
+      applicationType: params.applicationType,
+      status: params.status,
+      adminNote: params.adminNote,
+      portalUrl,
+      supportEmail,
+    }),
     text,
   });
 }

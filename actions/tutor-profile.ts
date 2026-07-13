@@ -198,6 +198,7 @@ export async function getTutorProfileData(): Promise<TutorProfileResponse> {
         preferences: true,
         image: true,
         avatar: true,
+        role: true,
       },
     }),
     db.tutor.findUnique({
@@ -219,8 +220,39 @@ export async function getTutorProfileData(): Promise<TutorProfileResponse> {
     return { error: "User not found" };
   }
 
-  if (!tutor) {
-    return { error: "Tutor profile not found" };
+  // ── Self-healing bootstrap ─────────────────────────────────────────────────
+  // If a user has been promoted to TUTOR/MENTOR but their Tutor row is missing
+  // (e.g. approval happened before this fix, or the DB write was lost), we
+  // transparently provision a default row so they land on their profile page
+  // instead of hitting a dead end.
+  let resolvedTutor = tutor;
+  if (!resolvedTutor) {
+    const eligibleRoles = ["TUTOR", "MENTOR", "ADMIN", "SUPERIOR"];
+    if (!eligibleRoles.includes((user as any).role ?? "")) {
+      return { error: "Tutor profile not found" };
+    }
+    resolvedTutor = await db.tutor.upsert({
+      where: { userId: session.user.id },
+      create: {
+        userId: session.user.id,
+        title: "",
+        expertise: [],
+        experience: 0,
+        education: [],
+        certifications: [],
+      },
+      update: {},
+      select: {
+        title: true,
+        expertise: true,
+        experience: true,
+        education: true,
+        certifications: true,
+        hourlyRate: true,
+        course: true,
+        availability: true,
+      },
+    });
   }
 
   const { firstName, lastName } = getNames(user.name);
@@ -236,17 +268,17 @@ export async function getTutorProfileData(): Promise<TutorProfileResponse> {
       email: user.email || "",
       phone: user.phone || "",
       bio: user.bio || "",
-      title: tutor.title || "",
-      experience: tutor.experience ?? 0,
-      course: tutor.course || "",
-      hourlyRate: tutor.hourlyRate ?? undefined,
+      title: resolvedTutor.title || "",
+      experience: resolvedTutor.experience ?? 0,
+      course: resolvedTutor.course || "",
+      hourlyRate: resolvedTutor.hourlyRate ?? undefined,
       location: user.location || "",
       timezone: user.timezone || "Africa/Lagos",
       language: user.language || "en",
       avatar: user.image || user.avatar || "",
-      skills: tutor.expertise ?? [],
-      education: tutor.education ?? [],
-      certifications: tutor.certifications ?? [],
+      skills: resolvedTutor.expertise ?? [],
+      education: resolvedTutor.education ?? [],
+      certifications: resolvedTutor.certifications ?? [],
     },
     socialLinks: {
       website: user.website || socialLinks.website || "",
@@ -256,7 +288,7 @@ export async function getTutorProfileData(): Promise<TutorProfileResponse> {
       youtube: socialLinks.youtube || "",
       instagram: socialLinks.instagram || "",
     },
-    availability: normalizeAvailability(tutor.availability),
+    availability: normalizeAvailability(resolvedTutor.availability),
     preferences: normalizePreferences(user.preferences),
   };
 }
