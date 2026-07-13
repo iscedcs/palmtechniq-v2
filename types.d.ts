@@ -57,6 +57,7 @@ type CourseItem = {
 
 interface ApplicationData {
   applicationType: "tutor" | "mentor" | "";
+  courseType: "REGULAR" | "PROGRAM" | "";
   personalInfo: {
     firstName: string;
     lastName: string;
