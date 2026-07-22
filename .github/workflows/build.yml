@@ -61,6 +61,7 @@ jobs:
         with:
           scan-type: fs
           scanners: vuln
+          db-repository: ghcr.io/aquasecurity/trivy-db:2
           severity: HIGH,CRITICAL
           exit-code: 1
           skip-dirs: .next
