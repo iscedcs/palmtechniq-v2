@@ -6,6 +6,98 @@ import { PromotionStatus, PromotionType } from "@prisma/client";
 import { randomUUID } from "crypto";
 import { paystackInitialize } from "./paystack";
 
+// ─── Flash Sale Sync Helpers ─────────────────────────────────────────────────
+
+/**
+ * When a promotion with a promoPrice becomes ACTIVE, sync the course's
+ * flash-sale fields so the course detail page, checkout, and tutor
+ * dashboard all show the promo price automatically.
+ */
+async function syncFlashSaleOn(
+  courseId: string,
+  promoPrice: number,
+  flashSaleEnd: Date,
+) {
+  await db.course.update({
+    where: { id: courseId },
+    data: {
+      isFlashSale: true,
+      flashSaleEnd,
+      currentPrice: promoPrice,
+    },
+  });
+}
+
+/**
+ * When a promotion expires, is cancelled, or is deleted, revert the
+ * course's flash-sale fields back to its base price so pricing is
+ * consistent everywhere.
+ */
+async function syncFlashSaleOff(courseId: string) {
+  const course = await db.course.findUnique({
+    where: { id: courseId },
+    select: { basePrice: true },
+  });
+  await db.course.update({
+    where: { id: courseId },
+    data: {
+      isFlashSale: false,
+      flashSaleEnd: null,
+      // Restore currentPrice to basePrice (or keep it if no basePrice)
+      currentPrice: course?.basePrice ?? undefined,
+    },
+  });
+}
+
+// ─── Admin: Backfill Flash Sale for existing active promotions ───────────────
+
+/**
+ * Retroactively syncs flash-sale fields onto every course that currently has
+ * an ACTIVE promotion with a promoPrice. Call this once from the admin panel
+ * to catch promotions that were created before the auto-sync logic existed.
+ */
+export async function backfillPromoFlashSales() {
+  const session = await auth();
+  if (!session?.user?.id || session.user.role !== "ADMIN") {
+    return { error: "Unauthorized" };
+  }
+
+  const now = new Date();
+  const activePromos = await db.coursePromotion.findMany({
+    where: {
+      status: "ACTIVE",
+      startDate: { lte: now },
+      endDate: { gte: now },
+      promoPrice: { not: null },
+    },
+    select: {
+      id: true,
+      courseId: true,
+      promoPrice: true,
+      endDate: true,
+    },
+  });
+
+  if (activePromos.length === 0) {
+    return { success: true, synced: 0 };
+  }
+
+  await Promise.all(
+    activePromos.map((promo: { courseId: string; promoPrice: number | null; endDate: Date }) =>
+      db.course.update({
+        where: { id: promo.courseId },
+        data: {
+          isFlashSale: true,
+          flashSaleEnd: promo.endDate,
+          currentPrice: promo.promoPrice!,
+        },
+      }),
+    ),
+  );
+
+  return { success: true, synced: activePromos.length };
+}
+
 // ─── Platform Settings Helpers ──────────────────────────────────────────────
 
 async function getPlatformSettingsRecord() {
@@ -220,6 +312,9 @@ export async function createAdminPromotion(data: {
   });
   if (!course) return { error: "Course not found" };
 
+  const promoStart = new Date(data.startDate);
+  const promoEnd = new Date(data.endDate);
+
   const promotion = await db.coursePromotion.create({
     data: {
       courseId: data.courseId,
@@ -231,13 +326,23 @@ export async function createAdminPromotion(data: {
       ctaText: data.ctaText || "Enroll Now",
       promoPrice: data.promoPrice ?? null,
       originalPrice: data.originalPrice ?? null,
-      startDate: new Date(data.startDate),
-      endDate: new Date(data.endDate),
+      startDate: promoStart,
+      endDate: promoEnd,
       priority: data.priority ?? 10,
       fee: 0,
       feePaid: true,
     },
   });
+
+  // Auto-sync flash sale on the course if a promo price is set
+  const now = new Date();
+  if (
+    data.promoPrice &&
+    promoStart <= now &&
+    promoEnd > now
+  ) {
+    await syncFlashSaleOn(data.courseId, data.promoPrice, promoEnd);
+  }
 
   return { success: true, promotion };
 }
@@ -263,15 +368,28 @@ export async function approvePromotion(
     return { error: "Tutor has not paid the promotion fee yet" };
   }
 
+  const approvedStart = new Date(data.startDate);
+  const approvedEnd = new Date(data.endDate);
+
   await db.coursePromotion.update({
     where: { id: promotionId },
     data: {
       status: PromotionStatus.ACTIVE,
-      startDate: new Date(data.startDate),
-      endDate: new Date(data.endDate),
+      startDate: approvedStart,
+      endDate: approvedEnd,
       priority: data.priority ?? promo.priority,
     },
   });
+
+  // Auto-sync flash sale on the course if a promo price is set
+  const now = new Date();
+  if (
+    promo.promoPrice &&
+    approvedStart <= now &&
+    approvedEnd > now
+  ) {
+    await syncFlashSaleOn(promo.courseId, promo.promoPrice, approvedEnd);
+  }
 
   return { success: true };
 }
@@ -285,10 +403,41 @@ export async function updatePromotionStatus(
     return { error: "Unauthorized" };
   }
 
+  const promotion = await db.coursePromotion.findUnique({
+    where: { id: promotionId },
+    select: { courseId: true, promoPrice: true, endDate: true, startDate: true },
+  });
+
   await db.coursePromotion.update({
     where: { id: promotionId },
     data: { status },
   });
+
+  // If the promotion is being deactivated, turn off the flash sale on the course
+  if (
+    promotion &&
+    (status === PromotionStatus.EXPIRED ||
+      status === PromotionStatus.CANCELLED ||
+      status === PromotionStatus.REJECTED)
+  ) {
+    await syncFlashSaleOff(promotion.courseId);
+  }
+
+  // If the promotion is being re-activated and has a promo price, sync it on
+  if (
+    promotion &&
+    status === PromotionStatus.ACTIVE &&
+    promotion.promoPrice
+  ) {
+    const now = new Date();
+    if (promotion.startDate <= now && promotion.endDate > now) {
+      await syncFlashSaleOn(
+        promotion.courseId,
+        promotion.promoPrice,
+        promotion.endDate,
+      );
+    }
+  }
 
   return { success: true };
 }
@@ -299,7 +448,18 @@ export async function deletePromotion(promotionId: string) {
     return { error: "Unauthorized" };
   }
 
+  const promotion = await db.coursePromotion.findUnique({
+    where: { id: promotionId },
+    select: { courseId: true, status: true },
+  });
+
   await db.coursePromotion.delete({ where: { id: promotionId } });
+
+  // If the promotion was active, revert flash sale on the course
+  if (promotion?.status === PromotionStatus.ACTIVE) {
+    await syncFlashSaleOff(promotion.courseId);
+  }
+
   return { success: true };
 }
 

@@ -11,13 +11,14 @@ import {
   Monitor,
   Infinity,
   BookOpen,
+  Zap,
 } from "lucide-react";
 import { Card, CardContent, CardHeader } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Separator } from "@/components/ui/separator";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { useRouter } from "next/navigation";
-import { useMemo, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { formatToNaira } from "@/lib/utils";
 import { trackInitiateCheckout } from "@/lib/fbpixel";
 
@@ -42,6 +43,8 @@ interface CheckoutCoursePageProps {
     groupPrice: number;
     cashbackPercent: number;
   };
+  /** End date of the active platform promotion, if any */
+  activePromoEndDate?: Date | string;
 }
 
 export default function CheckoutCoursePage({
@@ -54,6 +57,7 @@ export default function CheckoutCoursePage({
   courseId,
   pricing,
   groupTier,
+  activePromoEndDate,
   onProceed,
 }: CheckoutCoursePageProps & {
   onProceed: (promoCode?: string) => Promise<void>;
@@ -64,7 +68,37 @@ export default function CheckoutCoursePage({
   const [promoError, setPromoError] = useState<string | null>(null);
   const [appliedPromo, setAppliedPromo] = useState<string | null>(null);
   const [pricingState, setPricingState] = useState<PricingInput>(pricing);
-  console.log({ instructor, rating, duration });
+
+  // Live countdown for the active platform promotion
+  const [promoTimeLeft, setPromoTimeLeft] = useState("");
+  useEffect(() => {
+    if (!activePromoEndDate) return;
+    const end = new Date(activePromoEndDate).getTime();
+    function tick() {
+      const diff = end - Date.now();
+      if (diff <= 0) {
+        setPromoTimeLeft("Expired");
+        return;
+      }
+      const d = Math.floor(diff / 86_400_000);
+      const h = Math.floor((diff % 86_400_000) / 3_600_000);
+      const m = Math.floor((diff % 3_600_000) / 60_000);
+      const s = Math.floor((diff % 60_000) / 1_000);
+      setPromoTimeLeft(
+        [
+          d > 0 ? `${d}d` : null,
+          `${h.toString().padStart(2, "0")}h`,
+          `${m.toString().padStart(2, "0")}m`,
+          `${s.toString().padStart(2, "00")}s`,
+        ]
+          .filter(Boolean)
+          .join(" "),
+      );
+    }
+    tick();
+    const id = setInterval(tick, 1_000);
+    return () => clearInterval(id);
+  }, [activePromoEndDate]);
 
   const { subtotal, discountAmt, vatAmt, total, discountPercent } =
     useMemo(() => {
@@ -243,6 +277,19 @@ export default function CheckoutCoursePage({
                     </h2>
                   </CardHeader>
                   <CardContent className="space-y-4">
+                    {/* Flash sale countdown inside order summary */}
+                    {activePromoEndDate && promoTimeLeft && (
+                      <motion.div
+                        initial={{ opacity: 0, y: -6 }}
+                        animate={{ opacity: 1, y: 0 }}
+                        className="flex items-center justify-center gap-2 px-3 py-2 rounded-lg bg-highlight-maroon/60 border border-orange-500/30 text-orange-400 text-xs font-medium">
+                        <span>Flash Sale ends in</span>
+                        <span className="font-mono font-bold tracking-wide">
+                          {promoTimeLeft}
+                        </span>
+                      </motion.div>
+                    )}
+
                     <div className="space-y-2 text-sm">
                       {groupTier ? (
                         <div className="rounded-lg border border-yellow-500/20 bg-yellow-500/10 p-3 text-xs text-yellow-200">

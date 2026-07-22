@@ -54,45 +54,70 @@ export async function getPublicCourses() {
 
 export async function getCourseById(courseId: string) {
   try {
-    const course = await db.course.findUnique({
-      where: { id: courseId },
-      include: {
-        tutor: {
-          include: {
-            user: true,
-            Course: true,
-          },
-        },
-        category: true,
-        tags: true,
-        groupTiers: { orderBy: { size: "asc" } },
-        modules: {
-          orderBy: { sortOrder: "asc" },
-          include: {
-            lessons: {
-              orderBy: { sortOrder: "asc" },
-              include: { quiz: true },
-            },
-            resources: true,
-          },
-        },
+    const now = new Date();
 
-        reviews: {
-          where: { isPublic: true },
-          include: {
-            user: true,
-            reactions: { select: { type: true } },
+    const [course, activePromotion] = await Promise.all([
+      db.course.findUnique({
+        where: { id: courseId },
+        include: {
+          tutor: {
+            include: {
+              user: true,
+              Course: true,
+            },
           },
+          category: true,
+          tags: true,
+          groupTiers: { orderBy: { size: "asc" } },
+          modules: {
+            orderBy: { sortOrder: "asc" },
+            include: {
+              lessons: {
+                orderBy: { sortOrder: "asc" },
+                include: { quiz: true },
+              },
+              resources: true,
+            },
+          },
+          reviews: {
+            where: { isPublic: true },
+            include: {
+              user: true,
+              reactions: { select: { type: true } },
+            },
+          },
+          enrollments: true,
         },
-        enrollments: true,
-      },
-    });
+      }),
+      // Fetch the currently active promotion for this course (if any)
+      db.coursePromotion.findFirst({
+        where: {
+          courseId,
+          status: "ACTIVE",
+          startDate: { lte: now },
+          endDate: { gte: now },
+        },
+        orderBy: [{ priority: "desc" }, { createdAt: "desc" }],
+        select: {
+          id: true,
+          promoPrice: true,
+          originalPrice: true,
+          endDate: true,
+          startDate: true,
+          headline: true,
+          ctaText: true,
+        },
+      }),
+    ]);
+
     if (!course) return null;
 
     return {
       ...course,
       tags: course.tags?.map((t: any) => t.name) || [],
       learningOutcomes: course.outcomes || [],
+      // Attach the active promotion so the page can use the correct promo price
+      activePromotion: activePromotion ?? null,
     };
   } catch (error) {
     console.error("Error fetching course by ID:", error);

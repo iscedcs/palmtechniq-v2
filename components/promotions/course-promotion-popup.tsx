@@ -109,7 +109,7 @@ export default function CoursePromotionPopup({
         ).toFixed(1)
       : null;
   const enrollmentCount = course.enrollments.length;
-  const courseUrl = `/courses/${course.id}`;
+  const courseUrl = `/courses/${course.id}/checkout`;
   const endDate = new Date(promotion.endDate);
   const daysLeft = Math.max(
     0,

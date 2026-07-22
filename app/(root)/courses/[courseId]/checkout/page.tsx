@@ -57,6 +57,23 @@ export default async function CheckoutPage({
     return sum + module.lessons.length;
   }, 0);
 
+  // ── Price resolution: active promotion wins over course's own pricing ──
+  const activePromo = course.activePromotion;
+
+  // Crossed-out "was" price → always basePrice (₦12,000), never activePromo.originalPrice
+  const checkoutBasePrice =
+    groupTier?.groupPrice ??
+    (course.basePrice ?? 0);
+
+  // currentPrice = what the user actually pays right now
+  const checkoutCurrentPrice =
+    groupTier?.groupPrice ??
+    (activePromo?.promoPrice
+      ? activePromo.promoPrice
+      : (course.currentPrice && course.currentPrice > 0
+          ? course.currentPrice
+          : (course.basePrice ?? 0)));
+
   return (
     <div>
       <CheckoutCoursePage
@@ -80,13 +97,8 @@ export default async function CheckoutPage({
             : 0
         }
         pricing={{
-          basePrice: groupTier?.groupPrice ?? course.basePrice ?? 0,
-          currentPrice:
-            groupTier?.groupPrice ??
-            (course.currentPrice && course.currentPrice > 0
-              ? course.currentPrice
-              : course.basePrice) ??
-            0,
+          basePrice: checkoutBasePrice,
+          currentPrice: checkoutCurrentPrice,
           discountPercent: groupTier
             ? undefined
             : course.groupBuyingDiscount && course.groupBuyingDiscount > 0
@@ -95,6 +107,7 @@ export default async function CheckoutPage({
           vatRate: 0.075,
           currency: "NGN",
         }}
+        activePromoEndDate={activePromo?.endDate ?? undefined}
         groupTier={
           groupTier
             ? {

@@ -15,6 +15,8 @@ import {
   Clock,
   XCircle,
   BarChart3,
+  RefreshCw,
+  Zap,
 } from "lucide-react";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
@@ -56,6 +58,7 @@ import {
   getAdminPromotions,
   approvePromotion,
   getNextAvailableSlot,
+  backfillPromoFlashSales,
 } from "@/actions/promotions";
 
 type Promotion = {
@@ -144,6 +147,28 @@ export default function AdminPromotionsClient({
     useState<CourseSearchResult | null>(null);
   const [loading, setLoading] = useState(false);
   const [filter, setFilter] = useState("ALL");
+  const [syncing, setSyncing] = useState(false);
+
+  async function handleBackfillSync() {
+    if (
+      !confirm(
+        "Sync flash sale fields for all courses currently on an active promotion? This will update isFlashSale, flashSaleEnd, and currentPrice on those courses.",
+      )
+    )
+      return;
+    setSyncing(true);
+    const res = await backfillPromoFlashSales();
+    setSyncing(false);
+    if (res?.error) {
+      toast.error(res.error);
+    } else if ("synced" in res) {
+      toast.success(
+        res.synced === 0
+          ? "No active promotions with a promo price found."
+          : `✅ Synced flash sale for ${res.synced} course${res.synced !== 1 ? "s" : ""}.`,
+      );
+    }
+  }
 
   // Create form state
   const [headline, setHeadline] = useState("");
@@ -326,7 +351,21 @@ export default function AdminPromotionsClient({
               Manage promoted courses and ad settings
             </p>
           </div>
-          <div className="flex gap-2">
+          <div className="flex gap-2 flex-wrap">
+            <Button
+              variant="outline"
+              size="sm"
+              onClick={handleBackfillSync}
+              disabled={syncing}
+              title="Enable flash sale on all courses currently on an active promotion"
+              className="border-orange-500/40 text-orange-400 hover:bg-orange-500/10">
+              {syncing ? (
+                <RefreshCw className="w-4 h-4 mr-2 animate-spin" />
+              ) : (
+                <Zap className="w-4 h-4 mr-2" />
+              )}
+              Sync Flash Sales
+            </Button>
             <Button
               variant="outline"
               size="sm"
