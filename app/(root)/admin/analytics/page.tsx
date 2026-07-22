@@ -324,11 +324,13 @@ export default function AnalyticsDashboard() {
                         <YAxis className="text-xs" />
                         <Tooltip
                           labelFormatter={(d) =>
-                            new Date(d).toLocaleDateString("en-NG", {
-                              weekday: "short",
-                              month: "short",
-                              day: "numeric",
-                            })
+                            d
+                              ? new Date(d as string | number).toLocaleDateString("en-NG", {
+                                  weekday: "short",
+                                  month: "short",
+                                  day: "numeric",
+                                })
+                              : ""
                           }
                         />
                         <Area
@@ -635,11 +637,13 @@ export default function AnalyticsDashboard() {
                       />
                       <Tooltip
                         labelFormatter={(d) =>
-                          new Date(d).toLocaleDateString("en-NG", {
-                            weekday: "short",
-                            month: "short",
-                            day: "numeric",
-                          })
+                          d
+                            ? new Date(d as string | number).toLocaleDateString("en-NG", {
+                                weekday: "short",
+                                month: "short",
+                                day: "numeric",
+                              })
+                            : ""
                         }
                         formatter={(v: any) => [
                           `₦${formatCurrency(Number(v))}`,
