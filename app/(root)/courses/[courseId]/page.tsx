@@ -88,6 +88,39 @@ export default async function CourseSlugPage(props: {
     );
   }
 
+  // ── Price resolution: active promotion wins over course's own pricing ──
+  const activePromo = course.activePromotion;
+  const resolvedCurrentPrice = activePromo?.promoPrice
+    ? activePromo.promoPrice
+    : (course.currentPrice && course.currentPrice > 0
+        ? course.currentPrice
+        : (course.basePrice ?? 0));
+
+  // Crossed-out "was" price:
+  //   • During promo  → always basePrice (e.g. ₦12,000) — consistent with course card
+  //   • No promo      → basePrice only if currentPrice is lower (i.e. there's a regular discount)
+  //   • Flash sale end → reverts naturally to currentPrice / basePrice (₦9,900 / ₦12,000)
+  const resolvedOriginalPrice = activePromo?.promoPrice
+    ? (course.basePrice && course.basePrice > activePromo.promoPrice
+        ? course.basePrice
+        : undefined)
+    : (course.currentPrice &&
+        course.currentPrice > 0 &&
+        course.basePrice &&
+        course.basePrice > course.currentPrice
+          ? course.basePrice
+          : undefined);
+
+  // Discount percentage — always computed against the crossed-out basePrice
+  const resolvedDiscount =
+    resolvedOriginalPrice && resolvedOriginalPrice > resolvedCurrentPrice
+      ? Math.round(
+          ((resolvedOriginalPrice - resolvedCurrentPrice) /
+            resolvedOriginalPrice) *
+            100,
+        )
+      : undefined;
+
   const totalDuration = course.modules?.reduce((sum: number, module: any) => {
     return sum + (module.duration || 0);
   }, 0);
@@ -284,31 +317,9 @@ export default async function CourseSlugPage(props: {
               </div>
             ) : null}
             <StickyPurchaseCard
-              currentPrice={
-                course.currentPrice && course.currentPrice > 0
-                  ? course.currentPrice
-                  : (course.basePrice ?? 0)
-              }
-              originalPrice={
-                course.currentPrice &&
-                course.currentPrice > 0 &&
-                course.basePrice &&
-                course.basePrice > course.currentPrice
-                  ? course.basePrice
-                  : undefined
-              }
-              discount={
-                course.currentPrice &&
-                course.currentPrice > 0 &&
-                course.basePrice &&
-                course.basePrice > course.currentPrice
-                  ? Math.round(
-                      ((course.basePrice - course.currentPrice) /
-                        course.basePrice) *
-                        100,
-                    )
-                  : undefined
-              }
+              currentPrice={resolvedCurrentPrice}
+              originalPrice={resolvedOriginalPrice}
+              discount={resolvedDiscount}
               duration={`${totalLessonDuration} mins`}
               lessons={totalLessons}
               level={course.level}
@@ -320,6 +331,8 @@ export default async function CourseSlugPage(props: {
               courseTitle={course.title}
               courseDescription={course.description}
               courseThumbnail={course.thumbnail ?? undefined}
+              flashSaleEnd={activePromo?.endDate ?? course.flashSaleEnd ?? undefined}
+              isFlashSale={!!activePromo || (course.isFlashSale ?? false)}
             />
           </div>
         </div>

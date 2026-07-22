@@ -329,9 +329,13 @@ export default function CoursePricingForm({ form }: CoursePricingFormProps) {
             render={({ field }) => (
               <FormItem className="flex items-center justify-between">
                 <div>
-                  <FormLabel className="text-white">Run Flash Sale</FormLabel>
+                  <FormLabel className="text-white flex items-center gap-2">
+                    <span className="text-yellow-400">⚡</span> Enable Flash Sale
+                  </FormLabel>
                   <p className="text-sm text-gray-400">
-                    Activate a limited-time discount campaign.
+                    Temporarily offer your course at a discounted price. This is
+                    also activated automatically when your course is on a
+                    platform promotion.
                   </p>
                 </div>
                 <FormControl>
@@ -351,7 +355,7 @@ export default function CoursePricingForm({ form }: CoursePricingFormProps) {
               render={({ field }) => (
                 <FormItem>
                   <FormLabel className="text-white">
-                    Flash Sale Ends On
+                    Flash Sale End Date
                   </FormLabel>
                   <FormControl>
                     <Input
@@ -361,11 +365,16 @@ export default function CoursePricingForm({ form }: CoursePricingFormProps) {
                       className="bg-white/10 border-white/20 text-white placeholder:text-gray-50/35"
                     />
                   </FormControl>
+                  <p className="text-xs text-gray-500 mt-1">
+                    If you&apos;re on a platform promotion, this date is managed
+                    automatically.
+                  </p>
                   <FormMessage />
                 </FormItem>
               )}
             />
           )}
+
 
           {/* 💰 Revenue Preview */}
           <div className="border-t border-white/10 pt-6">

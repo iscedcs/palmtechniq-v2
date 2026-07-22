@@ -5,7 +5,15 @@ import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
 import { motion } from "framer-motion";
-import { CheckCircle, Heart, Play, Share2, ShoppingCart } from "lucide-react";
+import {
+  CheckCircle,
+  Clock,
+  Heart,
+  Play,
+  Share2,
+  ShoppingCart,
+  Zap,
+} from "lucide-react";
 import { useSession } from "next-auth/react";
 import Link from "next/link";
 import { useEffect, useState, useTransition } from "react";
@@ -26,6 +34,8 @@ export default function StickyPurchaseCard({
   courseTitle,
   courseDescription,
   courseThumbnail,
+  flashSaleEnd,
+  isFlashSale,
 }: {
   currentPrice: number;
   originalPrice?: number;
@@ -41,10 +51,45 @@ export default function StickyPurchaseCard({
   courseTitle?: string;
   courseDescription?: string;
   courseThumbnail?: string;
+  /** The datetime when the flash sale / promo ends */
+  flashSaleEnd?: Date | string;
+  /** Whether a flash sale / promo is currently active */
+  isFlashSale?: boolean;
 }) {
   const { status } = useSession();
   const [isWishlisted, setIsWishlisted] = useState(false);
   const [isPending, startTransition] = useTransition();
+
+  // ── Live countdown for flash sale / active promotion ──
+  const [timeLeft, setTimeLeft] = useState("");
+  useEffect(() => {
+    if (!isFlashSale || !flashSaleEnd) return;
+    const end = new Date(flashSaleEnd).getTime();
+    function tick() {
+      const diff = end - Date.now();
+      if (diff <= 0) {
+        setTimeLeft("Expired");
+        return;
+      }
+      const d = Math.floor(diff / 86_400_000);
+      const h = Math.floor((diff % 86_400_000) / 3_600_000);
+      const m = Math.floor((diff % 3_600_000) / 60_000);
+      const s = Math.floor((diff % 60_000) / 1_000);
+      setTimeLeft(
+        [
+          d > 0 ? `${d}d` : null,
+          `${h.toString().padStart(2, "0")}h`,
+          `${m.toString().padStart(2, "0")}m`,
+          `${s.toString().padStart(2, "0")}s`,
+        ]
+          .filter(Boolean)
+          .join(" "),
+      );
+    }
+    tick();
+    const id = setInterval(tick, 1_000);
+    return () => clearInterval(id);
+  }, [isFlashSale, flashSaleEnd]);
 
   useEffect(() => {
     (async () => {
@@ -80,10 +125,10 @@ export default function StickyPurchaseCard({
   const handleShare = async () => {
     const shareUrl = `${window.location.origin}/courses/${courseId}`;
     const shareTitle = courseTitle || "Check out this course!";
-    const shareText = courseDescription 
-      ? `${courseTitle} - ${courseDescription.slice(0, 100)}${courseDescription.length > 100 ? '...' : ''}`
+    const shareText = courseDescription
+      ? `${courseTitle} - ${courseDescription.slice(0, 100)}${courseDescription.length > 100 ? "..." : ""}`
       : `I found this amazing course on PalmTechnIQ — check it out!`;
-    
+
     if (navigator.share) {
       try {
         await navigator.share({
@@ -93,7 +138,7 @@ export default function StickyPurchaseCard({
         });
       } catch (err) {
         // User cancelled or share failed
-        if ((err as Error).name !== 'AbortError') {
+        if ((err as Error).name !== "AbortError") {
           await navigator.clipboard.writeText(shareUrl);
           toast.success("Course link copied to clipboard!");
         }
@@ -117,6 +162,19 @@ export default function StickyPurchaseCard({
               <CheckCircle className="w-8 h-8 text-green-400 mx-auto mb-2" />
               <p className="text-green-400 font-semibold">You're enrolled!</p>
             </div>
+          )}
+
+          {/* Flash sale countdown banner */}
+          {isFlashSale && timeLeft && !isEnrolled && (
+            <motion.div
+              initial={{ opacity: 0, y: -8 }}
+              animate={{ opacity: 1, y: 0 }}
+              className="flex items-center justify-center gap-2 mb-4 px-3 py-2 rounded-lg bg-highlight-maroon/60 border border-orange-500/30 text-orange-400 text-sm font-medium">
+              <span>Flash Sale ends in</span>
+              <span className="font-mono font-bold tracking-wide">
+                {timeLeft}
+              </span>
+            </motion.div>
           )}
 
           {/* Pricing */}

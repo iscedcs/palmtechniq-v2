@@ -108,7 +108,7 @@ export function FlashSaleTimer({ endTime }: { endTime: Date }) {
   }, [endTime]);
 
   return (
-    <div className="flex items-center space-x-2 bg-gradient-to-r from-red-500/20 to-orange-500/20 border border-red-500/30 rounded-lg px-3 py-2">
+    <div className="flex items-center space-x-2 bg-highlight-maroon/60 border border-red-500/30 rounded-lg px-3 py-2">
       <Zap className="w-4 h-4 text-red-400" />
       <span className="text-red-400 text-sm font-semibold">
         {String(timeLeft.hours).padStart(2, "0")}:
