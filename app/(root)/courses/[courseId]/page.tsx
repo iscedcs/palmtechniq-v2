@@ -7,7 +7,7 @@ import OverviewTab from "@/components/pages/courses/courseId/overviewtab";
 import ReviewsTab from "@/components/pages/courses/courseId/review-tab";
 import StickyPurchaseCard from "@/components/pages/courses/courseId/stickyPurchaseCard";
 import { checkUserEnrollment, getCourseById } from "@/data/course";
-import { generateRandomAvatar } from "@/lib/utils";
+import { formatDurationMinutes, generateRandomAvatar } from "@/lib/utils";
 import CourseNotFoundSkeleton from "@/components/shared/skeleton/course-not-found-skeleton";
 import { GroupBuyingWidget } from "@/components/group-buying";
 import { getMyGroupPurchase } from "@/actions/group-purchase";
@@ -92,24 +92,24 @@ export default async function CourseSlugPage(props: {
   const activePromo = course.activePromotion;
   const resolvedCurrentPrice = activePromo?.promoPrice
     ? activePromo.promoPrice
-    : (course.currentPrice && course.currentPrice > 0
-        ? course.currentPrice
-        : (course.basePrice ?? 0));
+    : course.currentPrice && course.currentPrice > 0
+      ? course.currentPrice
+      : (course.basePrice ?? 0);
 
   // Crossed-out "was" price:
   //   • During promo  → always basePrice (e.g. ₦12,000) — consistent with course card
   //   • No promo      → basePrice only if currentPrice is lower (i.e. there's a regular discount)
   //   • Flash sale end → reverts naturally to currentPrice / basePrice (₦9,900 / ₦12,000)
   const resolvedOriginalPrice = activePromo?.promoPrice
-    ? (course.basePrice && course.basePrice > activePromo.promoPrice
-        ? course.basePrice
-        : undefined)
-    : (course.currentPrice &&
+    ? course.basePrice && course.basePrice > activePromo.promoPrice
+      ? course.basePrice
+      : undefined
+    : course.currentPrice &&
         course.currentPrice > 0 &&
         course.basePrice &&
         course.basePrice > course.currentPrice
-          ? course.basePrice
-          : undefined);
+      ? course.basePrice
+      : undefined;
 
   // Discount percentage — always computed against the crossed-out basePrice
   const resolvedDiscount =
@@ -250,7 +250,7 @@ export default async function CourseSlugPage(props: {
               }
               averageRating={avgRating}
               totalStudents={course.enrollments?.length || 0}
-              duration={totalLessonDuration}
+              duration={formatDurationMinutes(totalLessonDuration)}
             />
             <CoursePreview
               thumbnail={course.thumbnail!}
@@ -320,7 +320,7 @@ export default async function CourseSlugPage(props: {
               currentPrice={resolvedCurrentPrice}
               originalPrice={resolvedOriginalPrice}
               discount={resolvedDiscount}
-              duration={`${totalLessonDuration} mins`}
+              duration={totalLessonDuration}
               lessons={totalLessons}
               level={course.level}
               language={course.language}
@@ -331,7 +331,9 @@ export default async function CourseSlugPage(props: {
               courseTitle={course.title}
               courseDescription={course.description}
               courseThumbnail={course.thumbnail ?? undefined}
-              flashSaleEnd={activePromo?.endDate ?? course.flashSaleEnd ?? undefined}
+              flashSaleEnd={
+                activePromo?.endDate ?? course.flashSaleEnd ?? undefined
+              }
               isFlashSale={!!activePromo || (course.isFlashSale ?? false)}
             />
           </div>
