@@ -12,6 +12,7 @@ import {
   TableRow,
 } from "@/components/ui/table";
 import { CourseReviewActions } from "@/components/course-review-actions";
+import { formatDurationMinutes } from "@/lib/utils";
 
 export const dynamic = "force-dynamic";
 
@@ -235,7 +236,15 @@ export default async function CourseReviewPage(props: {
                     Module {idx + 1}: {module.title}
                   </h4>
                   <Badge variant="outline" className="border-white/20">
-                    {module.lessons.length} lessons
+                    {module.lessons.length} lessons •{" "}
+                    {formatDurationMinutes(
+                      module.duration ||
+                        module.lessons?.reduce(
+                          (acc: number, l: any) =>
+                            acc + (parseFloat(String(l.duration || 0)) || 0),
+                          0
+                        )
+                    )}
                   </Badge>
                 </div>
                 <div className="space-y-2">
@@ -246,7 +255,7 @@ export default async function CourseReviewPage(props: {
                       <span>• {lesson.title}</span>
                       {lesson.duration && (
                         <span className="text-xs text-gray-500">
-                          {lesson.duration} min
+                          {formatDurationMinutes(lesson.duration)}
                         </span>
                       )}
                     </div>

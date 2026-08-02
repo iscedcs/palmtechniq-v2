@@ -132,7 +132,7 @@ export function DynamicPriceDisplay({
         )}
 
       {/* Price Change Timer - only show if there's an active timer */}
-      {priceChangeIn && priceChangeIn > 0 && timeLeft > 0 && (
+      {typeof priceChangeIn === "number" && priceChangeIn > 0 && timeLeft > 0 ? (
         <motion.div
           initial={{ opacity: 0, y: 10 }}
           animate={{ opacity: 1, y: 0 }}
@@ -149,7 +149,7 @@ export function DynamicPriceDisplay({
               : "Limited time pricing"}
           </p>
         </motion.div>
-      )}
+      ) : null}
     </div>
   );
 }

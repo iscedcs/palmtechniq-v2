@@ -1,7 +1,8 @@
 "use client";
 
 import { Avatar, AvatarImage, AvatarFallback } from "@/components/ui/avatar";
-import { Star, Users, Clock } from "lucide-react";
+import { formatDurationMinutes } from "@/lib/utils";
+import { Star, Users, Clock, Compass } from "lucide-react";
 
 export default function CourseHero({
   title,
@@ -16,7 +17,7 @@ export default function CourseHero({
   tutor: { user: { name: string; image?: string } };
   averageRating?: number;
   totalStudents?: number;
-  duration?: number | null;
+  duration?: number | string;
 }) {
   return (
     <div className="space-y-4">
@@ -34,7 +35,11 @@ export default function CourseHero({
         </div>
         <div className="flex items-center text-gray-400">
           <Clock className="w-4 h-4 mr-1" />
-          {duration ? `${duration} mins` : "Self-paced"}
+          {duration ? `${duration}` : "Self-paced"}
+        </div>
+        <div className="flex items-center text-gray-400">
+          <Compass className="w-4 h-4 mr-1" />
+          Self-paced
         </div>
       </div>
 

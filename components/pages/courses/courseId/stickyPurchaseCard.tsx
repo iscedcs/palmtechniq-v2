@@ -1,21 +1,14 @@
 "use client";
 
-import { checkWishlist, toggleWishlist } from "@/actions/wishlist";
+import { toggleWishlist } from "@/actions/wishlist";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
 import { motion } from "framer-motion";
-import {
-  CheckCircle,
-  Clock,
-  Heart,
-  Play,
-  Share2,
-  ShoppingCart,
-  Zap,
-} from "lucide-react";
+import { CheckCircle, Heart, Play, Share2, ShoppingCart } from "lucide-react";
 import { useSession } from "next-auth/react";
 import Link from "next/link";
+import { formatDurationMinutes } from "@/lib/utils";
 import { useEffect, useState, useTransition } from "react";
 import { toast } from "sonner";
 
@@ -40,7 +33,7 @@ export default function StickyPurchaseCard({
   currentPrice: number;
   originalPrice?: number;
   discount?: number;
-  duration: string;
+  duration: number | string;
   lessons: number;
   level: string;
   language: string;
@@ -245,7 +238,7 @@ export default function StickyPurchaseCard({
           <div className="space-y-3 text-sm">
             <div className="flex items-center justify-between">
               <span className="text-gray-400">Duration</span>
-              <span className="text-white">{duration}</span>
+              <span className="text-white">{formatDurationMinutes(duration)}</span>
             </div>
             <div className="flex items-center justify-between">
               <span className="text-gray-400">Lessons</span>

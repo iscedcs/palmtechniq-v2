@@ -54,10 +54,10 @@ export function HeroSection() {
               animate={{ opacity: 1, y: 0 }}
               transition={{ duration: 0.6 }}
               className="mb-8">
-              <Badge className="bg-gradient-to-r from-neon-blue/20 to-neon-purple/20 border border-neon-blue/30 text-white px-6 py-2 text-sm font-medium">
+              {/* <Badge className="bg-gradient-to-r from-neon-blue/20 to-neon-purple/20 border border-neon-blue/30 text-white px-6 py-2 text-sm font-medium">
                 <Sparkles className="w-4 h-4 mr-2" />
                 The Future of Learning is Here
-              </Badge>
+              </Badge> */}
             </motion.div>
 
             <motion.h1
