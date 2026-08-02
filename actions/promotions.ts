@@ -49,6 +49,68 @@ async function syncFlashSaleOff(courseId: string) {
   });
 }
 
+/**
+ * Automatically syncs expired promotions and flash sales so courses revert
+ * back to their base prices when promotions end.
+ */
+export async function syncExpiredPromotions() {
+  try {
+    const now = new Date();
+
+    // 1. Mark active promotions whose endDate has passed as EXPIRED
+    const expiredPromos = await db.coursePromotion.findMany({
+      where: {
+        status: PromotionStatus.ACTIVE,
+        endDate: { lt: now },
+      },
+      select: { id: true, courseId: true },
+    });
+
+    if (expiredPromos.length > 0) {
+      await db.coursePromotion.updateMany({
+        where: { id: { in: expiredPromos.map((p: { id: string }) => p.id) } },
+        data: { status: PromotionStatus.EXPIRED },
+      });
+    }
+
+    // 2. Find courses that still have isFlashSale = true or flashSaleEnd in the past
+    const expiredFlashSaleCourses = await db.course.findMany({
+      where: {
+        OR: [
+          { isFlashSale: true, flashSaleEnd: { lt: now } },
+          { flashSaleEnd: { lt: now } },
+        ],
+      },
+      select: { id: true, basePrice: true },
+    });
+
+    for (const course of expiredFlashSaleCourses) {
+      // Check if there is another ACTIVE, non-expired promotion for this course
+      const activePromo = await db.coursePromotion.findFirst({
+        where: {
+          courseId: course.id,
+          status: PromotionStatus.ACTIVE,
+          startDate: { lte: now },
+          endDate: { gte: now },
+        },
+      });
+
+      if (!activePromo) {
+        await db.course.update({
+          where: { id: course.id },
+          data: {
+            isFlashSale: false,
+            flashSaleEnd: null,
+            currentPrice: course.basePrice ?? undefined,
+          },
+        });
+      }
+    }
+  } catch (error) {
+    console.error("Error in syncExpiredPromotions:", error);
+  }
+}
+
 // ─── Admin: Backfill Flash Sale for existing active promotions ───────────────
 
 /**
@@ -203,6 +265,8 @@ export async function getPromotionSchedule() {
 export async function getActivePromotion() {
   const settings = await getPromotionSettings();
   if (!settings.promotionsEnabled) return null;
+
+  await syncExpiredPromotions();
 
   const now = new Date();
 

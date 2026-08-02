@@ -1,8 +1,11 @@
 import { auth } from "@/auth";
 import { db } from "@/lib/db";
 import { getAverageRating } from "@/lib/reviews";
+import { syncExpiredPromotions } from "@/actions/promotions";
 
 export async function getPublicCourses() {
+  await syncExpiredPromotions();
+
   const courses = await db.course.findMany({
     where: { status: "PUBLISHED" },
     include: {
@@ -17,11 +20,23 @@ export async function getPublicCourses() {
     orderBy: [{ publishedAt: "desc" }, { createdAt: "desc" }],
   });
 
+  const now = new Date();
+
   return courses.map((course: any) => {
+    const isFlashSaleActive =
+      Boolean(course.isFlashSale) &&
+      Boolean(course.flashSaleEnd) &&
+      new Date(course.flashSaleEnd).getTime() > now.getTime();
+
+    const effectiveBasePrice = course.basePrice ?? course.price ?? 0;
+    const effectiveCurrentPrice = isFlashSaleActive
+      ? (course.currentPrice && course.currentPrice > 0 ? course.currentPrice : effectiveBasePrice)
+      : effectiveBasePrice;
+
     const discount =
-      course.basePrice && course.currentPrice
+      isFlashSaleActive && effectiveBasePrice > effectiveCurrentPrice
         ? Math.round(
-            ((course.basePrice - course.currentPrice) / course.basePrice) * 100,
+            ((effectiveBasePrice - effectiveCurrentPrice) / effectiveBasePrice) * 100,
           )
         : 0;
 
@@ -38,16 +53,16 @@ export async function getPublicCourses() {
       averageRating: getAverageRating(course.reviews),
       totalStudents: course._count.enrollments,
       enrollments: course._count.enrollments,
-      price: course.price ?? 0,
-      currentPrice: course.currentPrice ?? 0,
-      basePrice: course.basePrice ?? 0,
+      price: effectiveCurrentPrice,
+      currentPrice: effectiveCurrentPrice,
+      basePrice: effectiveBasePrice,
       previewVideo: course.previewVideo ?? "",
       groupBuyingEnabled: course.groupBuyingEnabled,
       demandLevel: course.demandLevel ?? "medium",
       discount,
       duration: course.duration ?? 0,
-      flashSaleEnd: course.flashSaleEnd,
-      isFlashSale: course.isFlashSale,
+      flashSaleEnd: isFlashSaleActive ? course.flashSaleEnd : null,
+      isFlashSale: isFlashSaleActive,
     } satisfies CourseItem;
   });
 }
@@ -112,8 +127,22 @@ export async function getCourseById(courseId: string) {
 
     if (!course) return null;
 
+    const isFlashSaleActive =
+      Boolean(course.isFlashSale) &&
+      Boolean(course.flashSaleEnd) &&
+      new Date(course.flashSaleEnd).getTime() > now.getTime();
+
+    const effectiveCurrentPrice = activePromotion?.promoPrice
+      ? activePromotion.promoPrice
+      : isFlashSaleActive
+        ? (course.currentPrice ?? course.basePrice ?? undefined)
+        : (course.basePrice ?? course.currentPrice ?? undefined);
+
     return {
       ...course,
+      currentPrice: effectiveCurrentPrice,
+      isFlashSale: activePromotion ? true : isFlashSaleActive,
+      flashSaleEnd: activePromotion?.endDate ?? (isFlashSaleActive ? course.flashSaleEnd : null),
       tags: course.tags?.map((t: any) => t.name) || [],
       learningOutcomes: course.outcomes || [],
       // Attach the active promotion so the page can use the correct promo price

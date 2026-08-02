@@ -89,10 +89,10 @@ export function FeaturesSection() {
           transition={{ duration: 0.8 }}
           viewport={{ once: true }}
           className="text-center mb-20">
-          <Badge className="bg-gradient-to-r from-neon-blue/20 to-neon-purple/20 border border-neon-blue/30 text-brand-white px-6 py-2 text-sm font-medium mb-6">
+          {/* <Badge className="bg-gradient-to-r from-neon-blue/20 to-neon-purple/20 border border-neon-blue/30 text-brand-white px-6 py-2 text-sm font-medium mb-6">
             <Sparkles className="w-4 h-4 mr-2" />
             Comprehensive Features
-          </Badge>
+          </Badge> */}
           <h2 className="text-5xl md:text-6xl font-bold mb-6">
             <span className="text-gradient">Beyond Traditional</span>
             <br />
