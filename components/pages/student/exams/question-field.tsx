@@ -59,7 +59,7 @@ export function QuestionField({
               htmlFor={`${questionId}-${i}`}
               className={cn(
                 "flex cursor-pointer items-center gap-3 rounded-lg border p-4 text-sm font-normal transition-colors",
-                "hover:bg-muted/50",
+                "hover:bg-white/5",
                 String(answer) === option && "border-primary bg-primary/5",
               )}>
               <RadioGroupItem value={option} id={`${questionId}-${i}`} />
@@ -82,7 +82,7 @@ export function QuestionField({
               htmlFor={`${questionId}-${option}`}
               className={cn(
                 "flex cursor-pointer items-center gap-3 rounded-lg border p-4 text-sm font-normal capitalize transition-colors",
-                "hover:bg-muted/50",
+                "hover:bg-white/5",
                 String(answer) === option && "border-primary bg-primary/5",
               )}>
               <RadioGroupItem value={option} id={`${questionId}-${option}`} />
@@ -96,7 +96,7 @@ export function QuestionField({
       const selected = asStringArray(answer);
       return (
         <div className="space-y-2">
-          <p className="text-xs text-muted-foreground">Select all that apply.</p>
+          <p className="text-xs text-gray-400">Select all that apply.</p>
           {choices.map((option, i) => {
             const isChecked = selected.includes(option);
             return (
@@ -105,7 +105,7 @@ export function QuestionField({
                 htmlFor={`${questionId}-${i}`}
                 className={cn(
                   "flex cursor-pointer items-center gap-3 rounded-lg border p-4 text-sm font-normal transition-colors",
-                  "hover:bg-muted/50",
+                  "hover:bg-white/5",
                   isChecked && "border-primary bg-primary/5",
                 )}>
                 <Checkbox
@@ -139,7 +139,7 @@ export function QuestionField({
         <div className="space-y-3">
           {left.map((item) => (
             <div key={item} className="flex flex-col gap-2 sm:flex-row sm:items-center">
-              <span className="flex-1 rounded-lg border bg-muted/30 p-3 text-sm">{item}</span>
+              <span className="flex-1 rounded-lg border bg-white/5 p-3 text-sm">{item}</span>
               <Select
                 value={current[item] ?? ""}
                 disabled={disabled}

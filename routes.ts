@@ -16,6 +16,9 @@ export const publicRoutes = [
   "/terms",
   "/privacy",
   "/api/chat",
+  // Authorised by the CRON_SECRET bearer token, not by a session — the proxy
+  // must let it through rather than redirecting it to the login page.
+  "/api/cron/exam-sweep",
   "/blog",
   "/blog/[slug]",
   "/docs",

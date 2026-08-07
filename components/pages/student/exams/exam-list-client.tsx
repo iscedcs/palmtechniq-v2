@@ -32,9 +32,9 @@ export function ExamListClient({ exams }: { exams: StudentExamSummary[] }) {
   if (exams.length === 0) {
     return (
       <div className="mx-auto max-w-4xl px-4 py-16 text-center">
-        <ClipboardList className="mx-auto mb-3 size-10 text-muted-foreground" />
+        <ClipboardList className="mx-auto mb-3 size-10 text-gray-400" />
         <h1 className="text-xl font-semibold">No exams yet</h1>
-        <p className="mt-1 text-sm text-muted-foreground">
+        <p className="mt-1 text-sm text-gray-400">
           When a tutor schedules an exam for one of your courses, it will appear here.
         </p>
       </div>
@@ -49,7 +49,7 @@ export function ExamListClient({ exams }: { exams: StudentExamSummary[] }) {
   return (
     <div className="mx-auto max-w-4xl px-4 py-10">
       <h1 className="mb-1 text-2xl font-semibold">Exams</h1>
-      <p className="mb-6 text-sm text-muted-foreground">
+      <p className="mb-6 text-sm text-gray-400">
         Scheduled assessments for your courses and programmes.
       </p>
 
@@ -74,12 +74,12 @@ export function ExamListClient({ exams }: { exams: StudentExamSummary[] }) {
                   </div>
 
                   {exam.courseTitle && (
-                    <p className="mt-0.5 text-sm text-muted-foreground">
+                    <p className="mt-0.5 text-sm text-gray-400">
                       {exam.courseTitle}
                     </p>
                   )}
 
-                  <p className="mt-2 flex items-center gap-1.5 text-xs text-muted-foreground">
+                  <p className="mt-2 flex items-center gap-1.5 text-xs text-gray-400">
                     <CalendarClock className="size-3.5" />
                     {exam.opensAt
                       ? new Date(exam.opensAt).toLocaleString()

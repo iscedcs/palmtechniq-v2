@@ -233,7 +233,7 @@ export function ExamRunnerClient({
         <div className="flex flex-wrap items-center justify-between gap-3">
           <div className="min-w-0">
             <h1 className="truncate text-lg font-semibold">{examTitle}</h1>
-            <p className="text-xs text-muted-foreground">
+            <p className="text-xs text-gray-400">
               {answeredCount} of {questions.length} answered
               <span className="mx-2">·</span>
               <span
@@ -255,11 +255,11 @@ export function ExamRunnerClient({
               "rounded-lg border px-4 py-2 text-center tabular-nums",
               isUrgent
                 ? "border-destructive/40 bg-destructive/10 text-destructive"
-                : "bg-muted/40",
+                : "bg-white/5",
             )}
             aria-live="polite">
             <div className="text-xl font-semibold">{formatRemaining(remaining)}</div>
-            <div className="text-[10px] uppercase tracking-wide text-muted-foreground">
+            <div className="text-[10px] uppercase tracking-wide text-gray-400">
               remaining
             </div>
           </div>
@@ -283,7 +283,7 @@ export function ExamRunnerClient({
                     <div className="space-y-1">
                       <div className="flex items-center gap-2">
                         <Badge variant="secondary">Question {position + 1}</Badge>
-                        <span className="text-xs text-muted-foreground">
+                        <span className="text-xs text-gray-400">
                           {question.points} {question.points === 1 ? "point" : "points"}
                         </span>
                       </div>
@@ -355,7 +355,7 @@ export function ExamRunnerClient({
         <aside className="lg:sticky lg:top-32 lg:self-start">
           <Card>
             <CardContent className="p-4">
-              <p className="mb-3 text-xs font-medium uppercase tracking-wide text-muted-foreground">
+              <p className="mb-3 text-xs font-medium uppercase tracking-wide text-gray-400">
                 Questions
               </p>
               <div className="grid grid-cols-6 gap-1.5 lg:grid-cols-5">
@@ -375,7 +375,7 @@ export function ExamRunnerClient({
                         done
                           ? "border-primary bg-primary text-primary-foreground"
                           : seen.has(q.id)
-                            ? "bg-muted"
+                            ? "bg-white/10"
                             : "bg-background",
                         i === index && "ring-2 ring-ring ring-offset-1",
                       )}>
@@ -388,7 +388,7 @@ export function ExamRunnerClient({
                 })}
               </div>
 
-              <dl className="mt-4 space-y-1 text-xs text-muted-foreground">
+              <dl className="mt-4 space-y-1 text-xs text-gray-400">
                 <div className="flex items-center gap-2">
                   <span className="size-3 rounded-sm bg-primary" />
                   <span>{answeredCount} answered</span>
@@ -434,7 +434,7 @@ export function ExamRunnerClient({
                     for review.
                   </p>
                 )}
-                <p className="text-muted-foreground">
+                <p className="text-gray-400">
                   You cannot change your answers after submitting.
                 </p>
               </div>

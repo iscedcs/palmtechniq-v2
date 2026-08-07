@@ -98,11 +98,11 @@ export function ExamBriefingClient({
 
       <div className="mb-6">
         {briefing.courseTitle && (
-          <p className="text-sm text-muted-foreground">{briefing.courseTitle}</p>
+          <p className="text-sm text-gray-400">{briefing.courseTitle}</p>
         )}
         <h1 className="text-2xl font-semibold">{briefing.title}</h1>
         {briefing.description && (
-          <p className="mt-2 text-muted-foreground">{briefing.description}</p>
+          <p className="mt-2 text-gray-400">{briefing.description}</p>
         )}
       </div>
 
@@ -113,19 +113,19 @@ export function ExamBriefingClient({
         <CardContent className="space-y-4">
           <dl className="grid grid-cols-2 gap-4 text-sm sm:grid-cols-4">
             <div>
-              <dt className="text-muted-foreground">Duration</dt>
+              <dt className="text-gray-400">Duration</dt>
               <dd className="mt-0.5 font-medium">{minutes} min</dd>
             </div>
             <div>
-              <dt className="text-muted-foreground">Questions</dt>
+              <dt className="text-gray-400">Questions</dt>
               <dd className="mt-0.5 font-medium">{briefing.questionCount}</dd>
             </div>
             <div>
-              <dt className="text-muted-foreground">Total marks</dt>
+              <dt className="text-gray-400">Total marks</dt>
               <dd className="mt-0.5 font-medium">{briefing.totalPoints}</dd>
             </div>
             <div>
-              <dt className="text-muted-foreground">Pass mark</dt>
+              <dt className="text-gray-400">Pass mark</dt>
               <dd className="mt-0.5 font-medium">{briefing.passingScore}%</dd>
             </div>
           </dl>
@@ -144,15 +144,15 @@ export function ExamBriefingClient({
 
           <div className="space-y-1 text-sm">
             <p>
-              <span className="text-muted-foreground">Opens</span>{" "}
+              <span className="text-gray-400">Opens</span>{" "}
               {briefing.opensAt ? new Date(briefing.opensAt).toLocaleString() : "—"}
             </p>
             <p>
-              <span className="text-muted-foreground">Closes</span>{" "}
+              <span className="text-gray-400">Closes</span>{" "}
               {briefing.closesAt ? new Date(briefing.closesAt).toLocaleString() : "—"}
             </p>
             <p>
-              <span className="text-muted-foreground">Attempts</span>{" "}
+              <span className="text-gray-400">Attempts</span>{" "}
               {briefing.attemptsUsed} of {briefing.attemptsAllowed} used
             </p>
           </div>
@@ -165,7 +165,7 @@ export function ExamBriefingClient({
                   <FileText className="size-4" />
                   Instructions
                 </p>
-                <p className="whitespace-pre-wrap text-sm text-muted-foreground">
+                <p className="whitespace-pre-wrap text-sm text-gray-400">
                   {briefing.instructions}
                 </p>
               </div>
@@ -208,7 +208,7 @@ export function ExamBriefingClient({
               {briefing.resultReleased ? (
                 <div className="flex items-center justify-between gap-4">
                   <div>
-                    <p className="text-sm text-muted-foreground">Your result</p>
+                    <p className="text-sm text-gray-400">Your result</p>
                     <p className="text-2xl font-semibold">
                       {briefing.percentage?.toFixed(1)}%
                     </p>
@@ -218,7 +218,7 @@ export function ExamBriefingClient({
                   </Badge>
                 </div>
               ) : (
-                <p className="text-sm text-muted-foreground">
+                <p className="text-sm text-gray-400">
                   Your submission has been received. Results will appear here once your
                   tutor releases them.
                 </p>
@@ -281,7 +281,7 @@ export function ExamBriefingClient({
                   : "Start exam"}
               </Button>
 
-              <p className="text-xs text-muted-foreground">
+              <p className="text-xs text-gray-400">
                 Once you start, the timer runs on our servers and does not pause — even
                 if you close this page.
               </p>
