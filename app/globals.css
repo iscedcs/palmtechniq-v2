@@ -129,19 +129,20 @@
   scrollbar-width: none;
 }
 
-/* 
-     brand: {
-      teal: "#00343d",
-        green: "#27ba55",
-        black: "#000000",
-        white: "#ffffff",
-    }
-  
-    ,
-    highlight: {
-      blue: "#84c8d4",
-        yellow: "#e4d406",
-        maroon: "#800000",
-    }
-  
-    , */
+/* Lenis Smooth Scroll Setup */
+html.lenis,
+html.lenis body {
+  height: auto;
+}
+
+.lenis.lenis-smooth {
+  scroll-behavior: auto !important;
+}
+
+.lenis.lenis-smooth [data-lenis-prevent] {
+  overscroll-behavior: contain;
+}
+
+.lenis.lenis-stopped {
+  overflow: hidden;
+}
