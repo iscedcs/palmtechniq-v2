@@ -15,9 +15,11 @@ export async function POST(
   const userId = session.user.id;
 
   const body = await req.json();
-  const { answers, score, timeSpent, enrollmentId } = body;
+  // `score` is deliberately NOT read from the body. It is computed below from the
+  // stored correct answers — a client-supplied score would be trivially forged.
+  const { answers, timeSpent, enrollmentId } = body;
 
-  if (!answers || !enrollmentId || score == null || timeSpent == null) {
+  if (!answers || !enrollmentId || timeSpent == null) {
     return NextResponse.json(
       { error: "Missing required fields" },
       { status: 400 },
@@ -63,10 +65,22 @@ export async function POST(
       });
     }
 
-    let attempt = await db.quizAttempt.findFirst({
-      where: { quizId, userId, enrollmentId },
-      orderBy: { createdAt: "desc" },
-    });
+    // ── Score server-side ──
+    // Same comparison the client used to make, but against answers the browser
+    // was never given.
+    const totalPoints = quiz.questions.reduce(
+      (sum: number, q: any) => sum + q.points,
+      0,
+    );
+    const earnedPoints = quiz.questions.reduce((sum: number, q: any) => {
+      const given = answers[q.id];
+      return given !== undefined && given === q.correctAnswer
+        ? sum + q.points
+        : sum;
+    }, 0);
+
+    const score =
+      totalPoints > 0 ? Math.round((earnedPoints / totalPoints) * 100) : 0;
 
     const passed = score >= quiz.passingScore;
     await db.quizAttempt.create({

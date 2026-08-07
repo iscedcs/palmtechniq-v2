@@ -21,6 +21,17 @@ export default async function QuizPage({
       },
       questions: {
         orderBy: { sortOrder: "asc" },
+        // Deliberately narrow: `correctAnswer` and `explanation` must never reach
+        // the browser while the quiz is being taken. Scoring happens server-side
+        // in app/api/quiz/[quizId]/submit.
+        select: {
+          id: true,
+          question: true,
+          questionType: true,
+          options: true,
+          points: true,
+          sortOrder: true,
+        },
       },
     },
   });
