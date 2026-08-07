@@ -19,7 +19,8 @@ import { Switch } from "@/components/ui/switch";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Textarea } from "@/components/ui/textarea";
 import type { TutorExamDetail } from "@/data/tutor-exam";
-import { AlertCircle, CheckCircle2, Loader2, Rocket } from "lucide-react";
+import { AlertCircle, CheckCircle2, ClipboardCheck, Loader2, Rocket } from "lucide-react";
+import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { useState } from "react";
 import { toast } from "sonner";
@@ -155,6 +156,14 @@ export function ExamEditorClient({ exam }: { exam: TutorExamDetail }) {
         </div>
 
         <div className="flex gap-2">
+          {!isDraft && (
+            <Button asChild variant="outline">
+              <Link href={`/tutor/exams/${exam.id}/grading`}>
+                <ClipboardCheck className="mr-2 size-4" />
+                Grading &amp; results
+              </Link>
+            </Button>
+          )}
           <Button variant="outline" onClick={handleSave} disabled={saving}>
             {saving && <Loader2 className="mr-2 size-4 animate-spin" />}
             Save
