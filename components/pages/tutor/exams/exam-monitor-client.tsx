@@ -1,7 +1,7 @@
 "use client";
 
 import { forceSubmit, grantAnotherAttempt, grantExtraTime } from "@/actions/exam-monitor";
-import type { MonitorSnapshot } from "@/data/exam-monitor";
+import { getAttemptEvents, type MonitorSnapshot } from "@/data/exam-monitor";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
@@ -24,6 +24,30 @@ import { toast } from "sonner";
 
 const REFRESH_MS = 15_000;
 
+type AttemptEvent = {
+  id: string;
+  type: string;
+  severity: string;
+  ipAddress: string | null;
+  createdAt: Date;
+};
+
+const SIGNAL_LABEL: Record<string, string> = {
+  ATTEMPT_STARTED: "Started the exam",
+  ATTEMPT_SUBMITTED: "Submitted",
+  FOCUS_LOST: "Left the exam tab",
+  FOCUS_REGAINED: "Came back to the tab",
+  PASTE: "Pasted content",
+  FULLSCREEN_EXIT: "Left fullscreen",
+  IP_CHANGED: "Network address changed",
+  DISCONNECTED: "Lost connection",
+  RECONNECTED: "Reconnected",
+  SECOND_DEVICE_BLOCKED: "Blocked a second device",
+  TIME_ANOMALY: "Clock anomaly",
+  EXTRA_TIME_GRANTED: "You granted extra time",
+  FORCE_SUBMITTED: "You submitted this for them",
+};
+
 function formatRemaining(ms: number): string {
   if (ms <= 0) return "0:00";
   const total = Math.floor(ms / 1000);
@@ -45,6 +69,17 @@ export function ExamMonitorClient({ snapshot }: { snapshot: MonitorSnapshot }) {
   const [autoRefresh, setAutoRefresh] = useState(true);
   const [extending, setExtending] = useState<{ id: string; name: string } | null>(null);
   const [extraMinutes, setExtraMinutes] = useState(10);
+
+  // Signal drill-down
+  const [signalsFor, setSignalsFor] = useState<string | null>(null);
+  const [signals, setSignals] = useState<AttemptEvent[] | null>(null);
+
+  const openSignals = async (attemptId: string, name: string) => {
+    setSignalsFor(name);
+    setSignals(null);
+    const events = await getAttemptEvents(attemptId);
+    setSignals(events as AttemptEvent[]);
+  };
 
   useEffect(() => {
     const t = setInterval(() => setTick((n) => n + 1), 1000);
@@ -102,10 +137,12 @@ export function ExamMonitorClient({ snapshot }: { snapshot: MonitorSnapshot }) {
             ← Back to exam
           </Link>
           <h1 className="mt-1 text-2xl font-semibold">{snapshot.title}</h1>
-          <p className="text-sm text-gray-400">
-            Live monitor ·{" "}
+          {/* A div, not a p — Badge renders a div, which is invalid inside a p
+              and causes a hydration mismatch. */}
+          <div className="flex items-center gap-2 text-sm text-gray-400">
+            <span>Live monitor ·</span>
             <Badge variant="secondary">{snapshot.status.toLowerCase()}</Badge>
-          </p>
+          </div>
         </div>
 
         <div className="flex gap-2">
@@ -191,13 +228,31 @@ export function ExamMonitorClient({ snapshot }: { snapshot: MonitorSnapshot }) {
                         {row.extraTimeMinutes > 0 && (
                           <Badge variant="outline">+{row.extraTimeMinutes}m</Badge>
                         )}
-                        {row.flags.total > 0 && (
-                          <Badge
-                            variant={row.flags.warning > 0 ? "destructive" : "secondary"}
-                            title="Integrity signals — for review, not a verdict">
-                            <Flag className="mr-1 size-3" />
-                            {row.flags.total}
-                          </Badge>
+                        {row.flags.total > 0 && row.attemptId && (
+                          <button
+                            type="button"
+                            onClick={() =>
+                              openSignals(row.attemptId!, row.name)
+                            }
+                            title="Integrity signals — for review, not a verdict. Click for detail.">
+                            <Badge
+                              // Weight from the count as well as stored severity:
+                              // signals recorded before the escalation rule existed
+                              // are all INFO, and should still stand out.
+                              variant={
+                                row.flags.critical > 0 ||
+                                row.flags.warning > 0 ||
+                                row.flags.total >= 5
+                                  ? "destructive"
+                                  : "secondary"
+                              }
+                              className="cursor-pointer hover:opacity-80">
+                              <Flag className="mr-1 size-3" />
+                              {row.flags.breakdown
+                                .map((b) => b.label)
+                                .join(" · ")}
+                            </Badge>
+                          </button>
                         )}
                         {stale && (
                           <Badge variant="secondary" title="No activity for over 2 minutes">
@@ -290,6 +345,60 @@ export function ExamMonitorClient({ snapshot }: { snapshot: MonitorSnapshot }) {
         Integrity flags record tab switches, pasting and reconnections. They are for
         your review — nothing here penalises a student automatically.
       </p>
+
+      {/* Signal drill-down — the full timeline for one attempt */}
+      <Dialog
+        open={!!signalsFor}
+        onOpenChange={(open) => {
+          if (!open) {
+            setSignalsFor(null);
+            setSignals(null);
+          }
+        }}>
+        <DialogContent className="max-h-[80vh] overflow-y-auto sm:max-w-lg">
+          <DialogHeader>
+            <DialogTitle>Activity for {signalsFor}</DialogTitle>
+          </DialogHeader>
+
+          {signals === null ? (
+            <p className="py-6 text-center text-sm text-gray-400">
+              <Loader2 className="mr-2 inline size-4 animate-spin" />
+              Loading…
+            </p>
+          ) : signals.length === 0 ? (
+            <p className="py-6 text-center text-sm text-gray-400">
+              Nothing recorded for this attempt.
+            </p>
+          ) : (
+            <ul className="space-y-1">
+              {signals.map((event) => (
+                <li
+                  key={event.id}
+                  className="flex items-center justify-between gap-3 rounded border p-2 text-sm">
+                  <span
+                    className={cn(
+                      event.severity === "CRITICAL"
+                        ? "text-destructive"
+                        : event.severity === "WARNING"
+                          ? "text-amber-500"
+                          : "",
+                    )}>
+                    {SIGNAL_LABEL[event.type] ?? event.type}
+                  </span>
+                  <span className="shrink-0 text-xs tabular-nums text-gray-400">
+                    {new Date(event.createdAt).toLocaleTimeString()}
+                  </span>
+                </li>
+              ))}
+            </ul>
+          )}
+
+          <p className="text-xs text-gray-400">
+            A record of what happened, not an accusation. Leaving the tab has many
+            innocent explanations — it is for you to judge in context.
+          </p>
+        </DialogContent>
+      </Dialog>
 
       <Dialog open={!!extending} onOpenChange={(open) => !open && setExtending(null)}>
         <DialogContent>

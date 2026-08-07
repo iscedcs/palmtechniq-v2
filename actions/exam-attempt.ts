@@ -156,6 +156,34 @@ export async function submitExamAttempt(attemptId: string) {
 }
 
 /**
+ * How loudly to flag a signal.
+ *
+ * A single tab switch is nothing — someone checked the time. The same thing
+ * fifteen times is worth a tutor's attention, so repetition escalates the
+ * severity used for sorting the review queue. It still only sorts: nothing here
+ * penalises anyone, and the tutor decides what it means.
+ */
+async function gradeSeverity(
+  attemptId: string,
+  type: keyof typeof ExamEventType,
+): Promise<ExamEventSeverity> {
+  // These are worth attention the first time they happen.
+  if (type === "SECOND_DEVICE_BLOCKED" || type === "IP_CHANGED") {
+    return ExamEventSeverity.WARNING;
+  }
+
+  if (type === "FOCUS_LOST" || type === "PASTE") {
+    const soFar = await prisma.examEvent.count({
+      where: { attemptId, type: ExamEventType[type] },
+    });
+    if (soFar >= 15) return ExamEventSeverity.CRITICAL;
+    if (soFar >= 5) return ExamEventSeverity.WARNING;
+  }
+
+  return ExamEventSeverity.INFO;
+}
+
+/**
  * Record an integrity signal from the client.
  *
  * Always returns success: a failure here must never interrupt someone sitting an
@@ -176,10 +204,7 @@ export async function recordExamEvent(input: {
     });
     if (!attempt || attempt.userId !== user.userId) return { success: true };
 
-    const severity =
-      input.type === "SECOND_DEVICE_BLOCKED" || input.type === "IP_CHANGED"
-        ? ExamEventSeverity.WARNING
-        : ExamEventSeverity.INFO;
+    const severity = await gradeSeverity(input.attemptId, input.type);
 
     await logEvent(prisma, {
       attemptId: input.attemptId,

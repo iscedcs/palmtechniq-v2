@@ -3,9 +3,46 @@
 import { auth } from "@/auth";
 import { db } from "@/lib/db";
 import { effectiveWindow } from "@/lib/exam/attempt";
-import { ExamAttemptStatus, type PrismaClient } from "@prisma/client";
+import { ExamAttemptStatus, ExamEventType, type PrismaClient } from "@prisma/client";
 
 const prisma = db as PrismaClient;
+
+/**
+ * Events that say something about how the exam was sat, as opposed to lifecycle
+ * bookkeeping. Only these are counted as integrity signals — counting
+ * ATTEMPT_STARTED and FOCUS_REGAINED alongside them produces a number that looks
+ * alarming and means nothing.
+ */
+const INTEGRITY_EVENT_TYPES: ExamEventType[] = [
+  ExamEventType.FOCUS_LOST,
+  ExamEventType.PASTE,
+  ExamEventType.FULLSCREEN_EXIT,
+  ExamEventType.IP_CHANGED,
+  ExamEventType.SECOND_DEVICE_BLOCKED,
+  ExamEventType.TIME_ANOMALY,
+];
+
+/** Plain-English label for a signal count, for the monitor row. */
+export function describeSignal(type: string, count: number): string {
+  const plural = (n: number, one: string, many: string) =>
+    `${n} ${n === 1 ? one : many}`;
+  switch (type) {
+    case "FOCUS_LOST":
+      return plural(count, "tab switch", "tab switches");
+    case "PASTE":
+      return plural(count, "paste", "pastes");
+    case "FULLSCREEN_EXIT":
+      return plural(count, "fullscreen exit", "fullscreen exits");
+    case "IP_CHANGED":
+      return plural(count, "network change", "network changes");
+    case "SECOND_DEVICE_BLOCKED":
+      return plural(count, "second device blocked", "second devices blocked");
+    case "TIME_ANOMALY":
+      return plural(count, "clock anomaly", "clock anomalies");
+    default:
+      return `${count} ${type.toLowerCase().replace(/_/g, " ")}`;
+  }
+}
 
 export type MonitorRow = {
   candidateId: string;
@@ -25,7 +62,14 @@ export type MonitorRow = {
   answered: number;
   totalQuestions: number;
   extraTimeMinutes: number;
-  flags: { warning: number; critical: number; total: number };
+  flags: {
+    /** Integrity signals only — lifecycle events are excluded. */
+    total: number;
+    warning: number;
+    critical: number;
+    /** Per-type counts, most frequent first, already worded for display. */
+    breakdown: { type: string; count: number; label: string }[];
+  };
 };
 
 export type MonitorSnapshot = {
@@ -72,7 +116,7 @@ export async function getExamMonitor(examId: string): Promise<MonitorSnapshot | 
             orderBy: { attemptNumber: "desc" },
             include: {
               _count: { select: { responses: true } },
-              events: { select: { severity: true } },
+              events: { select: { severity: true, type: true } },
             },
           },
         },
@@ -87,7 +131,20 @@ export async function getExamMonitor(examId: string): Promise<MonitorSnapshot | 
 
   const rows: MonitorRow[] = exam.candidates.map((candidate) => {
     const latest = candidate.attempts[0] ?? null;
-    const events = latest?.events ?? [];
+    const allEvents = latest?.events ?? [];
+
+    // Only genuine signals count towards the flag.
+    const events = allEvents.filter((e) =>
+      INTEGRITY_EVENT_TYPES.includes(e.type),
+    );
+
+    const counts = new Map<string, number>();
+    for (const event of events) {
+      counts.set(event.type, (counts.get(event.type) ?? 0) + 1);
+    }
+    const breakdown = Array.from(counts.entries())
+      .sort((a, b) => b[1] - a[1])
+      .map(([type, count]) => ({ type, count, label: describeSignal(type, count) }));
 
     return {
       candidateId: candidate.id,
@@ -108,9 +165,10 @@ export async function getExamMonitor(examId: string): Promise<MonitorSnapshot | 
       totalQuestions: latest?.questionOrder.length ?? 0,
       extraTimeMinutes: candidate.extraTimeMinutes,
       flags: {
+        total: events.length,
         warning: events.filter((e) => e.severity === "WARNING").length,
         critical: events.filter((e) => e.severity === "CRITICAL").length,
-        total: events.length,
+        breakdown,
       },
     };
   });
