@@ -2317,6 +2317,9 @@ model ExamCandidate {
   addedManually Boolean   @default(false)
   excludedAt    DateTime?
   excludeReason String?
+  // Required to enter under ExamAccessMode.MANUAL_RELEASE, where the tutor admits
+  // each candidate individually. Ignored by the other access modes.
+  admittedAt    DateTime?
   // Provenance of the seed (enrollment / programEnrollment / bootcampEnrollment id).
   seededFromId  String?
 
