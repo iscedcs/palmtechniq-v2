@@ -93,6 +93,21 @@ model User {
   bootcampEnrollments     BootcampEnrollment[]     @relation("UserBootcampEnrollments")
   bootcampTeams           BootcampTeam[]           @relation("UserBootcampTeams")
 
+  // Exam Center
+  questionBankSharesGranted QuestionBankShare[]   @relation("QuestionBankShareGrantor")
+  bankQuestionsAuthored     BankQuestion[]        @relation("BankQuestionAuthor")
+  questionImportBatches     QuestionImportBatch[] @relation("QuestionImporter")
+  examsCreated              Exam[]                @relation("ExamCreator")
+  examCandidacies           ExamCandidate[]       @relation("ExamCandidacies")
+  examAttempts              ExamAttempt[]         @relation("ExamAttempts")
+  examAttemptsVoided        ExamAttempt[]         @relation("ExamAttemptVoider")
+  examResponsesGraded       ExamResponse[]        @relation("ExamResponseGrader")
+  examGrades                ExamGrade[]           @relation("ExamGrades")
+  examGradesReleased        ExamGrade[]           @relation("ExamGradeReleaser")
+  examGradesOverridden      ExamGrade[]           @relation("ExamGradeOverrider")
+  examGradeAudits           ExamGradeAudit[]      @relation("ExamGradeAuditor")
+  examEvents                ExamEvent[]           @relation("ExamEvents")
+
   @@map("users")
 }
 
@@ -142,6 +157,11 @@ model Tutor {
   referralCode   String?   @unique @map("referral_code")
   Course         Course[]
   user           User      @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  // Exam Center
+  questionBanks      QuestionBank[]
+  bankSharesReceived QuestionBankShare[]
+  exams              Exam[]
 
   @@map("tutors")
 }
@@ -228,6 +248,10 @@ model Course {
   wishlist               Wishlist[]
   mentorshipSessions     MentorshipSession[]
   promotions             CoursePromotion[]
+
+  // Exam Center
+  exams         Exam[]
+  questionBanks QuestionBank[]
 
   @@map("courses")
 }
@@ -1099,6 +1123,9 @@ model Certificate {
   course         Course    @relation(fields: [courseId], references: [id], onDelete: Cascade)
   user           User      @relation(fields: [userId], references: [id], onDelete: Cascade)
 
+  // Set when this certificate was auto-issued by passing a final exam.
+  examGrade ExamGrade?
+
   @@map("certificates")
 }
 
@@ -1344,6 +1371,7 @@ model ProgramCohort {
 
   program     ProfessionalProgram @relation(fields: [programId], references: [id], onDelete: Cascade)
   enrollments ProgramEnrollment[]
+  exams       Exam[]
 
   @@unique([programId, cycleNumber])
   @@map("program_cohorts")
@@ -1519,6 +1547,12 @@ enum QuestionType {
   SHORT_ANSWER
   ESSAY
   CODE
+  // Added for Exam Center. Additive only — existing Quiz behaviour is unchanged.
+  // These cover the question kinds that CSV/GIFT/QTI imports commonly carry.
+  MULTI_SELECT
+  MATCHING
+  NUMERIC
+  FILL_IN_BLANK
 }
 
 enum SubmissionStatus {
@@ -1852,6 +1886,7 @@ model BootcampTrack {
 
   bootcamp    Bootcamp             @relation(fields: [bootcampId], references: [id], onDelete: Cascade)
   enrollments BootcampEnrollment[]
+  exams       Exam[]
 
   @@unique([bootcampId, slug])
   @@map("bootcamp_tracks")
@@ -1918,4 +1953,546 @@ model BootcampTeam {
   leader   User     @relation("UserBootcampTeams", fields: [leaderId], references: [id], onDelete: Cascade)
 
   @@map("bootcamp_teams")
+}
+
+// ============================================================================
+// EXAM CENTER
+// See docs/EXAM-CENTER-DESIGN.md for the full design and the decisions behind it.
+//
+// This is deliberately separate from `Quiz`. `Quiz` is welded 1:1 to a `Lesson`
+// and stays the lesson knowledge-check. An exam is a scheduled, rostered,
+// server-timed event drawn from a reusable question bank. The only thing the
+// two share is the `QuestionType` enum.
+// ============================================================================
+
+enum ExamScopeType {
+  COURSE
+  PROGRAM_COHORT
+  BOOTCAMP_TRACK
+  AD_HOC
+}
+
+enum ExamStatus {
+  DRAFT
+  SCHEDULED
+  LIVE
+  CLOSED
+  GRADING
+  RELEASED
+  ARCHIVED
+}
+
+enum ExamAccessMode {
+  ROSTER_ONLY // anyone on the roster may enter during the window
+  ACCESS_CODE // roster + a code the tutor reads out
+  MANUAL_RELEASE // tutor admits each candidate individually
+}
+
+enum ExamResultsPolicy {
+  IMMEDIATE // score shown on submit (objective questions only)
+  AFTER_CLOSE // score shown once the window closes
+  MANUAL // tutor releases deliberately
+}
+
+enum ExamSectionSelection {
+  FIXED // an explicit ordered list of questions
+  RANDOM_DRAW // draw N from a bank by topic/difficulty, per candidate
+}
+
+enum QuestionDifficulty {
+  EASY
+  MEDIUM
+  HARD
+}
+
+enum QuestionBankAccess {
+  VIEW // may draw questions into an exam
+  EDIT // may add and modify questions
+}
+
+enum ExamCandidateStatus {
+  INVITED
+  IN_PROGRESS
+  SUBMITTED
+  MISSED
+  EXCUSED
+}
+
+enum ExamAttemptStatus {
+  IN_PROGRESS
+  SUBMITTED
+  AUTO_SUBMITTED // window expired, server submitted on the candidate's behalf
+  ABANDONED
+  VOIDED // tutor invalidated the attempt
+}
+
+enum ExamSubmittedBy {
+  STUDENT
+  AUTO
+  TUTOR
+}
+
+enum ExamGradeStatus {
+  PENDING_AUTO
+  PENDING_MANUAL // has essay/code answers awaiting a human
+  GRADED
+  RELEASED
+}
+
+enum ExamEventType {
+  ATTEMPT_STARTED
+  ATTEMPT_SUBMITTED
+  FOCUS_LOST
+  FOCUS_REGAINED
+  PASTE
+  FULLSCREEN_EXIT
+  IP_CHANGED
+  DISCONNECTED
+  RECONNECTED
+  SECOND_DEVICE_BLOCKED
+  TIME_ANOMALY
+  EXTRA_TIME_GRANTED
+  FORCE_SUBMITTED
+}
+
+// Severity is a hint for sorting the tutor's review queue. It is never a verdict
+// and never triggers an automatic penalty — see design doc section 7.2.
+enum ExamEventSeverity {
+  INFO
+  WARNING
+  CRITICAL
+}
+
+// ---------------------------------------------------------------------------
+// Question banks — the reusable pool that imports land in.
+// ---------------------------------------------------------------------------
+
+model QuestionBank {
+  id          String   @id @default(cuid())
+  title       String
+  description String?
+  ownerId     String
+  courseId    String? // attaching to a course grants VIEW to that course's tutors
+  isArchived  Boolean  @default(false)
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+
+  owner        Tutor               @relation(fields: [ownerId], references: [id], onDelete: Cascade)
+  course       Course?             @relation(fields: [courseId], references: [id], onDelete: SetNull)
+  questions    BankQuestion[]
+  shares       QuestionBankShare[]
+  drawSections ExamSection[]
+
+  @@index([ownerId, isArchived])
+  @@index([courseId])
+  @@map("question_banks")
+}
+
+model QuestionBankShare {
+  id          String             @id @default(cuid())
+  bankId      String
+  tutorId     String
+  access      QuestionBankAccess @default(VIEW)
+  grantedById String?
+  createdAt   DateTime           @default(now())
+
+  bank      QuestionBank @relation(fields: [bankId], references: [id], onDelete: Cascade)
+  tutor     Tutor        @relation(fields: [tutorId], references: [id], onDelete: Cascade)
+  grantedBy User?        @relation("QuestionBankShareGrantor", fields: [grantedById], references: [id], onDelete: SetNull)
+
+  @@unique([bankId, tutorId])
+  @@map("question_bank_shares")
+}
+
+model BankQuestion {
+  id            String             @id @default(cuid())
+  bankId        String
+  stem          String
+  questionType  QuestionType       @default(MULTIPLE_CHOICE)
+  options       Json?
+  correctAnswer Json
+  explanation   String?
+  points        Float              @default(1)
+  difficulty    QuestionDifficulty @default(MEDIUM)
+  topics        String[]
+  mediaUrls     String[]
+  // Bumped on every edit. Snapshots record the version they were taken from so a
+  // past exam can always be traced back to the exact wording it used.
+  version       Int                @default(1)
+  isArchived    Boolean            @default(false)
+  createdById   String?
+  // Set when the question arrived via import, for provenance and undo.
+  importBatchId String?
+  createdAt     DateTime           @default(now())
+  updatedAt     DateTime           @updatedAt
+
+  bank        QuestionBank         @relation(fields: [bankId], references: [id], onDelete: Cascade)
+  createdBy   User?                @relation("BankQuestionAuthor", fields: [createdById], references: [id], onDelete: SetNull)
+  importBatch QuestionImportBatch? @relation(fields: [importBatchId], references: [id], onDelete: SetNull)
+  examUses    ExamQuestion[]
+
+  @@index([bankId, isArchived])
+  @@index([bankId, difficulty])
+  @@index([importBatchId])
+  @@map("bank_questions")
+}
+
+// One row per import run, so a bad import can be reviewed or rolled back wholesale.
+model QuestionImportBatch {
+  id            String   @id @default(cuid())
+  bankId        String
+  importedById  String?
+  sourceFormat  String // csv | xlsx | paste | gift | aiken | docx | qti
+  sourceName    String? // original filename, where there was one
+  totalRows     Int      @default(0)
+  importedCount Int      @default(0)
+  skippedCount  Int      @default(0)
+  errors        Json? // per-row parse/validation failures the tutor chose to skip
+  createdAt     DateTime @default(now())
+
+  importedBy User?          @relation("QuestionImporter", fields: [importedById], references: [id], onDelete: SetNull)
+  questions  BankQuestion[]
+
+  @@index([bankId, createdAt])
+  @@map("question_import_batches")
+}
+
+// ---------------------------------------------------------------------------
+// Exams
+// ---------------------------------------------------------------------------
+
+model Exam {
+  id           String  @id @default(cuid())
+  title        String
+  description  String?
+  instructions String?
+
+  // Polymorphic scope. Only the id matching `scopeType` is populated; it seeds
+  // the roster once, at publish. See design doc section 7.1.
+  scopeType ExamScopeType
+  courseId  String?
+  cohortId  String?
+  trackId   String?
+
+  tutorId     String
+  createdById String?
+
+  status ExamStatus @default(DRAFT)
+
+  // Schedule. Nullable because an exam is created as a DRAFT before the tutor has
+  // picked a date; all three are required to leave DRAFT and are enforced at the
+  // publish transition, not by the database.
+  // `timezone` is what the tutor authored in, for display only — stored instants are UTC.
+  opensAt         DateTime?
+  closesAt        DateTime?
+  durationMinutes Int?
+  timezone        String    @default("Africa/Lagos")
+
+  // Rules
+  maxAttempts      Int     @default(1)
+  passingScore     Int     @default(50)
+  totalPoints      Float   @default(0)
+  shuffleQuestions Boolean @default(false)
+  shuffleOptions   Boolean @default(false)
+  onePerPage       Boolean @default(false)
+  allowBacktrack   Boolean @default(true)
+
+  // Access
+  accessMode ExamAccessMode @default(ROSTER_ONLY)
+  accessCode String?
+
+  // Results
+  resultsPolicy      ExamResultsPolicy @default(MANUAL)
+  showCorrectAnswers Boolean           @default(false)
+  showExplanations   Boolean           @default(false)
+
+  // When true, passing this exam issues a Certificate at release time.
+  isFinalAssessment Boolean @default(false)
+
+  publishedAt       DateTime?
+  closedAt          DateTime?
+  resultsReleasedAt DateTime?
+  createdAt         DateTime  @default(now())
+  updatedAt         DateTime  @updatedAt
+
+  tutor      Tutor           @relation(fields: [tutorId], references: [id], onDelete: Cascade)
+  createdBy  User?           @relation("ExamCreator", fields: [createdById], references: [id], onDelete: SetNull)
+  course     Course?         @relation(fields: [courseId], references: [id], onDelete: Cascade)
+  cohort     ProgramCohort?  @relation(fields: [cohortId], references: [id], onDelete: Cascade)
+  track      BootcampTrack?  @relation(fields: [trackId], references: [id], onDelete: Cascade)
+  sections   ExamSection[]
+  questions  ExamQuestion[]
+  candidates ExamCandidate[]
+  attempts   ExamAttempt[]
+  grades     ExamGrade[]
+  events     ExamEvent[]
+
+  @@index([scopeType, courseId])
+  @@index([cohortId])
+  @@index([trackId])
+  @@index([tutorId, status])
+  @@index([status, opensAt])
+  @@map("exams")
+}
+
+model ExamSection {
+  id               String  @id @default(cuid())
+  examId           String
+  title            String
+  instructions     String?
+  sortOrder        Int     @default(0)
+  timeLimitMinutes Int? // optional per-section limit, within the overall duration
+
+  selectionMode ExamSectionSelection @default(FIXED)
+
+  // RANDOM_DRAW only: draw `drawCount` questions from `drawBankId`, filtered by
+  // topic/difficulty. The eligible pool is snapshotted into ExamQuestion at
+  // publish; each attempt then draws its own subset from those snapshots.
+  drawBankId     String?
+  drawCount      Int?
+  drawDifficulty QuestionDifficulty?
+  drawTopics     String[]
+  drawPoints     Float? // points assigned to each drawn question
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  exam      Exam           @relation(fields: [examId], references: [id], onDelete: Cascade)
+  drawBank  QuestionBank?  @relation(fields: [drawBankId], references: [id], onDelete: Restrict)
+  questions ExamQuestion[]
+
+  @@index([examId, sortOrder])
+  @@map("exam_sections")
+}
+
+// A frozen copy of a question, taken at publish. Editing the source BankQuestion
+// afterwards never mutates a published exam or its graded attempts — deleting the
+// source only nulls the back-reference. See design doc section 5.5.
+model ExamQuestion {
+  id        String @id @default(cuid())
+  examId    String
+  sectionId String
+  sortOrder Int    @default(0)
+
+  sourceBankQuestionId String?
+  sourceVersion        Int?
+
+  stem          String
+  questionType  QuestionType @default(MULTIPLE_CHOICE)
+  options       Json?
+  correctAnswer Json
+  explanation   String?
+  points        Float        @default(1)
+  mediaUrls     String[]
+
+  createdAt DateTime @default(now())
+
+  exam               Exam           @relation(fields: [examId], references: [id], onDelete: Cascade)
+  section            ExamSection    @relation(fields: [sectionId], references: [id], onDelete: Cascade)
+  sourceBankQuestion BankQuestion?  @relation(fields: [sourceBankQuestionId], references: [id], onDelete: SetNull)
+  responses          ExamResponse[]
+
+  @@index([examId, sortOrder])
+  @@index([sectionId, sortOrder])
+  @@map("exam_questions")
+}
+
+// The materialised roster. Seeded from the scope at publish, then owned by the
+// exam — a roster that shifts mid-exam is a correctness problem, so late joiners
+// arrive via an explicit re-sync rather than a live query.
+model ExamCandidate {
+  id     String              @id @default(cuid())
+  examId String
+  userId String
+  status ExamCandidateStatus @default(INVITED)
+
+  // Accommodations. Also how makeup windows are granted, so late/missed handling
+  // costs no extra machinery.
+  extraTimeMultiplier Float     @default(1)
+  extraTimeMinutes    Int       @default(0)
+  extraAttempts       Int       @default(0)
+  windowOpensAt       DateTime?
+  windowClosesAt      DateTime?
+
+  addedManually Boolean   @default(false)
+  excludedAt    DateTime?
+  excludeReason String?
+  // Provenance of the seed (enrollment / programEnrollment / bootcampEnrollment id).
+  seededFromId  String?
+
+  notifiedAt DateTime?
+  createdAt  DateTime  @default(now())
+  updatedAt  DateTime  @updatedAt
+
+  exam     Exam          @relation(fields: [examId], references: [id], onDelete: Cascade)
+  user     User          @relation("ExamCandidacies", fields: [userId], references: [id], onDelete: Cascade)
+  attempts ExamAttempt[]
+
+  @@unique([examId, userId])
+  @@index([examId, status])
+  @@map("exam_candidates")
+}
+
+model ExamAttempt {
+  id            String @id @default(cuid())
+  examId        String
+  candidateId   String
+  userId        String
+  attemptNumber Int    @default(1)
+
+  status ExamAttemptStatus @default(IN_PROGRESS)
+
+  startedAt DateTime @default(now())
+  // Computed and stored server-side at start. The client renders a countdown but
+  // never decides when time is up. Resuming after a disconnect keeps the original
+  // value — no lost work, no bonus time. See design doc section 5.1.
+  expiresAt DateTime
+
+  submittedAt      DateTime?
+  submittedBy      ExamSubmittedBy?
+  lastHeartbeatAt  DateTime?
+  timeSpentSeconds Int              @default(0)
+
+  // The frozen paper: ordered ExamQuestion ids drawn for this candidate.
+  questionOrder String[]
+
+  // Enforces one active attempt per candidate; a second device is refused and logged.
+  deviceLockToken String? @unique
+
+  ipAddress String?
+  userAgent String?
+
+  // Tutor preview attempts. Never scored, never counted, never rostered.
+  isPractice Boolean @default(false)
+
+  voidedById String?
+  voidReason String?
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  exam      Exam           @relation(fields: [examId], references: [id], onDelete: Cascade)
+  candidate ExamCandidate  @relation(fields: [candidateId], references: [id], onDelete: Cascade)
+  user      User           @relation("ExamAttempts", fields: [userId], references: [id], onDelete: Cascade)
+  voidedBy  User?          @relation("ExamAttemptVoider", fields: [voidedById], references: [id], onDelete: SetNull)
+  responses ExamResponse[]
+  grade     ExamGrade?
+  events    ExamEvent[]
+
+  @@unique([examId, userId, attemptNumber])
+  @@index([examId, status])
+  @@index([status, expiresAt])
+  @@map("exam_attempts")
+}
+
+model ExamResponse {
+  id         String @id @default(cuid())
+  attemptId  String
+  questionId String
+
+  answer    Json?
+  isFlagged Boolean @default(false)
+
+  savedAt       DateTime  @default(now())
+  // Client-supplied save time, used to resolve out-of-order autosave flushes
+  // after an offline period. Never trusted for anything but ordering.
+  clientSavedAt DateTime?
+
+  // Objective questions are scored on submit; subjective ones wait for a human.
+  autoScore   Float?
+  isCorrect   Boolean?
+  manualScore Float?
+  feedback    String?
+  gradedById  String?
+  gradedAt    DateTime?
+
+  attempt  ExamAttempt  @relation(fields: [attemptId], references: [id], onDelete: Cascade)
+  question ExamQuestion @relation(fields: [questionId], references: [id], onDelete: Cascade)
+  gradedBy User?        @relation("ExamResponseGrader", fields: [gradedById], references: [id], onDelete: SetNull)
+
+  @@unique([attemptId, questionId])
+  @@index([attemptId])
+  @@map("exam_responses")
+}
+
+model ExamGrade {
+  id        String @id @default(cuid())
+  attemptId String @unique
+  examId    String
+  userId    String
+
+  autoScore   Float   @default(0)
+  manualScore Float?
+  totalScore  Float   @default(0)
+  maxScore    Float   @default(0)
+  percentage  Float   @default(0)
+  passed      Boolean @default(false)
+
+  status ExamGradeStatus @default(PENDING_AUTO)
+
+  releasedAt   DateTime?
+  releasedById String?
+
+  overriddenById String?
+  overrideReason String?
+  overriddenAt   DateTime?
+
+  // Set when release issued a certificate for this result. A later override that
+  // drops the score below passing revokes it rather than deleting — the id may
+  // already be in circulation. See design doc section 7.4.
+  certificateId String? @unique
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  attempt      ExamAttempt      @relation(fields: [attemptId], references: [id], onDelete: Cascade)
+  exam         Exam             @relation(fields: [examId], references: [id], onDelete: Cascade)
+  user         User             @relation("ExamGrades", fields: [userId], references: [id], onDelete: Cascade)
+  releasedBy   User?            @relation("ExamGradeReleaser", fields: [releasedById], references: [id], onDelete: SetNull)
+  overriddenBy User?            @relation("ExamGradeOverrider", fields: [overriddenById], references: [id], onDelete: SetNull)
+  certificate  Certificate?     @relation(fields: [certificateId], references: [id], onDelete: SetNull)
+  auditLog     ExamGradeAudit[]
+
+  @@index([examId, status])
+  @@index([userId])
+  @@map("exam_grades")
+}
+
+// Every score change is audited: who, when, old, new, why. See design doc section 5.7.
+model ExamGradeAudit {
+  id          String   @id @default(cuid())
+  gradeId     String
+  changedById String?
+  field       String
+  oldValue    String?
+  newValue    String?
+  reason      String?
+  createdAt   DateTime @default(now())
+
+  grade     ExamGrade @relation(fields: [gradeId], references: [id], onDelete: Cascade)
+  changedBy User?     @relation("ExamGradeAuditor", fields: [changedById], references: [id], onDelete: SetNull)
+
+  @@index([gradeId, createdAt])
+  @@map("exam_grade_audits")
+}
+
+// Integrity signals. Reviewable by the tutor, never an automatic penalty.
+model ExamEvent {
+  id        String            @id @default(cuid())
+  attemptId String
+  examId    String
+  userId    String
+  type      ExamEventType
+  severity  ExamEventSeverity @default(INFO)
+  metadata  Json?
+  ipAddress String?
+  createdAt DateTime          @default(now())
+
+  attempt ExamAttempt @relation(fields: [attemptId], references: [id], onDelete: Cascade)
+  exam    Exam        @relation(fields: [examId], references: [id], onDelete: Cascade)
+  user    User        @relation("ExamEvents", fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([attemptId, createdAt])
+  @@index([examId, severity])
+  @@map("exam_events")
 }
