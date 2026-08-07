@@ -1,5 +1,6 @@
 import { db } from "@/lib/db";
 import { expireOverdueAttempts } from "@/lib/exam/attempt";
+import { notifyUpcomingExams } from "@/lib/exam/notifications";
 import {
   ExamAttemptStatus,
   ExamCandidateStatus,
@@ -27,6 +28,8 @@ export type SweepReport = {
   attemptsSubmitted: number;
   examsClosed: number;
   candidatesMarkedMissed: number;
+  remindersSent: number;
+  remindersFailed: number;
 };
 
 export async function sweepExams(
@@ -64,11 +67,25 @@ export async function sweepExams(
     data: { status: ExamCandidateStatus.MISSED },
   });
 
+  // 4. Remind anyone whose exam opens in the next day. Wrapped because a mail
+  //    provider outage must not stop the sweep doing its real work above.
+  let remindersSent = 0;
+  let remindersFailed = 0;
+  try {
+    const reminders = await notifyUpcomingExams(client, now);
+    remindersSent = reminders.sent;
+    remindersFailed = reminders.failed;
+  } catch (error) {
+    console.error("[exam-sweep] reminders failed:", error);
+  }
+
   return {
     attemptsExamined: attempts.examined,
     attemptsSubmitted: attempts.submitted,
     examsClosed: closed.count,
     candidatesMarkedMissed: missed.count,
+    remindersSent,
+    remindersFailed,
   };
 }
 

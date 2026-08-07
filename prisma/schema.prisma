@@ -2323,9 +2323,15 @@ model ExamCandidate {
   // Provenance of the seed (enrollment / programEnrollment / bootcampEnrollment id).
   seededFromId  String?
 
-  notifiedAt DateTime?
-  createdAt  DateTime  @default(now())
-  updatedAt  DateTime  @updatedAt
+  // Set when the "your exam is scheduled" notice goes out, so re-publishing or
+  // re-syncing the roster never mails the same candidate twice.
+  notifiedAt        DateTime?
+  // Set when the pre-exam reminder goes out, for the same reason — the sweep
+  // that sends reminders runs every few minutes.
+  reminderSentAt    DateTime?
+  resultsNotifiedAt DateTime?
+  createdAt         DateTime  @default(now())
+  updatedAt         DateTime  @updatedAt
 
   exam     Exam          @relation(fields: [examId], references: [id], onDelete: Cascade)
   user     User          @relation("ExamCandidacies", fields: [userId], references: [id], onDelete: Cascade)

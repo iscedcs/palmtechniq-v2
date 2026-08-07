@@ -2,6 +2,7 @@
 
 import { auth } from "@/auth";
 import { db } from "@/lib/db";
+import { notifyResultsReleased } from "@/lib/exam/notifications";
 import {
   applyManualScore,
   overrideGrade as override,
@@ -110,12 +111,17 @@ export async function releaseResults(examId: string) {
   const result = await releaseExamResults(examId, authorized.userId, prisma);
   if (!result.ok) return { error: result.error };
 
+  // Outside the release transaction — a mail failure must not un-release results
+  // or un-issue a certificate.
+  const notified = await notifyResultsReleased(examId, prisma);
+
   revalidatePath(`/tutor/exams/${examId}`);
   revalidatePath(`/tutor/exams/${examId}/grading`);
   revalidatePath("/student/exams");
 
   return {
     success: true,
+    notified: notified.sent,
     released: result.released,
     skippedPendingManual: result.skippedPendingManual,
     certificatesIssued: result.certificatesIssued,

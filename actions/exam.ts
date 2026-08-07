@@ -2,6 +2,7 @@
 
 import { auth } from "@/auth";
 import { db } from "@/lib/db";
+import { notifyExamScheduled } from "@/lib/exam/notifications";
 import {
   executePublish,
   executeResyncRoster,
@@ -59,6 +60,10 @@ export async function publishExam(examId: string) {
   const result = await executePublish(examId, prisma);
   if (!result.ok) return { error: result.error, problems: result.problems };
 
+  // Tell the roster. Deliberately after the publish transaction has committed
+  // and outside it: a mail provider outage must not roll back a published exam.
+  const notified = await notifyExamScheduled(examId, prisma);
+
   revalidatePath("/tutor/exams");
   revalidatePath(`/tutor/exams/${examId}`);
 
@@ -69,6 +74,8 @@ export async function publishExam(examId: string) {
     totalPoints: result.totalPoints,
     candidatesSeeded: result.candidatesSeeded,
     candidateCount: result.candidateCount,
+    notified: notified.sent,
+    notificationsFailed: notified.failed,
   };
 }
 
@@ -80,7 +87,11 @@ export async function resyncRoster(examId: string) {
   const result = await executeResyncRoster(examId, prisma);
   if (!result.ok) return { error: result.error };
 
+  // Late joiners get the same notice everyone else already had. `notifiedAt`
+  // means the original roster is not mailed a second time.
+  const notified = result.added > 0 ? await notifyExamScheduled(examId, prisma) : null;
+
   revalidatePath(`/tutor/exams/${examId}`);
 
-  return { success: true, added: result.added };
+  return { success: true, added: result.added, notified: notified?.sent ?? 0 };
 }

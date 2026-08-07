@@ -2,6 +2,7 @@
 
 import { auth } from "@/auth";
 import { db } from "@/lib/db";
+import { notifyExamScheduled } from "@/lib/exam/notifications";
 import { createExamSchema, examSectionSchema, updateExamSchema } from "@/schemas/exam";
 import { ExamStatus, Prisma, type PrismaClient } from "@prisma/client";
 import { revalidatePath } from "next/cache";
@@ -435,6 +436,16 @@ export async function addCandidateByEmail(examId: string, email: string) {
   await prisma.examCandidate.create({
     data: { examId, userId: user.id, addedManually: true },
   });
+
+  // Someone added to an exam that is already published needs telling; on a draft
+  // there is nothing to tell them yet, and publish will handle it.
+  const exam = await prisma.exam.findUnique({
+    where: { id: examId },
+    select: { status: true },
+  });
+  if (exam && exam.status !== ExamStatus.DRAFT) {
+    await notifyExamScheduled(examId, prisma);
+  }
 
   revalidateExam(examId);
   return { success: true, name: user.name };
