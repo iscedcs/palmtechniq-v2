@@ -160,14 +160,6 @@ export async function startAttempt(
   const exam = await client.exam.findUnique({ where: { id: examId } });
   if (!exam) return { ok: false, error: "Exam not found", code: "NOT_FOUND" };
 
-  if (exam.status !== ExamStatus.SCHEDULED && exam.status !== ExamStatus.LIVE) {
-    return {
-      ok: false,
-      error: `This exam is not open (${exam.status.toLowerCase()})`,
-      code: "NOT_OPEN",
-    };
-  }
-
   const candidate = await client.examCandidate.findUnique({
     where: { examId_userId: { examId, userId } },
   });
@@ -180,6 +172,27 @@ export async function startAttempt(
 
   const now = new Date();
   const window = effectiveWindow(exam, candidate);
+
+  /**
+   * A candidate with their own window may sit a makeup even after the exam has
+   * closed for everyone else. That is the whole point of a makeup: the tutor
+   * reopens it for one person, not for the hall.
+   */
+  const hasOpenPersonalWindow =
+    !!candidate.windowClosesAt &&
+    candidate.windowClosesAt > now &&
+    (!candidate.windowOpensAt || candidate.windowOpensAt <= now);
+
+  const examIsOpen =
+    exam.status === ExamStatus.SCHEDULED || exam.status === ExamStatus.LIVE;
+
+  if (!examIsOpen && !hasOpenPersonalWindow) {
+    return {
+      ok: false,
+      error: `This exam is not open (${exam.status.toLowerCase()})`,
+      code: "NOT_OPEN",
+    };
+  }
 
   if (window.opensAt && now < window.opensAt) {
     return { ok: false, error: "This exam has not opened yet", code: "TOO_EARLY" };

@@ -22,8 +22,14 @@ const INTEGRITY_EVENT_TYPES: ExamEventType[] = [
   ExamEventType.TIME_ANOMALY,
 ];
 
-/** Plain-English label for a signal count, for the monitor row. */
-export function describeSignal(type: string, count: number): string {
+/**
+ * Plain-English label for a signal count, for the monitor row.
+ *
+ * NOT exported: this is a "use server" module, so every export must be an async
+ * function. The labels are baked into the snapshot below rather than exported
+ * for the client to call.
+ */
+function describeSignal(type: string, count: number): string {
   const plural = (n: number, one: string, many: string) =>
     `${n} ${n === 1 ? one : many}`;
   switch (type) {

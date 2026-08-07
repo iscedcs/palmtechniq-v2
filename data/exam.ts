@@ -78,20 +78,36 @@ export async function getStudentExams(): Promise<StudentExamSummary[]> {
       const latestGrade = submitted[0]?.grade ?? null;
       const released = latestGrade?.status === "RELEASED";
 
+      const attemptsAllowed = exam.maxAttempts + (candidate.extraAttempts || 0);
+      const attemptsLeft = attemptsAllowed - candidate.attempts.length;
+
+      // A personal window lets a candidate sit a makeup after the exam has closed
+      // for everyone else — see startAttempt.
+      const personalWindowOpen =
+        !!candidate.windowClosesAt &&
+        candidate.windowClosesAt > now &&
+        (!candidate.windowOpensAt || candidate.windowOpensAt <= now);
+
+      const windowOpen =
+        personalWindowOpen ||
+        ((!window.opensAt || now >= window.opensAt) &&
+          (!window.closesAt || now < window.closesAt) &&
+          (exam.status === ExamStatus.SCHEDULED || exam.status === ExamStatus.LIVE));
+
       let availability: ExamAvailability;
       if (active) {
         availability = "IN_PROGRESS";
+      } else if (attemptsLeft > 0 && windowOpen) {
+        // Open even after a previous submission — this is what makes a granted
+        // retry actually usable. Without it, "Allow retry" bumped the allowance
+        // and the student still saw a finished exam with no way back in.
+        availability = "OPEN";
       } else if (submitted.length > 0) {
         availability = "SUBMITTED";
       } else if (window.opensAt && now < window.opensAt) {
         availability = "UPCOMING";
       } else if (window.closesAt && now >= window.closesAt) {
         availability = "MISSED";
-      } else if (
-        exam.status === ExamStatus.SCHEDULED ||
-        exam.status === ExamStatus.LIVE
-      ) {
-        availability = "OPEN";
       } else {
         availability = "CLOSED";
       }
@@ -109,7 +125,7 @@ export async function getStudentExams(): Promise<StudentExamSummary[]> {
         accessMode: exam.accessMode,
         availability,
         attemptsUsed: candidate.attempts.length,
-        attemptsAllowed: exam.maxAttempts + (candidate.extraAttempts || 0),
+        attemptsAllowed,
         activeAttemptId: active?.id ?? null,
         resultReleased: released,
         // Scores stay hidden until the tutor releases them.

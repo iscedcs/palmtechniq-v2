@@ -19,7 +19,11 @@ import {
  * across all three rather than letting them drift apart.
  */
 
-export type ExamEmailVariant = "SCHEDULED" | "REMINDER" | "RESULTS";
+export type ExamEmailVariant =
+  | "SCHEDULED"
+  | "REMINDER"
+  | "RESULTS"
+  | "RETRY_GRANTED";
 
 interface ExamNotificationProps {
   variant: ExamEmailVariant;
@@ -36,6 +40,8 @@ interface ExamNotificationProps {
   passed?: boolean | null;
   /** REMINDER only — e.g. "in 24 hours" */
   startsIn?: string | null;
+  /** RETRY_GRANTED only — when their personal window shuts */
+  retryClosesAt?: string | null;
 }
 
 const COPY: Record<
@@ -57,6 +63,11 @@ const COPY: Record<
     heading: "Your result is available",
     cta: "View your result",
   },
+  RETRY_GRANTED: {
+    preview: (t) => `You can sit ${t} again`,
+    heading: "You can sit this exam again",
+    cta: "Start your retake",
+  },
 };
 
 const ExamNotification = ({
@@ -72,6 +83,7 @@ const ExamNotification = ({
   percentage,
   passed,
   startsIn,
+  retryClosesAt,
 }: ExamNotificationProps) => {
   const copy = COPY[variant];
   const year = new Date().getFullYear();
@@ -118,6 +130,20 @@ const ExamNotification = ({
                   This is a reminder that <b>{examTitle}</b> starts{" "}
                   {startsIn ?? "soon"}. Once you begin, the timer runs on our servers
                   and does not pause, so start when you are ready to sit it.
+                </Text>
+              )}
+
+              {variant === "RETRY_GRANTED" && (
+                <Text className="text-center md:text-left">
+                  Your tutor has given you another attempt at <b>{examTitle}</b>.
+                  {retryClosesAt ? (
+                    <>
+                      {" "}
+                      You have until <b>{retryClosesAt}</b> to sit it.
+                    </>
+                  ) : (
+                    " You can start it whenever you are ready, while the exam is open."
+                  )}
                 </Text>
               )}
 

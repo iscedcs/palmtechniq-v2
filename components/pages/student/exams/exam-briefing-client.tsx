@@ -10,7 +10,13 @@ import { Checkbox } from "@/components/ui/checkbox";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Separator } from "@/components/ui/separator";
-import { CheckCircle2, Clock, FileText, Loader2, ShieldAlert } from "lucide-react";
+import {
+  CheckCircle2,
+  Clock,
+  FileText,
+  Loader2,
+  ShieldAlert,
+} from "lucide-react";
 import { useRouter } from "next/navigation";
 import { useEffect, useState } from "react";
 import { toast } from "sonner";
@@ -85,13 +91,13 @@ export function ExamBriefingClient({
     briefing.extraTimeMultiplier !== 1 || briefing.extraTimeMinutes > 0;
 
   return (
-    <div className="mx-auto max-w-3xl px-4 py-10">
+    <div className="mx-auto max-w-3xl px-4 pt-20">
       {justSubmitted && (
         <Alert className="mb-6 border-emerald-500/40 bg-emerald-500/5">
           <CheckCircle2 className="size-4 text-emerald-600" />
           <AlertDescription>
-            Your exam has been submitted. Results will appear here once your tutor
-            releases them.
+            Your exam has been submitted. Results will appear here once your
+            tutor releases them.
           </AlertDescription>
         </Alert>
       )}
@@ -134,8 +140,8 @@ export function ExamBriefingClient({
             <Alert>
               <Clock className="size-4" />
               <AlertDescription>
-                You have been granted extra time for this exam. Your duration above
-                already includes it.
+                You have been granted extra time for this exam. Your duration
+                above already includes it.
               </AlertDescription>
             </Alert>
           )}
@@ -145,11 +151,15 @@ export function ExamBriefingClient({
           <div className="space-y-1 text-sm">
             <p>
               <span className="text-gray-400">Opens</span>{" "}
-              {briefing.opensAt ? new Date(briefing.opensAt).toLocaleString() : "—"}
+              {briefing.opensAt
+                ? new Date(briefing.opensAt).toLocaleString()
+                : "—"}
             </p>
             <p>
               <span className="text-gray-400">Closes</span>{" "}
-              {briefing.closesAt ? new Date(briefing.closesAt).toLocaleString() : "—"}
+              {briefing.closesAt
+                ? new Date(briefing.closesAt).toLocaleString()
+                : "—"}
             </p>
             <p>
               <span className="text-gray-400">Attempts</span>{" "}
@@ -196,8 +206,8 @@ export function ExamBriefingClient({
           <Alert variant="destructive">
             <ShieldAlert className="size-4" />
             <AlertDescription>
-              The window for this exam has closed and no attempt was recorded. Speak to
-              your tutor if you believe this is wrong.
+              The window for this exam has closed and no attempt was recorded.
+              Speak to your tutor if you believe this is wrong.
             </AlertDescription>
           </Alert>
         )}
@@ -219,8 +229,8 @@ export function ExamBriefingClient({
                 </div>
               ) : (
                 <p className="text-sm text-gray-400">
-                  Your submission has been received. Results will appear here once your
-                  tutor releases them.
+                  Your submission has been received. Results will appear here
+                  once your tutor releases them.
                 </p>
               )}
             </CardContent>
@@ -234,8 +244,8 @@ export function ExamBriefingClient({
                 <Alert>
                   <Clock className="size-4" />
                   <AlertDescription>
-                    You have an attempt in progress. Continuing returns you to it with
-                    the time you have left — the clock has been running.
+                    You have an attempt in progress. Continuing returns you to
+                    it with the time you have left — the clock has been running.
                   </AlertDescription>
                 </Alert>
               )}
@@ -261,8 +271,9 @@ export function ExamBriefingClient({
                   className="mt-0.5"
                 />
                 <span>
-                  I confirm this is my own work and that I will not use unauthorised
-                  help. Switching tabs is recorded and reviewed by my tutor.
+                  I confirm this is my own work and that I will not use
+                  unauthorised help. Switching tabs is recorded and reviewed by
+                  my tutor.
                 </span>
               </Label>
 
@@ -282,8 +293,8 @@ export function ExamBriefingClient({
               </Button>
 
               <p className="text-xs text-gray-400">
-                Once you start, the timer runs on our servers and does not pause — even
-                if you close this page.
+                Once you start, the timer runs on our servers and does not pause
+                — even if you close this page.
               </p>
             </CardContent>
           </Card>

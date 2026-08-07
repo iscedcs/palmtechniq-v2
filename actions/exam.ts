@@ -75,7 +75,8 @@ export async function publishExam(examId: string) {
     candidatesSeeded: result.candidatesSeeded,
     candidateCount: result.candidateCount,
     notified: notified.sent,
-    notificationsFailed: notified.failed,
+    notificationsFailed: notified.emailsFailed,
+    emailError: notified.emailError,
   };
 }
 

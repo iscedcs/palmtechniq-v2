@@ -9,7 +9,10 @@ import Link from "next/link";
 
 const STATE: Record<
   ExamAvailability,
-  { label: string; variant: "default" | "secondary" | "destructive" | "outline" }
+  {
+    label: string;
+    variant: "default" | "secondary" | "destructive" | "outline";
+  }
 > = {
   OPEN: { label: "Open now", variant: "default" },
   IN_PROGRESS: { label: "In progress", variant: "default" },
@@ -31,11 +34,12 @@ const ORDER: ExamAvailability[] = [
 export function ExamListClient({ exams }: { exams: StudentExamSummary[] }) {
   if (exams.length === 0) {
     return (
-      <div className="mx-auto max-w-4xl px-4 py-16 text-center">
+      <div className="mx-auto max-w-4xl px-4 pt-20 text-center">
         <ClipboardList className="mx-auto mb-3 size-10 text-gray-400" />
         <h1 className="text-xl font-semibold">No exams yet</h1>
         <p className="mt-1 text-sm text-gray-400">
-          When a tutor schedules an exam for one of your courses, it will appear here.
+          When a tutor schedules an exam for one of your courses, it will appear
+          here.
         </p>
       </div>
     );
@@ -47,7 +51,7 @@ export function ExamListClient({ exams }: { exams: StudentExamSummary[] }) {
   );
 
   return (
-    <div className="mx-auto max-w-4xl px-4 py-10">
+    <div className="mx-auto max-w-4xl px-4 pt-20">
       <h1 className="mb-1 text-2xl font-semibold">Exams</h1>
       <p className="mb-6 text-sm text-gray-400">
         Scheduled assessments for your courses and programmes.
@@ -84,7 +88,9 @@ export function ExamListClient({ exams }: { exams: StudentExamSummary[] }) {
                     {exam.opensAt
                       ? new Date(exam.opensAt).toLocaleString()
                       : "Not scheduled"}
-                    {exam.durationMinutes ? ` · ${exam.durationMinutes} min` : ""}
+                    {exam.durationMinutes
+                      ? ` · ${exam.durationMinutes} min`
+                      : ""}
                   </p>
                 </div>
 

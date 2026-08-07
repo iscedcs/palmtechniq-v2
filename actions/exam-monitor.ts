@@ -3,8 +3,10 @@
 import { auth } from "@/auth";
 import { db } from "@/lib/db";
 import { logEvent, submitAttempt } from "@/lib/exam/attempt";
+import { notifyRetryGranted } from "@/lib/exam/notifications";
 import {
   ExamAttemptStatus,
+  ExamCandidateStatus,
   ExamEventSeverity,
   ExamEventType,
   ExamSubmittedBy,
@@ -162,22 +164,70 @@ export async function forceSubmit(attemptId: string) {
  * has been graded, and un-submitting it would mean unpicking a grade and any
  * certificate that followed.
  */
-export async function grantAnotherAttempt(candidateId: string) {
+export async function grantAnotherAttempt(
+  candidateId: string,
+  options: { windowHours?: number } = {},
+) {
   const candidate = await prisma.examCandidate.findUnique({
     where: { id: candidateId },
-    select: { examId: true, extraAttempts: true },
+    select: {
+      id: true,
+      examId: true,
+      userId: true,
+      extraAttempts: true,
+      windowClosesAt: true,
+      exam: { select: { closesAt: true, status: true } },
+    },
   });
   if (!candidate) return { error: "Candidate not found" };
 
   const authorized = await authorizeExam(candidate.examId);
   if (!authorized.ok) return { error: authorized.error };
 
+  const now = new Date();
+  const windowHours = options.windowHours ?? 24;
+
+  // Bumping the allowance alone is not enough, and this was the bug: if the
+  // exam's own window has passed — or the exam has closed or released — the
+  // student still could not start, so "Allow retry" appeared to do nothing.
+  // A retry therefore also opens a personal window for this candidate only.
+  const examWindowPassed =
+    !!candidate.exam.closesAt && candidate.exam.closesAt <= now;
+  const examNoLongerOpen =
+    candidate.exam.status !== "SCHEDULED" && candidate.exam.status !== "LIVE";
+  const needsPersonalWindow = examWindowPassed || examNoLongerOpen;
+
+  const personalClose = new Date(now.getTime() + windowHours * 3_600_000);
+
   await prisma.examCandidate.update({
     where: { id: candidateId },
-    data: { extraAttempts: candidate.extraAttempts + 1 },
+    data: {
+      extraAttempts: candidate.extraAttempts + 1,
+      // Back to INVITED so the roster and the student's own page stop saying
+      // "submitted" when they have a sitting available.
+      status: ExamCandidateStatus.INVITED,
+      ...(needsPersonalWindow
+        ? { windowOpensAt: now, windowClosesAt: personalClose }
+        : {}),
+    },
   });
 
-  revalidatePath(`/tutor/exams/${candidate.examId}/monitor`);
+  // Tell them. A retry nobody knows about is the same as no retry.
+  const notified = await notifyRetryGranted(
+    candidateId,
+    needsPersonalWindow ? personalClose : null,
+    prisma,
+  );
 
-  return { success: true };
+  revalidatePath(`/tutor/exams/${candidate.examId}/monitor`);
+  revalidatePath(`/tutor/exams/${candidate.examId}`);
+  revalidatePath("/student/exams");
+
+  return {
+    success: true,
+    windowOpened: needsPersonalWindow,
+    windowClosesAt: needsPersonalWindow ? personalClose : null,
+    emailSent: notified.emailsSent > 0,
+    emailError: notified.emailError,
+  };
 }

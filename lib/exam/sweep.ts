@@ -74,7 +74,7 @@ export async function sweepExams(
   try {
     const reminders = await notifyUpcomingExams(client, now);
     remindersSent = reminders.sent;
-    remindersFailed = reminders.failed;
+    remindersFailed = reminders.emailsFailed;
   } catch (error) {
     console.error("[exam-sweep] reminders failed:", error);
   }

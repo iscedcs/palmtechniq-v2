@@ -75,7 +75,9 @@ export function ExamRunnerClient({
   const [flagged, setFlagged] = useState<Set<string>>(
     () => new Set(questions.filter((q) => q.isFlagged).map((q) => q.id)),
   );
-  const [seen, setSeen] = useState<Set<string>>(() => new Set([questions[0]?.id]));
+  const [seen, setSeen] = useState<Set<string>>(
+    () => new Set([questions[0]?.id]),
+  );
   const [index, setIndex] = useState(0);
   const [confirmOpen, setConfirmOpen] = useState(false);
   const [submitting, setSubmitting] = useState(false);
@@ -227,7 +229,7 @@ export function ExamRunnerClient({
             : "No changes yet";
 
   return (
-    <div className="mx-auto max-w-5xl px-4 py-6">
+    <div className="mx-auto max-w-5xl px-4 pt-20">
       {/* Header: title, progress, clock */}
       <div className="sticky top-0 z-20 -mx-4 mb-6 border-b bg-background/95 px-4 py-3 backdrop-blur">
         <div className="flex flex-wrap items-center justify-between gap-3">
@@ -258,7 +260,9 @@ export function ExamRunnerClient({
                 : "bg-white/5",
             )}
             aria-live="polite">
-            <div className="text-xl font-semibold">{formatRemaining(remaining)}</div>
+            <div className="text-xl font-semibold">
+              {formatRemaining(remaining)}
+            </div>
             <div className="text-[10px] uppercase tracking-wide text-gray-400">
               remaining
             </div>
@@ -282,9 +286,12 @@ export function ExamRunnerClient({
                   <div className="flex items-start justify-between gap-4">
                     <div className="space-y-1">
                       <div className="flex items-center gap-2">
-                        <Badge variant="secondary">Question {position + 1}</Badge>
+                        <Badge variant="secondary">
+                          Question {position + 1}
+                        </Badge>
                         <span className="text-xs text-gray-400">
-                          {question.points} {question.points === 1 ? "point" : "points"}
+                          {question.points}{" "}
+                          {question.points === 1 ? "point" : "points"}
                         </span>
                       </div>
                       <p className="whitespace-pre-wrap text-base font-medium">
@@ -334,7 +341,9 @@ export function ExamRunnerClient({
             <Button
               variant="outline"
               onClick={() => goTo(index - 1)}
-              disabled={!onePerPage || index === 0 || !allowBacktrack || submitting}>
+              disabled={
+                !onePerPage || index === 0 || !allowBacktrack || submitting
+              }>
               Previous
             </Button>
 
@@ -343,7 +352,9 @@ export function ExamRunnerClient({
                 Next
               </Button>
             ) : (
-              <Button onClick={() => setConfirmOpen(true)} disabled={submitting}>
+              <Button
+                onClick={() => setConfirmOpen(true)}
+                disabled={submitting}>
                 {submitting && <Loader2 className="mr-2 size-4 animate-spin" />}
                 Submit exam
               </Button>
@@ -422,16 +433,16 @@ export function ExamRunnerClient({
               <div className="space-y-2">
                 {unanswered > 0 ? (
                   <p className="font-medium text-destructive">
-                    {unanswered} question{unanswered === 1 ? " is" : "s are"} still
-                    unanswered.
+                    {unanswered} question{unanswered === 1 ? " is" : "s are"}{" "}
+                    still unanswered.
                   </p>
                 ) : (
                   <p>All {questions.length} questions are answered.</p>
                 )}
                 {flagged.size > 0 && (
                   <p>
-                    {flagged.size} question{flagged.size === 1 ? " is" : "s are"} flagged
-                    for review.
+                    {flagged.size} question
+                    {flagged.size === 1 ? " is" : "s are"} flagged for review.
                   </p>
                 )}
                 <p className="text-gray-400">
@@ -441,7 +452,9 @@ export function ExamRunnerClient({
             </AlertDialogDescription>
           </AlertDialogHeader>
           <AlertDialogFooter>
-            <AlertDialogCancel disabled={submitting}>Keep working</AlertDialogCancel>
+            <AlertDialogCancel disabled={submitting}>
+              Keep working
+            </AlertDialogCancel>
             <AlertDialogAction
               onClick={(e) => {
                 e.preventDefault();

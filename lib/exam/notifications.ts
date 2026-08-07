@@ -32,8 +32,13 @@ const PAUSE_BETWEEN_BATCHES_MS = 600;
 
 export type NotifyReport = {
   attempted: number;
+  /** In-app notices created. This is the channel that actually works offline. */
   sent: number;
-  failed: number;
+  /** Emails accepted by the provider. */
+  emailsSent: number;
+  emailsFailed: number;
+  /** The provider's own words, surfaced so a broken key is not a silent failure. */
+  emailError?: string;
   skipped: number;
   reason?: string;
 };
@@ -76,7 +81,7 @@ async function sendEmails(
   subject: (r: Recipient) => string,
   props: (r: Recipient) => Record<string, unknown>,
   variant: ExamEmailVariant,
-): Promise<{ delivered: string[]; failed: number }> {
+): Promise<{ delivered: string[]; failed: number; error?: string }> {
   if (recipients.length === 0) return { delivered: [], failed: 0 };
 
   const apiKey = process.env.RESEND_API_KEY;
@@ -94,13 +99,15 @@ async function sendEmails(
   }
 
   if (!apiKey) {
-    console.warn("[exam-notifications] RESEND_API_KEY is not set; no email sent.");
-    return { delivered: [], failed: 0 };
+    const message = "RESEND_API_KEY is not set";
+    console.warn(`[exam-notifications] ${message}; no email sent.`);
+    return { delivered: [], failed: recipients.length, error: message };
   }
 
   const resend = new Resend(apiKey);
   const delivered: string[] = [];
   let failed = 0;
+  let error: string | undefined;
 
   for (let i = 0; i < recipients.length; i += BATCH_SIZE) {
     const chunk = recipients.slice(i, i + BATCH_SIZE);
@@ -122,12 +129,14 @@ async function sendEmails(
       if (result.error) {
         console.error("[exam-notifications] batch rejected:", result.error);
         failed += chunk.length;
+        error ??= result.error.message ?? String(result.error);
       } else {
         delivered.push(...chunk.map((r) => r.candidateId));
       }
-    } catch (error) {
-      console.error("[exam-notifications] batch threw:", error);
+    } catch (thrown) {
+      console.error("[exam-notifications] batch threw:", thrown);
       failed += chunk.length;
+      error ??= thrown instanceof Error ? thrown.message : String(thrown);
     }
 
     if (i + BATCH_SIZE < recipients.length) {
@@ -135,7 +144,7 @@ async function sendEmails(
     }
   }
 
-  return { delivered, failed };
+  return { delivered, failed, error };
 }
 
 /** In-app notification. Best-effort — never allowed to fail a send. */
@@ -174,7 +183,7 @@ export async function notifyExamScheduled(
     where: { id: examId },
     include: { course: { select: { title: true } } },
   });
-  if (!exam) return { attempted: 0, sent: 0, failed: 0, skipped: 0, reason: "Exam not found" };
+  if (!exam) return { attempted: 0, sent: 0, emailsSent: 0, emailsFailed: 0, skipped: 0, reason: "Exam not found" };
 
   const candidates = await client.examCandidate.findMany({
     where: { examId, notifiedAt: null, excludedAt: null },
@@ -182,7 +191,7 @@ export async function notifyExamScheduled(
   });
 
   if (candidates.length === 0) {
-    return { attempted: 0, sent: 0, failed: 0, skipped: 0, reason: "Everyone has already been told" };
+    return { attempted: 0, sent: 0, emailsSent: 0, emailsFailed: 0, skipped: 0, reason: "Everyone has already been told" };
   }
 
   const recipients: Recipient[] = candidates.map((c) => ({
@@ -195,7 +204,7 @@ export async function notifyExamScheduled(
   const questionCount = await client.examQuestion.count({ where: { examId } });
   const url = appUrl(`/student/exams/${examId}`);
 
-  const { delivered, failed } = await sendEmails(
+  const emails = await sendEmails(
     recipients,
     () => `Exam scheduled: ${exam.title}`,
     () => ({
@@ -210,30 +219,96 @@ export async function notifyExamScheduled(
     "SCHEDULED",
   );
 
-  if (delivered.length > 0) {
-    await client.examCandidate.updateMany({
-      where: { id: { in: delivered } },
-      data: { notifiedAt: new Date() },
-    });
+  // In-app goes to EVERYONE, whatever the mail provider did. These are separate
+  // channels and the reliable one must not be held hostage by the flaky one —
+  // an expired API key silently cost students both notices until this was split.
+  await Promise.all(
+    recipients.map((r) =>
+      notifyInApp(
+        r.userId,
+        "You have an exam scheduled",
+        `${exam.title}${exam.opensAt ? ` opens ${formatWhen(exam.opensAt, exam.timezone)}` : ""}`,
+        url,
+      ),
+    ),
+  );
+
+  // Stamped because they HAVE been told, in-app. Email can be retried
+  // independently with resendExamEmails once a provider problem is fixed.
+  await client.examCandidate.updateMany({
+    where: { id: { in: recipients.map((r) => r.candidateId) } },
+    data: { notifiedAt: new Date() },
+  });
+
+  return {
+    attempted: recipients.length,
+    sent: recipients.length,
+    emailsSent: emails.delivered.length,
+    emailsFailed: emails.failed,
+    emailError: emails.error,
+    skipped: 0,
+  };
+}
+
+/**
+ * Re-send the scheduled-exam email to everyone on the roster, ignoring
+ * `notifiedAt`.
+ *
+ * The recovery path for when email was down at publish time: the students were
+ * told in-app, and this gets the email out once the provider works again.
+ */
+export async function resendExamEmails(
+  examId: string,
+  client: PrismaClient = defaultClient,
+): Promise<NotifyReport> {
+  const exam = await client.exam.findUnique({
+    where: { id: examId },
+    include: { course: { select: { title: true } } },
+  });
+  if (!exam) {
+    return { attempted: 0, sent: 0, emailsSent: 0, emailsFailed: 0, skipped: 0, reason: "Exam not found" };
   }
 
-  await Promise.all(
-    recipients
-      .filter((r) => delivered.includes(r.candidateId))
-      .map((r) =>
-        notifyInApp(
-          r.userId,
-          "You have an exam scheduled",
-          `${exam.title}${exam.opensAt ? ` opens ${formatWhen(exam.opensAt, exam.timezone)}` : ""}`,
-          url,
-        ),
-      ),
+  const candidates = await client.examCandidate.findMany({
+    where: { examId, excludedAt: null },
+    include: { user: { select: { id: true, email: true, name: true } } },
+  });
+
+  const recipients: Recipient[] = candidates.map((c) => ({
+    candidateId: c.id,
+    userId: c.user.id,
+    email: c.user.email,
+    name: c.user.name,
+  }));
+
+  if (recipients.length === 0) {
+    return { attempted: 0, sent: 0, emailsSent: 0, emailsFailed: 0, skipped: 0, reason: "Nobody on the roster" };
+  }
+
+  const questionCount = await client.examQuestion.count({ where: { examId } });
+  const url = appUrl(`/student/exams/${examId}`);
+
+  const emails = await sendEmails(
+    recipients,
+    () => `Exam scheduled: ${exam.title}`,
+    () => ({
+      examTitle: exam.title,
+      courseTitle: exam.course?.title ?? null,
+      opensAt: formatWhen(exam.opensAt, exam.timezone),
+      closesAt: formatWhen(exam.closesAt, exam.timezone),
+      durationMinutes: exam.durationMinutes,
+      questionCount,
+      examUrl: url,
+    }),
+    "SCHEDULED",
   );
 
   return {
     attempted: recipients.length,
-    sent: delivered.length,
-    failed,
+    sent: 0,
+    emailsSent: emails.delivered.length,
+    emailsFailed: emails.failed,
+    emailError: emails.error,
     skipped: 0,
   };
 }
@@ -264,6 +339,7 @@ export async function notifyUpcomingExams(
   let attempted = 0;
   let sent = 0;
   let failed = 0;
+  let lastError: string | undefined;
 
   for (const exam of exams) {
     const candidates = await client.examCandidate.findMany({
@@ -303,6 +379,7 @@ export async function notifyUpcomingExams(
 
     sent += result.delivered.length;
     failed += result.failed;
+    lastError ??= result.error;
 
     if (result.delivered.length > 0) {
       await client.examCandidate.updateMany({
@@ -312,7 +389,94 @@ export async function notifyUpcomingExams(
     }
   }
 
-  return { attempted, sent, failed, skipped: 0 };
+  return {
+    attempted,
+    sent,
+    emailsSent: sent,
+    emailsFailed: failed,
+    emailError: lastError,
+    skipped: 0,
+  };
+}
+
+// ─── Retry granted ───────────────────────────────────────────────────────────
+
+/**
+ * Tell one candidate their tutor has reopened the exam for them.
+ *
+ * Not gated on any timestamp: a retry is an explicit, deliberate act by the
+ * tutor, and granting a second one should say so again.
+ */
+export async function notifyRetryGranted(
+  candidateId: string,
+  windowClosesAt: Date | null,
+  client: PrismaClient = defaultClient,
+): Promise<NotifyReport> {
+  const candidate = await client.examCandidate.findUnique({
+    where: { id: candidateId },
+    include: {
+      user: { select: { id: true, email: true, name: true } },
+      exam: {
+        select: {
+          id: true,
+          title: true,
+          timezone: true,
+          durationMinutes: true,
+          course: { select: { title: true } },
+        },
+      },
+    },
+  });
+
+  if (!candidate) {
+    return {
+      attempted: 0,
+      sent: 0,
+      emailsSent: 0,
+      emailsFailed: 0,
+      skipped: 0,
+      reason: "Candidate not found",
+    };
+  }
+
+  const url = appUrl(`/student/exams/${candidate.exam.id}`);
+  const recipient: Recipient = {
+    candidateId: candidate.id,
+    userId: candidate.user.id,
+    email: candidate.user.email,
+    name: candidate.user.name,
+  };
+
+  const emails = await sendEmails(
+    [recipient],
+    () => `You can sit ${candidate.exam.title} again`,
+    () => ({
+      examTitle: candidate.exam.title,
+      courseTitle: candidate.exam.course?.title ?? null,
+      durationMinutes: candidate.exam.durationMinutes,
+      examUrl: url,
+      retryClosesAt: formatWhen(windowClosesAt, candidate.exam.timezone),
+    }),
+    "RETRY_GRANTED",
+  );
+
+  await notifyInApp(
+    candidate.user.id,
+    "You can sit this exam again",
+    windowClosesAt
+      ? `Your tutor reopened ${candidate.exam.title}. You have until ${formatWhen(windowClosesAt, candidate.exam.timezone)}.`
+      : `Your tutor has given you another attempt at ${candidate.exam.title}.`,
+    url,
+  );
+
+  return {
+    attempted: 1,
+    sent: 1,
+    emailsSent: emails.delivered.length,
+    emailsFailed: emails.failed,
+    emailError: emails.error,
+    skipped: 0,
+  };
 }
 
 // ─── Results ─────────────────────────────────────────────────────────────────
@@ -331,7 +495,7 @@ export async function notifyResultsReleased(
     where: { id: examId },
     select: { title: true, showCorrectAnswers: true },
   });
-  if (!exam) return { attempted: 0, sent: 0, failed: 0, skipped: 0, reason: "Exam not found" };
+  if (!exam) return { attempted: 0, sent: 0, emailsSent: 0, emailsFailed: 0, skipped: 0, reason: "Exam not found" };
 
   const grades = await client.examGrade.findMany({
     where: { examId, status: "RELEASED" },
@@ -339,7 +503,7 @@ export async function notifyResultsReleased(
   });
 
   if (grades.length === 0) {
-    return { attempted: 0, sent: 0, failed: 0, skipped: 0, reason: "Nothing released yet" };
+    return { attempted: 0, sent: 0, emailsSent: 0, emailsFailed: 0, skipped: 0, reason: "Nothing released yet" };
   }
 
   const candidates = await client.examCandidate.findMany({
@@ -359,7 +523,8 @@ export async function notifyResultsReleased(
     return {
       attempted: 0,
       sent: 0,
-      failed: 0,
+      emailsSent: 0,
+      emailsFailed: 0,
       skipped: grades.length,
       reason: "Everyone has already been told",
     };
@@ -377,7 +542,7 @@ export async function notifyResultsReleased(
     name: g.user.name,
   }));
 
-  const { delivered, failed } = await sendEmails(
+  const emails = await sendEmails(
     recipients,
     () => `Your result for ${exam.title}`,
     (r) => {
@@ -392,30 +557,29 @@ export async function notifyResultsReleased(
     "RESULTS",
   );
 
-  if (delivered.length > 0) {
-    await client.examCandidate.updateMany({
-      where: { id: { in: delivered } },
-      data: { resultsNotifiedAt: new Date() },
-    });
-  }
-
+  // Independent of email — see notifyExamScheduled.
   await Promise.all(
-    recipients
-      .filter((r) => delivered.includes(r.candidateId))
-      .map((r) =>
-        notifyInApp(
-          r.userId,
-          "Your exam result is available",
-          `Your result for ${exam.title} has been released.`,
-          url,
-        ),
+    recipients.map((r) =>
+      notifyInApp(
+        r.userId,
+        "Your exam result is available",
+        `Your result for ${exam.title} has been released.`,
+        url,
       ),
+    ),
   );
+
+  await client.examCandidate.updateMany({
+    where: { id: { in: recipients.map((r) => r.candidateId) } },
+    data: { resultsNotifiedAt: new Date() },
+  });
 
   return {
     attempted: recipients.length,
-    sent: delivered.length,
-    failed,
+    sent: recipients.length,
+    emailsSent: emails.delivered.length,
+    emailsFailed: emails.failed,
+    emailError: emails.error,
     skipped: grades.length - pending.length,
   };
 }
