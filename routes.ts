@@ -55,6 +55,9 @@ export const protectedRoutes = [
   "/student/assignments",
   "/student/profile",
   "/student/progress",
+  "/student/exams",
+  "/student/exams/[examId]",
+  "/student/exams/[examId]/sit",
   "/tutor",
   "/tutor/courses",
   "/tutor/courses/create",
@@ -153,6 +156,9 @@ export const studentRoutes = [
   "/student/assignments",
   "/student/profile",
   "/student/progress",
+  "/student/exams",
+  "/student/exams/[examId]",
+  "/student/exams/[examId]/sit",
 ];
 
 /**
