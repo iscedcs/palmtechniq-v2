@@ -19,20 +19,22 @@ type ExamRow = {
   attemptCount: number;
 };
 
-const STATUS_VARIANT: Record<string, "default" | "secondary" | "outline" | "destructive"> =
-  {
-    DRAFT: "secondary",
-    SCHEDULED: "default",
-    LIVE: "default",
-    CLOSED: "outline",
-    GRADING: "default",
-    RELEASED: "outline",
-    ARCHIVED: "outline",
-  };
+const STATUS_VARIANT: Record<
+  string,
+  "default" | "secondary" | "outline" | "destructive"
+> = {
+  DRAFT: "secondary",
+  SCHEDULED: "default",
+  LIVE: "default",
+  CLOSED: "outline",
+  GRADING: "default",
+  RELEASED: "outline",
+  ARCHIVED: "outline",
+};
 
 export function TutorExamListClient({ exams }: { exams: ExamRow[] }) {
   return (
-    <div className="mx-auto max-w-5xl px-4 py-10">
+    <div className="mx-auto max-w-5xl px-4 pt-20">
       <div className="mb-6 flex flex-wrap items-center justify-between gap-3">
         <div>
           <h1 className="text-2xl font-semibold">Exams</h1>
@@ -72,7 +74,9 @@ export function TutorExamListClient({ exams }: { exams: ExamRow[] }) {
                       {exam.status.toLowerCase()}
                     </Badge>
                   </div>
-                  <p className="mt-0.5 text-sm text-gray-400">{exam.scopeLabel}</p>
+                  <p className="mt-0.5 text-sm text-gray-400">
+                    {exam.scopeLabel}
+                  </p>
 
                   <div className="mt-2 flex flex-wrap gap-x-4 gap-y-1 text-xs text-gray-400">
                     <span className="flex items-center gap-1.5">
@@ -80,7 +84,9 @@ export function TutorExamListClient({ exams }: { exams: ExamRow[] }) {
                       {exam.opensAt
                         ? new Date(exam.opensAt).toLocaleString()
                         : "Not scheduled"}
-                      {exam.durationMinutes ? ` · ${exam.durationMinutes} min` : ""}
+                      {exam.durationMinutes
+                        ? ` · ${exam.durationMinutes} min`
+                        : ""}
                     </span>
                     <span className="flex items-center gap-1.5">
                       <Users className="size-3.5" />
@@ -91,7 +97,9 @@ export function TutorExamListClient({ exams }: { exams: ExamRow[] }) {
                       {exam.questionCount} question
                       {exam.questionCount === 1 ? "" : "s"}
                     </span>
-                    {exam.attemptCount > 0 && <span>{exam.attemptCount} sat</span>}
+                    {exam.attemptCount > 0 && (
+                      <span>{exam.attemptCount} sat</span>
+                    )}
                   </div>
                 </div>
 

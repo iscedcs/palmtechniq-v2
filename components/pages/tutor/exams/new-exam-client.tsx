@@ -71,7 +71,7 @@ export function NewExamClient({ options }: { options: ScopeOptions }) {
   };
 
   return (
-    <div className="mx-auto max-w-2xl px-4 py-10">
+    <div className="mx-auto max-w-2xl px-4 pt-20">
       <h1 className="mb-1 text-2xl font-semibold">New exam</h1>
       <p className="mb-6 text-sm text-gray-400">
         Name it and choose who sits it. Questions, schedule and rules come next.
@@ -115,14 +115,16 @@ export function NewExamClient({ options }: { options: ScopeOptions }) {
               </SelectTrigger>
               <SelectContent>
                 <SelectItem value="COURSE">Everyone on a course</SelectItem>
-                <SelectItem value="PROGRAM_COHORT">A programme cohort</SelectItem>
+                <SelectItem value="PROGRAM_COHORT">
+                  A programme cohort
+                </SelectItem>
                 <SelectItem value="BOOTCAMP_TRACK">A bootcamp track</SelectItem>
                 <SelectItem value="AD_HOC">Students I pick myself</SelectItem>
               </SelectContent>
             </Select>
             <p className="text-xs text-gray-400">
-              The roster is built from this when you publish, and you can adjust it
-              by hand afterwards.
+              The roster is built from this when you publish, and you can adjust
+              it by hand afterwards.
             </p>
           </div>
 
@@ -157,7 +159,9 @@ export function NewExamClient({ options }: { options: ScopeOptions }) {
           )}
 
           <div className="flex justify-end gap-2 pt-2">
-            <Button variant="outline" onClick={() => router.push("/tutor/exams")}>
+            <Button
+              variant="outline"
+              onClick={() => router.push("/tutor/exams")}>
               Cancel
             </Button>
             <Button

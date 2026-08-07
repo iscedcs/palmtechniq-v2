@@ -167,7 +167,7 @@ export function ExamGradingClient({
   };
 
   return (
-    <div className="mx-auto max-w-4xl px-4 py-10">
+    <div className="mx-auto max-w-4xl px-4 pt-20">
       <div className="mb-6">
         <Link href={`/tutor/exams/${examId}`} className="text-sm text-gray-400 hover:underline">
           ← Back to exam

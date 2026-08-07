@@ -19,7 +19,14 @@ import { Switch } from "@/components/ui/switch";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Textarea } from "@/components/ui/textarea";
 import type { TutorExamDetail } from "@/data/tutor-exam";
-import { AlertCircle, CheckCircle2, ClipboardCheck, Loader2, Rocket } from "lucide-react";
+import {
+  AlertCircle,
+  CheckCircle2,
+  ClipboardCheck,
+  Loader2,
+  MonitorDot,
+  Rocket,
+} from "lucide-react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { useState } from "react";
@@ -43,9 +50,9 @@ export function ExamEditorClient({ exam }: { exam: TutorExamDetail }) {
   const isDraft = exam.status === "DRAFT";
   const [saving, setSaving] = useState(false);
   const [publishing, setPublishing] = useState(false);
-  const [problems, setProblems] = useState<{ field: string; message: string }[] | null>(
-    null,
-  );
+  const [problems, setProblems] = useState<
+    { field: string; message: string }[] | null
+  >(null);
 
   const [form, setForm] = useState({
     title: exam.title,
@@ -140,10 +147,13 @@ export function ExamEditorClient({ exam }: { exam: TutorExamDetail }) {
   };
 
   const scopeLabel =
-    exam.course?.title ?? exam.cohort?.displayName ?? exam.track?.name ?? "Selected students";
+    exam.course?.title ??
+    exam.cohort?.displayName ??
+    exam.track?.name ??
+    "Selected students";
 
   return (
-    <div className="mx-auto max-w-4xl px-4 py-10">
+    <div className="mx-auto max-w-4xl px-4 pt-20">
       <div className="mb-6 flex flex-wrap items-start justify-between gap-3">
         <div className="min-w-0">
           <div className="flex flex-wrap items-center gap-2">
@@ -157,12 +167,20 @@ export function ExamEditorClient({ exam }: { exam: TutorExamDetail }) {
 
         <div className="flex gap-2">
           {!isDraft && (
-            <Button asChild variant="outline">
-              <Link href={`/tutor/exams/${exam.id}/grading`}>
-                <ClipboardCheck className="mr-2 size-4" />
-                Grading &amp; results
-              </Link>
-            </Button>
+            <>
+              <Button asChild variant="outline">
+                <Link href={`/tutor/exams/${exam.id}/monitor`}>
+                  <MonitorDot className="mr-2 size-4" />
+                  Monitor
+                </Link>
+              </Button>
+              <Button asChild variant="outline">
+                <Link href={`/tutor/exams/${exam.id}/grading`}>
+                  <ClipboardCheck className="mr-2 size-4" />
+                  Grading &amp; results
+                </Link>
+              </Button>
+            </>
           )}
           <Button variant="outline" onClick={handleSave} disabled={saving}>
             {saving && <Loader2 className="mr-2 size-4 animate-spin" />}
@@ -185,8 +203,9 @@ export function ExamEditorClient({ exam }: { exam: TutorExamDetail }) {
         <Alert className="mb-6">
           <AlertCircle className="size-4" />
           <AlertDescription>
-            This exam is published. Questions, sections and the schedule are locked;
-            wording, results settings and the roster can still be changed.
+            This exam is published. Questions, sections and the schedule are
+            locked; wording, results settings and the roster can still be
+            changed.
           </AlertDescription>
         </Alert>
       )}
@@ -208,17 +227,22 @@ export function ExamEditorClient({ exam }: { exam: TutorExamDetail }) {
       {problems && problems.length === 0 && (
         <Alert className="mb-6 border-emerald-500/40 bg-emerald-500/5">
           <CheckCircle2 className="size-4 text-emerald-600" />
-          <AlertDescription>Everything checks out. Ready to publish.</AlertDescription>
+          <AlertDescription>
+            Everything checks out. Ready to publish.
+          </AlertDescription>
         </Alert>
       )}
 
       <Tabs defaultValue="questions">
         <TabsList>
           <TabsTrigger value="questions">
-            Questions ({exam.sections.reduce((n, s) => n + s.questions.length, 0)})
+            Questions (
+            {exam.sections.reduce((n, s) => n + s.questions.length, 0)})
           </TabsTrigger>
           <TabsTrigger value="settings">Schedule &amp; rules</TabsTrigger>
-          <TabsTrigger value="roster">Roster ({exam.candidates.length})</TabsTrigger>
+          <TabsTrigger value="roster">
+            Roster ({exam.candidates.length})
+          </TabsTrigger>
         </TabsList>
 
         <TabsContent value="questions" className="mt-4">
@@ -246,14 +270,18 @@ export function ExamEditorClient({ exam }: { exam: TutorExamDetail }) {
                 <Label>Description</Label>
                 <Textarea
                   value={form.description}
-                  onChange={(e) => setForm({ ...form, description: e.target.value })}
+                  onChange={(e) =>
+                    setForm({ ...form, description: e.target.value })
+                  }
                 />
               </div>
               <div className="space-y-1.5">
                 <Label>Instructions</Label>
                 <Textarea
                   value={form.instructions}
-                  onChange={(e) => setForm({ ...form, instructions: e.target.value })}
+                  onChange={(e) =>
+                    setForm({ ...form, instructions: e.target.value })
+                  }
                   placeholder="Shown on the briefing page before students start."
                 />
               </div>
@@ -271,7 +299,9 @@ export function ExamEditorClient({ exam }: { exam: TutorExamDetail }) {
                   type="datetime-local"
                   value={form.opensAt}
                   disabled={!isDraft}
-                  onChange={(e) => setForm({ ...form, opensAt: e.target.value })}
+                  onChange={(e) =>
+                    setForm({ ...form, opensAt: e.target.value })
+                  }
                 />
               </div>
               <div className="space-y-1.5">
@@ -280,7 +310,9 @@ export function ExamEditorClient({ exam }: { exam: TutorExamDetail }) {
                   type="datetime-local"
                   value={form.closesAt}
                   disabled={!isDraft}
-                  onChange={(e) => setForm({ ...form, closesAt: e.target.value })}
+                  onChange={(e) =>
+                    setForm({ ...form, closesAt: e.target.value })
+                  }
                 />
               </div>
               <div className="space-y-1.5">
@@ -291,7 +323,10 @@ export function ExamEditorClient({ exam }: { exam: TutorExamDetail }) {
                   value={form.durationMinutes}
                   disabled={!isDraft}
                   onChange={(e) =>
-                    setForm({ ...form, durationMinutes: Number(e.target.value) })
+                    setForm({
+                      ...form,
+                      durationMinutes: Number(e.target.value),
+                    })
                   }
                 />
                 <p className="text-xs text-gray-400">
@@ -337,9 +372,14 @@ export function ExamEditorClient({ exam }: { exam: TutorExamDetail }) {
                 ["shuffleOptions", "Shuffle the answer options"],
                 ["onePerPage", "Show one question per page"],
                 ["allowBacktrack", "Allow going back to earlier questions"],
-                ["isFinalAssessment", "This is the final assessment (issues a certificate on pass)"],
+                [
+                  "isFinalAssessment",
+                  "This is the final assessment (issues a certificate on pass)",
+                ],
               ].map(([key, label]) => (
-                <div key={key} className="flex items-center justify-between gap-4">
+                <div
+                  key={key}
+                  className="flex items-center justify-between gap-4">
                   <Label htmlFor={key} className="font-normal">
                     {label}
                   </Label>
@@ -355,14 +395,22 @@ export function ExamEditorClient({ exam }: { exam: TutorExamDetail }) {
                 <Label>Access</Label>
                 <Select
                   value={form.accessMode}
-                  onValueChange={(v) => setForm({ ...form, accessMode: v as never })}>
+                  onValueChange={(v) =>
+                    setForm({ ...form, accessMode: v as never })
+                  }>
                   <SelectTrigger>
                     <SelectValue />
                   </SelectTrigger>
                   <SelectContent>
-                    <SelectItem value="ROSTER_ONLY">Anyone on the roster</SelectItem>
-                    <SelectItem value="ACCESS_CODE">Roster plus an access code</SelectItem>
-                    <SelectItem value="MANUAL_RELEASE">I admit each student</SelectItem>
+                    <SelectItem value="ROSTER_ONLY">
+                      Anyone on the roster
+                    </SelectItem>
+                    <SelectItem value="ACCESS_CODE">
+                      Roster plus an access code
+                    </SelectItem>
+                    <SelectItem value="MANUAL_RELEASE">
+                      I admit each student
+                    </SelectItem>
                   </SelectContent>
                 </Select>
               </div>
@@ -372,7 +420,9 @@ export function ExamEditorClient({ exam }: { exam: TutorExamDetail }) {
                   <Label>Access code</Label>
                   <Input
                     value={form.accessCode}
-                    onChange={(e) => setForm({ ...form, accessCode: e.target.value })}
+                    onChange={(e) =>
+                      setForm({ ...form, accessCode: e.target.value })
+                    }
                     placeholder="Read this out at the start"
                     className="max-w-xs"
                   />
@@ -390,13 +440,19 @@ export function ExamEditorClient({ exam }: { exam: TutorExamDetail }) {
                 <Label>When students see their score</Label>
                 <Select
                   value={form.resultsPolicy}
-                  onValueChange={(v) => setForm({ ...form, resultsPolicy: v as never })}>
+                  onValueChange={(v) =>
+                    setForm({ ...form, resultsPolicy: v as never })
+                  }>
                   <SelectTrigger>
                     <SelectValue />
                   </SelectTrigger>
                   <SelectContent>
-                    <SelectItem value="IMMEDIATE">As soon as they submit</SelectItem>
-                    <SelectItem value="AFTER_CLOSE">Once the exam closes</SelectItem>
+                    <SelectItem value="IMMEDIATE">
+                      As soon as they submit
+                    </SelectItem>
+                    <SelectItem value="AFTER_CLOSE">
+                      Once the exam closes
+                    </SelectItem>
                     <SelectItem value="MANUAL">When I release them</SelectItem>
                   </SelectContent>
                 </Select>
@@ -406,7 +462,9 @@ export function ExamEditorClient({ exam }: { exam: TutorExamDetail }) {
                 ["showCorrectAnswers", "Show correct answers with results"],
                 ["showExplanations", "Show explanations with results"],
               ].map(([key, label]) => (
-                <div key={key} className="flex items-center justify-between gap-4">
+                <div
+                  key={key}
+                  className="flex items-center justify-between gap-4">
                   <Label htmlFor={key} className="font-normal">
                     {label}
                   </Label>
