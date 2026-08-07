@@ -1,6 +1,8 @@
 # Exam Center — Feature Design & Flow
 
-**Status:** Design agreed (§7 decisions resolved) — Phase 1 not yet started
+**Status:** Phase 1 largely built — publish pipeline, attempt engine, sitting screen,
+tutor authoring and the scheduled sweep are in. Remaining: live monitor, manual
+grading queue, and results release. Phase 2 (question banks and import) not started.
 **Date:** 2026-08-06
 **Goal:** Replace third-party exam platforms with a first-party exam system where tutors schedule and run real exams, and question import is a first-class feature (not an afterthought).
 

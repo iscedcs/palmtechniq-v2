@@ -62,6 +62,9 @@ export const protectedRoutes = [
   "/student/exams/[examId]",
   "/student/exams/[examId]/sit",
   "/tutor",
+  "/tutor/exams",
+  "/tutor/exams/new",
+  "/tutor/exams/[examId]",
   "/tutor/courses",
   "/tutor/courses/create",
   "/tutor/courses/[courseId]/edit",
@@ -126,6 +129,9 @@ export const adminRoutes = [
  */
 export const tutorRoutes = [
   "/tutor",
+  "/tutor/exams",
+  "/tutor/exams/new",
+  "/tutor/exams/[examId]",
   "/tutor/courses",
   "/tutor/courses/create",
   "/tutor/courses/[courseId]/edit",

@@ -1,0 +1,477 @@
+"use client";
+
+import {
+  createQuestion,
+  createSection,
+  deleteQuestion,
+  deleteSection,
+  updateQuestion,
+  type QuestionInput,
+} from "@/actions/exam-authoring";
+import { Badge } from "@/components/ui/badge";
+import { Button } from "@/components/ui/button";
+import { Card, CardContent } from "@/components/ui/card";
+import {
+  Dialog,
+  DialogContent,
+  DialogFooter,
+  DialogHeader,
+  DialogTitle,
+} from "@/components/ui/dialog";
+import { Input } from "@/components/ui/input";
+import { Label } from "@/components/ui/label";
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select";
+import { Textarea } from "@/components/ui/textarea";
+import { Loader2, Pencil, Plus, Trash2 } from "lucide-react";
+import { useState } from "react";
+import { toast } from "sonner";
+
+type Question = {
+  id: string;
+  stem: string;
+  questionType: string;
+  options: unknown;
+  correctAnswer: unknown;
+  explanation: string | null;
+  points: number;
+};
+
+type Section = {
+  id: string;
+  title: string;
+  selectionMode: string;
+  drawCount: number | null;
+  drawBank: { id: string; title: string } | null;
+  questions: Question[];
+};
+
+const TYPE_LABELS: Record<string, string> = {
+  MULTIPLE_CHOICE: "Multiple choice",
+  TRUE_FALSE: "True / false",
+  MULTI_SELECT: "Multi-select",
+  NUMERIC: "Numeric",
+  FILL_IN_BLANK: "Fill in the blank",
+  MATCHING: "Matching",
+  SHORT_ANSWER: "Short answer",
+  ESSAY: "Essay",
+  CODE: "Code",
+};
+
+/** Types where the tutor authors a list of options. */
+const OPTION_TYPES = ["MULTIPLE_CHOICE", "MULTI_SELECT"];
+
+const EMPTY: QuestionInput = {
+  stem: "",
+  questionType: "MULTIPLE_CHOICE",
+  options: ["", ""],
+  correctAnswer: "",
+  explanation: "",
+  points: 1,
+};
+
+export function ExamQuestionsTab({
+  examId,
+  sections,
+  editable,
+}: {
+  examId: string;
+  sections: Section[];
+  editable: boolean;
+}) {
+  const [dialogOpen, setDialogOpen] = useState(false);
+  const [busy, setBusy] = useState(false);
+  const [targetSection, setTargetSection] = useState<string | null>(null);
+  const [editingId, setEditingId] = useState<string | null>(null);
+  const [draft, setDraft] = useState<QuestionInput>(EMPTY);
+
+  const openNew = (sectionId: string) => {
+    setTargetSection(sectionId);
+    setEditingId(null);
+    setDraft(EMPTY);
+    setDialogOpen(true);
+  };
+
+  const openEdit = (sectionId: string, question: Question) => {
+    setTargetSection(sectionId);
+    setEditingId(question.id);
+    setDraft({
+      stem: question.stem,
+      questionType: question.questionType,
+      options: question.options ?? ["", ""],
+      correctAnswer: question.correctAnswer ?? "",
+      explanation: question.explanation ?? "",
+      points: question.points,
+    });
+    setDialogOpen(true);
+  };
+
+  const handleAddSection = async () => {
+    setBusy(true);
+    const result = await createSection(examId, {
+      title: `Section ${String.fromCharCode(65 + sections.length)}`,
+      selectionMode: "FIXED",
+      sortOrder: sections.length,
+      drawTopics: [],
+    });
+    if ("error" in result && result.error) toast.error(result.error);
+    setBusy(false);
+  };
+
+  const handleSave = async () => {
+    if (!targetSection) return;
+    setBusy(true);
+
+    const result = editingId
+      ? await updateQuestion(editingId, draft)
+      : await createQuestion(targetSection, draft);
+
+    if ("error" in result && result.error) {
+      toast.error(result.error);
+      setBusy(false);
+      return;
+    }
+
+    toast.success(editingId ? "Question updated" : "Question added");
+    setDialogOpen(false);
+    setBusy(false);
+  };
+
+  const handleDelete = async (questionId: string) => {
+    const result = await deleteQuestion(questionId);
+    if ("error" in result && result.error) toast.error(result.error);
+    else toast.success("Question removed");
+  };
+
+  const options = Array.isArray(draft.options) ? (draft.options as string[]) : [];
+  const showOptions = OPTION_TYPES.includes(draft.questionType);
+  const isMulti = draft.questionType === "MULTI_SELECT";
+  const selected = Array.isArray(draft.correctAnswer)
+    ? (draft.correctAnswer as string[])
+    : [];
+
+  return (
+    <div className="space-y-4">
+      {sections.length === 0 && (
+        <Card>
+          <CardContent className="p-8 text-center">
+            <p className="font-medium">No sections yet</p>
+            <p className="mt-1 text-sm text-gray-400">
+              Questions live inside sections. Add one to get started.
+            </p>
+          </CardContent>
+        </Card>
+      )}
+
+      {sections.map((section) => (
+        <Card key={section.id}>
+          <CardContent className="p-5">
+            <div className="mb-4 flex flex-wrap items-center justify-between gap-2">
+              <div>
+                <h3 className="font-medium">{section.title}</h3>
+                <p className="text-xs text-gray-400">
+                  {section.selectionMode === "RANDOM_DRAW"
+                    ? `Draws ${section.drawCount ?? 0} at random from ${
+                        section.drawBank?.title ?? "a bank"
+                      }`
+                    : `${section.questions.length} question${
+                        section.questions.length === 1 ? "" : "s"
+                      } · ${section.questions.reduce((s, q) => s + q.points, 0)} points`}
+                </p>
+              </div>
+
+              {editable && (
+                <div className="flex gap-2">
+                  {section.selectionMode === "FIXED" && (
+                    <Button size="sm" variant="outline" onClick={() => openNew(section.id)}>
+                      <Plus className="mr-1 size-3.5" />
+                      Add question
+                    </Button>
+                  )}
+                  <Button
+                    size="sm"
+                    variant="ghost"
+                    onClick={async () => {
+                      const result = await deleteSection(section.id);
+                      if ("error" in result && result.error) toast.error(result.error);
+                    }}>
+                    <Trash2 className="size-3.5" />
+                  </Button>
+                </div>
+              )}
+            </div>
+
+            {section.selectionMode === "RANDOM_DRAW" ? (
+              <p className="rounded-lg border border-dashed p-4 text-sm text-gray-400">
+                Every candidate gets a different set drawn from the bank when they
+                start. The exact questions are fixed at publish.
+              </p>
+            ) : (
+              <ol className="space-y-2">
+                {section.questions.map((question, i) => (
+                  <li
+                    key={question.id}
+                    className="flex items-start justify-between gap-3 rounded-lg border p-3">
+                    <div className="min-w-0">
+                      <div className="mb-1 flex flex-wrap items-center gap-2">
+                        <span className="text-xs text-gray-400">{i + 1}.</span>
+                        <Badge variant="secondary" className="text-[10px]">
+                          {TYPE_LABELS[question.questionType] ?? question.questionType}
+                        </Badge>
+                        <span className="text-xs text-gray-400">
+                          {question.points} pt
+                        </span>
+                      </div>
+                      <p className="truncate text-sm">{question.stem}</p>
+                    </div>
+
+                    {editable && (
+                      <div className="flex shrink-0 gap-1">
+                        <Button
+                          size="sm"
+                          variant="ghost"
+                          onClick={() => openEdit(section.id, question)}>
+                          <Pencil className="size-3.5" />
+                        </Button>
+                        <Button
+                          size="sm"
+                          variant="ghost"
+                          onClick={() => handleDelete(question.id)}>
+                          <Trash2 className="size-3.5" />
+                        </Button>
+                      </div>
+                    )}
+                  </li>
+                ))}
+                {section.questions.length === 0 && (
+                  <li className="rounded-lg border border-dashed p-4 text-center text-sm text-gray-400">
+                    No questions in this section yet.
+                  </li>
+                )}
+              </ol>
+            )}
+          </CardContent>
+        </Card>
+      ))}
+
+      {editable && (
+        <Button variant="outline" onClick={handleAddSection} disabled={busy}>
+          <Plus className="mr-2 size-4" />
+          Add section
+        </Button>
+      )}
+
+      {/* Question editor */}
+      <Dialog open={dialogOpen} onOpenChange={setDialogOpen}>
+        <DialogContent className="max-h-[85vh] overflow-y-auto sm:max-w-2xl">
+          <DialogHeader>
+            <DialogTitle>{editingId ? "Edit question" : "New question"}</DialogTitle>
+          </DialogHeader>
+
+          <div className="space-y-4">
+            <div className="grid gap-4 sm:grid-cols-[1fr_120px]">
+              <div className="space-y-1.5">
+                <Label>Type</Label>
+                <Select
+                  value={draft.questionType}
+                  onValueChange={(v) =>
+                    setDraft((d) => ({
+                      ...d,
+                      questionType: v,
+                      // Reset the answer — its shape differs per type, and carrying
+                      // one over would silently produce an unmarkable question.
+                      options: OPTION_TYPES.includes(v) ? ["", ""] : null,
+                      correctAnswer: v === "MULTI_SELECT" ? [] : "",
+                    }))
+                  }>
+                  <SelectTrigger>
+                    <SelectValue />
+                  </SelectTrigger>
+                  <SelectContent>
+                    {Object.entries(TYPE_LABELS).map(([value, label]) => (
+                      <SelectItem key={value} value={value}>
+                        {label}
+                      </SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+              </div>
+
+              <div className="space-y-1.5">
+                <Label>Points</Label>
+                <Input
+                  type="number"
+                  min={0}
+                  value={draft.points}
+                  onChange={(e) =>
+                    setDraft((d) => ({ ...d, points: Number(e.target.value) }))
+                  }
+                />
+              </div>
+            </div>
+
+            <div className="space-y-1.5">
+              <Label>Question</Label>
+              <Textarea
+                value={draft.stem}
+                onChange={(e) => setDraft((d) => ({ ...d, stem: e.target.value }))}
+                placeholder="What do you want to ask?"
+              />
+            </div>
+
+            {showOptions && (
+              <div className="space-y-2">
+                <Label>Options {isMulti ? "(tick every correct one)" : "(tick the correct one)"}</Label>
+                {options.map((option, i) => (
+                  <div key={i} className="flex items-center gap-2">
+                    <input
+                      type={isMulti ? "checkbox" : "radio"}
+                      name="correct-option"
+                      checked={
+                        isMulti ? selected.includes(option) : draft.correctAnswer === option
+                      }
+                      disabled={!option.trim()}
+                      onChange={(e) =>
+                        setDraft((d) => ({
+                          ...d,
+                          correctAnswer: isMulti
+                            ? e.target.checked
+                              ? [...selected, option]
+                              : selected.filter((s) => s !== option)
+                            : option,
+                        }))
+                      }
+                    />
+                    <Input
+                      value={option}
+                      onChange={(e) => {
+                        const next = [...options];
+                        const old = next[i];
+                        next[i] = e.target.value;
+                        setDraft((d) => ({
+                          ...d,
+                          options: next,
+                          // Keep the answer pointing at the renamed option.
+                          correctAnswer: isMulti
+                            ? selected.map((s) => (s === old ? e.target.value : s))
+                            : d.correctAnswer === old
+                              ? e.target.value
+                              : d.correctAnswer,
+                        }));
+                      }}
+                      placeholder={`Option ${i + 1}`}
+                    />
+                    {options.length > 2 && (
+                      <Button
+                        size="sm"
+                        variant="ghost"
+                        onClick={() =>
+                          setDraft((d) => ({
+                            ...d,
+                            options: options.filter((_, j) => j !== i),
+                          }))
+                        }>
+                        <Trash2 className="size-3.5" />
+                      </Button>
+                    )}
+                  </div>
+                ))}
+                <Button
+                  size="sm"
+                  variant="outline"
+                  onClick={() =>
+                    setDraft((d) => ({ ...d, options: [...options, ""] }))
+                  }>
+                  <Plus className="mr-1 size-3.5" />
+                  Add option
+                </Button>
+              </div>
+            )}
+
+            {draft.questionType === "TRUE_FALSE" && (
+              <div className="space-y-1.5">
+                <Label>Correct answer</Label>
+                <Select
+                  value={String(draft.correctAnswer)}
+                  onValueChange={(v) =>
+                    setDraft((d) => ({ ...d, correctAnswer: v === "true" }))
+                  }>
+                  <SelectTrigger className="max-w-xs">
+                    <SelectValue placeholder="Choose" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="true">True</SelectItem>
+                    <SelectItem value="false">False</SelectItem>
+                  </SelectContent>
+                </Select>
+              </div>
+            )}
+
+            {(draft.questionType === "NUMERIC" ||
+              draft.questionType === "FILL_IN_BLANK") && (
+              <div className="space-y-1.5">
+                <Label>
+                  {draft.questionType === "NUMERIC"
+                    ? "Correct value"
+                    : "Accepted answers (comma separated)"}
+                </Label>
+                <Input
+                  value={
+                    Array.isArray(draft.correctAnswer)
+                      ? (draft.correctAnswer as string[]).join(", ")
+                      : String(draft.correctAnswer ?? "")
+                  }
+                  onChange={(e) =>
+                    setDraft((d) => ({
+                      ...d,
+                      correctAnswer:
+                        d.questionType === "NUMERIC"
+                          ? Number(e.target.value)
+                          : e.target.value.split(",").map((s) => s.trim()),
+                    }))
+                  }
+                  placeholder={
+                    draft.questionType === "NUMERIC" ? "e.g. 443" : "e.g. network, layer 3"
+                  }
+                />
+              </div>
+            )}
+
+            {["ESSAY", "CODE", "SHORT_ANSWER"].includes(draft.questionType) && (
+              <p className="rounded-lg border border-dashed p-3 text-sm text-gray-400">
+                This type is marked by hand. It will appear in your grading queue
+                after the exam.
+              </p>
+            )}
+
+            <div className="space-y-1.5">
+              <Label>Explanation (optional)</Label>
+              <Textarea
+                value={draft.explanation ?? ""}
+                onChange={(e) =>
+                  setDraft((d) => ({ ...d, explanation: e.target.value }))
+                }
+                placeholder="Shown to students after results, if you enable it."
+              />
+            </div>
+          </div>
+
+          <DialogFooter>
+            <Button variant="outline" onClick={() => setDialogOpen(false)} disabled={busy}>
+              Cancel
+            </Button>
+            <Button onClick={handleSave} disabled={busy || !draft.stem.trim()}>
+              {busy && <Loader2 className="mr-2 size-4 animate-spin" />}
+              {editingId ? "Save changes" : "Add question"}
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+    </div>
+  );
+}
