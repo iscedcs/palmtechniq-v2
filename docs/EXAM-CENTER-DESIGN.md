@@ -1,8 +1,8 @@
 # Exam Center — Feature Design & Flow
 
-**Status:** Phase 1 largely built — publish pipeline, attempt engine, sitting screen,
-tutor authoring and the scheduled sweep are in. Remaining: live monitor, manual
-grading queue, and results release. Phase 2 (question banks and import) not started.
+**Status:** Phases 1 and 2 built and in real use. Publish, attempt engine, sitting
+screen, tutor authoring, live monitor, grading and release, notifications, question
+banks and import are all in. See §8 for what is still open.
 **Date:** 2026-08-06
 **Goal:** Replace third-party exam platforms with a first-party exam system where tutors schedule and run real exams, and question import is a first-class feature (not an afterthought).
 
@@ -194,3 +194,50 @@ Issuing is idempotent on `(userId, courseId)`, and a later score override that d
 ### 7.5 Still open
 
 **Late / missed exams.** Proposed default, to confirm during Phase 1: the window hard-closes and in-progress attempts auto-submit at `closesAt`; a student who never started is marked `MISSED`; the tutor can grant an individual makeup window per candidate (this reuses the accommodations mechanism, so it costs almost nothing to support).
+
+---
+
+## 8. Still open
+
+Written down at the point Phases 1 and 2 went into real use, so the next session
+does not have to rediscover it.
+
+### Known gaps
+
+- **`NEXT_PUBLIC_URL` is `http://localhost:2026`.** Every link in every exam
+  email points at localhost. This bites the moment mail is working in a real
+  environment.
+- **Email delivery is not recorded.** `notifiedAt` means the in-app notice was
+  created; whether the email sent is reported at publish time and then forgotten.
+  A per-candidate delivery state, or at least a persisted last-error, would make
+  "did my students get the email?" answerable after the fact.
+- **No notification** for: extra time granted, force-submitted, or marked MISSED.
+  Scheduled, reminder, results and retry are covered.
+- **Certificates require a course.** `Certificate.courseId` is non-null, so a
+  cohort, bootcamp or ad-hoc final cannot issue one. Release says so plainly
+  rather than failing. Fixing it means a nullable `courseId` plus some other
+  scope, which is a schema decision nobody has taken.
+- **Import formats.** CSV, GIFT, Aiken and plain paste are in. DOCX, QTI 2.1 and
+  AI-assisted extraction are not. XLSX was skipped deliberately — SheetJS has a
+  history of advisories and this repo already spends effort clearing Trivy
+  findings; Excel saves CSV in two clicks.
+- **No bulk image attachment** on bank questions.
+- **The sweep depends on GitHub Actions cron**, which routinely runs late. Fine
+  for a backstop, and every pass is idempotent, but nothing time-critical should
+  be built on it.
+
+### What experience has taught about this feature
+
+Every bug that reached a real exam came from a real tutor file or a real tutor
+click, never from the verification suites:
+
+- a `deviceLockToken` unique constraint that looked like a safety net, enforced
+  nothing, and broke the retry flow
+- `"True/False"` failing to parse, and — worse — previewing as VALID because the
+  validator never checked the type existed
+- a `Quick_Answer` column holding every answer that the parser did not recognise
+- a draw count defaulting to 1, while the UI advertised "100 questions"
+
+The suites test the shapes that were imagined. Before widening use, point more
+real exports and more real tutors at it, and treat anything they hit as a missing
+test case first and a bug second.
