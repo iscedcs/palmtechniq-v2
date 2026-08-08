@@ -220,6 +220,44 @@ function verifyParsers() {
     JSON.stringify(labels.rows[4].errors),
   );
 
+  console.log("\nA real master paper");
+  // Shaped exactly like a tutor's exported answer key: a terse marking column
+  // next to a prose one, answers given as letters, T/F as a single letter.
+  const master = previewImport(
+    [
+      "Question_Number,Section,Question_Type,Question_Text,Option_A,Option_B,Option_C,Option_D,Quick_Answer,Detailed_Answer,Explanation",
+      '1,"Section A — OWASP","Multiple Choice","Which covers SQL Injection?","A01: Broken Access Control","A02: Cryptographic Failures","A03: Injection","A05: Misconfiguration",C,"C — A03: Injection","A03 covers all injection types."',
+      '2,"Section A — OWASP","True/False","MD5 unsalted is a crypto failure.",True,False,,,T,TRUE,"Trivially reversible."',
+      '3,"Section F — Reporting","Short Answer / Scenario","Write a finding entry.",,,,,,,"Marked by hand."',
+    ].join("\n"),
+    "csv",
+  );
+  check("every row of a master paper parses", master.validRows === 3, JSON.stringify(master.rows.map((r) => r.errors)));
+  check(
+    "a letter answer resolves to the option it points at",
+    master.rows[0].question.correctAnswer === "A03: Injection",
+    String(master.rows[0].question.correctAnswer),
+  );
+  check(
+    'a "T" resolves to boolean true',
+    master.rows[1].question.correctAnswer === true,
+    String(master.rows[1].question.correctAnswer),
+  );
+  check(
+    "the prose answer column is not mistaken for the answer",
+    master.rows[0].question.correctAnswer !== "C — A03: Injection",
+  );
+  check(
+    "explanations come through",
+    String(master.rows[0].question.explanation ?? "").includes("A03 covers"),
+    String(master.rows[0].question.explanation),
+  );
+  check(
+    "a hand-marked question needs no answer",
+    master.rows[2].valid && master.rows[2].question.questionType === "SHORT_ANSWER",
+    JSON.stringify(master.rows[2].errors),
+  );
+
   console.log("\nSection becomes a topic");
   const sectioned = previewImport(
     [

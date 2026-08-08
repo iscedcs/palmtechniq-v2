@@ -217,6 +217,16 @@ const HEADER_ALIASES: Record<string, string> = {
   correctanswer: "correct",
   answer: "correct",
   key: "correct",
+  // Names seen on real tutor exports. A master paper often carries both a terse
+  // marking column ("C", "T") and a prose one ("C — A03: Injection"); the terse
+  // one is the machine-readable answer, so only that is mapped. The prose column
+  // is left alone rather than mangled into a correct answer that matches nothing.
+  quickanswer: "correct",
+  answerkey: "correct",
+  correctoption: "correct",
+  ans: "correct",
+  solution: "correct",
+  markingkey: "correct",
   explanation: "explanation",
   rationale: "explanation",
   feedback: "explanation",

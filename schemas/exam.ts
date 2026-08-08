@@ -163,14 +163,21 @@ export const examSectionSchema = z
     drawTopics: z.array(z.string().trim().min(1)).default([]),
     drawPoints: z.number().min(0).max(1000).optional().nullable(),
   })
-  .refine((v) => v.selectionMode !== "RANDOM_DRAW" || !!v.drawBankId, {
-    message: "Choose the bank to draw from",
-    path: ["drawBankId"],
-  })
-  .refine((v) => v.selectionMode !== "RANDOM_DRAW" || !!v.drawCount, {
-    message: "Set how many questions to draw",
+  .refine((v) => v.drawCount == null || v.drawCount > 0, {
+    message: "Draw at least one question",
     path: ["drawCount"],
   });
+
+/*
+ * Note there is deliberately NO rule here requiring a bank or a count when
+ * selectionMode is RANDOM_DRAW.
+ *
+ * A tutor switches a section to "draw from a bank" BEFORE choosing the bank —
+ * that is the natural order — and rejecting the switch left them with an error
+ * toast and nowhere to go. An incomplete draw is a valid draft state; it is
+ * `validateExamForPublish` that refuses to publish one, which is the point at
+ * which it actually matters.
+ */
 
 export type ExamScopeInput = z.infer<typeof examScopeSchema>;
 export type CreateExamInput = z.infer<typeof createExamSchema>;

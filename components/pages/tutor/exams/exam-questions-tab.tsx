@@ -30,7 +30,7 @@ import {
 } from "@/components/ui/select";
 import { Textarea } from "@/components/ui/textarea";
 import { cn } from "@/lib/utils";
-import { Loader2, Pencil, Plus, Trash2 } from "lucide-react";
+import { Library, Loader2, Pencil, Plus, Trash2 } from "lucide-react";
 import { useRouter } from "next/navigation";
 import { useState } from "react";
 import { toast } from "sonner";
@@ -122,6 +122,7 @@ export function ExamQuestionsTab({
   };
 
   const [dialogOpen, setDialogOpen] = useState(false);
+  const [noBanksOpen, setNoBanksOpen] = useState(false);
   const [busy, setBusy] = useState(false);
   const [targetSection, setTargetSection] = useState<string | null>(null);
   const [editingId, setEditingId] = useState<string | null>(null);
@@ -226,9 +227,16 @@ export function ExamQuestionsTab({
                 <div className="flex gap-2">
                   <Select
                     value={section.selectionMode}
-                    onValueChange={(v) =>
-                      void saveDraw(section, { selectionMode: v })
-                    }>
+                    onValueChange={(v) => {
+                      // Switching to a draw with no banks anywhere used to fail
+                      // schema validation and leave a toast with no way forward.
+                      // Explain it instead, and offer the door.
+                      if (v === "RANDOM_DRAW" && banks.length === 0) {
+                        setNoBanksOpen(true);
+                        return;
+                      }
+                      void saveDraw(section, { selectionMode: v });
+                    }}>
                     <SelectTrigger className="h-8 w-36 text-xs">
                       <SelectValue />
                     </SelectTrigger>
@@ -258,10 +266,30 @@ export function ExamQuestionsTab({
 
             {section.selectionMode === "RANDOM_DRAW" ? (
               <div className="space-y-3">
-                <p className="rounded-lg border border-dashed p-4 text-sm text-gray-400">
-                  Every candidate gets a different set drawn from the bank when they
-                  start. The exact pool is frozen at publish.
-                </p>
+                {!section.drawBank ? (
+                  // Not an error — an expected step. Say what to do next.
+                  <div className="rounded-lg border border-dashed border-primary/40 bg-primary/5 p-4">
+                    <p className="text-sm font-medium">Pick a bank to draw from</p>
+                    <p className="mt-1 text-sm text-gray-400">
+                      Choose one below and set how many questions each candidate
+                      should get. Everyone sits a different selection, cut from the
+                      same material.
+                    </p>
+                    <Button
+                      size="sm"
+                      variant="outline"
+                      className="mt-3"
+                      onClick={() => router.push("/tutor/question-banks")}>
+                      <Library className="mr-1.5 size-3.5" />
+                      Manage question banks
+                    </Button>
+                  </div>
+                ) : (
+                  <p className="rounded-lg border border-dashed p-4 text-sm text-gray-400">
+                    Every candidate gets a different set drawn from the bank when they
+                    start. The exact pool is frozen at publish.
+                  </p>
+                )}
 
                 {editable && (
                   <div className="grid gap-3 sm:grid-cols-[1fr_110px_130px]">
@@ -277,13 +305,19 @@ export function ExamQuestionsTab({
                         </SelectTrigger>
                         <SelectContent>
                           {banks.length === 0 ? (
-                            <div className="p-2 text-xs text-gray-400">
-                              No banks yet — create one first.
-                            </div>
+                            <button
+                              type="button"
+                              className="w-full p-2 text-left text-xs text-primary hover:underline"
+                              onClick={() => router.push("/tutor/question-banks")}>
+                              No banks yet — create one →
+                            </button>
                           ) : (
                             banks.map((b) => (
                               <SelectItem key={b.id} value={b.id}>
-                                {b.title} ({b.questionCount})
+                                {b.title}{" "}
+                                {b.questionCount === 0
+                                  ? "(empty)"
+                                  : `(${b.questionCount})`}
                               </SelectItem>
                             ))
                           )}
@@ -398,6 +432,46 @@ export function ExamQuestionsTab({
           Add section
         </Button>
       )}
+
+      {/* No banks yet — explain, and offer the way there. */}
+      <Dialog open={noBanksOpen} onOpenChange={setNoBanksOpen}>
+        <DialogContent className="sm:max-w-md">
+          <DialogHeader>
+            <DialogTitle>You do not have a question bank yet</DialogTitle>
+          </DialogHeader>
+
+          <div className="space-y-3 text-sm">
+            <p className="text-gray-400">
+              Drawing at random needs a bank to draw from — a reusable pool of
+              questions that any exam can pull from.
+            </p>
+            <div className="rounded-lg border p-3">
+              <p className="mb-1 font-medium">Why bother?</p>
+              <ul className="list-inside list-disc space-y-1 text-gray-400">
+                <li>Import your questions once, use them in every exam</li>
+                <li>Every candidate sits a different paper, cut from the same pool</li>
+                <li>
+                  Bring in a CSV, a Moodle GIFT or Aiken export, or just paste a list
+                </li>
+              </ul>
+            </div>
+            <p className="text-gray-400">
+              Create one, put some questions in it, then come back and this section
+              can draw from it.
+            </p>
+          </div>
+
+          <DialogFooter>
+            <Button variant="outline" onClick={() => setNoBanksOpen(false)}>
+              Keep fixed questions
+            </Button>
+            <Button onClick={() => router.push("/tutor/question-banks")}>
+              <Library className="mr-2 size-4" />
+              Create a question bank
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
 
       {/* Question editor */}
       <Dialog open={dialogOpen} onOpenChange={setDialogOpen}>

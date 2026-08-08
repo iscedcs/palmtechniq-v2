@@ -204,6 +204,33 @@ async function main() {
     );
     await db.exam.update({ where: { id: exam.id }, data: { durationMinutes: 60 } });
 
+    // A draw with no bank chosen is a legal DRAFT state — the section schema
+    // deliberately permits it, because a tutor switches a section to "draw from
+    // a bank" before picking the bank. Publish is therefore the only thing
+    // standing between an incomplete draw and a live exam, so it has to hold.
+    await db.examSection.update({
+      where: { id: drawSection.id },
+      data: { drawBankId: null },
+    });
+    const noBank = await validateExamForPublish(exam.id, db);
+    check(
+      "a draw with no bank chosen blocks publish",
+      !noBank.ok && noBank.problems.some((p) => /no bank or count/i.test(p.message)),
+      JSON.stringify(noBank.problems),
+    );
+
+    const stillDraft = await db.exam.findUniqueOrThrow({ where: { id: exam.id } });
+    check(
+      "and the exam is left as a draft",
+      stillDraft.status === "DRAFT",
+      stillDraft.status,
+    );
+
+    await db.examSection.update({
+      where: { id: drawSection.id },
+      data: { drawBankId: bank.id },
+    });
+
     const ready = await validateExamForPublish(exam.id, db);
     check("a complete exam validates", ready.ok, JSON.stringify(ready.problems));
 
