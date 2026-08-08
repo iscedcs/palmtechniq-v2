@@ -474,6 +474,48 @@ async function main() {
       sweptAgain.submitted === 0,
       JSON.stringify(sweptAgain),
     );
+
+    // ─── Retry from the same browser ─────────────────────────────────────────
+    // Every case above sits a FIRST attempt. That gap let a global unique
+    // constraint on deviceLockToken reach production: the client reuses one
+    // token per exam, so a second attempt collided with the first and a granted
+    // retry threw a raw Prisma error at the student.
+    console.log("\nRetry from the same device");
+
+    const retryCandidate = await db.examCandidate.findFirstOrThrow({
+      where: { examId: exam.id, userId: student.id },
+    });
+    await db.examCandidate.update({
+      where: { id: retryCandidate.id },
+      data: {
+        extraAttempts: retryCandidate.extraAttempts + 1,
+        status: "INVITED",
+        windowOpensAt: new Date(),
+        windowClosesAt: new Date(Date.now() + 24 * 60 * 60_000),
+      },
+    });
+
+    // Deliberately the SAME token the first attempt used.
+    const retryStart = await startAttempt(
+      exam.id,
+      student.id,
+      { deviceToken: "device-A" },
+      db,
+    );
+    check(
+      "a granted retry starts from the same browser session",
+      retryStart.ok,
+      retryStart.ok ? "" : `${retryStart.error} / ${retryStart.code}`,
+    );
+    if (retryStart.ok) {
+      check("the retry is a genuinely new attempt", retryStart.attemptId !== attemptId);
+      check("and it is not flagged as a resume", retryStart.resumed === false);
+
+      const both = await db.examAttempt.count({
+        where: { examId: exam.id, userId: student.id, isPractice: false },
+      });
+      check("both attempts coexist", both === 2, `got ${both}`);
+    }
   } finally {
     await db.examEvent.deleteMany({ where: { exam: { tutorId: tutor.id } } });
     await db.exam.deleteMany({ where: { tutorId: tutor.id } });
