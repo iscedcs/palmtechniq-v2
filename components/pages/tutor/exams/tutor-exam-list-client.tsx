@@ -3,6 +3,7 @@
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
+import { cn } from "@/lib/utils";
 import { CalendarClock, FilePlus2, Users } from "lucide-react";
 import Link from "next/link";
 
@@ -16,6 +17,8 @@ type ExamRow = {
   totalPoints: number;
   candidateCount: number;
   questionCount: number;
+  questionsPerCandidate: number;
+  hasDraw: boolean;
   attemptCount: number;
 };
 
@@ -93,9 +96,16 @@ export function TutorExamListClient({ exams }: { exams: ExamRow[] }) {
                       {exam.candidateCount} candidate
                       {exam.candidateCount === 1 ? "" : "s"}
                     </span>
-                    <span>
-                      {exam.questionCount} question
-                      {exam.questionCount === 1 ? "" : "s"}
+                    {/* Per candidate, not the pool — see questionsPerCandidate. */}
+                    <span
+                      className={cn(
+                        exam.questionsPerCandidate === 0 && "text-amber-500",
+                      )}>
+                      {exam.questionsPerCandidate} question
+                      {exam.questionsPerCandidate === 1 ? "" : "s"} each
+                      {exam.hasDraw && exam.questionCount > exam.questionsPerCandidate
+                        ? ` (drawn from ${exam.questionCount})`
+                        : ""}
                     </span>
                     {exam.attemptCount > 0 && (
                       <span>{exam.attemptCount} sat</span>

@@ -212,11 +212,19 @@ export function ExamQuestionsTab({
             <div className="mb-4 flex flex-wrap items-center justify-between gap-2">
               <div>
                 <h3 className="font-medium">{section.title}</h3>
-                <p className="text-xs text-gray-400">
+                <p
+                  className={cn(
+                    "text-xs",
+                    section.selectionMode === "RANDOM_DRAW" && !section.drawCount
+                      ? "text-amber-500"
+                      : "text-gray-400",
+                  )}>
                   {section.selectionMode === "RANDOM_DRAW"
-                    ? `Draws ${section.drawCount ?? 0} at random from ${
-                        section.drawBank?.title ?? "a bank"
-                      }`
+                    ? section.drawCount
+                      ? `Each candidate answers ${section.drawCount}, drawn at random from ${
+                          section.drawBank?.title ?? "a bank"
+                        }`
+                      : "Set how many questions each candidate should answer"
                     : `${section.questions.length} question${
                         section.questions.length === 1 ? "" : "s"
                       } · ${section.questions.reduce((s, q) => s + q.points, 0)} points`}
@@ -326,14 +334,30 @@ export function ExamQuestionsTab({
                     </div>
 
                     <div className="space-y-1.5">
-                      <Label className="text-xs">How many</Label>
+                      <Label className="text-xs">
+                        How many{" "}
+                        <span className="text-gray-400">
+                          {section.drawBank ? `of ${poolFor(section)}` : ""}
+                        </span>
+                      </Label>
+                      {/*
+                        No default. This used to show "1" before the tutor had
+                        chosen, and a blur saved it — producing a 100-question
+                        pool that handed each candidate a single question.
+                        Empty forces a deliberate number, and publish blocks
+                        until there is one.
+                      */}
                       <Input
                         type="number"
                         min={1}
-                        defaultValue={section.drawCount ?? 1}
-                        onBlur={(e) =>
-                          void saveDraw(section, { drawCount: Number(e.target.value) })
-                        }
+                        placeholder="e.g. 20"
+                        defaultValue={section.drawCount ?? ""}
+                        onBlur={(e) => {
+                          const v = e.target.value.trim();
+                          void saveDraw(section, {
+                            drawCount: v === "" ? null : Number(v),
+                          });
+                        }}
                       />
                     </div>
 

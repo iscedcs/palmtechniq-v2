@@ -19,6 +19,7 @@ import { Switch } from "@/components/ui/switch";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Textarea } from "@/components/ui/textarea";
 import type { TutorExamDetail } from "@/data/tutor-exam";
+import { cn } from "@/lib/utils";
 import {
   AlertCircle,
   CheckCircle2,
@@ -33,6 +34,97 @@ import { useState } from "react";
 import { toast } from "sonner";
 import { ExamQuestionsTab } from "./exam-questions-tab";
 import { ExamRosterTab } from "./exam-roster-tab";
+
+function formatSpan(minutes: number): string {
+  const h = Math.floor(minutes / 60);
+  const m = Math.round(minutes % 60);
+  if (h === 0) return `${m}m`;
+  return m === 0 ? `${h}h` : `${h}h ${m}m`;
+}
+
+/**
+ * Live feedback on whether the duration fits inside the window.
+ *
+ * The publish checklist already refused a duration longer than its window, but
+ * only at publish, and only as a sentence. A tutor transcribing "2 hours" from a
+ * paper has no reason to think about the window at all — so state both numbers
+ * as they type, and offer the fix rather than just the complaint.
+ */
+function ScheduleFit({
+  opensAt,
+  closesAt,
+  durationMinutes,
+  editable,
+  onExtendWindow,
+}: {
+  opensAt: string;
+  closesAt: string;
+  durationMinutes: number;
+  editable: boolean;
+  onExtendWindow: (closesAt: string) => void;
+}) {
+  if (!opensAt || !closesAt || !durationMinutes) {
+    return (
+      <p className="text-xs text-gray-400">
+        The window must be at least as long as the duration.
+      </p>
+    );
+  }
+
+  const opens = new Date(opensAt);
+  const closes = new Date(closesAt);
+  const windowMinutes = (closes.getTime() - opens.getTime()) / 60_000;
+
+  if (!Number.isFinite(windowMinutes)) return null;
+
+  if (windowMinutes <= 0) {
+    return (
+      <p className="text-xs text-destructive">
+        The exam closes before it opens.
+      </p>
+    );
+  }
+
+  const fits = durationMinutes <= windowMinutes;
+
+  if (fits) {
+    return (
+      <p className="text-xs text-gray-400">
+        Window is {formatSpan(windowMinutes)} — a {formatSpan(durationMinutes)} paper
+        fits, and candidates can start up to{" "}
+        {formatSpan(windowMinutes - durationMinutes)} late and still get full time.
+      </p>
+    );
+  }
+
+  // Extend the close time to exactly fit the duration.
+  const suggested = new Date(opens.getTime() + durationMinutes * 60_000);
+  const pad = (n: number) => String(n).padStart(2, "0");
+  const suggestedValue = `${suggested.getFullYear()}-${pad(suggested.getMonth() + 1)}-${pad(
+    suggested.getDate(),
+  )}T${pad(suggested.getHours())}:${pad(suggested.getMinutes())}`;
+
+  return (
+    <div className="space-y-1.5 rounded-lg border border-amber-500/40 bg-amber-500/5 p-2.5">
+      <p className="text-xs text-amber-500">
+        This is a {formatSpan(durationMinutes)} paper but the window is only{" "}
+        {formatSpan(windowMinutes)} — {formatSpan(durationMinutes - windowMinutes)}{" "}
+        short.
+      </p>
+      {editable && (
+        <Button
+          type="button"
+          size="sm"
+          variant="outline"
+          className="h-7 text-xs"
+          onClick={() => onExtendWindow(suggestedValue)}>
+          Close at {suggested.toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" })}{" "}
+          instead
+        </Button>
+      )}
+    </div>
+  );
+}
 
 /** Datetime-local wants "YYYY-MM-DDTHH:mm" in local time, not an ISO string. */
 function toLocalInput(date: Date | null): string {
@@ -154,6 +246,27 @@ export function ExamEditorClient({
     router.refresh();
   };
 
+  /**
+   * What one candidate sits, mirroring drawPaper: fixed sections contribute
+   * every question, drawing sections contribute their draw count.
+   */
+  const perCandidate = exam.sections.reduce(
+    (acc, s) => {
+      if (s.selectionMode === "RANDOM_DRAW") {
+        const n = s.drawCount ?? 0;
+        acc.questions += n;
+        acc.points += n * (s.drawPoints ?? 1);
+        acc.pooled += s.questions.length;
+      } else {
+        acc.questions += s.questions.length;
+        acc.points += s.questions.reduce((p, q) => p + q.points, 0);
+        acc.pooled += s.questions.length;
+      }
+      return acc;
+    },
+    { questions: 0, points: 0, pooled: 0 },
+  );
+
   const scopeLabel =
     exam.course?.title ??
     exam.cohort?.displayName ??
@@ -171,6 +284,23 @@ export function ExamEditorClient({
             </Badge>
           </div>
           <p className="text-sm text-gray-400">{scopeLabel}</p>
+          {/*
+            The number that actually matters, stated plainly. A drawing section
+            can pool 100 questions and give each candidate 1; the tutor needs to
+            see the 1 before they publish, not after a student sits it.
+          */}
+          <p
+            className={cn(
+              "text-sm",
+              perCandidate.questions === 0 ? "text-amber-500" : "text-gray-400",
+            )}>
+            Each candidate answers <b>{perCandidate.questions}</b> question
+            {perCandidate.questions === 1 ? "" : "s"}
+            {perCandidate.pooled > perCandidate.questions
+              ? `, drawn from a pool of ${perCandidate.pooled}`
+              : ""}
+            {perCandidate.questions > 0 && ` · ${perCandidate.points} marks`}
+          </p>
         </div>
 
         <div className="flex gap-2">
@@ -339,9 +469,13 @@ export function ExamEditorClient({
                     })
                   }
                 />
-                <p className="text-xs text-gray-400">
-                  Must fit inside the window above.
-                </p>
+                <ScheduleFit
+                  opensAt={form.opensAt}
+                  closesAt={form.closesAt}
+                  durationMinutes={form.durationMinutes}
+                  editable={isDraft}
+                  onExtendWindow={(closes) => setForm({ ...form, closesAt: closes })}
+                />
               </div>
               <div className="space-y-1.5">
                 <Label>Attempts allowed</Label>

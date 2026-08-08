@@ -27,6 +27,13 @@ export async function getTutorExams() {
       course: { select: { title: true } },
       cohort: { select: { displayName: true } },
       track: { select: { name: true } },
+      sections: {
+        select: {
+          selectionMode: true,
+          drawCount: true,
+          _count: { select: { questions: true } },
+        },
+      },
       _count: { select: { candidates: true, questions: true, attempts: true } },
     },
   });
@@ -36,6 +43,24 @@ export async function getTutorExams() {
     title: exam.title,
     status: exam.status,
     scopeType: exam.scopeType,
+    /**
+     * What ONE CANDIDATE actually answers.
+     *
+     * Distinct from the snapshot count, and the distinction matters: a drawing
+     * section may pool 100 questions and hand each candidate 1. Showing the pool
+     * size as "100 questions" told a tutor their students would sit 100, and
+     * they sat one.
+     */
+    questionsPerCandidate: exam.sections.reduce(
+      (n, s) =>
+        n +
+        (s.selectionMode === "RANDOM_DRAW"
+          ? (s.drawCount ?? 0)
+          : s._count.questions),
+      0,
+    ),
+    /** True when any section draws, so the UI can explain the pool. */
+    hasDraw: exam.sections.some((s) => s.selectionMode === "RANDOM_DRAW"),
     scopeLabel:
       exam.course?.title ??
       exam.cohort?.displayName ??
