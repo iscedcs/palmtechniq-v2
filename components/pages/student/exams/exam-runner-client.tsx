@@ -16,7 +16,7 @@ import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
 import { Progress } from "@/components/ui/progress";
 import { cn } from "@/lib/utils";
-import { Flag, Loader2, WifiOff } from "lucide-react";
+import { Bookmark, Loader2, WifiOff } from "lucide-react";
 import { useRouter } from "next/navigation";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { toast } from "sonner";
@@ -305,8 +305,8 @@ export function ExamRunnerClient({
                       size="sm"
                       onClick={() => toggleFlag(question.id)}
                       aria-pressed={flagged.has(question.id)}>
-                      <Flag className="mr-1 size-3.5" />
-                      {flagged.has(question.id) ? "Flagged" : "Flag"}
+                      <Bookmark className="mr-1 size-3.5" />
+                      {flagged.has(question.id) ? "Marked" : "Mark for review"}
                     </Button>
                   </div>
 
@@ -378,7 +378,7 @@ export function ExamRunnerClient({
                       type="button"
                       onClick={() => goTo(i)}
                       aria-label={`Question ${i + 1}${done ? ", answered" : ""}${
-                        flagged.has(q.id) ? ", flagged" : ""
+                        flagged.has(q.id) ? ", marked for review" : ""
                       }`}
                       aria-current={i === index}
                       className={cn(
@@ -392,7 +392,7 @@ export function ExamRunnerClient({
                       )}>
                       {i + 1}
                       {flagged.has(q.id) && (
-                        <Flag className="absolute -right-0.5 -top-0.5 size-2.5 fill-amber-500 text-amber-500" />
+                        <Bookmark className="absolute -right-0.5 -top-0.5 size-2.5 fill-amber-500 text-amber-500" />
                       )}
                     </button>
                   );
@@ -405,8 +405,8 @@ export function ExamRunnerClient({
                   <span>{answeredCount} answered</span>
                 </div>
                 <div className="flex items-center gap-2">
-                  <Flag className="size-3 fill-amber-500 text-amber-500" />
-                  <span>{flagged.size} flagged</span>
+                  <Bookmark className="size-3 fill-amber-500 text-amber-500" />
+                  <span>{flagged.size} marked for review</span>
                 </div>
                 <div className="flex items-center gap-2">
                   <span className="size-3 rounded-sm border bg-background" />
