@@ -2365,8 +2365,15 @@ model ExamAttempt {
   // The frozen paper: ordered ExamQuestion ids drawn for this candidate.
   questionOrder String[]
 
-  // Enforces one active attempt per candidate; a second device is refused and logged.
-  deviceLockToken String? @unique
+  // Identifies the browser session sitting this attempt, so a reconnect can be
+  // told apart from a second device (see startAttempt's resume path).
+  //
+  // NOT unique. It was, and that was wrong: the client keeps one token per exam
+  // in sessionStorage and reuses it, so a legitimate second attempt — a granted
+  // retry — collided with the first attempt's token. One-active-attempt is
+  // enforced by the resume path plus the [examId, userId, attemptNumber] unique
+  // below, which is what actually catches a race.
+  deviceLockToken String?
 
   ipAddress String?
   userAgent String?

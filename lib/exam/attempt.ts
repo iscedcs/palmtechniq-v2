@@ -355,6 +355,20 @@ export async function startAttempt(
           questionCount: existing.questionOrder.length,
         };
       }
+
+      // A unique violation with no running attempt to hand back is a bug, not a
+      // race. Say which constraint, so it does not surface as a raw Prisma error
+      // to someone trying to sit an exam.
+      const target = (error.meta as { target?: string[] } | undefined)?.target;
+      console.error(
+        "[exam] attempt creation hit an unexpected unique constraint:",
+        target ?? error.message,
+      );
+      return {
+        ok: false,
+        error: "Could not start this attempt. Please tell your tutor.",
+        code: "CREATE_CONFLICT",
+      };
     }
     throw error;
   }
