@@ -44,7 +44,15 @@ function toLocalInput(date: Date | null): string {
   )}:${pad(d.getMinutes())}`;
 }
 
-export function ExamEditorClient({ exam }: { exam: TutorExamDetail }) {
+export function ExamEditorClient({
+  exam,
+  banks = [],
+  poolCounts = {},
+}: {
+  exam: TutorExamDetail;
+  banks?: { id: string; title: string; questionCount: number }[];
+  poolCounts?: Record<string, number>;
+}) {
   const router = useRouter();
 
   const isDraft = exam.status === "DRAFT";
@@ -250,6 +258,8 @@ export function ExamEditorClient({ exam }: { exam: TutorExamDetail }) {
             examId={exam.id}
             sections={exam.sections}
             editable={isDraft}
+            banks={banks}
+            poolCounts={poolCounts}
           />
         </TabsContent>
 

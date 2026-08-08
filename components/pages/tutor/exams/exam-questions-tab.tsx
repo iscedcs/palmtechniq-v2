@@ -6,6 +6,7 @@ import {
   deleteQuestion,
   deleteSection,
   updateQuestion,
+  updateSection,
   type QuestionInput,
 } from "@/actions/exam-authoring";
 import { Badge } from "@/components/ui/badge";
@@ -28,7 +29,9 @@ import {
   SelectValue,
 } from "@/components/ui/select";
 import { Textarea } from "@/components/ui/textarea";
+import { cn } from "@/lib/utils";
 import { Loader2, Pencil, Plus, Trash2 } from "lucide-react";
+import { useRouter } from "next/navigation";
 import { useState } from "react";
 import { toast } from "sonner";
 
@@ -47,9 +50,16 @@ type Section = {
   title: string;
   selectionMode: string;
   drawCount: number | null;
+  drawDifficulty: string | null;
+  drawTopics: string[];
+  drawPoints: number | null;
+  instructions: string | null;
+  timeLimitMinutes: number | null;
   drawBank: { id: string; title: string } | null;
   questions: Question[];
 };
+
+export type BankOption = { id: string; title: string; questionCount: number };
 
 const TYPE_LABELS: Record<string, string> = {
   MULTIPLE_CHOICE: "Multiple choice",
@@ -79,11 +89,38 @@ export function ExamQuestionsTab({
   examId,
   sections,
   editable,
+  banks = [],
+  poolCounts = {},
 }: {
   examId: string;
   sections: Section[];
   editable: boolean;
+  banks?: BankOption[];
+  /** sectionId -> how many bank questions currently match its draw filters. */
+  poolCounts?: Record<string, number>;
 }) {
+  const router = useRouter();
+  const poolFor = (section: Section) => poolCounts[section.id] ?? 0;
+
+  /** Persist a change to a drawing section's filters. */
+  const saveDraw = async (section: Section, patch: Record<string, unknown>) => {
+    const result = await updateSection(section.id, {
+      title: section.title,
+      instructions: section.instructions,
+      sortOrder: 0,
+      timeLimitMinutes: section.timeLimitMinutes,
+      selectionMode: "RANDOM_DRAW",
+      drawBankId: section.drawBank?.id ?? null,
+      drawCount: section.drawCount,
+      drawDifficulty: section.drawDifficulty,
+      drawTopics: section.drawTopics ?? [],
+      drawPoints: section.drawPoints,
+      ...patch,
+    });
+    if ("error" in result && result.error) toast.error(result.error);
+    else router.refresh();
+  };
+
   const [dialogOpen, setDialogOpen] = useState(false);
   const [busy, setBusy] = useState(false);
   const [targetSection, setTargetSection] = useState<string | null>(null);
@@ -187,6 +224,19 @@ export function ExamQuestionsTab({
 
               {editable && (
                 <div className="flex gap-2">
+                  <Select
+                    value={section.selectionMode}
+                    onValueChange={(v) =>
+                      void saveDraw(section, { selectionMode: v })
+                    }>
+                    <SelectTrigger className="h-8 w-36 text-xs">
+                      <SelectValue />
+                    </SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="FIXED">Fixed questions</SelectItem>
+                      <SelectItem value="RANDOM_DRAW">Draw from a bank</SelectItem>
+                    </SelectContent>
+                  </Select>
                   {section.selectionMode === "FIXED" && (
                     <Button size="sm" variant="outline" onClick={() => openNew(section.id)}>
                       <Plus className="mr-1 size-3.5" />
@@ -207,10 +257,93 @@ export function ExamQuestionsTab({
             </div>
 
             {section.selectionMode === "RANDOM_DRAW" ? (
-              <p className="rounded-lg border border-dashed p-4 text-sm text-gray-400">
-                Every candidate gets a different set drawn from the bank when they
-                start. The exact questions are fixed at publish.
-              </p>
+              <div className="space-y-3">
+                <p className="rounded-lg border border-dashed p-4 text-sm text-gray-400">
+                  Every candidate gets a different set drawn from the bank when they
+                  start. The exact pool is frozen at publish.
+                </p>
+
+                {editable && (
+                  <div className="grid gap-3 sm:grid-cols-[1fr_110px_130px]">
+                    <div className="space-y-1.5">
+                      <Label className="text-xs">Draw from</Label>
+                      <Select
+                        value={section.drawBank?.id ?? ""}
+                        onValueChange={(v) =>
+                          void saveDraw(section, { drawBankId: v })
+                        }>
+                        <SelectTrigger>
+                          <SelectValue placeholder="Choose a bank" />
+                        </SelectTrigger>
+                        <SelectContent>
+                          {banks.length === 0 ? (
+                            <div className="p-2 text-xs text-gray-400">
+                              No banks yet — create one first.
+                            </div>
+                          ) : (
+                            banks.map((b) => (
+                              <SelectItem key={b.id} value={b.id}>
+                                {b.title} ({b.questionCount})
+                              </SelectItem>
+                            ))
+                          )}
+                        </SelectContent>
+                      </Select>
+                    </div>
+
+                    <div className="space-y-1.5">
+                      <Label className="text-xs">How many</Label>
+                      <Input
+                        type="number"
+                        min={1}
+                        defaultValue={section.drawCount ?? 1}
+                        onBlur={(e) =>
+                          void saveDraw(section, { drawCount: Number(e.target.value) })
+                        }
+                      />
+                    </div>
+
+                    <div className="space-y-1.5">
+                      <Label className="text-xs">Difficulty</Label>
+                      <Select
+                        value={section.drawDifficulty ?? "ANY"}
+                        onValueChange={(v) =>
+                          void saveDraw(section, {
+                            drawDifficulty: v === "ANY" ? null : v,
+                          })
+                        }>
+                        <SelectTrigger>
+                          <SelectValue />
+                        </SelectTrigger>
+                        <SelectContent>
+                          <SelectItem value="ANY">Any</SelectItem>
+                          <SelectItem value="EASY">Easy</SelectItem>
+                          <SelectItem value="MEDIUM">Medium</SelectItem>
+                          <SelectItem value="HARD">Hard</SelectItem>
+                        </SelectContent>
+                      </Select>
+                    </div>
+                  </div>
+                )}
+
+                {/* Tell them now if the bank cannot satisfy the draw, rather than
+                    letting publish be the first time they find out. */}
+                {section.drawBank && section.drawCount ? (
+                  <p
+                    className={cn(
+                      "text-xs",
+                      poolFor(section) < section.drawCount
+                        ? "text-destructive"
+                        : "text-gray-400",
+                    )}>
+                    {poolFor(section)} question
+                    {poolFor(section) === 1 ? "" : "s"} in {section.drawBank.title} match
+                    {poolFor(section) < section.drawCount
+                      ? ` — not enough to draw ${section.drawCount}.`
+                      : `. Drawing ${section.drawCount}.`}
+                  </p>
+                ) : null}
+              </div>
             ) : (
               <ol className="space-y-2">
                 {section.questions.map((question, i) => (
