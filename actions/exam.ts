@@ -2,7 +2,7 @@
 
 import { auth } from "@/auth";
 import { db } from "@/lib/db";
-import { notifyExamScheduled } from "@/lib/exam/notifications";
+import { notifyExamScheduled, resendExamEmails } from "@/lib/exam/notifications";
 import {
   executePublish,
   executeResyncRoster,
@@ -77,6 +77,28 @@ export async function publishExam(examId: string) {
     notified: notified.sent,
     notificationsFailed: notified.emailsFailed,
     emailError: notified.emailError,
+  };
+}
+
+/**
+ * Re-send the "exam scheduled" email to the whole roster.
+ *
+ * The recovery path for a mail provider that was down, rate-limited or holding a
+ * bad key at publish time. Students were told in-app regardless; this gets the
+ * email out afterwards without touching `notifiedAt`.
+ */
+export async function resendExamNotifications(examId: string) {
+  const authorized = await authorizeExam(examId);
+  if (!authorized.ok) return { error: authorized.error };
+
+  const result = await resendExamEmails(examId, prisma);
+
+  return {
+    success: true,
+    emailsSent: result.emailsSent,
+    emailsFailed: result.emailsFailed,
+    emailError: result.emailError,
+    reason: result.reason,
   };
 }
 

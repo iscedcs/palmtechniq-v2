@@ -1,6 +1,10 @@
 "use client";
 
-import { getPublishChecklist, publishExam } from "@/actions/exam";
+import {
+  getPublishChecklist,
+  publishExam,
+  resendExamNotifications,
+} from "@/actions/exam";
 import { updateExam } from "@/actions/exam-authoring";
 import { Alert, AlertDescription } from "@/components/ui/alert";
 import { Badge } from "@/components/ui/badge";
@@ -25,6 +29,7 @@ import {
   CheckCircle2,
   ClipboardCheck,
   Loader2,
+  Mail,
   MonitorDot,
   Rocket,
 } from "lucide-react";
@@ -150,6 +155,7 @@ export function ExamEditorClient({
   const isDraft = exam.status === "DRAFT";
   const [saving, setSaving] = useState(false);
   const [publishing, setPublishing] = useState(false);
+  const [resending, setResending] = useState(false);
   const [problems, setProblems] = useState<
     { field: string; message: string }[] | null
   >(null);
@@ -242,8 +248,42 @@ export function ExamEditorClient({
         result.candidateCount === 1 ? "" : "s"
       }`,
     );
+
+    // Email and in-app are separate channels. Students are always told in-app,
+    // but a mail failure used to be completely silent — the tutor believed the
+    // email went out. Say so, and point at the way to retry.
+    if (result.notificationsFailed && result.notificationsFailed > 0) {
+      toast.warning(
+        `Students were notified in the app, but ${result.notificationsFailed} email${
+          result.notificationsFailed === 1 ? "" : "s"
+        } did not send${result.emailError ? `: ${result.emailError}` : ""}. Use "Resend emails" once that is sorted.`,
+        { duration: 12_000 },
+      );
+    }
+
     setPublishing(false);
     router.refresh();
+  };
+
+  const handleResendEmails = async () => {
+    setResending(true);
+    const result = await resendExamNotifications(exam.id);
+    setResending(false);
+
+    if ("error" in result) {
+      toast.error(result.error);
+      return;
+    }
+    if (result.emailsFailed && result.emailsFailed > 0) {
+      toast.error(
+        `Still failing${result.emailError ? `: ${result.emailError}` : ""}`,
+        { duration: 12_000 },
+      );
+      return;
+    }
+    toast.success(
+      `Sent ${result.emailsSent} email${result.emailsSent === 1 ? "" : "s"}`,
+    );
   };
 
   /**
@@ -317,6 +357,18 @@ export function ExamEditorClient({
                   <ClipboardCheck className="mr-2 size-4" />
                   Grading &amp; results
                 </Link>
+              </Button>
+              <Button
+                variant="outline"
+                onClick={handleResendEmails}
+                disabled={resending}
+                title="Re-send the exam notice by email to everyone on the roster">
+                {resending ? (
+                  <Loader2 className="mr-2 size-4 animate-spin" />
+                ) : (
+                  <Mail className="mr-2 size-4" />
+                )}
+                Resend emails
               </Button>
             </>
           )}
