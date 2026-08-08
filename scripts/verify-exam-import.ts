@@ -184,6 +184,56 @@ function verifyParsers() {
   check("a plain list still imports", plain.rows.length === 2);
   check("list numbering is stripped", plain.rows[1].question.stem === "Explain closures.", String(plain.rows[1].question.stem));
 
+  console.log("\nReal-world type labels");
+  // Every one of these came out of a tutor's actual export, which is where the
+  // parser met them for the first time.
+  const labels = previewImport(
+    [
+      "question,type,options,correct",
+      '"Slash separated",True/False,,true',
+      '"Compound label","Short Answer / Scenario",,',
+      '"Hyphenated",Multiple-Choice,"A|B",A',
+      '"Title case","Multiple Choice","A|B",A',
+      '"Nonsense type",Blancmange,,x',
+    ].join("\n"),
+    "csv",
+  );
+  check(
+    '"True/False" resolves rather than being split in two',
+    labels.rows[0].question.questionType === "TRUE_FALSE",
+    String(labels.rows[0].question.questionType),
+  );
+  check(
+    "a compound label takes the first type it recognises",
+    labels.rows[1].question.questionType === "SHORT_ANSWER",
+    String(labels.rows[1].question.questionType),
+  );
+  check(
+    "hyphenated and title-case labels resolve",
+    labels.rows[2].question.questionType === "MULTIPLE_CHOICE" &&
+      labels.rows[3].question.questionType === "MULTIPLE_CHOICE",
+  );
+  check(
+    "an unrecognised type is rejected, not passed through as a bad enum",
+    !labels.rows[4].valid &&
+      labels.rows[4].errors.some((e) => /not a question type/i.test(e)),
+    JSON.stringify(labels.rows[4].errors),
+  );
+
+  console.log("\nSection becomes a topic");
+  const sectioned = previewImport(
+    [
+      "question,section,type,options,correct",
+      '"Q","Section A - OWASP",mcq,"A|B",A',
+    ].join("\n"),
+    "csv",
+  );
+  check(
+    "a Section column is imported as a topic",
+    (sectioned.rows[0].question.topics ?? []).includes("Section A - OWASP"),
+    JSON.stringify(sectioned.rows[0].question.topics),
+  );
+
   console.log("\nValidation guards");
   check(
     "an essay needs no answer",

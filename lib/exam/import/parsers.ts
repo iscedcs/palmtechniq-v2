@@ -103,22 +103,21 @@ function detectDelimiter(text: string): string {
 }
 
 const TYPE_ALIASES: Record<string, QuestionType> = {
+  // Keys are lowercase letters only — see normalizeType.
   mcq: "MULTIPLE_CHOICE",
   multiplechoice: "MULTIPLE_CHOICE",
-  multiple_choice: "MULTIPLE_CHOICE",
   single: "MULTIPLE_CHOICE",
   choice: "MULTIPLE_CHOICE",
   truefalse: "TRUE_FALSE",
-  true_false: "TRUE_FALSE",
   tf: "TRUE_FALSE",
   boolean: "TRUE_FALSE",
   multiselect: "MULTI_SELECT",
-  multi_select: "MULTI_SELECT",
-  multiple_answer: "MULTI_SELECT",
+  multipleanswer: "MULTI_SELECT",
+  multipleresponse: "MULTI_SELECT",
   checkbox: "MULTI_SELECT",
   short: "SHORT_ANSWER",
   shortanswer: "SHORT_ANSWER",
-  short_answer: "SHORT_ANSWER",
+  scenario: "ESSAY",
   essay: "ESSAY",
   longanswer: "ESSAY",
   code: "CODE",
@@ -126,20 +125,55 @@ const TYPE_ALIASES: Record<string, QuestionType> = {
   number: "NUMERIC",
   fill: "FILL_IN_BLANK",
   fillblank: "FILL_IN_BLANK",
-  fill_in_blank: "FILL_IN_BLANK",
+  fillintheblank: "FILL_IN_BLANK",
   cloze: "FILL_IN_BLANK",
   matching: "MATCHING",
   match: "MATCHING",
 };
 
-function normalizeType(value: string | undefined): QuestionType {
+/** Every type the schema actually accepts. */
+const KNOWN_TYPES: QuestionType[] = [
+  "MULTIPLE_CHOICE",
+  "TRUE_FALSE",
+  "MULTI_SELECT",
+  "SHORT_ANSWER",
+  "ESSAY",
+  "CODE",
+  "NUMERIC",
+  "FILL_IN_BLANK",
+  "MATCHING",
+];
+
+/**
+ * Resolve a tutor's word for a question type.
+ *
+ * Strips every non-letter before matching, so "True/False", "Multiple-Choice"
+ * and "multi select" all reduce to the same key. Returns null rather than
+ * guessing when it cannot tell — an unrecognised type used to pass straight
+ * through as an invalid enum value and only fail at the insert, after the
+ * preview had told the tutor the row was fine.
+ */
+function normalizeType(value: string | undefined): QuestionType | null {
   if (!value?.trim()) return "MULTIPLE_CHOICE";
-  const key = value.trim().toLowerCase().replace(/[\s-]/g, "_");
-  return (
-    TYPE_ALIASES[key] ??
-    TYPE_ALIASES[key.replace(/_/g, "")] ??
-    (key.toUpperCase() as QuestionType)
-  );
+
+  const raw = value.trim().toUpperCase().replace(/[^A-Z]/g, "_").replace(/_+/g, "_");
+  if (KNOWN_TYPES.includes(raw as QuestionType)) return raw as QuestionType;
+
+  const key = value.trim().toLowerCase().replace(/[^a-z]/g, "");
+  if (TYPE_ALIASES[key]) return TYPE_ALIASES[key];
+
+  // Compound labels: "Short Answer / Scenario", "Essay or Code". Tried only
+  // after the whole string, so "True/False" still resolves as one type rather
+  // than being split into "True" and "False".
+  const parts = value.split(/[\/,;]| or | and |&/i);
+  if (parts.length > 1) {
+    for (const part of parts) {
+      const resolved = normalizeType(part);
+      if (resolved) return resolved;
+    }
+  }
+
+  return null;
 }
 
 function normalizeDifficulty(value: string | undefined): "EASY" | "MEDIUM" | "HARD" {
@@ -194,6 +228,9 @@ const HEADER_ALIASES: Record<string, string> = {
   topics: "topics",
   topic: "topics",
   tags: "topics",
+  section: "topics",
+  category: "topics",
+  unit: "topics",
 };
 
 function canonicalHeader(raw: string): string {
@@ -234,7 +271,11 @@ export function parseCsvQuestions(text: string): ParsedRow[] {
     const stem = get("question");
     if (!stem) errors.push("No question text");
 
-    const questionType = normalizeType(get("type"));
+    const rawType = get("type");
+    const questionType = normalizeType(rawType);
+    if (!questionType) {
+      errors.push(`"${rawType}" is not a question type we recognise`);
+    }
 
     let options: string[] = splitList(get("options"));
     if (options.length === 0 && optionCols.length > 0) {
@@ -296,7 +337,7 @@ export function parseCsvQuestions(text: string): ParsedRow[] {
       raw: cells.join(" | "),
       question: {
         stem,
-        questionType,
+        questionType: questionType ?? undefined,
         options: options.length > 0 ? options : null,
         correctAnswer,
         explanation: get("explanation") || null,

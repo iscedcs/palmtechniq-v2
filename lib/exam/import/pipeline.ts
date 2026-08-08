@@ -7,6 +7,19 @@ import {
 } from "@/lib/exam/import/parsers";
 import { Prisma, type PrismaClient, type QuestionType } from "@prisma/client";
 
+/** The types the schema actually accepts. */
+const KNOWN_TYPES: QuestionType[] = [
+  "MULTIPLE_CHOICE",
+  "TRUE_FALSE",
+  "MULTI_SELECT",
+  "SHORT_ANSWER",
+  "ESSAY",
+  "CODE",
+  "NUMERIC",
+  "FILL_IN_BLANK",
+  "MATCHING",
+];
+
 /**
  * Exam Center — the import pipeline.
  *
@@ -46,7 +59,13 @@ export function validateQuestion(q: Partial<ParsedQuestion>): string[] {
   if (q.stem && q.stem.trim().length > 5000) errors.push("Question text is too long");
 
   const type = q.questionType;
-  if (!type) errors.push("No question type");
+  if (!type) {
+    errors.push("No question type");
+  } else if (!KNOWN_TYPES.includes(type)) {
+    // Belt and braces: an unknown type used to survive the preview and only
+    // fail at the insert, telling the tutor a broken row was fine.
+    errors.push(`"${type}" is not a question type we recognise`);
+  }
 
   const points = q.points ?? 1;
   if (!Number.isFinite(points) || points < 0) errors.push("Marks must be zero or more");
