@@ -22,7 +22,7 @@
     "verify:exam-import": "tsx --require ./scripts/_exam-test-bootstrap.cjs scripts/verify-exam-import.ts"
   },
   "prisma": {
-    "seed": "ts-node app/prisma/seed.js"
+    "seed": "tsx app/prisma/seed.ts"
   },
   "dependencies": {
     "@auth/core": "0.40.0",

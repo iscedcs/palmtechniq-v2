@@ -1,7 +1,14 @@
-import { PrismaClient } from "@prisma/client";
-import slugify from "slugify";
+// Must come first: lib/db reads DATABASE_URL at module load, so the env has to
+// be populated before that import is evaluated.
+import "dotenv/config";
 
-const prisma = new PrismaClient();
+import { db as appDb } from "@/lib/db";
+import type { PrismaClient } from "@prisma/client";
+// import slugify from "slugify";
+
+// Reuse the app's client rather than `new PrismaClient()` — Prisma 7 requires a
+// driver adapter, and lib/db already wires up the Neon one.
+const prisma = appDb as PrismaClient;
 
 // const categories = [
 //   "Web Development",
@@ -40,7 +47,7 @@ async function main() {
   //     create: {
   //       name,
   //       slug: slugify(name, { lower: true }),
-  //       description: `₦{name} related courses`,
+  //       description: `${name} related courses`,
   //       isActive: true,
   //     },
   //   });
@@ -75,13 +82,17 @@ async function main() {
   // } else {
   //   console.log("ℹ️ Tutor already exists:", existingTutor.id);
   // }
+
+  // Touch the database so a seed run fails loudly if the client cannot connect.
+  await prisma.$queryRaw`SELECT 1`;
+  console.log("✅ Seed complete (no active seed steps).");
 }
 
 main()
   .catch((e) => {
-    console.error("❌ Error seeding categories:", e);
+    console.error("❌ Error seeding:", e);
     process.exit(1);
   })
   .finally(async () => {
-    await prisma.₦disconnect();
+    await prisma.$disconnect();
   });
