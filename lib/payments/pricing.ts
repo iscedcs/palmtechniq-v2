@@ -1,9 +1,15 @@
 export const DEFAULT_VAT_RATE = 0.075;
 
+/**
+ * Tutor's share of the discounted, pre-VAT price. The platform keeps the
+ * remainder. These are the authoritative rates — the applied value is snapshot
+ * onto each TutorEarning at settlement, so changing them here never alters
+ * earnings that have already been recorded.
+ */
 export const SPLIT_RATES = {
-  normal: 0.2,
+  normal: 0.25,
   tutorReferral: 0.5,
-  platformPromo: 0.2,
+  platformPromo: 0.25,
   instructorPromo: 0.5,
 };
 

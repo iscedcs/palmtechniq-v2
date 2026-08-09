@@ -4,6 +4,7 @@ import { notify } from "@/lib/notify";
 import {
   computeCheckoutTotals,
   DEFAULT_VAT_RATE,
+  SPLIT_RATES,
 } from "@/lib/payments/pricing";
 import { createZoomMeeting } from "@/lib/zoom-integration";
 import { resolveTutorReferralCode } from "@/lib/referral";
@@ -317,12 +318,12 @@ export async function finalizePaystackByReference(reference: string) {
             courseId: item.courseId,
             amount: item.tutorShareAmount,
             splitPercent: item.isReferralPurchase
-              ? 0.5
+              ? SPLIT_RATES.tutorReferral
               : item.promoType === "PLATFORM"
-                ? 0.2
+                ? SPLIT_RATES.platformPromo
                 : item.promoType === "INSTRUCTOR"
-                  ? 0.5
-                  : 0.2,
+                  ? SPLIT_RATES.instructorPromo
+                  : SPLIT_RATES.normal,
             status: "AVAILABLE",
           },
         });
