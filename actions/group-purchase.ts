@@ -5,7 +5,12 @@ import { db } from "@/lib/db";
 import { paystackInitialize } from "./paystack";
 import { randomUUID } from "crypto";
 import { redirect } from "next/navigation";
-import { computeCheckoutTotals, DEFAULT_VAT_RATE } from "@/lib/payments/pricing";
+import {
+  computeCheckoutTotals,
+  computeGroupCashback,
+  computeGroupCashbackEarned,
+  REVENUE,
+} from "@/lib/payments/revenue";
 
 const buildInviteCode = () =>
   `GRP-${randomUUID().replace(/-/g, "").slice(0, 8).toUpperCase()}`;
@@ -80,9 +85,11 @@ export async function beginGroupCheckout(courseId: string, tierId: string) {
 
   const inviteCode = await ensureInviteCode();
   const groupPrice = tier.groupPrice;
-  const cashbackTotal = groupPrice * (tier.cashbackPercent ?? 0);
-  const cashbackPerMember =
-    tier.size > 1 ? cashbackTotal / (tier.size - 1) : 0;
+  const { cashbackTotal, cashbackPerMember } = computeGroupCashback({
+    groupPrice,
+    cashbackPercent: tier.cashbackPercent,
+    size: tier.size,
+  });
 
   const reference = `ps_${randomUUID()}`;
   const totals = computeCheckoutTotals({
@@ -96,7 +103,7 @@ export async function beginGroupCheckout(courseId: string, tierId: string) {
       },
     ],
     promo: null,
-    vatRate: DEFAULT_VAT_RATE,
+    vatRate: REVENUE.vatRate,
   });
 
   const { groupPurchaseId } = await db.$transaction(async (tx: any) => {
@@ -277,10 +284,11 @@ export async function joinGroupPurchase(inviteCode: string) {
     });
 
     const nextMemberCount = group.memberCount + 1;
-    const nextCashbackEarned = Math.min(
-      group.cashbackTotal,
-      group.cashbackPerMember * Math.max(0, nextMemberCount - 1)
-    );
+    const nextCashbackEarned = computeGroupCashbackEarned({
+      cashbackTotal: group.cashbackTotal,
+      cashbackPerMember: group.cashbackPerMember,
+      memberCount: nextMemberCount,
+    });
 
     const shouldComplete = nextMemberCount >= group.memberLimit;
 

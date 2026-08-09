@@ -5,6 +5,11 @@ import { Footer } from "@/components/footer";
 import { Card } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Users, TrendingUp, Globe, Zap, ArrowRight } from "lucide-react";
+import { REVENUE } from "@/lib/payments/revenue";
+
+// Rendered from the live rates so marketing copy cannot drift from what the
+// platform actually pays out.
+const asPercent = (rate: number) => `${Math.round(rate * 100)}%`;
 
 export default function PartnerPage() {
   const partnershipTypes = [
@@ -14,7 +19,7 @@ export default function PartnerPage() {
       description:
         "Earn recurring commissions by referring students to PalmTechnIQ",
       benefits: [
-        "Up to 30% commission",
+        `${asPercent(REVENUE.courseSplit.tutorReferral)} commission on referred sales`,
         "Marketing materials provided",
         "Dedicated support",
       ],
@@ -30,7 +35,11 @@ export default function PartnerPage() {
       icon: TrendingUp,
       title: "Content Creator",
       description: "Create and sell your courses on our platform",
-      benefits: ["70% revenue share", "Built-in audience", "Marketing support"],
+      benefits: [
+        `${asPercent(REVENUE.courseSplit.normal)} revenue share, ${asPercent(REVENUE.courseSplit.tutorReferral)} on your own referrals`,
+        "Built-in audience",
+        "Marketing support",
+      ],
     },
     {
       icon: Zap,

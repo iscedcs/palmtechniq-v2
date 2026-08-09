@@ -8,6 +8,7 @@ import {
   type EnrollmentFormData,
 } from "@/schemas/enrollment";
 import { getProgramBySlug } from "@/data/programs";
+import { computeInstallmentSchedule } from "@/lib/payments/revenue";
 import {
   sendEnrollmentConfirmation,
   sendAdminEnrollmentNotification,
@@ -161,34 +162,28 @@ export async function submitEnrollment(data: EnrollmentFormData) {
     ? programDef.installTotal
     : programDef.fullPrice;
 
-  // For installments, honour the student's custom first payment or fall back
-  // to the default 70% (firstInstall). Enforce a minimum floor of 50% of the
-  // installment total so the unpaid balance never exceeds what has been paid.
-  const minFirstPayment = Math.ceil(programDef.installTotal * 0.5);
-
   let firstPaymentAmount: number;
   let secondPaymentAmount: number;
 
   if (isInstallment) {
-    const custom = form.customFirstPayment;
-    if (custom !== undefined) {
-      if (custom < minFirstPayment) {
-        return {
-          success: false,
-          error: `Minimum first installment is ${new Intl.NumberFormat("en-NG", { style: "currency", currency: "NGN", minimumFractionDigits: 0 }).format(minFirstPayment)}`,
-        };
-      }
-      if (custom >= programDef.installTotal) {
-        return {
-          success: false,
-          error: "First installment must be less than the total installment amount",
-        };
-      }
-      firstPaymentAmount = custom;
-    } else {
-      firstPaymentAmount = programDef.firstInstall;
+    const schedule = computeInstallmentSchedule({
+      installTotal: programDef.installTotal,
+      defaultFirstInstall: programDef.firstInstall,
+      customFirstPayment: form.customFirstPayment,
+    });
+
+    if (!schedule.ok) {
+      return {
+        success: false,
+        error:
+          schedule.reason === "below_minimum"
+            ? `Minimum first installment is ${new Intl.NumberFormat("en-NG", { style: "currency", currency: "NGN", minimumFractionDigits: 0 }).format(schedule.minFirst)}`
+            : "First installment must be less than the total installment amount",
+      };
     }
-    secondPaymentAmount = programDef.installTotal - firstPaymentAmount;
+
+    firstPaymentAmount = schedule.firstPayment;
+    secondPaymentAmount = schedule.secondPayment;
   } else {
     firstPaymentAmount = programDef.fullPrice;
     secondPaymentAmount = 0;
