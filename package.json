@@ -19,7 +19,9 @@
     "verify:exam-results": "tsx --require ./scripts/_exam-test-bootstrap.cjs scripts/verify-exam-results.ts",
     "verify:exam-monitor": "tsx --require ./scripts/_exam-test-bootstrap.cjs scripts/verify-exam-monitor.ts",
     "verify:exam-notifications": "tsx --require ./scripts/_exam-test-bootstrap.cjs scripts/verify-exam-notifications.ts",
-    "verify:exam-import": "tsx --require ./scripts/_exam-test-bootstrap.cjs scripts/verify-exam-import.ts"
+    "verify:exam-import": "tsx --require ./scripts/_exam-test-bootstrap.cjs scripts/verify-exam-import.ts",
+    "test": "vitest run",
+    "test:watch": "vitest"
   },
   "prisma": {
     "seed": "tsx app/prisma/seed.ts"
@@ -145,6 +147,7 @@
     "tailwindcss": "^3.4.19",
     "tsx": "^4.23.1",
     "typescript": "^5.9.3",
+    "vitest": "^4.1.10",
     "ws": "^8.21.1"
   },
   "overrides": {

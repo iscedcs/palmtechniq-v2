@@ -3,9 +3,10 @@ import { db } from "@/lib/db";
 import { notify } from "@/lib/notify";
 import {
   computeCheckoutTotals,
-  DEFAULT_VAT_RATE,
-  SPLIT_RATES,
-} from "@/lib/payments/pricing";
+  computeMentorshipSplit,
+  deriveSplitPercent,
+  REVENUE,
+} from "@/lib/payments/revenue";
 import { createZoomMeeting } from "@/lib/zoom-integration";
 import { resolveTutorReferralCode } from "@/lib/referral";
 import { sendCRMPurchaseEvent } from "@/lib/meta-conversions";
@@ -116,7 +117,7 @@ export async function finalizePaystackByReference(reference: string) {
 
           // Emit notifications to both student and tutor
           const tutorShare =
-            tx.tutorShareAmount ?? Number(((tx.amount || 0) * 0.7).toFixed(2));
+            tx.tutorShareAmount ?? computeMentorshipSplit(tx.amount || 0).tutorShareAmount;
 
           await notify.user(session.studentId, {
             type: "payment",
@@ -138,7 +139,7 @@ export async function finalizePaystackByReference(reference: string) {
 
       const tutorId = metadata?.tutorUserId as string | undefined;
       const tutorShare =
-        tx.tutorShareAmount ?? Number(((tx.amount || 0) * 0.7).toFixed(2));
+        tx.tutorShareAmount ?? computeMentorshipSplit(tx.amount || 0).tutorShareAmount;
       if (tutorId && tutorShare > 0) {
         await px.user.update({
           where: { id: tutorId },
@@ -215,7 +216,7 @@ export async function finalizePaystackByReference(reference: string) {
           price: course.price,
         })),
         promo,
-        vatRate: DEFAULT_VAT_RATE,
+        vatRate: REVENUE.vatRate,
         referralTutorId,
       });
 
@@ -317,13 +318,9 @@ export async function finalizePaystackByReference(reference: string) {
             transactionLineItemId: item.id,
             courseId: item.courseId,
             amount: item.tutorShareAmount,
-            splitPercent: item.isReferralPurchase
-              ? SPLIT_RATES.tutorReferral
-              : item.promoType === "PLATFORM"
-                ? SPLIT_RATES.platformPromo
-                : item.promoType === "INSTRUCTOR"
-                  ? SPLIT_RATES.instructorPromo
-                  : SPLIT_RATES.normal,
+            // Derived from the amounts that actually moved, not re-decided
+            // from the scenario — the ledger cannot disagree with the money.
+            splitPercent: deriveSplitPercent(item),
             status: "AVAILABLE",
           },
         });
