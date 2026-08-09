@@ -79,6 +79,7 @@ export async function getWalletDashboardData() {
   const [
     user,
     totalEarnings,
+    accruedPending,
     pendingWithdrawals,
     earnings,
     withdrawals,
@@ -96,8 +97,14 @@ export async function getWalletDashboardData() {
         accountNumber: true,
       },
     }),
+    // Only money that has actually reached the wallet. PENDING program
+    // accruals are not the tutor's yet and CANCELLED ones never will be.
     db.tutorEarning.aggregate({
-      where: { tutorId: userId },
+      where: { tutorId: userId, status: { in: ["AVAILABLE", "PAID"] } },
+      _sum: { amount: true },
+    }),
+    db.tutorEarning.aggregate({
+      where: { tutorId: userId, status: "PENDING" },
       _sum: { amount: true },
     }),
     db.withdrawalRequest.aggregate({
@@ -105,10 +112,15 @@ export async function getWalletDashboardData() {
       _sum: { amount: true },
     }),
     db.tutorEarning.findMany({
-      where: { tutorId: userId },
+      where: { tutorId: userId, status: { not: "CANCELLED" } },
       orderBy: { createdAt: "desc" },
       take: 50,
-      include: { course: { select: { title: true } } },
+      include: {
+        course: { select: { title: true } },
+        cohort: {
+          select: { displayName: true, program: { select: { name: true } } },
+        },
+      },
     }),
     db.withdrawalRequest.findMany({
       where: { userId },
@@ -131,19 +143,28 @@ export async function getWalletDashboardData() {
     availableBalance: 0,
     totalEarnings: 0,
     pendingPayouts: 0,
+    accruedPending: 0,
   };
 
   summary.availableBalance = user?.walletBalance ?? 0;
   summary.totalEarnings = totalEarnings._sum.amount ?? 0;
   summary.pendingPayouts = pendingWithdrawals._sum.amount ?? 0;
+  // Accrued program earnings: recorded and owed, but not yet released to the
+  // wallet, so deliberately NOT part of availableBalance.
+  summary.accruedPending = accruedPending._sum.amount ?? 0;
 
   const earningTransactions: DashboardTransaction[] = earnings.map(
     (item: any) => ({
       id: item.id,
       type: "earning",
-      description: item.course?.title
-        ? `Course: ${item.course.title}`
-        : "Course earning",
+      description:
+        item.source === "PROGRAM"
+          ? `Program: ${item.cohort?.program?.name ?? "Cohort"}${
+              item.cohort?.displayName ? ` — ${item.cohort.displayName}` : ""
+            }`
+          : item.course?.title
+            ? `Course: ${item.course.title}`
+            : "Course earning",
       amount: item.amount,
       date: item.createdAt.toISOString().slice(0, 10),
       status: item.status === "PENDING" ? "pending" : "completed",

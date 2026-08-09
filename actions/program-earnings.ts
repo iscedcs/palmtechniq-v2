@@ -284,6 +284,93 @@ export async function cancelProgramEarning(installmentPaymentId: string) {
   return { ok: true, cancelled: result.count };
 }
 
+/**
+ * Every cohort with its instructor and money position, for the admin screen.
+ */
+export async function getProgramEarningsOverview() {
+  const session = await auth();
+  if (!session?.user?.id || session.user.role !== "ADMIN") {
+    return { ok: false as const, error: "Forbidden" };
+  }
+
+  const now = new Date();
+
+  const [cohorts, instructors] = await Promise.all([
+    db.programCohort.findMany({
+      orderBy: [{ year: "desc" }, { cycleNumber: "desc" }],
+      select: {
+        id: true,
+        displayName: true,
+        startDate: true,
+        seatsTaken: true,
+        leadInstructorId: true,
+        leadInstructor: { select: { id: true, name: true, email: true } },
+        program: { select: { name: true, fullPrice: true } },
+        tutorEarnings: {
+          where: { source: "PROGRAM" },
+          select: {
+            amount: true,
+            status: true,
+            availableAt: true,
+            tutorId: true,
+          },
+        },
+      },
+    }),
+    db.user.findMany({
+      where: { role: { in: ["TUTOR", "MENTOR"] }, isActive: true },
+      select: { id: true, name: true, email: true },
+      orderBy: { name: "asc" },
+    }),
+  ]);
+
+  type Row = {
+    amount: number;
+    status: string;
+    availableAt: Date | null;
+    tutorId: string;
+  };
+
+  const rows = cohorts.map((cohort: any) => {
+    const earnings = (cohort.tutorEarnings ?? []) as Row[];
+    const sum = (subset: Row[]) =>
+      subset.reduce((total, row) => total + row.amount, 0);
+    const pending = earnings.filter((e) => e.status === "PENDING");
+    const releasable = pending.filter(
+      (e) => e.availableAt !== null && e.availableAt <= now,
+    );
+
+    // Accruals belonging to someone other than the current lead instructor —
+    // the fingerprint of a mid-cohort handover.
+    const fromPreviousInstructor = cohort.leadInstructorId
+      ? pending.filter((e) => e.tutorId !== cohort.leadInstructorId)
+      : pending;
+
+    return {
+      id: cohort.id,
+      displayName: cohort.displayName,
+      programName: cohort.program?.name ?? "Program",
+      startDate: cohort.startDate,
+      seatsTaken: cohort.seatsTaken,
+      leadInstructor: cohort.leadInstructor,
+      accruedTotal: sum(pending),
+      releasableNow: sum(releasable),
+      releasableCount: releasable.length,
+      releasedTotal: sum(
+        earnings.filter((e) => e.status === "AVAILABLE" || e.status === "PAID"),
+      ),
+      heldForPreviousInstructor: sum(fromPreviousInstructor),
+      nextReleaseAt:
+        pending
+          .map((e) => e.availableAt)
+          .filter((d): d is Date => d !== null && d > now)
+          .sort((a, b) => a.getTime() - b.getTime())[0] ?? null,
+    };
+  });
+
+  return { ok: true as const, cohorts: rows, instructors };
+}
+
 /** Cohort-level accrual/release summary for the admin review screen. */
 export async function getCohortEarningsSummary(cohortId: string) {
   const session = await auth();
