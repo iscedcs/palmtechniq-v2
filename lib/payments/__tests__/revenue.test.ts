@@ -2,8 +2,10 @@ import { describe, expect, it } from "vitest";
 
 import {
   REVENUE,
+  allocateBundlePrices,
   allocateProportionally,
   allocateShareAcrossInstallments,
+  computeBundlePriceFloor,
   computeCheckoutTotals,
   computeGroupCashback,
   computeGroupCashbackEarned,
@@ -12,6 +14,8 @@ import {
   computeMentorshipSplit,
   computeProgramTutorShare,
   deriveSplitPercent,
+
+  validateBundlePrice,
   type PromoDetails,
 } from "../revenue";
 
@@ -185,49 +189,100 @@ describe("allocateProportionally", () => {
   });
 });
 
-describe("bundles", () => {
-  const bundleCourses = [
-    course({ id: "a", currentPrice: 10_000, basePrice: 10_000, price: 10_000 }),
-    course({ id: "b", currentPrice: 30_000, basePrice: 30_000, price: 30_000 }),
-  ];
-
-  it("splits 75% to the tutor", () => {
-    const totals = computeCheckoutTotals({
-      courses: bundleCourses,
-      promo: null,
-      purchaseType: "BUNDLE",
+describe("bundle price allocation", () => {
+  it("distributes proportionally and reconciles exactly to the bundle price", () => {
+    const shares = allocateBundlePrices({
+      coursePrices: [10_000, 30_000],
       bundlePrice: 32_000,
     });
+    expect(shares).toEqual([8_000, 24_000]);
+    expect(shares[0] + shares[1]).toBe(32_000);
+  });
 
+  it("puts the rounding remainder on the highest-priced course", () => {
+    // Thirds don't divide cleanly: naive rounding gives 3.33 x 3 = 9.99,
+    // leaving a kobo that must land somewhere rather than vanish.
+    const shares = allocateBundlePrices({
+      coursePrices: [2_000, 1_000, 1_000],
+      bundlePrice: 10,
+    });
+    expect(shares).toEqual([5, 2.5, 2.5]);
+
+    const drifting = allocateBundlePrices({
+      coursePrices: [1, 1, 1],
+      bundlePrice: 10,
+    });
+    expect(drifting[0]).toBe(3.34); // heaviest absorbs the remainder
+    expect(drifting.reduce((a, b) => a + b, 0)).toBe(10);
+  });
+
+  it("bundle line items inherit the normal attribution rate", () => {
+    const shares = allocateBundlePrices({
+      coursePrices: [10_000, 30_000],
+      bundlePrice: 32_000,
+    });
+    const totals = computeCheckoutTotals({
+      courses: [
+        course({ id: "a", basePrice: 10_000, currentPrice: shares[0], price: shares[0] }),
+        course({ id: "b", basePrice: 30_000, currentPrice: shares[1], price: shares[1] }),
+      ],
+      promo: null,
+    });
+
+    expect(totals.subtotalAmount).toBe(32_000);
     for (const item of totals.lineItems) {
-      expect(deriveSplitPercent(item)).toBeCloseTo(REVENUE.courseSplit.bundle, 10);
+      expect(deriveSplitPercent(item)).toBeCloseTo(REVENUE.courseSplit.normal, 10);
     }
   });
 
-  it("distributes the bundle price proportionally and reconciles exactly", () => {
+  it("bundle line items reach 50/50 on a tutor referral", () => {
     const totals = computeCheckoutTotals({
-      courses: bundleCourses,
+      courses: [
+        course({ id: "a", basePrice: 10_000, currentPrice: 8_000, price: 8_000 }),
+        course({ id: "b", basePrice: 30_000, currentPrice: 24_000, price: 24_000 }),
+      ],
       promo: null,
-      purchaseType: "BUNDLE",
-      bundlePrice: 32_000,
+      referralTutorId: TUTOR,
     });
+    for (const item of totals.lineItems) {
+      expect(deriveSplitPercent(item)).toBeCloseTo(0.5, 10);
+    }
+  });
+});
 
-    expect(totals.lineItems[0].discountedPrice).toBe(8_000); // 10k/40k of 32k
-    expect(totals.lineItems[1].discountedPrice).toBe(24_000); // 30k/40k of 32k
-    expect(totals.subtotalAmount).toBe(32_000);
+describe("bundle price guardrails", () => {
+  const coursePrices = [15_000, 12_000, 9_000]; // listSum 36,000
+
+  it("computes the 40% discount floor", () => {
+    const { listSum, priceFloor } = computeBundlePriceFloor(coursePrices);
+    expect(listSum).toBe(36_000);
+    expect(priceFloor).toBe(21_600);
   });
 
-  it("keeps the bundle rate even when a promo or referral is present", () => {
-    const totals = computeCheckoutTotals({
-      courses: bundleCourses,
-      promo: promo({ promoType: "PLATFORM", discountValue: 50 }),
-      referralTutorId: TUTOR,
-      purchaseType: "BUNDLE",
-      bundlePrice: 32_000,
-    });
+  it("accepts a price exactly at the floor", () => {
+    const r = validateBundlePrice({ coursePrices, bundlePrice: 21_600 });
+    expect(r.ok).toBe(true);
+    if (!r.ok) return;
+    expect(r.discountPercent).toBeCloseTo(40, 10);
+  });
 
-    expect(totals.subtotalAmount).toBe(32_000);
-    expect(deriveSplitPercent(totals.lineItems[0])).toBeCloseTo(0.75, 10);
+  it("rejects a price below the floor", () => {
+    const r = validateBundlePrice({ coursePrices, bundlePrice: 21_599 });
+    expect(r.ok).toBe(false);
+    if (r.ok) return;
+    expect(r.reason).toBe("below_floor");
+  });
+
+  it("rejects a bundle with fewer than two courses", () => {
+    const r = validateBundlePrice({ coursePrices: [10_000], bundlePrice: 9_000 });
+    expect(r.ok).toBe(false);
+    if (r.ok) return;
+    expect(r.reason).toBe("too_few_courses");
+  });
+
+  it("enforces the absolute minimum price on very cheap catalogues", () => {
+    const { priceFloor } = computeBundlePriceFloor([300, 200]);
+    expect(priceFloor).toBe(REVENUE.bundle.minPrice);
   });
 });
 

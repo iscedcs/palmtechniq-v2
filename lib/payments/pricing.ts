@@ -20,5 +20,4 @@ export type {
   LineItem,
   PricingCourse,
   PromoDetails,
-  PurchaseType,
 } from "@/lib/payments/revenue";

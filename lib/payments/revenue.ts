@@ -23,14 +23,29 @@ export const REVENUE = {
   /** Nigerian VAT, charged on the discounted pre-split price. */
   vatRate: 0.075,
 
-  /** Tutor's share of the discounted, pre-VAT course price. */
+  /**
+   * Tutor's share of the discounted, pre-VAT course price.
+   *
+   * The rate is determined by WHO DROVE THE SALE, not by what was sold.
+   * Platform-driven (organic, platform promo) → 25%. Tutor-driven (their
+   * referral link or their own promo code) → 50%.
+   *
+   * There is deliberately no bundle rate. A bundle is a packaging format, not
+   * an acquisition channel, so bundle line items inherit these same rates.
+   */
   courseSplit: {
     normal: 0.25,
     tutorReferral: 0.5,
     platformPromo: 0.25,
     instructorPromo: 0.5,
-    /** Bundles reward the tutor for driving the sale directly. */
-    bundle: 0.75,
+  },
+
+  /** Margin guardrails for tutor-priced bundles. */
+  bundle: {
+    /** Tutor sets the price but the platform absorbs 75% of the discount. */
+    maxDiscount: 0.4,
+    minPrice: 500,
+    minCourses: 2,
   },
 
   /** Mentorship is a flat split with no VAT. */
@@ -74,7 +89,6 @@ export const REVENUE = {
   refundWindowDays: 30,
 } as const;
 
-export type PurchaseType = "STANDARD" | "BUNDLE";
 export type PackageCode = keyof typeof REVENUE.mentorshipPackages;
 
 /** @deprecated Prefer `REVENUE.courseSplit`. Kept for existing imports. */
@@ -104,24 +118,106 @@ export const roundCurrency = (value: number) => Math.round(value * 100) / 100;
 export function allocateProportionally(
   total: number,
   weights: number[],
+  options: {
+    /**
+     * Which slice absorbs the rounding remainder. Defaults to the last, which
+     * is the historical VAT behaviour. Bundle price distribution uses
+     * "heaviest" so the remainder lands on the highest-priced course.
+     */
+    remainderTo?: "last" | "heaviest";
+  } = {},
 ): number[] {
   const sum = weights.reduce((acc, w) => acc + w, 0);
   if (sum <= 0 || weights.length === 0) return weights.map(() => 0);
 
-  const shares: number[] = [];
-  let allocated = 0;
+  const remainderIndex =
+    options.remainderTo === "heaviest"
+      ? weights.reduce(
+          (best, w, i) => (w > weights[best] ? i : best),
+          0,
+        )
+      : weights.length - 1;
 
-  weights.forEach((weight, index) => {
-    if (index === weights.length - 1) {
-      shares.push(roundCurrency(total - allocated));
-    } else {
-      const share = roundCurrency((weight / sum) * total);
-      allocated = roundCurrency(allocated + share);
-      shares.push(share);
-    }
-  });
+  const shares = weights.map((weight, index) =>
+    index === remainderIndex ? 0 : roundCurrency((weight / sum) * total),
+  );
+
+  const allocated = roundCurrency(
+    shares.reduce((acc, share) => acc + share, 0),
+  );
+  shares[remainderIndex] = roundCurrency(total - allocated);
 
   return shares;
+}
+
+/**
+ * Distribute a fixed bundle price across its courses in proportion to their
+ * individual list prices, so every course keeps its own line item, its own VAT
+ * record and its own TutorEarning.
+ *
+ * The remainder goes to the highest-priced course, and the parts sum exactly
+ * to `bundlePrice` — a transaction that doesn't reconcile is not shippable.
+ */
+export function allocateBundlePrices({
+  coursePrices,
+  bundlePrice,
+}: {
+  coursePrices: number[];
+  bundlePrice: number;
+}) {
+  return allocateProportionally(bundlePrice, coursePrices, {
+    remainderTo: "heaviest",
+  });
+}
+
+/**
+ * Lowest price a bundle may be listed at: the tutor may discount the summed
+ * list price by at most `REVENUE.bundle.maxDiscount`, never below the absolute
+ * floor. Re-checked on create, update and at checkout, because an individual
+ * course price can move after approval.
+ */
+export function computeBundlePriceFloor(coursePrices: number[]) {
+  const listSum = coursePrices.reduce((sum, price) => sum + price, 0);
+  return {
+    listSum,
+    priceFloor: Math.max(
+      roundCurrency(listSum * (1 - REVENUE.bundle.maxDiscount)),
+      REVENUE.bundle.minPrice,
+    ),
+  };
+}
+
+export function validateBundlePrice({
+  coursePrices,
+  bundlePrice,
+}: {
+  coursePrices: number[];
+  bundlePrice: number;
+}):
+  | { ok: true; listSum: number; priceFloor: number; discountPercent: number }
+  | {
+      ok: false;
+      reason: "too_few_courses" | "below_floor" | "below_minimum" | "not_positive";
+      listSum: number;
+      priceFloor: number;
+    } {
+  const { listSum, priceFloor } = computeBundlePriceFloor(coursePrices);
+
+  if (coursePrices.length < REVENUE.bundle.minCourses)
+    return { ok: false, reason: "too_few_courses", listSum, priceFloor };
+  if (bundlePrice <= 0)
+    return { ok: false, reason: "not_positive", listSum, priceFloor };
+  if (bundlePrice < REVENUE.bundle.minPrice)
+    return { ok: false, reason: "below_minimum", listSum, priceFloor };
+  if (bundlePrice < priceFloor)
+    return { ok: false, reason: "below_floor", listSum, priceFloor };
+
+  return {
+    ok: true,
+    listSum,
+    priceFloor,
+    discountPercent: listSum > 0 ? (1 - bundlePrice / listSum) * 100 : 0,
+  };
 }
 
 // ─────────────────────────────────────────────────────────────────────────────
@@ -177,20 +273,12 @@ export const promoAppliesToCourse = (
   return !promo.courseId;
 };
 
-/**
- * The tutor's share of one course's discounted price.
- *
- * Bundles take precedence over everything: the bundle rate is the whole point
- * of the product, and a promo or referral must not silently reduce it.
- */
+/** The tutor's share of one course's discounted price. */
 export function getSplitPercent(
   promo: PromoDetails | null,
   applies: boolean,
   isReferral: boolean,
-  purchaseType: PurchaseType = "STANDARD",
 ) {
-  if (purchaseType === "BUNDLE") return REVENUE.courseSplit.bundle;
-
   if (promo && applies) {
     if (promo.promoType === "INSTRUCTOR")
       return REVENUE.courseSplit.instructorPromo;
@@ -201,25 +289,22 @@ export function getSplitPercent(
   return REVENUE.courseSplit.normal;
 }
 
+/**
+ * Bundles do not pass through a special path here. `beginBundleCheckout`
+ * allocates the bundle price across courses (see `allocateBundlePrices`) and
+ * hands them in as ordinary courses with overridden prices — the existing
+ * attribution logic then produces the correct rate with no bundle branch.
+ */
 export function computeCheckoutTotals({
   courses,
   promo,
   vatRate = REVENUE.vatRate,
   referralTutorId,
-  purchaseType = "STANDARD",
-  bundlePrice,
 }: {
   courses: PricingCourse[];
   promo: PromoDetails | null;
   vatRate?: number;
   referralTutorId?: string | null;
-  purchaseType?: PurchaseType;
-  /**
-   * BUNDLE only. The fixed price the student pays for the whole bundle,
-   * distributed across courses in proportion to their individual prices so
-   * every course keeps its own line item and VAT record.
-   */
-  bundlePrice?: number;
 }) {
   const resolved = courses.map((course) => {
     const basePrice =
@@ -238,50 +323,32 @@ export function computeCheckoutTotals({
     return { course, basePrice, currentPrice };
   });
 
-  // For a bundle the student pays a fixed price, so each course's share of it
-  // is its slice of the summed list prices. The "discount" is then whatever
-  // that slice saves against the course's own price.
-  const bundleShares =
-    purchaseType === "BUNDLE" && typeof bundlePrice === "number"
-      ? allocateProportionally(
-          bundlePrice,
-          resolved.map((r) => r.currentPrice),
-        )
-      : null;
-
-  const preliminary = resolved.map(({ course, basePrice, currentPrice }, i) => {
+  const preliminary = resolved.map(({ course, basePrice, currentPrice }) => {
     const promoApplies = promoAppliesToCourse(promo, course);
 
-    let discountedPrice: number;
-    if (bundleShares) {
-      discountedPrice = Math.max(0, bundleShares[i]);
-    } else {
-      let promoDiscount = 0;
-      if (promo && promoApplies) {
-        if (promo.discountType === "PERCENTAGE") {
-          promoDiscount = roundCurrency(
-            (currentPrice * promo.discountValue) / 100,
-          );
-        } else {
-          promoDiscount = roundCurrency(
-            Math.min(promo.discountValue, currentPrice),
-          );
-        }
+    let promoDiscount = 0;
+    if (promo && promoApplies) {
+      if (promo.discountType === "PERCENTAGE") {
+        promoDiscount = roundCurrency(
+          (currentPrice * promo.discountValue) / 100,
+        );
+      } else {
+        promoDiscount = roundCurrency(
+          Math.min(promo.discountValue, currentPrice),
+        );
       }
-      discountedPrice = Math.max(0, roundCurrency(currentPrice - promoDiscount));
     }
+    const discountedPrice = Math.max(
+      0,
+      roundCurrency(currentPrice - promoDiscount),
+    );
 
     const discountAmount = Math.max(
       0,
       roundCurrency(basePrice - discountedPrice),
     );
     const isReferral = !!referralTutorId && referralTutorId === course.tutorId;
-    const splitPercent = getSplitPercent(
-      promo,
-      promoApplies,
-      isReferral,
-      purchaseType,
-    );
+    const splitPercent = getSplitPercent(promo, promoApplies, isReferral);
     const tutorShareAmount = roundCurrency(discountedPrice * splitPercent);
     const platformShareAmount = roundCurrency(
       discountedPrice - tutorShareAmount,
@@ -293,7 +360,7 @@ export function computeCheckoutTotals({
       basePrice: roundCurrency(basePrice),
       discountedPrice,
       discountAmount,
-      promoApplies: bundleShares ? false : promoApplies,
+      promoApplies,
       isReferral,
       splitPercent,
       tutorShareAmount,
@@ -444,7 +511,9 @@ export function computeInstallmentSchedule({
   if (customFirstPayment !== undefined) {
     if (customFirstPayment < minFirst)
       return { ok: false, reason: "below_minimum", minFirst };
-    if (customFirstPayment > installTotal)
+    // Strictly less than the total: a "first installment" equal to the whole
+    // amount is a full payment, not a schedule.
+    if (customFirstPayment >= installTotal)
       return { ok: false, reason: "above_total", minFirst };
     return {
       ok: true,
