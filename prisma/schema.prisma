@@ -77,7 +77,9 @@ model User {
   taskSubmissions         TaskSubmission[]
   transactionLineItems    TransactionLineItem[]
   transactions            Transaction[]
-  tutorEarnings           TutorEarning[]
+  tutorEarnings           TutorEarning[]           @relation("TutorEarningTutor")
+  releasedEarnings        TutorEarning[]           @relation("TutorEarningReleasedBy")
+  ledCohorts              ProgramCohort[]          @relation("CohortLeadInstructor")
   tutorProfile            Tutor?
   analytics               UserAnalytics[]
   UserSkill               UserSkill[]
@@ -942,23 +944,50 @@ model PromoRedemption {
   @@map("promo_redemptions")
 }
 
+/// One ledger for every kind of tutor earning. COURSE earnings are credited to
+/// the wallet immediately at settlement; PROGRAM earnings are accrued PENDING
+/// and only credited when an admin releases them (see availableAt).
 model TutorEarning {
-  id                    String              @id @default(cuid())
+  id                    String               @id @default(cuid())
   tutorId               String
-  transactionId         String
-  transactionLineItemId String
-  courseId              String
+  source                TutorEarningSource   @default(COURSE)
   amount                Float
   splitPercent          Float
-  status                TutorEarningStatus  @default(AVAILABLE)
-  availableAt           DateTime?
-  createdAt             DateTime            @default(now())
-  updatedAt             DateTime            @updatedAt
-  course                Course              @relation(fields: [courseId], references: [id])
-  transaction           Transaction         @relation(fields: [transactionId], references: [id], onDelete: Cascade)
-  transactionLineItem   TransactionLineItem @relation(fields: [transactionLineItemId], references: [id], onDelete: Cascade)
-  tutor                 User                @relation(fields: [tutorId], references: [id], onDelete: Cascade)
+  status                TutorEarningStatus   @default(AVAILABLE)
 
+  // COURSE earnings only. Nullable so PROGRAM earnings, which have no
+  // Transaction, can share this table.
+  transactionId         String?
+  transactionLineItemId String?
+  courseId              String?
+
+  // PROGRAM earnings only.
+  programEnrollmentId  String?
+  /// Idempotency key: accrual fires from both payment and instructor
+  /// assignment, and this is what makes the second one a no-op.
+  installmentPaymentId String?               @unique
+  cohortId             String?
+
+  /// Earliest moment this may be released: max(paidAt + refund window,
+  /// cohort start). Null for COURSE earnings, which are available at once.
+  availableAt           DateTime?
+  releasedAt            DateTime?
+  releasedById          String?
+
+  createdAt             DateTime             @default(now())
+  updatedAt             DateTime             @updatedAt
+
+  course              Course?              @relation(fields: [courseId], references: [id])
+  transaction         Transaction?         @relation(fields: [transactionId], references: [id], onDelete: Cascade)
+  transactionLineItem TransactionLineItem? @relation(fields: [transactionLineItemId], references: [id], onDelete: Cascade)
+  tutor               User                 @relation("TutorEarningTutor", fields: [tutorId], references: [id], onDelete: Cascade)
+  programEnrollment   ProgramEnrollment?   @relation(fields: [programEnrollmentId], references: [id], onDelete: Cascade)
+  installmentPayment  InstallmentPayment?  @relation(fields: [installmentPaymentId], references: [id], onDelete: Cascade)
+  cohort              ProgramCohort?       @relation(fields: [cohortId], references: [id], onDelete: SetNull)
+  releasedBy          User?                @relation("TutorEarningReleasedBy", fields: [releasedById], references: [id], onDelete: SetNull)
+
+  @@index([tutorId, status])
+  @@index([cohortId, status])
   @@map("tutor_earnings")
 }
 
@@ -1369,6 +1398,9 @@ model ProgramCohort {
   createdAt     DateTime  @default(now())
   updatedAt     DateTime  @updatedAt
 
+  leadInstructorId String?
+  leadInstructor   User?    @relation("CohortLeadInstructor", fields: [leadInstructorId], references: [id], onDelete: SetNull)
+  tutorEarnings    TutorEarning[]
   program     ProfessionalProgram @relation(fields: [programId], references: [id], onDelete: Cascade)
   enrollments ProgramEnrollment[]
   exams       Exam[]
@@ -1402,6 +1434,7 @@ model ProgramEnrollment {
   cohort       ProgramCohort        @relation(fields: [cohortId], references: [id], onDelete: Cascade)
   user         User?                @relation(fields: [userId], references: [id], onDelete: SetNull)
   installments InstallmentPayment[]
+  tutorEarnings TutorEarning[]
 
   @@map("program_enrollments")
 }
@@ -1420,6 +1453,7 @@ model InstallmentPayment {
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
 
+  tutorEarning TutorEarning?
   enrollment ProgramEnrollment @relation(fields: [enrollmentId], references: [id], onDelete: Cascade)
 
   @@map("installment_payments")
@@ -1451,6 +1485,12 @@ enum TutorEarningStatus {
   PENDING
   AVAILABLE
   PAID
+  CANCELLED
+}
+
+enum TutorEarningSource {
+  COURSE
+  PROGRAM
 }
 
 enum WithdrawalStatus {
