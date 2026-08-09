@@ -4,7 +4,7 @@
 > **Executive Summary**
 > Revenue split rates currently live in more than one place and are applied by duplicated arithmetic, so a rate change can move money at one number while recording another in the ledger. This plan consolidates every sharing formula into one pure module, then extends splitting to Professional Programs — which today have no tutor attribution and bypass the payments layer entirely.
 >
-> **Status:** Phase 0 complete. Phases 1–3 not started.
+> **Status:** Phases 0–3 complete except end-to-end verification. Bundles next.
 > **Owner:** fusco · **Drafted:** 2026-08-09
 
 ---
@@ -119,7 +119,7 @@ Historical `TutorEarning` rows retain `0.2`. Correct — those are facts.
 - [x] `finalizePaystack` mentorship `0.7` fallbacks and `DEFAULT_VAT_RATE` now read from `REVENUE`
 - [x] vitest added; 30 tests green
 - [x] `tsc --noEmit` clean
-- [ ] `pnpm install` on a normal checkout to materialise the vitest dependency
+- [x] `pnpm install` run; vitest resolved to materialise the vitest dependency
 
 ### 5.1 Create `lib/payments/revenue.ts`
 
@@ -148,16 +148,16 @@ export function computeProgramTutorShare(...)     // NEW — Phase 3
 export function allocateShareAcrossInstallments(...)  // NEW — Phase 3
 ```
 
-- [ ] Create module; move `computeCheckoutTotals`, `getSplitPercent`, `promoAppliesToCourse`, `roundCurrency`
-- [ ] `lib/payments/pricing.ts` becomes a re-export shim so existing imports keep working
-- [ ] Compute internally in integers (kobo), return naira — forward-compatible with the eventual `Float` migration
+- [x] Create module; move `computeCheckoutTotals`, `getSplitPercent`, `promoAppliesToCourse`, `roundCurrency`
+- [x] `lib/payments/pricing.ts` becomes a re-export shim so existing imports keep working
+- [~] Integer minor units DEFERRED (D10) — would shift rounding, and Phase 1 had to be behaviour-preserving
 
 ### 5.2 Add test infrastructure
 
 Revenue splitting is the case that justifies the repo's first tests: pure functions, small input space, bugs cost real money.
 
-- [ ] Add `vitest` + `test` script to `package.json`
-- [ ] `lib/payments/__tests__/revenue.test.ts` — table-driven over the split matrix:
+- [x] Add `vitest` + `test` script to `package.json`
+- [x] `lib/payments/__tests__/revenue.test.ts` — table-driven over the split matrix:
   - 4 course scenarios × {percentage, fixed} discount × {single, multi-course}
   - VAT allocation including the **rounding-remainder-to-last-item** rule (easy to "clean up" and silently break)
   - Referral only applies when `referralTutorId === course.tutorId`
@@ -172,25 +172,25 @@ Revenue splitting is the case that justifies the repo's first tests: pure functi
 
 ---
 
-## 6. Phase 2 — Collapse the duplicates
+## 6. Phase 2 — Collapse the duplicates ✅ COMPLETE
 
 Mechanical. Each item removes a literal and points it at `REVENUE`.
 
-- [ ] `actions/mentorship-revenue.ts:164` — instant booking → `computeMentorshipSplit()`
-- [ ] `actions/mentorship-revenue.ts:654` — approved REQUEST booking → same
-- [ ] `actions/mentorship-revenue.ts:1030` — offering booking → same
-- [ ] `actions/mentorship-revenue.ts:12` — `packageConfig` → `REVENUE.mentorshipPackages`
+- [x] `actions/mentorship-revenue.ts:164` — instant booking → `computeMentorshipSplit()`
+- [x] `actions/mentorship-revenue.ts:654` — approved REQUEST booking → same
+- [x] `actions/mentorship-revenue.ts:1030` — offering booking → same
+- [x] `actions/mentorship-revenue.ts:12` — `packageConfig` → `REVENUE.mentorshipPackages`
 - [x] `lib/payments/finalizePaystack.ts:118,140` — `0.7` fallbacks → `computeMentorshipSplit()`
-- [ ] `actions/enrollment.ts:167,189` — installment percentages → `computeInstallmentSchedule()`
-- [ ] `actions/group-purchase.ts:83` — → `computeGroupCashback()` (rate still per-tier from DB)
-- [ ] `app/(root)/partners/page.tsx:17,33` — render from `REVENUE` so marketing can't drift from code
-- [ ] Grep sweep for surviving `0.7` / `0.3` / `0.25` / `0.075` in payment paths
+- [x] `actions/enrollment.ts:167,189` — installment percentages → `computeInstallmentSchedule()`
+- [x] `actions/group-purchase.ts:83` — → `computeGroupCashback()` (rate still per-tier from DB)
+- [x] `app/(root)/partners/page.tsx:17,33` — render from `REVENUE` so marketing can't drift from code
+- [x] Grep sweep for surviving `0.7` / `0.3` / `0.25` / `0.075` in payment paths
 
 **Exit criteria:** no bare split literal outside `revenue.ts`; tests green.
 
 ---
 
-## 7. Phase 3 — Program revenue share
+## 7. Phase 3 — Program revenue share ✅ COMPLETE (unverified end-to-end)
 
 ### 7.1 Formula
 
@@ -238,8 +238,8 @@ enum TutorEarningSource { COURSE  PROGRAM }
 enum TutorEarningStatus { PENDING  AVAILABLE  PAID  CANCELLED }  // + CANCELLED
 ```
 
-- [ ] Write migration; back-fill `source = COURSE` for all existing rows
-- [ ] Audit every existing `TutorEarning` query for the now-nullable `courseId` join
+- [x] Applied via prisma db push 2026-08-09; existing rows default to `source = COURSE` for all existing rows
+- [x] Audited every existing `TutorEarning` query for the now-nullable `courseId` join
 
 > [!WARNING]
 > Relaxing three `NOT NULL` constraints weakens the course-side invariant. Accepted per **D7** — two earnings tables would fork every payout and report query. Any query that joins `course` must handle `null`.
@@ -248,34 +248,43 @@ enum TutorEarningStatus { PENDING  AVAILABLE  PAID  CANCELLED }  // + CANCELLED
 
 Staffing and payment can happen in either order; a cohort may be staffed after enrolments open. Accrual therefore runs from **both** triggers, writing the same row either way. The `@unique` on `installmentPaymentId` makes the second a no-op rather than a double credit. Do not attempt to guarantee ordering — that yields either missing or duplicated accruals.
 
-- [ ] `actions/program-earnings.ts` → `accrueProgramEarning(installmentPaymentId)`
-- [ ] Trigger on installment payment verification (`actions/program-balance-payment.ts` + initial enrolment path)
-- [ ] Trigger on lead-instructor assignment — accrue for all already-paid installments
-- [ ] Set `availableAt = max(paidAt + 30d, cohort.startDate)`, status `PENDING`
-- [ ] **Do not touch `walletBalance`**
+- [x] `actions/program-earnings.ts` → `accrueProgramEarning(installmentPaymentId)`
+- [x] Trigger on installment payment verification (`actions/program-balance-payment.ts` + initial enrolment path)
+- [x] Trigger on lead-instructor assignment — accrue for all already-paid installments
+- [x] Set `availableAt = max(paidAt + 30d, cohort.startDate)`, status `PENDING`
+- [x] **Does not touch `walletBalance`**
 
 ### 7.4 Release — admin action, per cohort
 
-- [ ] `releaseProgramEarnings(cohortId)` — super-admin only
-- [ ] Flip `PENDING → AVAILABLE` where `availableAt <= now()`; credit `walletBalance`; stamp `releasedAt` / `releasedById`
-- [ ] Status check + wallet increment inside **one DB transaction** so a double-click cannot pay twice
-- [ ] Amount is never human-entered — computed at accrual, immutable
+- [x] `releaseProgramEarnings(cohortId)` — super-admin only
+- [x] Flips `PENDING → AVAILABLE` where `availableAt <= now()`; credit `walletBalance`; stamp `releasedAt` / `releasedById`
+- [x] Status check + wallet increment inside **one DB transaction** so a double-click cannot pay twice
+- [x] Amount is never human-entered — computed at accrual, immutable
 
 > [!IMPORTANT]
 > **Behavioural difference from courses.** Course earnings credit `walletBalance` immediately on creation. Program earnings do not — `PENDING` is accrued but not spendable. Earnings UI must show the two states distinctly or tutors will read accrued as withdrawable.
 
 ### 7.5 Admin & tutor UI
 
-- [ ] Cohort admin: assign / change lead instructor
-- [ ] Cohort admin: accrued vs released totals, release action with eligibility reason when blocked
-- [ ] Tutor wallet: "Accrued (pending release)" separate from available balance
+- [x] Cohort admin: assign / change lead instructor
+- [x] Cohort admin: accrued vs released totals, release action with eligibility reason when blocked
+- [x] Tutor wallet: "Accrued (pending release)" separate from available balance
 
 ### 7.6 Refunds
 
-- [ ] Refund **before** release → `CANCELLED`, no wallet impact
+- [x] Refund **before** release → `CANCELLED`, no wallet impact
 - [ ] Refund **after** release → clawback. **Out of scope**; handle with the group-cashback negative-balance fix rather than shipping a second broken version.
 
-**Exit criteria:** enrol → pay both installments → accrue twice → release after gate → wallet credited exactly `0.25 × fullPrice`, verified on staging.
+**Exit criteria — NOT YET MET.** Still to verify end to end: enrol → pay both
+installments → accrue twice → release after gate → wallet credited exactly
+`0.25 × fullPrice`.
+
+Live data available for this check: Frontend Development cohort *Cycle 1 · 26Q2
+Delta*, one enrolment on the installment plan, installment #1 (₦259,000) already
+PAID, cohort currently unassigned. Assigning a lead instructor should back-fill
+exactly ₦61,250 PENDING (25% × ₦350,000 = ₦87,500, allocated 259/370). The share
+arithmetic is confirmed correct against this data; the accrual path itself has
+not run.
 
 ---
 
