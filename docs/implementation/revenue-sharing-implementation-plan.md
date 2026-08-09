@@ -22,6 +22,9 @@ Settled before drafting. Change these here first if they change at all.
 | D5 | Program accrual timing | **Per installment, as cash lands** | Accruing full share on 70% collected books an obligation against uncollected money |
 | D6 | Program release gate | `max(paidAt + 30d, cohort.startDate)` | 30d matches the published money-back guarantee; cohort start protects against cohorts cancelled for low enrolment |
 | D7 | Earnings ledger shape | **Extend `TutorEarning`**, not a parallel table | One ledger keeps wallet, withdrawal and reporting queries single-sourced. Cost: three FKs become nullable |
+| D8 | Bundle split | **75% tutor / 25% platform**, takes precedence over promo and referral | Per course-bundle plan; the bundle rate is the product, a promo must not silently erode it |
+| D9 | `splitPercent` at settlement | **Derived** as `tutorShareAmount / discountedPrice` | Structurally cannot diverge from the money that moved, unlike re-deciding from the scenario |
+| D10 | Integer minor units in Phase 1 | **Deferred** | Changes rounding. Phase 1 must be behaviour-preserving so it can ship without staging verification |
 
 ---
 
@@ -104,9 +107,19 @@ Historical `TutorEarning` rows retain `0.2`. Correct — those are facts.
 
 ---
 
-## 5. Phase 1 — Revenue module + tests
+## 5. Phase 1 — Revenue module + tests ✅ COMPLETE
 
 **Goal:** one importable source of truth. No behaviour change.
+
+- [x] `lib/payments/revenue.ts` created — rates + pure functions, no `db`, no `"use server"`
+- [x] `lib/payments/pricing.ts` reduced to a re-export shim
+- [x] `getSplitPercent` gains a `BUNDLE` branch at top precedence (**D8**)
+- [x] `allocateProportionally` shared by VAT allocation, bundle price distribution and program share allocation — all three must reconcile to the penny
+- [x] `deriveSplitPercent` used at settlement (**D9**)
+- [x] `finalizePaystack` mentorship `0.7` fallbacks and `DEFAULT_VAT_RATE` now read from `REVENUE`
+- [x] vitest added; 30 tests green
+- [x] `tsc --noEmit` clean
+- [ ] `pnpm install` on a normal checkout to materialise the vitest dependency
 
 ### 5.1 Create `lib/payments/revenue.ts`
 
@@ -167,7 +180,7 @@ Mechanical. Each item removes a literal and points it at `REVENUE`.
 - [ ] `actions/mentorship-revenue.ts:654` — approved REQUEST booking → same
 - [ ] `actions/mentorship-revenue.ts:1030` — offering booking → same
 - [ ] `actions/mentorship-revenue.ts:12` — `packageConfig` → `REVENUE.mentorshipPackages`
-- [ ] `lib/payments/finalizePaystack.ts:118,140` — `0.7` fallbacks → `REVENUE.mentorshipSplit.tutor`
+- [x] `lib/payments/finalizePaystack.ts:118,140` — `0.7` fallbacks → `computeMentorshipSplit()`
 - [ ] `actions/enrollment.ts:167,189` — installment percentages → `computeInstallmentSchedule()`
 - [ ] `actions/group-purchase.ts:83` — → `computeGroupCashback()` (rate still per-tier from DB)
 - [ ] `app/(root)/partners/page.tsx:17,33` — render from `REVENUE` so marketing can't drift from code
