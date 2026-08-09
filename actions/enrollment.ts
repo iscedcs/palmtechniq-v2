@@ -9,6 +9,7 @@ import {
 } from "@/schemas/enrollment";
 import { getProgramBySlug } from "@/data/programs";
 import { computeInstallmentSchedule } from "@/lib/payments/revenue";
+import { accrueProgramEarning } from "@/actions/program-earnings";
 import {
   sendEnrollmentConfirmation,
   sendAdminEnrollmentNotification,
@@ -425,6 +426,14 @@ export async function verifyEnrollmentPayment(reference: string) {
         transactionData: verification as any,
       },
     });
+
+    // ── Accrue the lead instructor's share of this installment ──
+    // Non-fatal: if the cohort has no instructor yet, assignment back-fills it.
+    try {
+      await accrueProgramEarning(installment.id);
+    } catch (error) {
+      console.error("[verifyEnrollmentPayment] accrual failed", error);
+    }
 
     // ── Update enrollment status & amount paid ──
     const enrollment = installment.enrollment;
