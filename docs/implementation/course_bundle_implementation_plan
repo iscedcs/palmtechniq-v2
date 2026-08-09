@@ -1,0 +1,247 @@
+# Course Bundle Plan — Critical Review & Improved Approach
+
+---
+
+## 🔴 Revenue & Logic Leakages Found
+
+### 1. **No enrollment guard in checkout — student pays for courses they already own**
+
+[beginCheckout](file:///c:/Users/TKT/codebase/isce/edtech/palmtechniq/palmtechniq-v2/actions/checkout.ts#L16-L73) has **zero** "already enrolled?" checks. The [group-purchase.ts](file:///c:/Users/TKT/codebase/isce/edtech/palmtechniq/palmtechniq-v2/actions/group-purchase.ts#L69-L78) flow does check, but standard checkout doesn't. If we build bundle checkout on top of `beginCheckout` without adding this guard, a student who already owns Course A but not Course B will pay the full bundle price and get a duplicate enrollment on A. **Money collected, no additional value delivered — a refund dispute waiting to happen.**
+
+> [!CAUTION]
+> **Fix**: Before initiating bundle payment, filter out courses the student is already enrolled in. If they own all courses, block checkout entirely. If they own some, either (a) block the bundle and tell them to buy the remaining course individually, or (b) pro-rate the bundle to exclude owned courses — option (a) is simpler and safer.
+
+---
+
+### 2. **Split-rate mismatch: `pricing.ts` says 20%, but `finalizePaystack.ts` hardcodes its own split logic**
+
+The [SPLIT_RATES](file:///c:/Users/TKT/codebase/isce/edtech/palmtechniq/palmtechniq-v2/lib/payments/pricing.ts#L3-L8) in `pricing.ts` currently define the tutor split as **20% to tutor / 80% to platform** for normal sales:
+```ts
+normal: 0.2,        // tutor gets 20%
+tutorReferral: 0.5,  // tutor gets 50%
+```
+
+But [finalizePaystack.ts lines 319-325](file:///c:/Users/TKT/codebase/isce/edtech/palmtechniq/palmtechniq-v2/lib/payments/finalizePaystack.ts#L319-L325) **hardcodes its own split determination** when creating `TutorEarning` records:
+```ts
+splitPercent: item.isReferralPurchase
+  ? 0.5
+  : item.promoType === "PLATFORM"
+    ? 0.2
+    : item.promoType === "INSTRUCTOR"
+      ? 0.5
+      : 0.2,
+```
+
+This means there are **two independent split-rate decision points** that must stay in sync. The original plan proposed adding `SPLIT_RATES.bundle = 0.75` only to `pricing.ts`, but the finalize path would still write `0.2` into the `TutorEarning.splitPercent` because it doesn't read from `SPLIT_RATES` — it uses its own hardcoded ladder.
+
+> [!CAUTION]
+> **Revenue leakage**: The tutor wallet would get credited with the correct 75% amount (from the line item computed by `pricing.ts`), but the `TutorEarning` audit record would say `splitPercent: 0.2`. This creates an accounting discrepancy: the wallet balance is 75% but the earning record claims 20%. Any reconciliation or audit report will show mismatched numbers.
+
+> [!IMPORTANT]
+> **Fix**: The `splitPercent` written in `finalizePaystack.ts` must come from the line item itself (where pricing.ts already computed it), not from a hardcoded ladder. The line item already carries `tutorShareAmount` and `discountedPrice` — compute `splitPercent = item.tutorShareAmount / item.discountedPrice`. Even better: add a `splitPercent` field to `TransactionLineItem` so the authoritative rate is persisted at checkout time and finalize just reads it.
+
+---
+
+### 3. **No minimum bundle price validation — tutor can set ₦0 and drain platform revenue**
+
+The original plan has no validation that `bundle.price > 0` or that the bundle price isn't unreasonably low compared to the sum of individual course prices. A tutor could create a bundle at ₦1, effectively giving courses away for free while the platform still processes the Paystack payment (incurring gateway fees).
+
+> [!WARNING]
+> **Fix**: Enforce `bundle.price >= some_minimum` (e.g., ₦500) and optionally cap the discount at a maximum percentage (e.g., no more than 60% off the sum of individual prices). This is a business rule, not just a technical one.
+
+---
+
+### 4. **Bundle with courses from different tutors — unclear tutor share attribution**
+
+The original plan links `CourseBundle` to a single `Tutor`, but doesn't enforce that all courses in the bundle belong to that tutor. If a tutor could bundle another tutor's course, the revenue split breaks: whose wallet gets the 75%? The platform would be paying out to the wrong person.
+
+> [!IMPORTANT]
+> **Fix**: Add a server-side validation constraint: every `CourseBundleItem.course.tutorId` must match `CourseBundle.tutorId`. This is non-negotiable for single-tutor bundles. Cross-tutor bundles are a fundamentally different feature requiring split attribution per course.
+
+---
+
+### 5. **Bundle link accessible even after deactivation — stale checkout**
+
+If a tutor deactivates a bundle (`isActive = false`), but a prospect already has the link bookmarked, they could land on a checkout page for a dead bundle. Worse, if the `beginBundleCheckout` action doesn't re-check `isActive`, they could complete payment for a deactivated bundle.
+
+> [!WARNING]
+> **Fix**: The checkout action must re-verify `bundle.isActive === true` at the moment of payment initiation, not just at page load. The landing page should also show a clear "this bundle is no longer available" state.
+
+---
+
+### 6. **No guard against a tutor bundling unpublished/draft courses**
+
+A tutor could include a `DRAFT` or `ARCHIVED` course in a bundle. The student pays and gets enrolled, but the course has no published content.
+
+> [!WARNING]
+> **Fix**: Only allow `CourseStatus.PUBLISHED` courses in a bundle. Validate at bundle creation **and** re-validate at checkout time (in case a course was unpublished between bundle creation and purchase).
+
+---
+
+### 7. **VAT computed on bundle price, not individual course values — potential compliance issue**
+
+The existing `computeCheckoutTotals` computes VAT on the `discountedPrice` (the price the student actually pays). For a bundle, this is correct from a "VAT on actual sale price" perspective. But if the plan passes the entire bundle price as a single line item, the `VatLedger` will have one entry for the whole bundle — losing per-course granularity that may be needed for tax reporting in Nigeria (7.5% VAT).
+
+> [!TIP]
+> **Better approach**: Create individual `TransactionLineItem` entries per course in the bundle, with each item's `discountedPrice` calculated as `(coursePrice / totalCoursePricesSum) * bundlePrice`. This proportionally distributes the bundle discount across courses and maintains per-course VAT records.
+
+---
+
+## 🟡 Architectural Issues
+
+### A. **Don't create a parallel checkout flow — extend the existing one**
+
+The original plan proposes new payment handling in `finalizePaystack.ts` for bundles. This is risky because `finalizePaystack.ts` already handles 3 product types (course, mentorship, group-purchase) with branching `if/else` logic. Adding a 4th branch makes it fragile.
+
+**Better approach**: A bundle checkout should produce the **exact same** `Transaction` + `TransactionLineItem[]` shape as a multi-course cart checkout. The existing [beginCheckout](file:///c:/Users/TKT/codebase/isce/edtech/palmtechniq/palmtechniq-v2/actions/checkout.ts) already accepts `courseIds: string[]` — it can already handle multiple courses in one checkout! The bundle just needs to:
+1. Resolve `bundleId` → list of `courseIds` + override the price to be the bundle price
+2. Feed those into the existing checkout pipeline
+3. Store `bundleId` in transaction metadata for analytics
+
+This means `finalizePaystack.ts` needs **zero changes** for enrollment (it already enrolls all `courseIds` from metadata). The only change needed is the split-rate calculation.
+
+---
+
+### B. **Schema: `CourseBundle` should link to `Tutor` via `userId`, not `tutorId`**
+
+Looking at the existing schema patterns:
+- `Course.tutorId` → references `Tutor.id`  
+- But `Transaction` and `TutorEarning` use `tutorId` → references `User.id`
+
+The original plan links `CourseBundle.tutorId` → `Tutor.id`, which is correct for ownership. But when it comes time to credit the wallet, you'd need to join through `Tutor` to get `userId`. The plan should be aware of this indirection and handle it consistently.
+
+---
+
+### C. **Missing: slug or shareId for cleaner URLs**
+
+The plan uses `/bundles/[bundleId]` which exposes the cuid. Better to add a `slug` field (like `Course.slug`) for SEO-friendly and shareable URLs: `/bundles/web-dev-masterclass`.
+
+---
+
+## 🟢 Revised Implementation Approach
+
+### Schema Changes (Minimal)
+
+```prisma
+model CourseBundle {
+  id          String             @id @default(cuid())
+  title       String
+  slug        String             @unique
+  description String?
+  price       Float              // must be > 0 and validated
+  currency    String             @default("NGN")
+  isActive    Boolean            @default(true)
+  tutorId     String             // references Tutor.id (owner)
+  createdAt   DateTime           @default(now())
+  updatedAt   DateTime           @updatedAt
+
+  tutor       Tutor              @relation(fields: [tutorId], references: [id], onDelete: Cascade)
+  items       CourseBundleItem[]
+
+  @@map("course_bundles")
+}
+
+model CourseBundleItem {
+  id       String       @id @default(cuid())
+  bundleId String
+  courseId  String
+
+  bundle   CourseBundle  @relation(fields: [bundleId], references: [id], onDelete: Cascade)
+  course   Course        @relation(fields: [courseId], references: [id], onDelete: Cascade)
+
+  @@unique([bundleId, courseId])
+  @@map("course_bundle_items")
+}
+```
+
+> [!NOTE]
+> **No `bundleId` on Transaction needed.** Store it in the existing `metadata` JSON column — the same pattern used for `groupPurchaseId` and `mentorshipSessionId`. This avoids a schema migration on the heavily-used `Transaction` table.
+
+### Checkout Flow (Reuse, Don't Rebuild)
+
+```
+Student clicks bundle link
+  → GET /bundles/[slug] (landing page: shows courses, savings, CTA)
+  → POST beginBundleCheckout(bundleSlug)
+      1. Resolve bundle → courseIds
+      2. Validate: bundle.isActive, all courses PUBLISHED, all belong to bundle.tutor
+      3. Check enrollment: reject if student owns ANY course in bundle
+      4. Override split rate: pass `bundleSplit: 0.75` into computeCheckoutTotals
+      5. Compute line items per-course (proportional price distribution)
+      6. Create Transaction + LineItems (same shape as regular checkout)
+      7. Store { bundleId, bundleSlug } in metadata
+      8. Initialize Paystack → redirect
+  → Paystack callback → finalizePaystackByReference (UNCHANGED)
+      - Reads courseIds from metadata
+      - Creates enrollments for all courses ✅
+      - Creates TutorEarnings from line items ✅
+      - Credits wallet ✅
+```
+
+### Split Rate Fix (pricing.ts)
+
+```ts
+export const SPLIT_RATES = {
+  normal: 0.2,
+  tutorReferral: 0.5,
+  platformPromo: 0.2,
+  instructorPromo: 0.5,
+  bundle: 0.75,         // ← NEW
+};
+```
+
+Add a `purchaseType` parameter to `computeCheckoutTotals` so it knows to use the bundle rate instead of the normal rate. The `getSplitPercent` function gains a `if (purchaseType === 'bundle') return SPLIT_RATES.bundle;` branch at the top.
+
+### Fix the `finalizePaystack.ts` splitPercent bug
+
+```diff
+- splitPercent: item.isReferralPurchase
+-   ? 0.5
+-   : item.promoType === "PLATFORM"
+-     ? 0.2
+-     : item.promoType === "INSTRUCTOR"
+-       ? 0.5
+-       : 0.2,
++ splitPercent: item.discountedPrice > 0
++   ? item.tutorShareAmount / item.discountedPrice
++   : 0,
+```
+
+This makes the finalize path **derive** the split from the already-computed amounts, eliminating the dual-source-of-truth bug.
+
+---
+
+## Validation Checklist (What the Implementation Must Enforce)
+
+| Guard | Where | 
+|---|---|
+| Bundle price > ₦500 | `createCourseBundle` action |
+| All courses belong to the same tutor | `createCourseBundle` action |
+| All courses are `PUBLISHED` | `createCourseBundle` + `beginBundleCheckout` |
+| Bundle has ≥ 2 courses | `createCourseBundle` action |
+| Student not enrolled in ANY bundle course | `beginBundleCheckout` action |
+| Bundle is still `isActive` at checkout | `beginBundleCheckout` action |
+| Tutor cannot buy their own bundle | `beginBundleCheckout` action |
+| Bundle slug is unique and URL-safe | `createCourseBundle` action |
+
+---
+
+## Summary of Leakages in the Original Plan
+
+| # | Issue | Severity | Status in Original Plan |
+|---|-------|----------|------------------------|
+| 1 | No enrollment guard → double-pay | 🔴 High | Missing |
+| 2 | Split-rate dual source of truth | 🔴 High | Would create accounting mismatch |
+| 3 | No minimum price validation | 🟡 Medium | Missing |
+| 4 | Cross-tutor bundle not blocked | 🔴 High | Missing |
+| 5 | Stale bundle link checkout | 🟡 Medium | Missing |
+| 6 | Draft course in bundle | 🟡 Medium | Missing |
+| 7 | Per-course VAT granularity lost | 🟡 Medium | Missing |
+| A | Parallel checkout flow | 🟡 Arch | Would duplicate existing logic |
+| B | tutorId indirection | 🟢 Low | Partially addressed |
+| C | No slug for clean URLs | 🟢 Low | Missing |
+
+---
+
+> [!IMPORTANT]
+> **Recommendation**: Approve this revised approach. The key insight is that **a bundle is just a curated, discounted multi-course cart with a fixed split rate** — we don't need new payment infrastructure, we need a thin wrapper around the existing checkout that enforces the bundle's price and split. This cuts the implementation surface area by ~40% and eliminates the risk of divergent payment paths.
