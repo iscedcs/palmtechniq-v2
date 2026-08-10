@@ -20,6 +20,7 @@ export type WalletEntryType =
   | "WITHDRAWAL_REQUESTED"
   | "WITHDRAWAL_REVERSED"
   | "COURSE_CREDIT_APPLIED"
+  | "COURSE_CREDIT_REFUNDED"
   | "ADJUSTMENT";
 
 type Refs = {

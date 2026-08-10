@@ -28,13 +28,42 @@ export async function finalizePaystackByReference(reference: string) {
 
   const v = await paystackVerify(reference);
   if (v.status !== "success") {
-    await db.transaction.update({
-      where: { id: tx.id },
-      data: {
-        status: "FAILED",
-        metadata: { ...((tx.metadata as any) || {}), verify: v },
-      },
+    // Credit was held when checkout began so it could not be spent twice
+    // across concurrent checkouts. The payment did not happen, so give it
+    // back — otherwise abandoning a checkout silently burns the balance.
+    // Only refund once. A retry against an already-failed reference must not
+    // hand the credit back a second time.
+    const alreadyRefunded =
+      (tx.metadata as any)?.creditRefunded !== undefined &&
+      (tx.metadata as any)?.creditRefunded !== null;
+    const creditHeld = alreadyRefunded
+      ? 0
+      : Number((tx.metadata as any)?.creditApplied ?? 0);
+
+    await db.$transaction(async (px: any) => {
+      await px.transaction.update({
+        where: { id: tx.id },
+        data: {
+          status: "FAILED",
+          metadata: {
+            ...((tx.metadata as any) || {}),
+            verify: v,
+            creditRefunded: creditHeld > 0 ? creditHeld : undefined,
+          },
+        },
+      });
+
+      if (creditHeld > 0) {
+        await creditWallet(px, {
+          userId: tx.userId,
+          amount: creditHeld,
+          type: "COURSE_CREDIT_REFUNDED",
+          transactionId: tx.id,
+          description: "Checkout not completed, credit returned",
+        });
+      }
     });
+
     return { ok: false, reason: "failed" };
   }
 
