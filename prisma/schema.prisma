@@ -80,6 +80,7 @@ model User {
   tutorEarnings           TutorEarning[]           @relation("TutorEarningTutor")
   releasedEarnings        TutorEarning[]           @relation("TutorEarningReleasedBy")
   ledCohorts              ProgramCohort[]          @relation("CohortLeadInstructor")
+  reviewedBundles         CourseBundle[]           @relation("BundleReviewer")
   tutorProfile            Tutor?
   analytics               UserAnalytics[]
   UserSkill               UserSkill[]
@@ -158,6 +159,7 @@ model Tutor {
   timezone       String?
   referralCode   String?   @unique @map("referral_code")
   Course         Course[]
+  bundles        CourseBundle[]
   user           User      @relation(fields: [userId], references: [id], onDelete: Cascade)
 
   // Exam Center
@@ -240,6 +242,7 @@ model Course {
   LearningPath           LearningPath[]
   projects               Project[]
   promoCodes             PromoCode[]
+  bundleItems            CourseBundleItem[]
   promoRedemptions       PromoRedemption[]
   reviews                Review[]
   Skill                  Skill[]
@@ -1492,6 +1495,60 @@ enum TutorEarningStatus {
   AVAILABLE
   PAID
   CANCELLED
+}
+
+/// A curated, discounted, price-capped set of a single tutor's courses.
+/// Bundles carry no split rate of their own - line items inherit the normal
+/// attribution rates, because a bundle is a packaging format, not an
+/// acquisition channel.
+model CourseBundle {
+  id          String             @id @default(cuid())
+  title       String
+  slug        String             @unique
+  description String?
+  price       Float
+  currency    String             @default("NGN")
+
+  /// Tutor-controlled on/off switch. Independent of review state: a tutor can
+  /// pause an approved bundle without losing approval.
+  isActive    Boolean            @default(true)
+
+  /// Platform review. Publicly purchasable only when APPROVED *and* isActive.
+  reviewStatus BundleReviewStatus @default(DRAFT)
+  reviewedAt   DateTime?
+  reviewedById String?
+  reviewNote   String?
+  submittedAt  DateTime?
+
+  tutorId   String
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  tutor      Tutor              @relation(fields: [tutorId], references: [id], onDelete: Cascade)
+  reviewedBy User?              @relation("BundleReviewer", fields: [reviewedById], references: [id], onDelete: SetNull)
+  items      CourseBundleItem[]
+
+  @@index([reviewStatus, isActive])
+  @@map("course_bundles")
+}
+
+model CourseBundleItem {
+  id       String @id @default(cuid())
+  bundleId String
+  courseId String
+
+  bundle CourseBundle @relation(fields: [bundleId], references: [id], onDelete: Cascade)
+  course Course       @relation(fields: [courseId], references: [id], onDelete: Cascade)
+
+  @@unique([bundleId, courseId])
+  @@map("course_bundle_items")
+}
+
+enum BundleReviewStatus {
+  DRAFT
+  PENDING_REVIEW
+  APPROVED
+  REJECTED
 }
 
 enum TutorEarningSource {
