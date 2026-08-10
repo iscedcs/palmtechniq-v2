@@ -39,7 +39,7 @@ type Bundle = {
 };
 
 const statusStyle: Record<Bundle["reviewStatus"], string> = {
-  DRAFT: "border-muted-foreground/30 text-muted-foreground",
+  DRAFT: "border-muted-foreground/30 text-foreground",
   PENDING_REVIEW: "border-amber-500/40 text-amber-600",
   APPROVED: "border-emerald-500/40 text-emerald-600",
   REJECTED: "border-red-500/40 text-red-600",
@@ -50,10 +50,7 @@ export default function AdminBundlesClient({ bundles }: { bundles: Bundle[] }) {
   const [busyId, setBusyId] = useState<string | null>(null);
   const [notes, setNotes] = useState<Record<string, string>>({});
 
-  const decide = (
-    bundleId: string,
-    decision: "APPROVED" | "REJECTED",
-  ) => {
+  const decide = (bundleId: string, decision: "APPROVED" | "REJECTED") => {
     setBusyId(bundleId);
     startTransition(async () => {
       const result = await reviewBundle({
@@ -89,15 +86,15 @@ export default function AdminBundlesClient({ bundles }: { bundles: Bundle[] }) {
           <h1 className="text-2xl font-bold">Course Bundles</h1>
           <p className="py-2 text-sm text-foreground">
             The tutor sets the bundle price, but the platform absorbs 75% of the
-            discount on a platform-attributed sale. Review the discount depth and
-            whether the bundle grows the pie or just discounts sales that were
-            already happening.
+            discount on a platform-attributed sale. Review the discount depth
+            and whether the bundle grows the pie or just discounts sales that
+            were already happening.
           </p>
         </div>
 
         {queue.length > 0 && (
           <section className="space-y-4">
-            <h2 className="text-sm font-semibold uppercase tracking-wide text-muted-foreground">
+            <h2 className="text-sm font-semibold uppercase tracking-wide text-foreground">
               Awaiting review ({queue.length})
             </h2>
             {queue.map((bundle) => (
@@ -117,12 +114,12 @@ export default function AdminBundlesClient({ bundles }: { bundles: Bundle[] }) {
         )}
 
         <section className="space-y-4">
-          <h2 className="text-sm font-semibold uppercase tracking-wide text-muted-foreground">
+          <h2 className="text-sm font-semibold uppercase tracking-wide text-foreground">
             All bundles
           </h2>
           {rest.length === 0 && queue.length === 0 && (
             <Card>
-              <CardContent className="p-6 text-sm text-muted-foreground">
+              <CardContent className="p-6 text-sm text-foreground">
                 No bundles yet.
               </CardContent>
             </Card>
@@ -182,11 +179,13 @@ function BundleCard({
             </div>
             <div className="flex items-center gap-2">
               {!bundle.isActive && (
-                <Badge variant="outline" className="text-muted-foreground">
+                <Badge variant="outline" className="text-foreground">
                   Paused by tutor
                 </Badge>
               )}
-              <Badge variant="outline" className={statusStyle[bundle.reviewStatus]}>
+              <Badge
+                variant="outline"
+                className={statusStyle[bundle.reviewStatus]}>
                 {bundle.reviewStatus.replace("_", " ")}
               </Badge>
             </div>
@@ -207,7 +206,7 @@ function BundleCard({
 
           <div className="rounded-md border">
             <table className="w-full text-sm">
-              <thead className="border-b bg-muted/40 text-xs text-muted-foreground">
+              <thead className="border-b bg-muted/40 text-xs text-foreground">
                 <tr>
                   <th className="p-2 text-left font-medium">Course</th>
                   <th className="p-2 text-right font-medium">List price</th>
@@ -236,13 +235,14 @@ function BundleCard({
             <p className="flex items-start gap-2 rounded-md border border-amber-500/30 bg-amber-500/5 p-2 text-xs text-amber-700 dark:text-amber-400">
               <TriangleAlert className="mt-0.5 h-3 w-3 shrink-0" />
               Both of the tutor&apos;s top-selling courses here already sell on
-              their own. Bundling them discounts sales that were likely to happen
-              anyway. Prefer bundles pairing a strong seller with weaker courses.
+              their own. Bundling them discounts sales that were likely to
+              happen anyway. Prefer bundles pairing a strong seller with weaker
+              courses.
             </p>
           )}
 
           {bundle.reviewNote && (
-            <p className="text-xs text-muted-foreground">
+            <p className="text-xs text-foreground">
               Last note: {bundle.reviewNote}
             </p>
           )}
@@ -258,8 +258,7 @@ function BundleCard({
               <Button
                 size="sm"
                 onClick={() => onDecide(bundle.id, "APPROVED")}
-                disabled={busy}
-              >
+                disabled={busy}>
                 <Check className="mr-1 h-4 w-4" />
                 Approve
               </Button>
@@ -267,16 +266,14 @@ function BundleCard({
                 size="sm"
                 variant="outline"
                 onClick={() => onDecide(bundle.id, "REJECTED")}
-                disabled={busy}
-              >
+                disabled={busy}>
                 <X className="mr-1 h-4 w-4" />
                 Send back
               </Button>
               <Link
                 href={`/bundles/${bundle.slug}`}
-                className="text-xs text-muted-foreground underline"
-                target="_blank"
-              >
+                className="text-xs text-foreground underline"
+                target="_blank">
                 Preview
               </Link>
             </div>
@@ -298,7 +295,7 @@ function Figure({
 }) {
   return (
     <div>
-      <p className="text-xs text-muted-foreground">{label}</p>
+      <p className="text-xs text-foreground">{label}</p>
       <p className={`text-lg font-semibold ${warn ? "text-amber-600" : ""}`}>
         {value}
       </p>

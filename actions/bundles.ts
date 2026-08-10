@@ -403,7 +403,13 @@ export async function getPublicBundle(slug: string) {
 export async function beginBundleCheckout(slug: string, referralCode?: string) {
   const session = await auth();
   if (!session?.user?.id || !session.user.email) {
-    return { ok: false as const, error: "You need to be logged in" };
+    // Typed so the caller can send the visitor to sign in and back again,
+    // rather than showing a dead end.
+    return {
+      ok: false as const,
+      reason: "unauthenticated" as const,
+      error: "You need to be signed in to buy this bundle",
+    };
   }
 
   const bundle = await db.courseBundle.findUnique({

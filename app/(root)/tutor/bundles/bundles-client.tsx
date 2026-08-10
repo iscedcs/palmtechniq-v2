@@ -49,7 +49,7 @@ type Limits = {
 };
 
 const statusStyle: Record<Bundle["reviewStatus"], string> = {
-  DRAFT: "border-muted-foreground/30 text-muted-foreground",
+  DRAFT: "border-foreground/30 text-foreground",
   PENDING_REVIEW: "border-amber-500/40 text-amber-600",
   APPROVED: "border-emerald-500/40 text-emerald-600",
   REJECTED: "border-red-500/40 text-red-600",
@@ -97,7 +97,7 @@ export default function TutorBundlesClient({
 
         {availableCourses.length < limits.minCourses && (
           <Card>
-            <CardContent className="flex items-start gap-2 p-4 text-sm text-muted-foreground">
+            <CardContent className="flex items-start gap-2 p-4 text-sm text-foreground">
               <TriangleAlert className="mt-0.5 h-4 w-4 shrink-0 text-amber-600" />
               You need at least {limits.minCourses} published courses to make a
               bundle. You have {availableCourses.length}.
@@ -116,7 +116,7 @@ export default function TutorBundlesClient({
         <div className="space-y-4">
           {bundles.length === 0 && !creating && (
             <Card>
-              <CardContent className="p-6 text-sm text-muted-foreground">
+              <CardContent className="p-6 text-sm text-foreground">
                 No bundles yet.
               </CardContent>
             </Card>
@@ -150,7 +150,8 @@ function BundleForm({
   const listSum = chosen.reduce((sum, c) => sum + c.listPrice, 0);
   // Mirror of the server rule, shown live so the tutor isn't guessing.
   const priceFloor = useMemo(
-    () => Math.max(Math.round(listSum * (1 - limits.maxDiscount)), limits.minPrice),
+    () =>
+      Math.max(Math.round(listSum * (1 - limits.maxDiscount)), limits.minPrice),
     [listSum, limits],
   );
 
@@ -183,7 +184,9 @@ function BundleForm({
         toast.error(result.error);
         return;
       }
-      toast.success("Bundle created as a draft. Submit it for review when ready.");
+      toast.success(
+        "Bundle created as a draft. Submit it for review when ready.",
+      );
       onDone();
     });
   };
@@ -228,13 +231,14 @@ function BundleForm({
                   type="button"
                   onClick={() => toggle(course.id)}
                   className={`flex w-full items-center justify-between gap-3 rounded-md border p-3 text-left transition-colors ${
-                    isOn ? "border-primary bg-primary/5" : "border-transparent hover:bg-muted/50"
-                  }`}
-                >
+                    isOn
+                      ? "border-primary bg-primary/5"
+                      : "border-transparent hover:bg-muted/50"
+                  }`}>
                   <span className="min-w-0 flex-1 truncate text-sm">
                     {course.title}
                   </span>
-                  <span className="text-sm text-muted-foreground">
+                  <span className="text-sm text-foreground">
                     {formatToNaira(course.listPrice)}
                   </span>
                   {isOn && <Check className="h-4 w-4 shrink-0 text-primary" />}
@@ -247,13 +251,13 @@ function BundleForm({
         {selected.length > 0 && (
           <div className="rounded-md border bg-muted/30 p-3 text-sm">
             <div className="flex justify-between">
-              <span className="text-muted-foreground">Sold separately</span>
+              <span className="text-foreground">Sold separately</span>
               <span className="font-medium">{formatToNaira(listSum)}</span>
             </div>
             <div className="mt-1 flex justify-between">
-              <span className="text-muted-foreground">
-                Lowest allowed price ({Math.round(limits.maxDiscount * 100)}% max
-                discount)
+              <span className="text-foreground">
+                Lowest allowed price ({Math.round(limits.maxDiscount * 100)}%
+                max discount)
               </span>
               <span className="font-medium">{formatToNaira(priceFloor)}</span>
             </div>
@@ -279,9 +283,9 @@ function BundleForm({
             </p>
           )}
           {!belowFloor && priceNumber > 0 && listSum > 0 && (
-            <p className="text-xs text-muted-foreground">
-              Students save {formatToNaira(Math.max(0, listSum - priceNumber))} (
-              {discountPercent}%). VAT is added at checkout.
+            <p className="text-xs text-foreground">
+              Students save {formatToNaira(Math.max(0, listSum - priceNumber))}{" "}
+              ({discountPercent}%). VAT is added at checkout.
             </p>
           )}
         </div>
@@ -320,7 +324,10 @@ function BundleRow({ bundle, limits }: { bundle: Bundle; limits: Limits }) {
 
   const togglePause = (isActive: boolean) => {
     startTransition(async () => {
-      const result = await updateCourseBundle({ bundleId: bundle.id, isActive });
+      const result = await updateCourseBundle({
+        bundleId: bundle.id,
+        isActive,
+      });
       if (!result.ok) {
         toast.error(result.error);
         return;
@@ -336,19 +343,21 @@ function BundleRow({ bundle, limits }: { bundle: Bundle; limits: Limits }) {
           <div className="flex flex-wrap items-start justify-between gap-3">
             <div>
               <CardTitle className="text-base">{bundle.title}</CardTitle>
-              <p className="text-sm text-muted-foreground">
-                {bundle.courses.length} courses ·{" "}
-                {formatToNaira(bundle.price)} (was {formatToNaira(listSum)})
+              <p className="text-sm text-foreground">
+                {bundle.courses.length} courses · {formatToNaira(bundle.price)}{" "}
+                (was {formatToNaira(listSum)})
               </p>
             </div>
-            <Badge variant="outline" className={statusStyle[bundle.reviewStatus]}>
+            <Badge
+              variant="outline"
+              className={statusStyle[bundle.reviewStatus]}>
               {bundle.reviewStatus.replace("_", " ")}
             </Badge>
           </div>
         </CardHeader>
 
         <CardContent className="space-y-3">
-          <ul className="space-y-1 text-sm text-muted-foreground">
+          <ul className="space-y-1 text-sm text-foreground">
             {bundle.courses.map((course) => (
               <li key={course.id} className="flex justify-between gap-3">
                 <span className="truncate">{course.title}</span>
@@ -365,7 +374,7 @@ function BundleRow({ bundle, limits }: { bundle: Bundle; limits: Limits }) {
           )}
 
           {bundle.reviewStatus === "PENDING_REVIEW" && (
-            <p className="text-xs text-muted-foreground">
+            <p className="text-xs text-foreground">
               Waiting for platform review. It is not purchasable yet.
             </p>
           )}
@@ -397,16 +406,14 @@ function BundleRow({ bundle, limits }: { bundle: Bundle; limits: Limits }) {
                   onClick={() => {
                     navigator.clipboard.writeText(shareUrl);
                     toast.success("Bundle link copied");
-                  }}
-                >
+                  }}>
                   <Copy className="mr-1 h-4 w-4" />
                   Copy link
                 </Button>
                 <Link
                   href={`/bundles/${bundle.slug}`}
                   target="_blank"
-                  className="text-xs text-muted-foreground underline"
-                >
+                  className="text-xs text-foreground underline">
                   View page
                 </Link>
               </>

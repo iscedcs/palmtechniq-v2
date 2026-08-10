@@ -1,6 +1,8 @@
 "use client";
 
 import { useState, useTransition } from "react";
+import Link from "next/link";
+import { useRouter } from "next/navigation";
 import Image from "next/image";
 import { motion } from "framer-motion";
 import { BookOpen, Check, Sparkles, TriangleAlert } from "lucide-react";
@@ -34,10 +36,15 @@ type Bundle = {
 export default function BundleLanding({
   bundle,
   referralCode,
+  isAuthenticated,
+  loginUrl,
 }: {
   bundle: Bundle;
   referralCode?: string;
+  isAuthenticated: boolean;
+  loginUrl: string;
 }) {
+  const router = useRouter();
   const [pending, startTransition] = useTransition();
   const [blocked, setBlocked] = useState<string | null>(null);
 
@@ -46,6 +53,12 @@ export default function BundleLanding({
     startTransition(async () => {
       const result = await beginBundleCheckout(bundle.slug, referralCode);
       if (!result.ok) {
+        // The session can lapse between page load and clicking pay, so handle
+        // it here too rather than trusting the render-time check alone.
+        if ("reason" in result && result.reason === "unauthenticated") {
+          router.push(loginUrl);
+          return;
+        }
         setBlocked(result.error);
         toast.error(result.error);
         return;
@@ -60,14 +73,13 @@ export default function BundleLanding({
         <motion.div
           initial={{ opacity: 0, y: 12 }}
           animate={{ opacity: 1, y: 0 }}
-          transition={{ duration: 0.35 }}
-        >
+          transition={{ duration: 0.35 }}>
           <Badge className="mb-3 bg-primary/10 text-primary hover:bg-primary/10">
             <Sparkles className="mr-1 h-3 w-3" />
             Course bundle
           </Badge>
           <h1 className="text-3xl font-bold md:text-4xl">{bundle.title}</h1>
-          <p className="mt-2 text-sm text-muted-foreground">
+          <p className="mt-2 text-sm text-foreground">
             {bundle.courses.length} courses by {bundle.tutorName}
           </p>
           {bundle.description && (
@@ -84,8 +96,7 @@ export default function BundleLanding({
                 key={course.id}
                 initial={{ opacity: 0, y: 8 }}
                 animate={{ opacity: 1, y: 0 }}
-                transition={{ duration: 0.25, delay: index * 0.05 }}
-              >
+                transition={{ duration: 0.25, delay: index * 0.05 }}>
                 <Card>
                   <CardContent className="flex items-center gap-4 p-4">
                     <div className="relative h-16 w-24 shrink-0 overflow-hidden rounded-md bg-muted">
@@ -99,13 +110,13 @@ export default function BundleLanding({
                         />
                       ) : (
                         <div className="flex h-full items-center justify-center">
-                          <BookOpen className="h-5 w-5 text-muted-foreground" />
+                          <BookOpen className="h-5 w-5 text-foreground" />
                         </div>
                       )}
                     </div>
                     <div className="min-w-0 flex-1">
                       <p className="truncate font-medium">{course.title}</p>
-                      <p className="text-sm text-muted-foreground">
+                      <p className="text-sm text-foreground">
                         Sold separately for {formatToNaira(course.listPrice)}
                       </p>
                     </div>
@@ -120,7 +131,7 @@ export default function BundleLanding({
             <Card>
               <CardContent className="space-y-4 p-6">
                 <div>
-                  <p className="text-sm text-muted-foreground line-through">
+                  <p className="text-sm text-foreground line-through">
                     {formatToNaira(bundle.listSum)}
                   </p>
                   <p className="text-3xl font-bold">
@@ -134,7 +145,7 @@ export default function BundleLanding({
                   )}
                 </div>
 
-                <p className="text-xs text-muted-foreground">
+                <p className="text-xs text-foreground">
                   VAT is added at checkout. Buying the bundle enrolls you in all{" "}
                   {bundle.courses.length} courses immediately.
                 </p>
@@ -146,16 +157,30 @@ export default function BundleLanding({
                   </p>
                 )}
 
-                <Button
-                  className="w-full"
-                  size="lg"
-                  onClick={handleCheckout}
-                  disabled={pending}
-                >
-                  {pending ? "Starting checkout…" : "Get the bundle"}
-                </Button>
+                {isAuthenticated ? (
+                  <Button
+                    className="w-full"
+                    size="lg"
+                    onClick={handleCheckout}
+                    disabled={pending}>
+                    {pending ? "Starting checkout…" : "Get the bundle"}
+                  </Button>
+                ) : (
+                  <>
+                    <Button className="w-full" size="lg" asChild>
+                      <Link href={loginUrl}>Sign in to get the bundle</Link>
+                    </Button>
+                    <p className="text-center text-xs text-foreground">
+                      Signing in brings you straight back here. New?{" "}
+                      <Link href="/signup" className="underline">
+                        Create an account
+                      </Link>
+                      .
+                    </p>
+                  </>
+                )}
 
-                <p className="text-center text-[11px] text-muted-foreground">
+                <p className="text-center text-[11px] text-foreground">
                   Promo codes cannot be combined with a bundle price.
                 </p>
               </CardContent>
