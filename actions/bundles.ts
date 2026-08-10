@@ -107,12 +107,11 @@ async function validateComposition({
     };
   }
 
-  const priced = courses.map((c: any) => ({
-    id: c.id,
-    price:
-      c.currentPrice && c.currentPrice > 0
-        ? c.currentPrice
-        : (c.basePrice ?? c.price ?? 0),
+  const priced: { id: string; price: number }[] = courses.map((c: any) => ({
+    id: c.id as string,
+    price: (c.currentPrice && c.currentPrice > 0
+      ? c.currentPrice
+      : (c.basePrice ?? c.price ?? 0)) as number,
   }));
 
   const check = validateBundlePrice({
@@ -617,10 +616,10 @@ export async function getAdminBundleQueue() {
       })
     : [];
 
-  const salesByCourse = new Map(
+  const salesByCourse = new Map<string, { count: number; revenue: number }>(
     sales.map((row: any) => [
-      row.courseId,
-      { count: row._count._all, revenue: row._sum.totalAmount ?? 0 },
+      row.courseId as string,
+      { count: row._count._all as number, revenue: (row._sum.totalAmount ?? 0) as number },
     ]),
   );
 
