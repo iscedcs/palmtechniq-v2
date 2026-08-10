@@ -1,5 +1,6 @@
 "use client";
 
+import { CourseThumbnail } from "@/components/shared/course-thumbnail";
 import { useState } from "react";
 import { motion } from "framer-motion";
 import {
@@ -16,7 +17,6 @@ import { Card, CardContent, CardHeader } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Avatar, AvatarFallback } from "@/components/ui/avatar";
-import { generateRandomAvatar } from "@/lib/utils";
 
 // AI Recommendations Widget
 export function AIRecommendations() {
@@ -103,8 +103,8 @@ export function AIRecommendations() {
                 </div>
 
                 <div className="relative">
-                  <img
-                    src={course.thumbnail || generateRandomAvatar()}
+                  <CourseThumbnail
+                    src={course.thumbnail}
                     alt={course.title}
                     className="w-full h-32 object-cover"
                   />

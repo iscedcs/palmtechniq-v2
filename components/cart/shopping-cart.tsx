@@ -1,5 +1,6 @@
 "use client";
 
+import { CourseThumbnail } from "@/components/shared/course-thumbnail";
 import {
   getUserCart,
   removeFromCart,
@@ -25,7 +26,6 @@ import { useEffect, useState } from "react";
 import { toast } from "sonner";
 import { Avatar, AvatarFallback, AvatarImage } from "../ui/avatar";
 import { beginCheckout } from "@/actions/checkout";
-import Image from "next/image";
 
 export function ShoppingCartComponent() {
   const [isOpen, setIsOpen] = useState(false);
@@ -180,10 +180,8 @@ export function ShoppingCartComponent() {
                         animate={{ opacity: 1, y: 0 }}
                         exit={{ opacity: 0, y: -20 }}>
                         <div className="flex gap-4">
-                          <Image
-                            width={100}
-                            height={100}
-                            src={item.thumbnail || generateRandomAvatar()}
+                          <CourseThumbnail
+                            src={item.thumbnail}
                             alt={item.title}
                             className="w-20 h-14 rounded-lg object-cover"
                           />
