@@ -55,17 +55,18 @@ function resolvePostLoginRedirect(
   const callbackPath = normalized.split("?")[0]?.split("#")[0] || "/";
 
   const allowedPrefixesByRole: Record<UserRole, string[]> = {
-    STUDENT: ["/student", "/courses", "/settings", "/change-password"],
+    STUDENT: ["/student", "/courses", "/bundles", "/settings", "/change-password"],
     MENTOR: [
       "/mentor",
       "/tutor",
       "/courses",
+      "/bundles",
       "/settings",
       "/change-password",
     ],
-    TUTOR: ["/tutor", "/courses", "/settings", "/change-password"],
-    ADMIN: ["/admin", "/analytics", "/settings", "/change-password"],
-    USER: ["/courses", "/enroll", "/settings", "/change-password"],
+    TUTOR: ["/tutor", "/courses", "/bundles", "/settings", "/change-password"],
+    ADMIN: ["/admin", "/analytics", "/bundles", "/settings", "/change-password"],
+    USER: ["/courses", "/enroll", "/bundles", "/settings", "/change-password"],
     TESTER: ["/documentation", "/settings", "/change-password"],
     SUPERIOR: [
       "/superior",

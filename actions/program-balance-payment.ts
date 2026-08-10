@@ -1,6 +1,7 @@
 "use server";
 
 import { db } from "@/lib/db";
+import { accrueProgramEarning } from "@/actions/program-earnings";
 import type { InstallmentPayment, ProgramEnrollment } from "@prisma/client";
 import { auth } from "@/auth";
 import { paystackInitialize, paystackVerify } from "./paystack";
@@ -201,6 +202,14 @@ export async function verifyAndCompleteBalancePayment(
         },
       },
     });
+
+    // Accrue the lead instructor's share of this installment. Non-fatal:
+    // if the cohort has no instructor yet, assignment back-fills it.
+    try {
+      await accrueProgramEarning(secondInstallment.id);
+    } catch (error) {
+      console.error("[verifyAndCompleteBalancePayment] accrual failed", error);
+    }
 
     // Check if all installments are paid
     const allInstallments = await db.installmentPayment.findMany({

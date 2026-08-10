@@ -66,23 +66,12 @@ export default function QuizRunnerClient({
     setSubmitting(true);
 
     try {
-      const score = quiz.questions.reduce((acc: number, q: any) => {
-        const studentAnswer = answers[q.id];
-        return studentAnswer === q.correctAnswer ? acc + q.points : acc;
-      }, 0);
-
-      const total = quiz.questions.reduce(
-        (sum: number, q: any) => sum + q.points,
-        0
-      );
-
-      const percent = Math.round((score / total) * 100);
-
+      // The server scores this. The browser never sees the correct answers and
+      // its arithmetic would not be trusted anyway.
       const res = await fetch(`/api/quiz/${quiz.id}/submit`, {
         method: "POST",
         body: JSON.stringify({
           answers,
-          score: percent,
           timeSpent: quiz.timeLimit * 60 - timeLeft,
           enrollmentId,
         }),
@@ -90,6 +79,8 @@ export default function QuizRunnerClient({
 
       const data = await res.json();
       if (!res.ok) throw new Error(data.error);
+
+      const percent = data.score ?? 0;
 
       if (data.passed) {
         toast.success("✅ You passed the quiz!");

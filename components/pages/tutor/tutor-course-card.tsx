@@ -1,5 +1,6 @@
 "use client";
 
+import { CourseThumbnail } from "@/components/shared/course-thumbnail";
 import Link from "next/link";
 import { Card } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
@@ -7,8 +8,7 @@ import { TutorCourseStatusBadge } from "./shared/tutor-course-status-badge";
 import { TutorCourseActionsMenu } from "./shared/tutor-course-actions-menu";
 import { TutorCourseStatsRow } from "./shared/tutor-course-stats-row";
 import { TutorCourseProgress } from "./shared/tutor-course-progress";
-import Image from "next/image";
-import { formatDurationMinutes, generateRandomAvatar } from "@/lib/utils";
+import { formatDurationMinutes } from "@/lib/utils";
 import { motion } from "framer-motion";
 import { LinkIcon, Check } from "lucide-react";
 import { useState, useTransition } from "react";
@@ -36,7 +36,6 @@ interface TutorCourseCardProps {
 export function TutorCourseCard({ course }: TutorCourseCardProps) {
   const [copied, setCopied] = useState(false);
   const [isPending, startTransition] = useTransition();
-  const fallbackThumbnail = generateRandomAvatar();
 
   if (!course) return null;
 
@@ -64,10 +63,8 @@ export function TutorCourseCard({ course }: TutorCourseCardProps) {
       transition={{ duration: 0.5 }}>
       <Card className="relative glass-card border-white/10 hover:scale-105 transition-transform duration-300 overflow-hidden">
         {/* Thumbnail */}
-        <Image
-          src={course.thumbnail || fallbackThumbnail}
-          width={100}
-          height={100}
+        <CourseThumbnail
+          src={course.thumbnail}
           alt={course.title}
           className="w-full h-40 object-cover"
         />

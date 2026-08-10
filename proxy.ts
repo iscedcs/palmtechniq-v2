@@ -32,7 +32,10 @@ export default auth((req) => {
     !nextUrl.pathname.startsWith("/_next")
   ) {
     return NextResponse.rewrite(
-      new URL(`/bootcamp${nextUrl.pathname === "/" ? "" : nextUrl.pathname}`, req.url)
+      new URL(
+        `/bootcamp${nextUrl.pathname === "/" ? "" : nextUrl.pathname}`,
+        req.url,
+      ),
     );
   }
 

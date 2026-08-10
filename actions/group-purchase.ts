@@ -1,11 +1,17 @@
 "use server";
 
+import { creditWallet, debitWallet } from "@/lib/payments/wallet";
 import { auth } from "@/auth";
 import { db } from "@/lib/db";
 import { paystackInitialize } from "./paystack";
 import { randomUUID } from "crypto";
 import { redirect } from "next/navigation";
-import { computeCheckoutTotals, DEFAULT_VAT_RATE } from "@/lib/payments/pricing";
+import {
+  computeCheckoutTotals,
+  computeGroupCashback,
+  computeGroupCashbackEarned,
+  REVENUE,
+} from "@/lib/payments/revenue";
 
 const buildInviteCode = () =>
   `GRP-${randomUUID().replace(/-/g, "").slice(0, 8).toUpperCase()}`;
@@ -80,9 +86,11 @@ export async function beginGroupCheckout(courseId: string, tierId: string) {
 
   const inviteCode = await ensureInviteCode();
   const groupPrice = tier.groupPrice;
-  const cashbackTotal = groupPrice * (tier.cashbackPercent ?? 0);
-  const cashbackPerMember =
-    tier.size > 1 ? cashbackTotal / (tier.size - 1) : 0;
+  const { cashbackTotal, cashbackPerMember } = computeGroupCashback({
+    groupPrice,
+    cashbackPercent: tier.cashbackPercent,
+    size: tier.size,
+  });
 
   const reference = `ps_${randomUUID()}`;
   const totals = computeCheckoutTotals({
@@ -96,7 +104,7 @@ export async function beginGroupCheckout(courseId: string, tierId: string) {
       },
     ],
     promo: null,
-    vatRate: DEFAULT_VAT_RATE,
+    vatRate: REVENUE.vatRate,
   });
 
   const { groupPurchaseId } = await db.$transaction(async (tx: any) => {
@@ -277,10 +285,11 @@ export async function joinGroupPurchase(inviteCode: string) {
     });
 
     const nextMemberCount = group.memberCount + 1;
-    const nextCashbackEarned = Math.min(
-      group.cashbackTotal,
-      group.cashbackPerMember * Math.max(0, nextMemberCount - 1)
-    );
+    const nextCashbackEarned = computeGroupCashbackEarned({
+      cashbackTotal: group.cashbackTotal,
+      cashbackPerMember: group.cashbackPerMember,
+      memberCount: nextMemberCount,
+    });
 
     const shouldComplete = nextMemberCount >= group.memberLimit;
 
@@ -296,29 +305,51 @@ export async function joinGroupPurchase(inviteCode: string) {
     });
 
     if (shouldComplete && group.cashbackTotal > 0) {
-      await tx.user.update({
-        where: { id: group.creatorId },
-        data: {
-          walletBalance: {
-            increment: group.cashbackTotal,
-          },
-        },
-      });
-
+      // Cashback is funded by the tutor, so the credit and the debit are two
+      // halves of one movement. Resolve the funder FIRST: if we cannot, the
+      // credit must not happen either. Previously the credit ran
+      // unconditionally and the debit was skipped when the tutor could not be
+      // resolved, which created money out of nothing.
       const course = await tx.course.findUnique({
         where: { id: group.courseId },
         select: { tutor: { select: { userId: true } } },
       });
-      if (course?.tutor?.userId) {
-        await tx.user.update({
-          where: { id: course.tutor.userId },
-          data: {
-            walletBalance: {
-              decrement: group.cashbackTotal,
-            },
-          },
-        });
+      const funderId = course?.tutor?.userId;
+
+      if (!funderId) {
+        throw new Error(
+          `Group ${group.id}: cannot release cashback, course ${group.courseId} has no tutor to fund it`,
+        );
       }
+
+      // The tutor must actually have the money. Without this the debit can
+      // drive a wallet negative, letting the platform pay out cashback the
+      // tutor never earned.
+      const funder = await tx.user.findUnique({
+        where: { id: funderId },
+        select: { walletBalance: true },
+      });
+      if (!funder || funder.walletBalance < group.cashbackTotal) {
+        throw new Error(
+          `Group ${group.id}: tutor ${funderId} has ${funder?.walletBalance ?? 0} but cashback needs ${group.cashbackTotal}`,
+        );
+      }
+
+      await debitWallet(tx, {
+        userId: funderId,
+        amount: group.cashbackTotal,
+        type: "GROUP_CASHBACK_DEBIT",
+        groupPurchaseId: group.id,
+        description: "Funded group cashback",
+      });
+
+      await creditWallet(tx, {
+        userId: group.creatorId,
+        amount: group.cashbackTotal,
+        type: "GROUP_CASHBACK_CREDIT",
+        groupPurchaseId: group.id,
+        description: "Group purchase cashback",
+      });
     }
 
     return { shouldComplete };

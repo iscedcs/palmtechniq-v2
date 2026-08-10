@@ -13,8 +13,9 @@ const formatCurrency = (amount: number) =>
     maximumFractionDigits: 0,
   }).format(amount);
 
-const formatTransactionCurrency = (amount: number) =>
-  formatCurrency(amount / 100);
+// Transaction and line-item amounts are stored in naira, not kobo. Kobo only
+// exists at the Paystack boundary, where callers multiply by 100.
+const formatTransactionCurrency = (amount: number) => formatCurrency(amount);
 
 const formatDate = (date: Date) =>
   date.toLocaleDateString("en-GB", {

@@ -1,10 +1,10 @@
-import { Card, CardContent, CardHeader } from "@/components/ui/card"
-import { Skeleton } from "@/components/ui/skeleton"
+import { Card, CardContent, CardHeader } from "@/components/ui/card";
+import { Skeleton } from "@/components/ui/skeleton";
 
 export default function WalletLoading() {
   return (
-    <div className="min-h-screen bg-gradient-to-br from-slate-50 via-blue-50 to-indigo-100 p-6">
-      <div className="max-w-7xl mx-auto space-y-8">
+    <div className="min-h-screen bg-background">
+      <section className="max-w-7xl mx-auto pt-32 pb-8 space-y-8">
         {/* Header Skeleton */}
         <div className="flex items-center justify-between">
           <div>
@@ -20,7 +20,7 @@ export default function WalletLoading() {
         {/* Stats Cards Skeleton */}
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
           {Array.from({ length: 4 }).map((_, i) => (
-            <Card key={i} className="bg-white/70 backdrop-blur-sm border-white/20">
+            <Card key={i} className="glass-card border-white/20">
               <CardContent className="p-6">
                 <div className="flex items-center justify-between">
                   <div>
@@ -40,7 +40,7 @@ export default function WalletLoading() {
           <Skeleton className="h-12 w-full" />
 
           <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-            <Card className="bg-white/70 backdrop-blur-sm border-white/20">
+            <Card className="glass-card border-white/20">
               <CardHeader>
                 <Skeleton className="h-6 w-32" />
               </CardHeader>
@@ -49,7 +49,7 @@ export default function WalletLoading() {
               </CardContent>
             </Card>
 
-            <Card className="bg-white/70 backdrop-blur-sm border-white/20">
+            <Card className="glass-card border-white/20">
               <CardHeader>
                 <Skeleton className="h-6 w-32" />
               </CardHeader>
@@ -59,7 +59,7 @@ export default function WalletLoading() {
             </Card>
           </div>
         </div>
-      </div>
+      </section>
     </div>
-  )
+  );
 }

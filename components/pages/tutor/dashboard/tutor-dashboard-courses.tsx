@@ -1,13 +1,12 @@
 "use client";
 
+import { CourseThumbnail } from "@/components/shared/course-thumbnail";
 import { motion } from "framer-motion";
 import { Card, CardHeader, CardContent } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Users, Star, Plus } from "lucide-react";
-import Image from "next/image";
 import Link from "next/link";
-import { generateRandomAvatar } from "@/lib/utils";
 import { NairaSign } from "@/components/shared/naira-sign-icon";
 
 interface Course {
@@ -47,11 +46,9 @@ export function TutorDashboardCourses({ courses }: { courses: Course[] }) {
               animate={{ opacity: 1, x: 0 }}
               transition={{ duration: 0.5, delay: index * 0.1 }}
               className="flex items-center space-x-4 p-4 bg-white/5 rounded-lg hover:bg-white/10 transition-colors group cursor-pointer">
-              <Image
-                src={course.thumbnail || generateRandomAvatar()}
+              <CourseThumbnail
+                src={course.thumbnail}
                 alt={course.title}
-                width={80}
-                height={60}
                 className="w-20 h-14 object-cover rounded-lg"
               />
               <div className="flex-1">

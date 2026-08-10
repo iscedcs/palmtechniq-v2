@@ -1,5 +1,6 @@
 "use client";
 
+import { CourseThumbnail } from "@/components/shared/course-thumbnail";
 import { motion } from "framer-motion";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
@@ -21,7 +22,6 @@ import {
   Users,
 } from "lucide-react";
 import Link from "next/link";
-import { generateRandomAvatar } from "@/lib/utils";
 import type { StudentProgressData } from "@/data/studentprogress";
 
 interface CourseProgress {
@@ -313,8 +313,8 @@ export default function StudentProgress({
                     <Card className="glass-card border-white/10 hover-glow group">
                       <CardContent className="p-6">
                         <div className="flex items-start gap-4 mb-4">
-                          <img
-                            src={course.image || generateRandomAvatar()}
+                          <CourseThumbnail
+                            src={course.image}
                             alt={course.title}
                             className="w-16 h-12 rounded-lg object-cover"
                           />
