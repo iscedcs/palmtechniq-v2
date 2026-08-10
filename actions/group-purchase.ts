@@ -304,29 +304,45 @@ export async function joinGroupPurchase(inviteCode: string) {
     });
 
     if (shouldComplete && group.cashbackTotal > 0) {
-      await tx.user.update({
-        where: { id: group.creatorId },
-        data: {
-          walletBalance: {
-            increment: group.cashbackTotal,
-          },
-        },
-      });
-
+      // Cashback is funded by the tutor, so the credit and the debit are two
+      // halves of one movement. Resolve the funder FIRST: if we cannot, the
+      // credit must not happen either. Previously the credit ran
+      // unconditionally and the debit was skipped when the tutor could not be
+      // resolved, which created money out of nothing.
       const course = await tx.course.findUnique({
         where: { id: group.courseId },
         select: { tutor: { select: { userId: true } } },
       });
-      if (course?.tutor?.userId) {
-        await tx.user.update({
-          where: { id: course.tutor.userId },
-          data: {
-            walletBalance: {
-              decrement: group.cashbackTotal,
-            },
-          },
-        });
+      const funderId = course?.tutor?.userId;
+
+      if (!funderId) {
+        throw new Error(
+          `Group ${group.id}: cannot release cashback, course ${group.courseId} has no tutor to fund it`,
+        );
       }
+
+      // The tutor must actually have the money. Without this the debit can
+      // drive a wallet negative, letting the platform pay out cashback the
+      // tutor never earned.
+      const funder = await tx.user.findUnique({
+        where: { id: funderId },
+        select: { walletBalance: true },
+      });
+      if (!funder || funder.walletBalance < group.cashbackTotal) {
+        throw new Error(
+          `Group ${group.id}: tutor ${funderId} has ${funder?.walletBalance ?? 0} but cashback needs ${group.cashbackTotal}`,
+        );
+      }
+
+      await tx.user.update({
+        where: { id: funderId },
+        data: { walletBalance: { decrement: group.cashbackTotal } },
+      });
+
+      await tx.user.update({
+        where: { id: group.creatorId },
+        data: { walletBalance: { increment: group.cashbackTotal } },
+      });
     }
 
     return { shouldComplete };

@@ -40,6 +40,29 @@ export async function beginCheckout(
 
   if (!courses.length) throw new Error("Courses not found");
 
+  // Refuse to sell a course the student already owns. Without this a student
+  // can pay again for access they already have — money taken, nothing new
+  // delivered, and a refund request that is entirely our fault.
+  const alreadyOwned = await db.enrollment.findMany({
+    where: {
+      userId: session.user.id,
+      courseId: { in: ids },
+      status: { in: ["ACTIVE", "COMPLETED"] },
+    },
+    select: { course: { select: { title: true } } },
+  });
+
+  if (alreadyOwned.length > 0) {
+    const titles = alreadyOwned
+      .map((e: any) => `"${e.course.title}"`)
+      .join(", ");
+    throw new Error(
+      alreadyOwned.length === ids.length
+        ? `You are already enrolled in ${titles}.`
+        : `You are already enrolled in ${titles}. Remove ${alreadyOwned.length > 1 ? "them" : "it"} from your cart to continue.`,
+    );
+  }
+
   const promoResult = promoCode
     ? await validatePromoCode({
         code: promoCode,
