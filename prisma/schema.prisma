@@ -696,6 +696,7 @@ model MentorshipSession {
   offering          MentorshipSession?      @relation("OfferingBookings", fields: [offeringSessionId], references: [id], onDelete: Cascade)
   bookings          MentorshipSession[]     @relation("OfferingBookings")
   transactions      Transaction[]
+  tutorEarning      TutorEarning?
 
   @@map("mentorship_sessions")
 }
@@ -961,6 +962,10 @@ model TutorEarning {
   transactionLineItemId String?
   courseId              String?
 
+  // MENTORSHIP earnings only. Unique so a replayed settlement cannot credit
+  // the same session twice.
+  mentorshipSessionId  String?              @unique
+
   // PROGRAM earnings only.
   programEnrollmentId  String?
   /// Idempotency key: accrual fires from both payment and instructor
@@ -984,6 +989,7 @@ model TutorEarning {
   programEnrollment   ProgramEnrollment?   @relation(fields: [programEnrollmentId], references: [id], onDelete: Cascade)
   installmentPayment  InstallmentPayment?  @relation(fields: [installmentPaymentId], references: [id], onDelete: Cascade)
   cohort              ProgramCohort?       @relation(fields: [cohortId], references: [id], onDelete: SetNull)
+  mentorshipSession   MentorshipSession?   @relation(fields: [mentorshipSessionId], references: [id], onDelete: SetNull)
   releasedBy          User?                @relation("TutorEarningReleasedBy", fields: [releasedById], references: [id], onDelete: SetNull)
 
   @@index([tutorId, status])
@@ -1491,6 +1497,7 @@ enum TutorEarningStatus {
 enum TutorEarningSource {
   COURSE
   PROGRAM
+  MENTORSHIP
 }
 
 enum WithdrawalStatus {

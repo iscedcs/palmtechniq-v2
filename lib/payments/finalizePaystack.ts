@@ -141,6 +141,25 @@ export async function finalizePaystackByReference(reference: string) {
       const tutorShare =
         tx.tutorShareAmount ?? computeMentorshipSplit(tx.amount || 0).tutorShareAmount;
       if (tutorId && tutorShare > 0) {
+        // Record the earning in the same transaction as the wallet credit.
+        // Without this the money is spendable but invisible to the ledger, and
+        // wallet balance can never be reconciled against TutorEarning.
+        const sessionId = metadata?.mentorshipSessionId as string | undefined;
+        await px.tutorEarning.create({
+          data: {
+            tutorId,
+            source: "MENTORSHIP",
+            amount: tutorShare,
+            splitPercent: deriveSplitPercent({
+              discountedPrice: tx.amount || 0,
+              tutorShareAmount: tutorShare,
+            }),
+            status: "AVAILABLE",
+            transactionId: tx.id,
+            mentorshipSessionId: sessionId ?? null,
+          },
+        });
+
         await px.user.update({
           where: { id: tutorId },
           data: {
