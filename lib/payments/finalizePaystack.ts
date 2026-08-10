@@ -250,46 +250,46 @@ export async function finalizePaystackByReference(reference: string) {
         },
       });
 
-      lineItems = await Promise.all(
-        totals.lineItems.map((item) =>
-          px.transactionLineItem.create({
-            data: {
-              transactionId: tx.id,
-              courseId: item.courseId,
-              tutorId: item.tutorId,
-              basePrice: item.basePrice,
-              discountedPrice: item.discountedPrice,
-              discountAmount: item.discountAmount,
-              vatAmount: item.vatAmount,
-              totalAmount: item.totalAmount,
-              tutorShareAmount: item.tutorShareAmount,
-              platformShareAmount: item.platformShareAmount,
-              isReferralPurchase: item.isReferralPurchase,
-              promoCodeId: item.promoCodeId ?? undefined,
-              promoType: item.promoType,
-              promoDiscountType: item.promoDiscountType,
-              promoDiscountValue: item.promoDiscountValue ?? undefined,
-            },
-          }),
-        ),
-      );
+      await px.transactionLineItem.createMany({
+        data: totals.lineItems.map((item) => ({
+          transactionId: tx.id,
+          courseId: item.courseId,
+          tutorId: item.tutorId,
+          basePrice: item.basePrice,
+          discountedPrice: item.discountedPrice,
+          discountAmount: item.discountAmount,
+          vatAmount: item.vatAmount,
+          totalAmount: item.totalAmount,
+          tutorShareAmount: item.tutorShareAmount,
+          platformShareAmount: item.platformShareAmount,
+          isReferralPurchase: item.isReferralPurchase,
+          promoCodeId: item.promoCodeId ?? undefined,
+          promoType: item.promoType,
+          promoDiscountType: item.promoDiscountType,
+          promoDiscountValue: item.promoDiscountValue ?? undefined,
+        })),
+      });
+
+      // createMany does not return rows, and the earnings below need the
+      // generated line item ids.
+      lineItems = await px.transactionLineItem.findMany({
+        where: { transactionId: tx.id },
+      });
     }
 
     if (!isGroupPurchase && courseIds.length > 0) {
-      for (const courseId of courseIds) {
-        await px.enrollment.upsert({
-          where: {
-            userId_courseId: { userId: tx.userId, courseId },
-          },
-          create: {
-            userId: tx.userId,
-            courseId,
-            status: "ACTIVE",
-            enrolledAt: new Date(),
-          },
-          update: {},
-        });
-      }
+      // One round-trip instead of one per course. skipDuplicates matches the
+      // previous upsert-with-empty-update: create if missing, leave existing
+      // enrollments untouched.
+      await px.enrollment.createMany({
+        data: courseIds.map((courseId: string) => ({
+          userId: tx.userId,
+          courseId,
+          status: "ACTIVE",
+          enrolledAt: new Date(),
+        })),
+        skipDuplicates: true,
+      });
 
       await px.cartItem.deleteMany({
         where: {
@@ -329,28 +329,38 @@ export async function finalizePaystackByReference(reference: string) {
     }
 
     if (lineItems && lineItems.length > 0) {
-      for (const item of lineItems) {
-        await px.tutorEarning.create({
-          data: {
-            tutorId: item.tutorId,
-            transactionId: tx.id,
-            transactionLineItemId: item.id,
-            courseId: item.courseId,
-            amount: item.tutorShareAmount,
-            // Derived from the amounts that actually moved, not re-decided
-            // from the scenario — the ledger cannot disagree with the money.
-            splitPercent: deriveSplitPercent(item),
-            status: "AVAILABLE",
-          },
-        });
+      // One insert for every earning rather than one per line item. A bundle
+      // multiplies these by the number of courses, which is what pushed this
+      // transaction past its timeout.
+      await px.tutorEarning.createMany({
+        data: lineItems.map((item: any) => ({
+          tutorId: item.tutorId,
+          transactionId: tx.id,
+          transactionLineItemId: item.id,
+          courseId: item.courseId,
+          amount: item.tutorShareAmount,
+          // Derived from the amounts that actually moved, not re-decided
+          // from the scenario — the ledger cannot disagree with the money.
+          splitPercent: deriveSplitPercent(item),
+          status: "AVAILABLE",
+        })),
+      });
 
+      // Credit each tutor once for the whole transaction. Every course in a
+      // bundle belongs to the same tutor, so this collapses N updates to one
+      // while moving exactly the same total.
+      const creditByTutor = new Map<string, number>();
+      for (const item of lineItems) {
+        creditByTutor.set(
+          item.tutorId,
+          (creditByTutor.get(item.tutorId) ?? 0) + item.tutorShareAmount,
+        );
+      }
+
+      for (const [tutorId, amount] of creditByTutor) {
         await px.user.update({
-          where: { id: item.tutorId },
-          data: {
-            walletBalance: {
-              increment: item.tutorShareAmount,
-            },
-          },
+          where: { id: tutorId },
+          data: { walletBalance: { increment: amount } },
         });
       }
     }
@@ -372,6 +382,12 @@ export async function finalizePaystackByReference(reference: string) {
         });
       }
     }
+  }, {
+    // A bundle settles several courses at once, so this does proportionally
+    // more work than a single-course sale. The 5s default was not enough and
+    // left payments taken but unsettled.
+    timeout: 30_000,
+    maxWait: 15_000,
   });
 
   const metadata = (v.metadata || tx.metadata || {}) as any;
