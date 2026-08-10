@@ -169,6 +169,11 @@ export const roleMenuItems = {
     { icon: Wallet, label: "Financial Reports", href: "/admin/finance" },
     { icon: Megaphone, label: "Promotions", href: "/admin/promotions" },
     { icon: Settings, label: "System Settings", href: "/admin/settings" },
+    {
+      icon: Wallet,
+      lable: "Program Earnings",
+      href: "/admin/program-earnings",
+    },
   ],
   TESTER: [{ icon: FileText, label: "Documentation", href: "/documentation" }],
   SUPERIOR: [

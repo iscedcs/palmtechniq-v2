@@ -53,7 +53,7 @@ export async function getTutorAnalyticsData() {
     courseIds.length
       ? db.transactionLineItem.groupBy({
           by: ["courseId"],
-          _sum: { totalAmount: true },
+          _sum: { tutorShareAmount: true },
           where: {
             courseId: { in: courseIds },
             transaction: { status: "COMPLETED" },
@@ -63,7 +63,7 @@ export async function getTutorAnalyticsData() {
     courseIds.length
       ? db.transactionLineItem.groupBy({
           by: ["courseId"],
-          _sum: { totalAmount: true },
+          _sum: { tutorShareAmount: true },
           where: {
             courseId: { in: courseIds },
             transaction: { status: "PENDING" },
@@ -72,11 +72,11 @@ export async function getTutorAnalyticsData() {
       : [],
     db.transaction.aggregate({
       where: { status: "COMPLETED", course: { tutorId: tutor.id } },
-      _sum: { amount: true },
+      _sum: { tutorShareAmount: true },
     }),
     db.transaction.aggregate({
       where: { status: "PENDING", course: { tutorId: tutor.id } },
-      _sum: { amount: true },
+      _sum: { tutorShareAmount: true },
     }),
     db.transaction.aggregate({
       where: {
@@ -84,7 +84,7 @@ export async function getTutorAnalyticsData() {
         course: { tutorId: tutor.id },
         createdAt: { gte: startOfLastMonth, lt: startOfThisMonth },
       },
-      _sum: { amount: true },
+      _sum: { tutorShareAmount: true },
     }),
   ]);
 
@@ -114,13 +114,13 @@ export async function getTutorAnalyticsData() {
   const completedRevenueByCourse = new Map<string, number>(
     completedRevenueAgg.map((entry: any) => [
       entry.courseId,
-      entry._sum.totalAmount ?? 0,
+      entry._sum.tutorShareAmount ?? 0,
     ]),
   );
   const pendingRevenueByCourse = new Map<string, number>(
     pendingRevenueAgg.map((entry: any) => [
       entry.courseId,
-      entry._sum.totalAmount ?? 0,
+      entry._sum.tutorShareAmount ?? 0,
     ]),
   );
 
@@ -139,8 +139,8 @@ export async function getTutorAnalyticsData() {
       title: course.title,
       enrollments,
       completionRate,
-      completedRevenue: (completedRevenueByCourse.get(course.id) ?? 0) / 100,
-      pendingRevenue: (pendingRevenueByCourse.get(course.id) ?? 0) / 100,
+      completedRevenue: completedRevenueByCourse.get(course.id) ?? 0,
+      pendingRevenue: pendingRevenueByCourse.get(course.id) ?? 0,
     };
   });
 
@@ -167,9 +167,9 @@ export async function getTutorAnalyticsData() {
       : Math.round((totals.completed / totals.total) * 100);
   })();
 
-  const monthlyCompleted = (monthlyCompletedAgg._sum.amount ?? 0) / 100;
-  const monthlyPending = (monthlyPendingAgg._sum.amount ?? 0) / 100;
-  const lastMonthCompleted = (lastMonthCompletedAgg._sum.amount ?? 0) / 100;
+  const monthlyCompleted = monthlyCompletedAgg._sum.tutorShareAmount ?? 0;
+  const monthlyPending = monthlyPendingAgg._sum.tutorShareAmount ?? 0;
+  const lastMonthCompleted = lastMonthCompletedAgg._sum.tutorShareAmount ?? 0;
   const earningsChange =
     lastMonthCompleted > 0
       ? Math.round(
@@ -189,11 +189,11 @@ export async function getTutorAnalyticsData() {
         course: { tutorId: tutor.id },
         createdAt: { gte: start, lt: end },
       },
-      _sum: { amount: true },
+      _sum: { tutorShareAmount: true },
     });
     earningsHistory.push({
       month: monthName,
-      amount: (sum._sum.amount ?? 0) / 100,
+      amount: sum._sum.tutorShareAmount ?? 0,
     });
   }
 

@@ -395,7 +395,7 @@ export default function WalletClient({
               />
             </motion.div>
             {accruedPending > 0 && (
-              <p className="mt-2 text-xs text-muted-foreground">
+              <p className="mt-2 text-xs text-foreground">
                 Program earnings are recorded when each installment is paid and
                 move into your available balance once the platform releases
                 them, 30 days after payment and no earlier than the cohort start

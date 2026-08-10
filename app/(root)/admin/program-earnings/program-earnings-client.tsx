@@ -121,7 +121,7 @@ export default function ProgramEarningsClient({
   };
 
   return (
-    <div className="min-h-screen bg-background p-4 md:p-8">
+    <div className="min-h-screen bg-background pt-20">
       <div className="mx-auto max-w-6xl space-y-6">
         <div className="flex items-center gap-3">
           <Link href="/admin">
@@ -134,7 +134,7 @@ export default function ProgramEarningsClient({
 
         <div>
           <h1 className="text-2xl font-bold">Program Revenue Share</h1>
-          <p className="text-sm text-muted-foreground">
+          <p className="text-sm py-3 text-foreground">
             Lead instructors earn 25% of a program&apos;s full price, accrued as
             each installment is paid. Accrued money is recorded but stays in the
             company account until released.
@@ -178,8 +178,7 @@ export default function ProgramEarningsClient({
                 key={cohort.id}
                 initial={{ opacity: 0, y: 8 }}
                 animate={{ opacity: 1, y: 0 }}
-                transition={{ duration: 0.25, delay: index * 0.03 }}
-              >
+                transition={{ duration: 0.25, delay: index * 0.03 }}>
                 <Card>
                   <CardHeader className="pb-3">
                     <div className="flex flex-wrap items-start justify-between gap-3">
@@ -187,7 +186,7 @@ export default function ProgramEarningsClient({
                         <CardTitle className="text-base">
                           {cohort.programName}
                         </CardTitle>
-                        <p className="text-sm text-muted-foreground">
+                        <p className="text-sm text-foreground">
                           {cohort.displayName} · starts{" "}
                           {formatDate(cohort.startDate)} · {cohort.seatsTaken}{" "}
                           enrolled
@@ -196,8 +195,7 @@ export default function ProgramEarningsClient({
                       {!cohort.leadInstructor && (
                         <Badge
                           variant="outline"
-                          className="border-amber-500/40 text-amber-600"
-                        >
+                          className="border-amber-500/40 text-amber-600">
                           <TriangleAlert className="mr-1 h-3 w-3" />
                           No lead instructor
                         </Badge>
@@ -223,7 +221,7 @@ export default function ProgramEarningsClient({
                     </div>
 
                     {!canRelease && cohort.accruedTotal > 0 && (
-                      <p className="flex items-center gap-2 text-xs text-muted-foreground">
+                      <p className="flex items-center gap-2 text-xs text-foreground">
                         <Lock className="h-3 w-3" />
                         Held until{" "}
                         {formatDate(cohort.nextReleaseAt) === "—"
@@ -247,14 +245,13 @@ export default function ProgramEarningsClient({
 
                     <div className="flex flex-wrap items-center gap-3 border-t pt-4">
                       <div className="flex items-center gap-2">
-                        <UserCog className="h-4 w-4 text-muted-foreground" />
+                        <UserCog className="h-4 w-4 text-foreground" />
                         <Select
                           value={cohort.leadInstructor?.id ?? UNASSIGNED}
                           onValueChange={(value) =>
                             handleAssign(cohort.id, value)
                           }
-                          disabled={busy}
-                        >
+                          disabled={busy}>
                           <SelectTrigger className="w-[260px]">
                             <SelectValue placeholder="Assign lead instructor" />
                           </SelectTrigger>
@@ -265,8 +262,7 @@ export default function ProgramEarningsClient({
                             {instructors.map((instructor) => (
                               <SelectItem
                                 key={instructor.id}
-                                value={instructor.id}
-                              >
+                                value={instructor.id}>
                                 {instructor.name} · {instructor.email}
                               </SelectItem>
                             ))}
@@ -277,15 +273,14 @@ export default function ProgramEarningsClient({
                       <Button
                         onClick={() => handleRelease(cohort.id)}
                         disabled={busy || !canRelease}
-                        size="sm"
-                      >
+                        size="sm">
                         {busy
                           ? "Working…"
                           : `Release ${cohort.releasableCount || ""} to wallet`.trim()}
                       </Button>
 
                       {cohort.nextReleaseAt && (
-                        <span className="flex items-center gap-1 text-xs text-muted-foreground">
+                        <span className="flex items-center gap-1 text-xs text-foreground">
                           <CalendarDays className="h-3 w-3" />
                           Next eligible {formatDate(cohort.nextReleaseAt)}
                         </span>
@@ -316,7 +311,7 @@ function SummaryCard({
   return (
     <Card className={highlight ? "border-primary/40" : undefined}>
       <CardContent className="p-4">
-        <div className="flex items-center gap-2 text-xs text-muted-foreground">
+        <div className="flex items-center gap-2 text-xs text-foreground">
           {icon}
           {label}
         </div>
@@ -337,10 +332,8 @@ function Figure({
 }) {
   return (
     <div>
-      <p className="text-xs text-muted-foreground">{label}</p>
-      <p
-        className={`text-lg font-semibold ${emphasis ? "text-primary" : ""}`}
-      >
+      <p className="text-xs text-foreground">{label}</p>
+      <p className={`text-lg font-semibold ${emphasis ? "text-primary" : ""}`}>
         {value}
       </p>
     </div>

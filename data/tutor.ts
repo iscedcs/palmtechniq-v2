@@ -29,6 +29,24 @@ export async function getTutorCourses() {
       orderBy: { createdAt: "desc" },
     });
 
+    // Earnings come from TutorEarning, the same ledger the wallet reads.
+    // Transaction.amount is the gross the student paid, including VAT owed to
+    // FIRS and the platform share — neither reaches the tutor.
+    const earningsByCourse = await db.tutorEarning.groupBy({
+      by: ["courseId"],
+      where: {
+        tutorId: session.user.id,
+        status: { in: ["AVAILABLE", "PAID"] },
+        courseId: { not: null },
+      },
+      _sum: { amount: true },
+    });
+    const courseEarnings = new Map<string, number>(
+      earningsByCourse
+        .filter((row: any) => row.courseId)
+        .map((row: any) => [row.courseId as string, row._sum.amount || 0]),
+    );
+
     return courses.map((course: any) => {
       const lessonsCount = course.modules.reduce(
         (sum: any, m: any) => sum + m.lessons.length,
@@ -45,11 +63,7 @@ export async function getTutorCourses() {
       const studentsCount = course.enrollments.length;
       const avgRating = getAverageRating(course.reviews);
 
-      const earnings =
-        (course.transactions?.reduce(
-          (sum: any, tx: any) => sum + (tx.amount || 0),
-          0,
-        ) ?? 0) / 100;
+      const earnings = courseEarnings.get(course.id) ?? 0;
 
       // --- 🧮 Compute growth (month over month) ---
       const now = new Date();
