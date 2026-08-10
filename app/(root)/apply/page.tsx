@@ -34,6 +34,12 @@ import {
 } from "lucide-react";
 import { toast } from "sonner";
 import { trackSubmitApplication } from "@/lib/fbpixel";
+import { REVENUE } from "@/lib/payments/revenue";
+
+// Rendered from the live rates. This page advertised "70% revenue share" on
+// the tutor card — that is the MENTORSHIP rate. Course sales pay 25%, so
+// prospects were being recruited on a number nearly 3x what they receive.
+const pct = (rate: number) => `${Math.round(rate * 100)}%`;
 
 export default function ApplicationPage() {
   const router = useRouter();
@@ -619,32 +625,54 @@ export default function ApplicationPage() {
                       Become a Tutor
                     </h3>
                     <p className="text-gray-300 mb-6">
-                      Create and sell courses, teach students, and build your
-                      educational brand on our platform.
+                      Publish courses, package them into bundles, and run
+                      cohort programs — with the assessment and payout
+                      infrastructure already built for you.
                     </p>
                     <div className="space-y-3 text-left">
-                      <div className="flex items-center gap-3">
-                        <CheckCircle className="w-5 h-5 text-neon-green" />
+                      <div className="flex items-start gap-3">
+                        <CheckCircle className="w-5 h-5 text-neon-green shrink-0 mt-0.5" />
                         <span className="text-gray-300">
-                          Create unlimited courses
+                          <strong className="text-white">
+                            {pct(REVENUE.courseSplit.tutorReferral)} when you
+                            bring the student
+                          </strong>{" "}
+                          — every tutor gets a referral link.{" "}
+                          {pct(REVENUE.courseSplit.normal)} on sales we drive
+                          for you.
                         </span>
                       </div>
-                      <div className="flex items-center gap-3">
-                        <CheckCircle className="w-5 h-5 text-neon-green" />
+                      <div className="flex items-start gap-3">
+                        <CheckCircle className="w-5 h-5 text-neon-green shrink-0 mt-0.5" />
                         <span className="text-gray-300">
-                          Earn 70% revenue share
+                          Unlimited courses, plus{" "}
+                          <strong className="text-white">bundles</strong> — sell
+                          several of your courses together at one price
                         </span>
                       </div>
-                      <div className="flex items-center gap-3">
-                        <CheckCircle className="w-5 h-5 text-neon-green" />
+                      <div className="flex items-start gap-3">
+                        <CheckCircle className="w-5 h-5 text-neon-green shrink-0 mt-0.5" />
                         <span className="text-gray-300">
-                          Access to course creation tools
+                          Proctored exams, reusable question banks, auto-grading
+                          and a live invigilation monitor
                         </span>
                       </div>
-                      <div className="flex items-center gap-3">
-                        <CheckCircle className="w-5 h-5 text-neon-green" />
+                      <div className="flex items-start gap-3">
+                        <CheckCircle className="w-5 h-5 text-neon-green shrink-0 mt-0.5" />
                         <span className="text-gray-300">
-                          Student analytics & insights
+                          Group buying and flash sales to fill a cohort faster
+                        </span>
+                      </div>
+                      <div className="flex items-start gap-3">
+                        <CheckCircle className="w-5 h-5 text-neon-green shrink-0 mt-0.5" />
+                        <span className="text-gray-300">
+                          Student analytics, reviews and completion tracking
+                        </span>
+                      </div>
+                      <div className="flex items-start gap-3">
+                        <CheckCircle className="w-5 h-5 text-neon-green shrink-0 mt-0.5" />
+                        <span className="text-gray-300">
+                          Every sale itemised, withdrawn straight to your bank
                         </span>
                       </div>
 
@@ -718,32 +746,52 @@ export default function ApplicationPage() {
                       Become a Mentor
                     </h3>
                     <p className="text-gray-300 mb-6">
-                      Provide 1-on-1 guidance, career coaching, and personalized
-                      mentorship to help others grow.
+                      Run 1-on-1 sessions, career coaching and personalised
+                      mentorship. You set the price — we handle booking,
+                      payment and the call itself.
                     </p>
                     <div className="space-y-3 text-left">
-                      <div className="flex items-center gap-3">
-                        <CheckCircle className="w-5 h-5 text-neon-green" />
+                      <div className="flex items-start gap-3">
+                        <CheckCircle className="w-5 h-5 text-neon-green shrink-0 mt-0.5" />
                         <span className="text-gray-300">
-                          Set your own hourly rates
+                          <strong className="text-white">
+                            Keep {pct(REVENUE.mentorshipSplit.tutor)} of every
+                            session
+                          </strong>{" "}
+                          — the highest share on the platform
                         </span>
                       </div>
-                      <div className="flex items-center gap-3">
-                        <CheckCircle className="w-5 h-5 text-neon-green" />
+                      <div className="flex items-start gap-3">
+                        <CheckCircle className="w-5 h-5 text-neon-green shrink-0 mt-0.5" />
                         <span className="text-gray-300">
-                          Flexible scheduling
+                          Set your own hourly rate; sessions from 30 to 180
+                          minutes
                         </span>
                       </div>
-                      <div className="flex items-center gap-3">
-                        <CheckCircle className="w-5 h-5 text-neon-green" />
+                      <div className="flex items-start gap-3">
+                        <CheckCircle className="w-5 h-5 text-neon-green shrink-0 mt-0.5" />
                         <span className="text-gray-300">
-                          Video call platform included
+                          Sell multi-session packages, priced at a discount you
+                          choose
                         </span>
                       </div>
-                      <div className="flex items-center gap-3">
-                        <CheckCircle className="w-5 h-5 text-neon-green" />
+                      <div className="flex items-start gap-3">
+                        <CheckCircle className="w-5 h-5 text-neon-green shrink-0 mt-0.5" />
                         <span className="text-gray-300">
-                          Global mentee network
+                          Accept instantly, or review each request before you
+                          commit
+                        </span>
+                      </div>
+                      <div className="flex items-start gap-3">
+                        <CheckCircle className="w-5 h-5 text-neon-green shrink-0 mt-0.5" />
+                        <span className="text-gray-300">
+                          Zoom links created automatically when a session starts
+                        </span>
+                      </div>
+                      <div className="flex items-start gap-3">
+                        <CheckCircle className="w-5 h-5 text-neon-green shrink-0 mt-0.5" />
+                        <span className="text-gray-300">
+                          Paid into your wallet on confirmation, not weeks later
                         </span>
                       </div>
                     </div>
