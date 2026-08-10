@@ -1,9 +1,6 @@
 import Link from "next/link";
-import Image from "next/image";
-import { BookOpen, Package } from "lucide-react";
+import { ArrowRight, Package } from "lucide-react";
 
-import { Card, CardContent } from "@/components/ui/card";
-import { Badge } from "@/components/ui/badge";
 import { formatToNaira } from "@/lib/utils";
 
 type PublicBundle = {
@@ -23,76 +20,53 @@ type PublicBundle = {
 /**
  * Bundles on the course listing.
  *
- * Ordered by recency only — there is deliberately no featured or sponsored
- * placement for bundles. See getPublicBundles for why.
+ * Deliberately restrained: text-forward, no imagery, sitting inside the
+ * catalogue's own rhythm rather than above the hero. A bundle is an
+ * alternative way to buy what is already on this page, so it should read as
+ * part of the catalogue, not as an advertisement in front of it.
+ *
+ * There is also no featured or sponsored placement — see getPublicBundles.
  */
 export function BundleStrip({ bundles }: { bundles: PublicBundle[] }) {
   if (bundles.length === 0) return null;
 
   return (
-    <section className="mb-10">
-      <div className="mb-4 flex items-center gap-2">
-        <Package className="h-5 w-5 text-primary" />
-        <h2 className="text-xl font-semibold">Course bundles</h2>
-        <span className="text-sm text-muted-foreground">
-          Several courses, one price
-        </span>
+    <div className="max-w-5xl mx-auto mb-8">
+      <div className="mb-3 flex items-center gap-2 text-sm text-gray-400">
+        <Package className="h-4 w-4" />
+        <span className="font-medium text-white">Bundles</span>
+        <span>· buy several courses together for less</span>
       </div>
 
-      <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
-        {bundles.map((bundle) => (
-          <Link key={bundle.id} href={`/bundles/${bundle.slug}`}>
-            <Card className="h-full transition-colors hover:border-primary/50">
-              <CardContent className="space-y-3 p-4">
-                <div className="flex -space-x-3">
-                  {bundle.thumbnails.length > 0 ? (
-                    bundle.thumbnails.map((src, i) => (
-                      <div
-                        key={i}
-                        className="relative h-14 w-20 overflow-hidden rounded-md border-2 border-background bg-muted">
-                        <Image
-                          src={src}
-                          alt=""
-                          fill
-                          className="object-cover"
-                          sizes="80px"
-                        />
-                      </div>
-                    ))
-                  ) : (
-                    <div className="flex h-14 w-20 items-center justify-center rounded-md bg-muted">
-                      <BookOpen className="h-5 w-5 text-muted-foreground" />
-                    </div>
-                  )}
-                </div>
+      <div className="grid gap-3 sm:grid-cols-2">
+        {bundles.slice(0, 4).map((bundle) => (
+          <Link
+            key={bundle.id}
+            href={`/bundles/${bundle.slug}`}
+            className="group flex items-center justify-between gap-4 rounded-lg border border-white/10 bg-white/[0.03] p-4 transition-colors hover:border-neon-blue/40 hover:bg-white/[0.06]">
+            <div className="min-w-0">
+              <p className="truncate font-medium text-white">{bundle.title}</p>
+              <p className="text-xs text-gray-400">
+                {bundle.courseCount} courses · {bundle.tutorName}
+              </p>
+            </div>
 
-                <div>
-                  <p className="line-clamp-2 font-semibold">{bundle.title}</p>
-                  <p className="text-xs text-muted-foreground">
-                    {bundle.courseCount} courses · {bundle.tutorName}
+            <div className="flex shrink-0 items-center gap-3">
+              <div className="text-right">
+                <p className="font-semibold text-white">
+                  {formatToNaira(bundle.price)}
+                </p>
+                {bundle.savings > 0 && (
+                  <p className="text-xs text-neon-green">
+                    save {bundle.savingsPercent}%
                   </p>
-                </div>
-
-                <div className="flex items-end justify-between gap-2">
-                  <div>
-                    <p className="text-xs text-muted-foreground line-through">
-                      {formatToNaira(bundle.listSum)}
-                    </p>
-                    <p className="text-lg font-bold">
-                      {formatToNaira(bundle.price)}
-                    </p>
-                  </div>
-                  {bundle.savings > 0 && (
-                    <Badge className="bg-primary/10 text-primary hover:bg-primary/10">
-                      Save {bundle.savingsPercent}%
-                    </Badge>
-                  )}
-                </div>
-              </CardContent>
-            </Card>
+                )}
+              </div>
+              <ArrowRight className="h-4 w-4 text-gray-500 transition-transform group-hover:translate-x-0.5 group-hover:text-neon-blue" />
+            </div>
           </Link>
         ))}
       </div>
-    </section>
+    </div>
   );
 }

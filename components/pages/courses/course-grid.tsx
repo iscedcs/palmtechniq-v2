@@ -38,13 +38,16 @@ import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { useState } from "react";
 import { toast } from "sonner";
+import { BundleStrip } from "@/components/pages/courses/bundle-strip";
 
 export default function CoursesGrid({
   courses,
   categories,
+  bundles = [],
 }: {
   courses: CourseItem[];
   categories: { id: string; name: string }[];
+  bundles?: React.ComponentProps<typeof BundleStrip>["bundles"];
 }) {
   const { data: session, status } = useSession();
   const router = useRouter();
@@ -196,6 +199,11 @@ export default function CoursesGrid({
               </button>
             ))}
           </motion.div>
+
+          {/* Bundles. Hidden while filtering: a bundle is not filtered by
+              category or search, so showing it against an active filter would
+              be noise rather than a suggestion. */}
+          {!hasActiveFilters && <BundleStrip bundles={bundles} />}
 
           {/* Sort & Filter Row */}
           <motion.div
