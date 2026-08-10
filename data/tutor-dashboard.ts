@@ -197,30 +197,38 @@ export async function getTutorDashboardData() {
   const upcomingMentorships: any = []; // db.mentorshipSession.findMany(...)
   const pendingProjects: any = []; // db.project.findMany(...)
 
+  // Sort on the real timestamp, then format. Sorting the formatted strings
+  // orders them alphabetically — "2 minutes ago" against "about 1 hour ago" —
+  // so the newest activity could be buried and then cut by the slice.
   const recentActivity = [
     ...enrollments.map((e: any) => ({
       type: "enrollment" as const,
       message: `${e.user.name} enrolled in your course "${e.course.title}"`,
-      time: formatDistanceToNow(e.enrolledAt, { addSuffix: true }),
+      at: e.enrolledAt as Date,
     })),
     ...reviews.map((r: any) => ({
       type: "review" as const,
       message: `${r.user.name} rated "${r.course.title}" ${r.rating}⭐`,
-      time: formatDistanceToNow(r.createdAt, { addSuffix: true }),
+      at: r.createdAt as Date,
     })),
     ...mentorships.map((m: any) => ({
       type: "mentorship" as const,
       message: `New mentorship session scheduled: ${m.title}`,
-      time: formatDistanceToNow(m.createdAt, { addSuffix: true }),
+      at: m.createdAt as Date,
     })),
     ...projects.map((p: any) => ({
       type: "project" as const,
       message: `New project submission received.`,
-      time: formatDistanceToNow(p.createdAt, { addSuffix: true }),
+      at: p.createdAt as Date,
     })),
   ]
-    .sort((a, b) => (a.time < b.time ? 1 : -1))
-    .slice(0, 8);
+    .sort((a, b) => b.at.getTime() - a.at.getTime())
+    .slice(0, 8)
+    .map(({ type, message, at }) => ({
+      type,
+      message,
+      time: formatDistanceToNow(at, { addSuffix: true }),
+    }));
 
   return {
     stats: {

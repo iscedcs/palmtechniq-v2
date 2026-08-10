@@ -435,13 +435,29 @@ export async function finalizePaystackByReference(reference: string) {
     return { ok: true, courseId: tx.courseId, groupPurchaseId };
   }
 
-  const course = await db.course.findUnique({
-    where: { id: tx.courseId! },
-    select: {
-      title: true,
-      tutor: { select: { userId: true } },
-    },
-  });
+  // A purchase can cover one course or many (cart, bundle). tx.courseId is
+  // null for those, so resolve from metadata first — reading it as a single
+  // course silently skipped every notification on a bundle sale.
+  const purchasedCourseIds: string[] =
+    Array.isArray(metadata.courseIds) && metadata.courseIds.length > 0
+      ? metadata.courseIds
+      : tx.courseId
+        ? [tx.courseId]
+        : [];
+
+  const purchasedCourses = purchasedCourseIds.length
+    ? await db.course.findMany({
+        where: { id: { in: purchasedCourseIds } },
+        select: {
+          id: true,
+          title: true,
+          tutor: { select: { userId: true } },
+        },
+      })
+    : [];
+
+  const course = purchasedCourses[0] ?? null;
+  const isBundle = metadata.type === "bundle";
 
   // Send Purchase event to Meta Conversions API (non-blocking)
   const buyer = await db.user.findUnique({
@@ -465,24 +481,53 @@ export async function finalizePaystackByReference(reference: string) {
     ).catch(() => {});
   }
 
+  const courseCount = purchasedCourses.length;
+
   await notify.user(tx.userId, {
     type: "success",
     title: "Payment Successful",
-    message: "Your enrollment is confirmed. Welcome aboard!",
-    actionUrl: "/student",
-    actionLabel: "Go to Dashboard",
-    metadata: { category: "payment_success", courseId: tx.courseId, reference },
+    message:
+      courseCount > 1
+        ? `Your ${isBundle ? "bundle" : "purchase"} is confirmed — you now have access to all ${courseCount} courses.`
+        : "Your enrollment is confirmed. Welcome aboard!",
+    actionUrl: "/student/courses",
+    actionLabel: "Start Learning",
+    metadata: {
+      category: "payment_success",
+      courseId: tx.courseId,
+      courseIds: purchasedCourseIds,
+      reference,
+    },
   });
 
-  // Notify only the course owner (tutor), not all tutors
-  if (course?.tutor?.userId) {
-    await notify.user(course.tutor.userId, {
+  // Notify each course owner once, however many of their courses were bought.
+  const coursesByTutor = new Map<string, string[]>();
+  for (const purchased of purchasedCourses) {
+    const tutorUserId = purchased.tutor?.userId;
+    if (!tutorUserId) continue;
+    coursesByTutor.set(tutorUserId, [
+      ...(coursesByTutor.get(tutorUserId) ?? []),
+      purchased.title,
+    ]);
+  }
+
+  for (const [tutorUserId, titles] of coursesByTutor) {
+    await notify.user(tutorUserId, {
       type: "payment",
-      title: "Course Purchase",
-      message: `Your course ${course.title} has been purchased`,
-      metadata: { category: "payment_received", courseId: tx.courseId },
+      title: titles.length > 1 ? "Bundle Purchase" : "Course Purchase",
+      message:
+        titles.length > 1
+          ? `${titles.length} of your courses were purchased together: ${titles.join(", ")}`
+          : `Your course ${titles[0]} has been purchased`,
+      actionUrl: "/tutor/wallet",
+      actionLabel: "View Earnings",
+      metadata: {
+        category: "payment_received",
+        courseId: tx.courseId,
+        courseIds: purchasedCourseIds,
+      },
     });
   }
 
-  return { ok: true, courseId: tx.courseId };
+  return { ok: true, courseId: tx.courseId, courseIds: purchasedCourseIds };
 }
