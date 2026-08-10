@@ -398,3 +398,56 @@ describe("group cashback", () => {
     ).toBe(1_000);
   });
 });
+
+describe("exact arithmetic (integer kobo)", () => {
+  it("derives a clean split percent, not float noise", () => {
+    // The real bundle sale recorded 0.2500000484693853 before amounts were
+    // computed in kobo. It is 25%; the ledger should say so.
+    const shares = allocateBundlePrices({
+      coursePrices: [70_000, 25_000],
+      bundlePrice: 70_000,
+    });
+    const totals = computeCheckoutTotals({
+      courses: [
+        course({ id: "a", basePrice: 70_000, currentPrice: shares[0], price: shares[0] }),
+        course({ id: "b", basePrice: 25_000, currentPrice: shares[1], price: shares[1] }),
+      ],
+      promo: null,
+    });
+
+    for (const item of totals.lineItems) {
+      expect(deriveSplitPercent(item)).toBe(0.25);
+    }
+  });
+
+  it("keeps tutor and platform shares summing to the price exactly", () => {
+    const totals = computeCheckoutTotals({
+      courses: [course({ currentPrice: 51_578.95, basePrice: 70_000, price: 51_578.95 })],
+      promo: null,
+    });
+    const item = totals.lineItems[0];
+    // Strict equality, not toBeCloseTo — the whole point is that it is exact.
+    expect(item.tutorShareAmount + item.platformShareAmount).toBe(
+      item.discountedPrice,
+    );
+  });
+
+  it("reconciles awkward three-way splits to the penny", () => {
+    for (const total of [10, 100.01, 33.33, 70_000, 21_601]) {
+      const shares = allocateProportionally(total, [1, 1, 1]);
+      const summed = shares.reduce((a, b) => a + b, 0);
+      expect(Math.round(summed * 100)).toBe(Math.round(total * 100));
+    }
+  });
+
+  it("allocates VAT with no residual across many line items", () => {
+    const totals = computeCheckoutTotals({
+      courses: Array.from({ length: 7 }, (_, i) =>
+        course({ id: `c${i}`, currentPrice: 3_333.33, basePrice: 3_333.33, price: 3_333.33 }),
+      ),
+      promo: null,
+    });
+    const summedVat = totals.lineItems.reduce((s, i) => s + i.vatAmount, 0);
+    expect(Math.round(summedVat * 100)).toBe(Math.round(totals.vatAmount * 100));
+  });
+});

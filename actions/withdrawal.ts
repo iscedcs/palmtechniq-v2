@@ -613,6 +613,37 @@ export async function approveWithdrawalRequest(
         processedAt: transfer.status === "success" ? new Date() : null,
       },
     });
+
+    // Settle the earnings this payout covers. TutorEarningStatus.PAID existed
+    // but was never set, so every earning stayed AVAILABLE forever and there
+    // was no way to tell which had actually been paid out.
+    //
+    // Oldest first: the earnings that have been owed longest are the ones a
+    // withdrawal settles. Partial coverage leaves the remainder AVAILABLE,
+    // which is correct — a withdrawal smaller than the balance settles only
+    // part of it.
+    if (transfer.status === "success") {
+      const outstanding = await tx.tutorEarning.findMany({
+        where: { tutorId: withdrawal.userId, status: "AVAILABLE" },
+        orderBy: { createdAt: "asc" },
+        select: { id: true, amount: true },
+      });
+
+      let remaining = withdrawal.amount;
+      const settled: string[] = [];
+      for (const earning of outstanding) {
+        if (remaining < earning.amount) break;
+        remaining -= earning.amount;
+        settled.push(earning.id);
+      }
+
+      if (settled.length > 0) {
+        await tx.tutorEarning.updateMany({
+          where: { id: { in: settled } },
+          data: { status: "PAID" },
+        });
+      }
+    }
   });
 
   return { success: true };

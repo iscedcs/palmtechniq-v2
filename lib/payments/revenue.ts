@@ -101,11 +101,24 @@ export const DEFAULT_VAT_RATE = REVENUE.vatRate;
 // ─────────────────────────────────────────────────────────────────────────────
 
 /**
- * Money is stored as Float throughout the schema, so every derived amount is
- * rounded to 2dp at each step. This is deliberately the historical behaviour —
- * see the plan's deferred section on migrating to integer minor units.
+ * Money is stored as Float in the schema, so amounts cross this boundary in
+ * naira. Inside these functions everything is computed in integer KOBO, which
+ * is what makes the arithmetic exact.
+ *
+ * `0.1 + 0.2 !== 0.3` in binary floating point, so chaining naira arithmetic
+ * accumulates error — that is why a recorded splitPercent could read
+ * 0.2500000484693853 instead of 0.25. Integers have no such problem: the
+ * conversion happens once on the way in and once on the way out.
+ *
+ * Storage is still Float. Migrating those columns to integer minor units is a
+ * separate, staged piece of work; this removes the arithmetic half of the
+ * problem without touching the schema.
  */
-export const roundCurrency = (value: number) => Math.round(value * 100) / 100;
+export const toKobo = (naira: number) => Math.round(naira * 100);
+export const fromKobo = (kobo: number) => kobo / 100;
+
+/** Round a naira amount to the nearest kobo. */
+export const roundCurrency = (value: number) => fromKobo(toKobo(value));
 
 /**
  * Split `total` across `weights` proportionally, giving the final slice the
@@ -127,27 +140,27 @@ export function allocateProportionally(
     remainderTo?: "last" | "heaviest";
   } = {},
 ): number[] {
-  const sum = weights.reduce((acc, w) => acc + w, 0);
-  if (sum <= 0 || weights.length === 0) return weights.map(() => 0);
+  // Allocate in integer kobo. Summing rounded naira slices and subtracting is
+  // where sub-kobo error creeps in; in integers the remainder is exact by
+  // construction.
+  const totalKobo = toKobo(total);
+  const weightsKobo = weights.map(toKobo);
+  const sumKobo = weightsKobo.reduce((acc, w) => acc + w, 0);
+  if (sumKobo <= 0 || weights.length === 0) return weights.map(() => 0);
 
   const remainderIndex =
     options.remainderTo === "heaviest"
-      ? weights.reduce(
-          (best, w, i) => (w > weights[best] ? i : best),
-          0,
-        )
+      ? weightsKobo.reduce((best, w, i) => (w > weightsKobo[best] ? i : best), 0)
       : weights.length - 1;
 
-  const shares = weights.map((weight, index) =>
-    index === remainderIndex ? 0 : roundCurrency((weight / sum) * total),
+  const sharesKobo = weightsKobo.map((weight, index) =>
+    index === remainderIndex ? 0 : Math.round((weight * totalKobo) / sumKobo),
   );
 
-  const allocated = roundCurrency(
-    shares.reduce((acc, share) => acc + share, 0),
-  );
-  shares[remainderIndex] = roundCurrency(total - allocated);
+  const allocatedKobo = sharesKobo.reduce((acc, share) => acc + share, 0);
+  sharesKobo[remainderIndex] = totalKobo - allocatedKobo;
 
-  return shares;
+  return sharesKobo.map(fromKobo);
 }
 
 /**
@@ -349,10 +362,13 @@ export function computeCheckoutTotals({
     );
     const isReferral = !!referralTutorId && referralTutorId === course.tutorId;
     const splitPercent = getSplitPercent(promo, promoApplies, isReferral);
-    const tutorShareAmount = roundCurrency(discountedPrice * splitPercent);
-    const platformShareAmount = roundCurrency(
-      discountedPrice - tutorShareAmount,
-    );
+    // Split in kobo, then take the platform side as the exact remainder, so
+    // the two halves always sum back to the price with nothing lost or
+    // conjured by rounding.
+    const discountedKobo = toKobo(discountedPrice);
+    const tutorKobo = Math.round(discountedKobo * splitPercent);
+    const tutorShareAmount = fromKobo(tutorKobo);
+    const platformShareAmount = fromKobo(discountedKobo - tutorKobo);
 
     return {
       courseId: course.id,
@@ -371,7 +387,7 @@ export function computeCheckoutTotals({
   const subtotalAmount = roundCurrency(
     preliminary.reduce((sum, item) => sum + item.discountedPrice, 0),
   );
-  const vatAmount = roundCurrency(subtotalAmount * vatRate);
+  const vatAmount = fromKobo(Math.round(toKobo(subtotalAmount) * vatRate));
 
   const vatShares = allocateProportionally(
     vatAmount,
@@ -428,7 +444,12 @@ export function deriveSplitPercent(item: {
   tutorShareAmount: number;
 }) {
   if (item.discountedPrice <= 0) return 0;
-  return item.tutorShareAmount / item.discountedPrice;
+  // Derived from the amounts that moved, then snapped to a sane precision.
+  // The raw ratio of two rounded amounts carries float noise - it produced
+  // 0.2500000484693853 for what is plainly a 25% split - which is honest but
+  // useless to group or filter by.
+  const raw = toKobo(item.tutorShareAmount) / toKobo(item.discountedPrice);
+  return Math.round(raw * 1e6) / 1e6;
 }
 
 // ─────────────────────────────────────────────────────────────────────────────
