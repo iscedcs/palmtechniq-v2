@@ -343,6 +343,74 @@ export async function reviewBundle(input: {
   return { ok: true as const };
 }
 
+/**
+ * Approved, live bundles for the public course listing.
+ *
+ * Deliberately has no notion of featured or promoted placement. A featured
+ * slot is scarce inventory, and on a bundle sale the platform absorbs 75% of
+ * the discount — so paid placement would have to out-earn the margin given up,
+ * which cannot be priced until there is data on whether bundle buyers are
+ * incremental. Ordinary listing costs nothing, so bundles appear here on
+ * merit only.
+ */
+export async function getPublicBundles(limit = 12) {
+  const bundles = await db.courseBundle.findMany({
+    where: { reviewStatus: "APPROVED", isActive: true },
+    orderBy: { createdAt: "desc" },
+    take: limit,
+    include: {
+      tutor: { select: { user: { select: { name: true } } } },
+      items: {
+        include: {
+          course: {
+            select: {
+              id: true,
+              title: true,
+              thumbnail: true,
+              status: true,
+              price: true,
+              basePrice: true,
+              currentPrice: true,
+            },
+          },
+        },
+      },
+    },
+  });
+
+  return bundles
+    .filter((bundle: any) =>
+      // A bundle whose courses were unpublished after approval must not be
+      // advertised — checkout would refuse it anyway.
+      bundle.items.every((item: any) => item.course.status === "PUBLISHED"),
+    )
+    .map((bundle: any) => {
+      const prices = bundle.items.map((item: any) =>
+        item.course.currentPrice && item.course.currentPrice > 0
+          ? item.course.currentPrice
+          : (item.course.basePrice ?? item.course.price ?? 0),
+      );
+      const { listSum } = computeBundlePriceFloor(prices);
+      return {
+        id: bundle.id,
+        slug: bundle.slug,
+        title: bundle.title,
+        description: bundle.description,
+        price: bundle.price,
+        listSum,
+        savings: Math.max(0, listSum - bundle.price),
+        savingsPercent:
+          listSum > 0 ? Math.round((1 - bundle.price / listSum) * 100) : 0,
+        tutorName: bundle.tutor.user.name,
+        courseCount: bundle.items.length,
+        thumbnails: bundle.items
+          .map((item: any) => item.course.thumbnail)
+          .filter(Boolean)
+          .slice(0, 3),
+      };
+    });
+}
+
 /** Public bundle page data. Only approved, active bundles are visible. */
 export async function getPublicBundle(slug: string) {
   const bundle = await db.courseBundle.findFirst({

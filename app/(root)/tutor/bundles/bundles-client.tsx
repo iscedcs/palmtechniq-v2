@@ -8,6 +8,7 @@ import {
   Copy,
   Package,
   Plus,
+  Pencil,
   Send,
   TriangleAlert,
   X,
@@ -123,7 +124,12 @@ export default function TutorBundlesClient({
           )}
 
           {bundles.map((bundle) => (
-            <BundleRow key={bundle.id} bundle={bundle} limits={limits} />
+            <BundleRow
+              key={bundle.id}
+              bundle={bundle}
+              limits={limits}
+              availableCourses={availableCourses}
+            />
           ))}
         </div>
       </div>
@@ -135,18 +141,36 @@ function BundleForm({
   availableCourses,
   limits,
   onDone,
+  editing,
 }: {
   availableCourses: CourseOption[];
   limits: Limits;
   onDone: () => void;
+  /** Present when editing an existing bundle rather than creating one. */
+  editing?: Bundle;
 }) {
   const [pending, startTransition] = useTransition();
-  const [title, setTitle] = useState("");
-  const [description, setDescription] = useState("");
-  const [price, setPrice] = useState("");
-  const [selected, setSelected] = useState<string[]>([]);
+  const [title, setTitle] = useState(editing?.title ?? "");
+  const [description, setDescription] = useState(editing?.description ?? "");
+  const [price, setPrice] = useState(
+    editing ? String(editing.price) : "",
+  );
+  const [selected, setSelected] = useState<string[]>(
+    editing?.courses.map((c) => c.id) ?? [],
+  );
 
-  const chosen = availableCourses.filter((c) => selected.includes(c.id));
+  // A course in the bundle may since have been unpublished, so it will not be
+  // in availableCourses. Union them in, otherwise it silently vanishes from
+  // the picker and the price floor is computed against the wrong list total.
+  const pickable = useMemo(() => {
+    const byId = new Map(availableCourses.map((c) => [c.id, c]));
+    for (const course of editing?.courses ?? []) {
+      if (!byId.has(course.id)) byId.set(course.id, course);
+    }
+    return Array.from(byId.values());
+  }, [availableCourses, editing]);
+
+  const chosen = pickable.filter((c) => selected.includes(c.id));
   const listSum = chosen.reduce((sum, c) => sum + c.listPrice, 0);
   // Mirror of the server rule, shown live so the tutor isn't guessing.
   const priceFloor = useMemo(
@@ -172,8 +196,29 @@ function BundleForm({
       prev.includes(id) ? prev.filter((x) => x !== id) : [...prev, id],
     );
 
-  const handleCreate = () => {
+  const handleSave = () => {
     startTransition(async () => {
+      if (editing) {
+        const result = await updateCourseBundle({
+          bundleId: editing.id,
+          title,
+          description,
+          price: priceNumber,
+          courseIds: selected,
+        });
+        if (!result.ok) {
+          toast.error(result.error);
+          return;
+        }
+        toast.success(
+          result.requiresReReview
+            ? "Saved. Changing the price or courses means it needs approval again."
+            : "Bundle updated.",
+        );
+        onDone();
+        return;
+      }
+
       const result = await createCourseBundle({
         title,
         description,
@@ -194,7 +239,16 @@ function BundleForm({
   return (
     <Card>
       <CardHeader>
-        <CardTitle className="text-base">New bundle</CardTitle>
+        <CardTitle className="text-base">
+          {editing ? `Edit ${editing.title}` : "New bundle"}
+        </CardTitle>
+        {editing && editing.reviewStatus === "APPROVED" && (
+          <p className="text-xs text-amber-600">
+            Changing the price or the courses sends this back for approval and
+            takes it off sale until it is approved again. Editing the title or
+            description does not.
+          </p>
+        )}
       </CardHeader>
       <CardContent className="space-y-5">
         <div className="space-y-2">
@@ -223,7 +277,7 @@ function BundleForm({
             Courses ({selected.length} selected, minimum {limits.minCourses})
           </Label>
           <div className="max-h-64 space-y-2 overflow-y-auto rounded-md border p-2">
-            {availableCourses.map((course) => {
+            {pickable.map((course) => {
               const isOn = selected.includes(course.id);
               return (
                 <button
@@ -291,8 +345,12 @@ function BundleForm({
         </div>
 
         <div className="flex gap-3">
-          <Button onClick={handleCreate} disabled={!canSubmit || pending}>
-            {pending ? "Creating…" : "Create draft"}
+          <Button onClick={handleSave} disabled={!canSubmit || pending}>
+            {pending
+              ? "Saving…"
+              : editing
+                ? "Save changes"
+                : "Create draft"}
           </Button>
           <Button variant="ghost" onClick={onDone} disabled={pending}>
             Cancel
@@ -303,8 +361,17 @@ function BundleForm({
   );
 }
 
-function BundleRow({ bundle, limits }: { bundle: Bundle; limits: Limits }) {
+function BundleRow({
+  bundle,
+  limits,
+  availableCourses,
+}: {
+  bundle: Bundle;
+  limits: Limits;
+  availableCourses: CourseOption[];
+}) {
   const [pending, startTransition] = useTransition();
+  const [editing, setEditing] = useState(false);
   const listSum = bundle.courses.reduce((sum, c) => sum + c.listPrice, 0);
   const shareUrl =
     typeof window !== "undefined"
@@ -380,6 +447,15 @@ function BundleRow({ bundle, limits }: { bundle: Bundle; limits: Limits }) {
           )}
 
           <div className="flex flex-wrap items-center gap-3 border-t pt-3">
+            <Button
+              size="sm"
+              variant="outline"
+              onClick={() => setEditing((v) => !v)}
+              disabled={pending}>
+              <Pencil className="mr-1 h-4 w-4" />
+              {editing ? "Close" : "Edit"}
+            </Button>
+
             {(bundle.reviewStatus === "DRAFT" ||
               bundle.reviewStatus === "REJECTED") && (
               <Button size="sm" onClick={submit} disabled={pending}>
@@ -419,6 +495,17 @@ function BundleRow({ bundle, limits }: { bundle: Bundle; limits: Limits }) {
               </>
             )}
           </div>
+
+          {editing && (
+            <div className="border-t pt-4">
+              <BundleForm
+                availableCourses={availableCourses}
+                limits={limits}
+                editing={bundle}
+                onDone={() => setEditing(false)}
+              />
+            </div>
+          )}
         </CardContent>
       </Card>
     </motion.div>
