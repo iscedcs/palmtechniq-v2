@@ -1,5 +1,6 @@
 "use server";
 
+import { debitWallet } from "@/lib/payments/wallet";
 import { auth } from "@/auth";
 import { db } from "@/lib/db";
 import { redirect } from "next/navigation";
@@ -8,6 +9,7 @@ import { paystackInitialize } from "./paystack";
 import {
   computeCheckoutTotals,
   DEFAULT_VAT_RATE,
+  roundCurrency,
 } from "@/lib/payments/pricing";
 import { validatePromoCode } from "@/lib/payments/promo";
 import { resolveTutorReferralCode } from "@/lib/referral";
@@ -99,8 +101,36 @@ export async function beginCheckout(
 
   if (totals.totalAmount <= 0) throw new Error("Invalid course prices");
 
+  // ── Apply course credit ──
+  // A student's wallet balance is group-buying cashback. It is platform
+  // credit, spent on courses and never paid out as cash, so it reduces what
+  // Paystack charges rather than being withdrawn.
+  //
+  // The tutor's share is unaffected: it was computed on the full price and
+  // they are still owed all of it. The credit is the platform's cost, which
+  // it already provisioned for when the funding tutor's wallet was debited at
+  // group completion.
+  const buyer = await db.user.findUnique({
+    where: { id: session.user.id },
+    select: { walletBalance: true, role: true },
+  });
+
+  const isEarner = ["TUTOR", "MENTOR", "ADMIN"].includes(buyer?.role ?? "");
+  const availableCredit = !isEarner ? Math.max(0, buyer?.walletBalance ?? 0) : 0;
+
+  // Leave a minimum payable so there is always a real Paystack charge to
+  // settle against. Settling a zero-value purchase needs its own path through
+  // enrollment and earnings, which is not built yet — until it is, the
+  // remainder simply stays as credit for next time rather than being lost.
+  const MIN_PAYABLE = 100;
+  const creditApplied = Math.min(
+    availableCredit,
+    Math.max(0, roundCurrency(totals.totalAmount - MIN_PAYABLE)),
+  );
+  const payable = roundCurrency(totals.totalAmount - creditApplied);
+
   const reference = `ps_${randomUUID()}`;
-  const amountKobo = Math.round(totals.totalAmount * 100);
+  const amountKobo = Math.round(payable * 100);
   const description =
     courses.length === 1
       ? `Course purchase: ${courses[0].title}`
@@ -108,11 +138,28 @@ export async function beginCheckout(
 
   const primaryCourseId = courses[0].id;
 
-  await db.transaction.create({
+  await db.$transaction(async (tx: any) => {
+    if (creditApplied > 0) {
+      // Debited here, not at settlement: the credit is committed the moment
+      // checkout starts, and the ledger records it in the same transaction as
+      // the order so the two cannot disagree.
+      await debitWallet(tx, {
+        userId: session.user.id,
+        amount: creditApplied,
+        type: "COURSE_CREDIT_APPLIED",
+        description: "Course credit applied at checkout",
+      });
+    }
+
+    await tx.transaction.create({
     data: {
       userId: session.user.id,
       courseId: primaryCourseId,
-      amount: totals.totalAmount,
+      // The cash Paystack will charge. finalize verifies this against what
+      // Paystack reports, so it must be the payable amount, not the list
+      // total. Shares and VAT stay at their full values - the tutor is owed
+      // the same either way.
+      amount: payable,
       currency: "NGN",
       status: "PENDING",
       paymentMethod: "PAYSTACK",
@@ -138,6 +185,8 @@ export async function beginCheckout(
         primaryCourseId,
         count: courses.length,
         promoCode: promoResult?.ok ? promoResult.promo.code : undefined,
+        creditApplied,
+        listTotal: totals.totalAmount,
       },
       lineItems: {
         create: totals.lineItems.map((item) => ({
@@ -158,6 +207,7 @@ export async function beginCheckout(
         })),
       },
     },
+    });
   });
 
   const callbackUrl = `${process.env.NEXT_PUBLIC_URL}/courses/verify-course-payment`;

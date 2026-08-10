@@ -524,10 +524,22 @@ export async function requestWithdrawal(amount: number) {
 
   const user = await db.user.findUnique({
     where: { id: session.user.id },
-    select: { walletBalance: true, recipientCode: true },
+    select: { walletBalance: true, recipientCode: true, role: true },
   });
 
   if (!user) return { error: "User not found" };
+
+  // Only earners may take money out. A student's balance is group-buying
+  // cashback, which is platform credit — it is spent on courses, never paid
+  // out as cash. Without this guard a student with bank details could withdraw
+  // it, turning a discount into a real cash cost to the platform.
+  if (!["TUTOR", "MENTOR", "ADMIN"].includes(user.role)) {
+    return {
+      error:
+        "Your balance is course credit. It is applied automatically at checkout and cannot be withdrawn.",
+    };
+  }
+
   if (!user.recipientCode) return { error: "No payout recipient configured" };
   if (user.walletBalance < amount) return { error: "Insufficient balance" };
 

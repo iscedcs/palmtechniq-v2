@@ -60,8 +60,11 @@ export default function CheckoutCoursePage({
   groupTier,
   activePromoEndDate,
   onProceed,
+  courseCredit = 0,
 }: CheckoutCoursePageProps & {
   onProceed: (promoCode?: string) => Promise<{ error?: string } | void>;
+  /** Spendable group-buying cashback, applied automatically at checkout. */
+  courseCredit?: number;
 }) {
   const router = useRouter();
   const [applyingCode, setApplyingCode] = useState(false);
@@ -345,6 +348,31 @@ export default function CheckoutCoursePage({
                           {formatToNaira(total)}
                         </span>
                       </div>
+
+                      {/* Credit is applied server-side at checkout; showing it
+                          here means it is never silently deducted. */}
+                      {courseCredit > 0 && (
+                        <>
+                          <div className="flex justify-between text-sm text-neon-green">
+                            <span>Course credit applied</span>
+                            <span>
+                              -{formatToNaira(Math.min(courseCredit, Math.max(0, total - 100)))}
+                            </span>
+                          </div>
+                          <div className="flex justify-between text-base font-semibold">
+                            <span className="text-white">You pay</span>
+                            <span className="text-white">
+                              {formatToNaira(
+                                Math.max(
+                                  0,
+                                  total -
+                                    Math.min(courseCredit, Math.max(0, total - 100)),
+                                ),
+                              )}
+                            </span>
+                          </div>
+                        </>
+                      )}
                       {groupTier ? (
                         <div className="flex justify-between text-sm text-yellow-300">
                           <span>Cashback on completion</span>

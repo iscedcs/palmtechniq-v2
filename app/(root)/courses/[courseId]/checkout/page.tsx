@@ -1,3 +1,4 @@
+import { auth } from "@/auth";
 import { beginCheckout } from "@/actions/checkout";
 import { beginGroupCheckout } from "@/actions/group-purchase";
 import CheckoutCoursePage from "@/components/pages/courses/checkout/checkout-course";
@@ -26,6 +27,20 @@ export default async function CheckoutPage({
   const course = await getCourseById(courseId);
 
   if (!course) redirect("/courses");
+
+  // Group-buying cashback the buyer can spend here. Earners are excluded:
+  // their balance is payout money, not course credit.
+  const viewer = await auth();
+  const buyer = viewer?.user?.id
+    ? await db.user.findUnique({
+        where: { id: viewer.user.id },
+        select: { walletBalance: true, role: true },
+      })
+    : null;
+  const courseCredit =
+    buyer && !["TUTOR", "MENTOR", "ADMIN"].includes(buyer.role)
+      ? Math.max(0, buyer.walletBalance)
+      : 0;
 
   const groupTierId =
     typeof resolvedSearchParams.groupTierId === "string"
@@ -117,6 +132,7 @@ export default async function CheckoutPage({
               }
             : undefined
         }
+        courseCredit={courseCredit}
         onProceed={async (promoCode?: string) => {
           "use server";
           if (groupTier) {

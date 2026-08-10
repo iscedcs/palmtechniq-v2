@@ -2,6 +2,7 @@ import { timingSafeEqual } from "crypto";
 import { NextResponse } from "next/server";
 
 import {
+  countDriftingWallets,
   countStrandedPayments,
   sweepPendingPayments,
 } from "@/lib/payments/sweep";
@@ -49,6 +50,15 @@ async function handle(req: Request) {
   try {
     const report = await sweepPendingPayments();
     const stillStranded = await countStrandedPayments();
+    const driftingWallets = await countDriftingWallets();
+
+    // Should never be anything but zero. If it is, a balance moved without a
+    // ledger entry and that needs looking at before it compounds.
+    if (driftingWallets > 0) {
+      console.error(
+        `[payment-sweep] ${driftingWallets} wallet(s) disagree with the ledger`,
+      );
+    }
 
     // Settling anything here means the primary callback path failed, which is
     // worth seeing in the Actions output rather than only in a dashboard.
@@ -60,6 +70,7 @@ async function handle(req: Request) {
       ok: true,
       ...report,
       stillStranded,
+      driftingWallets,
       tookMs: Date.now() - startedAt,
     });
   } catch (error) {

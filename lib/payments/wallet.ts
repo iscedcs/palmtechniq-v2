@@ -19,6 +19,7 @@ export type WalletEntryType =
   | "GROUP_CASHBACK_DEBIT"
   | "WITHDRAWAL_REQUESTED"
   | "WITHDRAWAL_REVERSED"
+  | "COURSE_CREDIT_APPLIED"
   | "ADJUSTMENT";
 
 type Refs = {

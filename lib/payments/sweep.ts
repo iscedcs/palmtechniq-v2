@@ -96,6 +96,33 @@ export async function sweepPendingPayments({
   return report;
 }
 
+/**
+ * Wallets whose balance disagrees with their ledger.
+ *
+ * Should always be zero. Anything else means a balance moved without a
+ * WalletEntry, which is the failure that let group cashback create money
+ * unnoticed. Reported by the sweep so it surfaces on its own rather than
+ * waiting for someone to go looking.
+ */
+export async function countDriftingWallets() {
+  const [users, entries] = await Promise.all([
+    db.user.findMany({
+      where: { OR: [{ walletBalance: { not: 0 } }, { walletEntries: { some: {} } }] },
+      select: { id: true, walletBalance: true },
+    }),
+    db.walletEntry.groupBy({ by: ["userId"], _sum: { amount: true } }),
+  ]);
+
+  const ledger = new Map<string, number>(
+    entries.map((row: any) => [row.userId, row._sum.amount ?? 0]),
+  );
+
+  return users.filter(
+    (u: any) =>
+      Math.round((u.walletBalance - (ledger.get(u.id) ?? 0)) * 100) !== 0,
+  ).length;
+}
+
 /** Count of transactions still stranded, for visibility in the sweep output. */
 export async function countStrandedPayments(graceMinutes = 15) {
   return db.transaction.count({

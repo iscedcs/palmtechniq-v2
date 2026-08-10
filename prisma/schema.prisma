@@ -1594,6 +1594,8 @@ enum WalletEntryType {
   GROUP_CASHBACK_DEBIT
   WITHDRAWAL_REQUESTED
   WITHDRAWAL_REVERSED
+  /// Student spent group-buying cashback against a purchase.
+  COURSE_CREDIT_APPLIED
   /// Opening balance or a manual correction. Never written automatically by
   /// a payment path.
   ADJUSTMENT
