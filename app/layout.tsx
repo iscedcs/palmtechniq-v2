@@ -9,10 +9,10 @@ import { NotificationProvider } from "@/lib/notifications/notification-provider"
 import type { Metadata } from "next";
 import { SessionProvider } from "next-auth/react";
 import { Inter } from "next/font/google";
-import type React from "react";
 import { Suspense } from "react";
 import "./globals.css";
 import { ToploaderProvider } from "@/components/shared/toploader-provider";
+import { SmoothScrollProvider } from "@/components/providers/smooth-scroll-provider";
 
 const inter = Inter({ subsets: ["latin"] });
 
@@ -224,7 +224,9 @@ export default async function MainRootLayout({
                       <ConditionalNavigation>
                         <Navigation />
                       </ConditionalNavigation>
-                      <main className="flex-1">{children}</main>
+                      <main className="flex-1">
+                        <SmoothScrollProvider>{children}</SmoothScrollProvider>
+                      </main>
 
                       <ConditionalNavigation>
                         <MobileBottomNav />
