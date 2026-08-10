@@ -125,7 +125,8 @@ export default async function CheckoutPage({
           }
           const cookieStore = await cookies();
           const referralCode = cookieStore.get(REFERRAL_COOKIE_NAME)?.value;
-          await beginCheckout(course.id, promoCode, referralCode);
+          // Returns only when checkout is refused; success redirects.
+          return beginCheckout(course.id, promoCode, referralCode);
         }}
       />
     </div>

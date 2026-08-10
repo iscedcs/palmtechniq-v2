@@ -1,5 +1,6 @@
 "use client";
 
+import { toast } from "sonner";
 import { motion } from "framer-motion";
 import {
   ArrowLeft,
@@ -60,7 +61,7 @@ export default function CheckoutCoursePage({
   activePromoEndDate,
   onProceed,
 }: CheckoutCoursePageProps & {
-  onProceed: (promoCode?: string) => Promise<void>;
+  onProceed: (promoCode?: string) => Promise<{ error?: string } | void>;
 }) {
   const router = useRouter();
   const [applyingCode, setApplyingCode] = useState(false);
@@ -433,7 +434,11 @@ export default function CheckoutCoursePage({
                           value: total,
                           num_items: 1,
                         });
-                        onProceed(appliedPromo || undefined);
+                        void onProceed(appliedPromo || undefined).then(
+                          (result) => {
+                            if (result?.error) toast.error(result.error);
+                          },
+                        );
                       }}
                       className="w-full bg-gradient-to-r from-neon-blue to-neon-purple text-white text-lg py-4 disabled:opacity-50">
                       Proceed to Checkout

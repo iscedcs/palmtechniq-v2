@@ -305,7 +305,9 @@ export function ShoppingCartComponent() {
                     <Button
                       onClick={async () => {
                         const courseIds = cartItems.map((item) => item.id);
-                        await beginCheckout(courseIds);
+                        const result = await beginCheckout(courseIds);
+                        // On success beginCheckout redirects and never returns.
+                        if (result?.error) toast.error(result.error);
                       }}
                       className="w-full bg-gradient-to-r from-neon-blue to-neon-purple hover:from-neon-blue/80 hover:to-neon-purple/80 text-white font-semibold py-3">
                       <CreditCard className="w-4 h-4 mr-2" />

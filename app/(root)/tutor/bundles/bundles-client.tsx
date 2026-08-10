@@ -28,6 +28,7 @@ import {
   submitBundleForReview,
   updateCourseBundle,
 } from "@/actions/bundles";
+import { getMyReferralCode } from "@/actions/tutor-actions";
 
 type CourseOption = { id: string; title: string; listPrice: number };
 
@@ -373,10 +374,22 @@ function BundleRow({
   const [pending, startTransition] = useTransition();
   const [editing, setEditing] = useState(false);
   const listSum = bundle.courses.reduce((sum, c) => sum + c.listPrice, 0);
-  const shareUrl =
-    typeof window !== "undefined"
-      ? `${window.location.origin}/bundles/${bundle.slug}`
-      : `/bundles/${bundle.slug}`;
+  const copyReferralLink = () => {
+    startTransition(async () => {
+      const res = await getMyReferralCode();
+      if (res.error || !res.referralCode) {
+        toast.error(res.error || "Could not generate referral link");
+        return;
+      }
+      // The ref code is what earns the tutor 50% instead of 25%. A bare
+      // /bundles/<slug> link settles at the platform rate, so the share
+      // action must always carry it.
+      await navigator.clipboard.writeText(
+        `${window.location.origin}/bundles/${bundle.slug}?ref=${res.referralCode}`,
+      );
+      toast.success("Referral link copied! Share to earn 50% on this bundle.");
+    });
+  };
 
   const submit = () => {
     startTransition(async () => {
@@ -479,12 +492,10 @@ function BundleRow({
                 <Button
                   size="sm"
                   variant="outline"
-                  onClick={() => {
-                    navigator.clipboard.writeText(shareUrl);
-                    toast.success("Bundle link copied");
-                  }}>
+                  onClick={copyReferralLink}
+                  disabled={pending}>
                   <Copy className="mr-1 h-4 w-4" />
-                  Copy link
+                  Referral Link
                 </Button>
                 <Link
                   href={`/bundles/${bundle.slug}`}

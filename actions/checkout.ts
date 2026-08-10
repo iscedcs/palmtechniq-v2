@@ -56,11 +56,15 @@ export async function beginCheckout(
     const titles = alreadyOwned
       .map((e: any) => `"${e.course.title}"`)
       .join(", ");
-    throw new Error(
-      alreadyOwned.length === ids.length
-        ? `You are already enrolled in ${titles}.`
-        : `You are already enrolled in ${titles}. Remove ${alreadyOwned.length > 1 ? "them" : "it"} from your cart to continue.`,
-    );
+    // Returned, not thrown. This is a normal thing for a student to do, so it
+    // should read as a message in the UI rather than a crash — throwing here
+    // surfaced the Next.js error overlay.
+    return {
+      error:
+        alreadyOwned.length === ids.length
+          ? `You are already enrolled in ${titles}.`
+          : `You are already enrolled in ${titles}. Remove ${alreadyOwned.length > 1 ? "them" : "it"} from your cart to continue.`,
+    };
   }
 
   const promoResult = promoCode
