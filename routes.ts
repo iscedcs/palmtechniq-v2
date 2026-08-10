@@ -8,6 +8,9 @@ export const publicRoutes = [
   "/contact",
   "/courses",
   "/courses/[slug]", // Individual course pages are public for viewing
+  // Bundle links are shared publicly, so the landing page must render for
+  // signed-out visitors — they sign in from it and are returned here.
+  "/bundles/[slug]",
   "/bootcamp",
   "/bootcamp/[...slug]",
   "/mentorship", // External mentorship page is public
