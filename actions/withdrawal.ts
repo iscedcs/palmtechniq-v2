@@ -1,5 +1,6 @@
 "use server";
 
+import { creditWallet, debitWallet } from "@/lib/payments/wallet";
 import { auth } from "@/auth";
 import { db } from "@/lib/db";
 import { randomUUID } from "crypto";
@@ -531,9 +532,11 @@ export async function requestWithdrawal(amount: number) {
   if (user.walletBalance < amount) return { error: "Insufficient balance" };
 
   await db.$transaction(async (tx: any) => {
-    await tx.user.update({
-      where: { id: session.user.id },
-      data: { walletBalance: { decrement: amount } },
+    await debitWallet(tx, {
+      userId: session.user.id,
+      amount,
+      type: "WITHDRAWAL_REQUESTED",
+      description: "Withdrawal requested",
     });
 
     await tx.withdrawalRequest.create({
@@ -644,9 +647,12 @@ export async function rejectWithdrawalRequest(
       },
     });
 
-    await tx.user.update({
-      where: { id: withdrawal.userId },
-      data: { walletBalance: { increment: withdrawal.amount } },
+    await creditWallet(tx, {
+      userId: withdrawal.userId,
+      amount: withdrawal.amount,
+      type: "WITHDRAWAL_REVERSED",
+      withdrawalRequestId: withdrawal.id,
+      description: "Withdrawal rejected, funds returned",
     });
   });
 

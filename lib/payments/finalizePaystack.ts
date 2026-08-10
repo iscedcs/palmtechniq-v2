@@ -1,3 +1,4 @@
+import { creditWallet } from "@/lib/payments/wallet";
 import { paystackVerify } from "@/actions/paystack";
 import { db } from "@/lib/db";
 import { notify } from "@/lib/notify";
@@ -145,7 +146,7 @@ export async function finalizePaystackByReference(reference: string) {
         // Without this the money is spendable but invisible to the ledger, and
         // wallet balance can never be reconciled against TutorEarning.
         const sessionId = metadata?.mentorshipSessionId as string | undefined;
-        await px.tutorEarning.create({
+        const earning = await px.tutorEarning.create({
           data: {
             tutorId,
             source: "MENTORSHIP",
@@ -160,13 +161,13 @@ export async function finalizePaystackByReference(reference: string) {
           },
         });
 
-        await px.user.update({
-          where: { id: tutorId },
-          data: {
-            walletBalance: {
-              increment: tutorShare,
-            },
-          },
+        await creditWallet(px, {
+          userId: tutorId,
+          amount: tutorShare,
+          type: "MENTORSHIP_EARNING",
+          transactionId: tx.id,
+          tutorEarningId: earning.id,
+          description: "Mentorship session",
         });
       }
       return;
@@ -358,9 +359,13 @@ export async function finalizePaystackByReference(reference: string) {
       }
 
       for (const [tutorId, amount] of creditByTutor) {
-        await px.user.update({
-          where: { id: tutorId },
-          data: { walletBalance: { increment: amount } },
+        await creditWallet(px, {
+          userId: tutorId,
+          amount,
+          type: "COURSE_EARNING",
+          transactionId: tx.id,
+          description:
+            metadata.type === "bundle" ? "Bundle purchase" : "Course purchase",
         });
       }
     }

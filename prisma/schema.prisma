@@ -80,6 +80,7 @@ model User {
   tutorEarnings           TutorEarning[]           @relation("TutorEarningTutor")
   releasedEarnings        TutorEarning[]           @relation("TutorEarningReleasedBy")
   ledCohorts              ProgramCohort[]          @relation("CohortLeadInstructor")
+  walletEntries           WalletEntry[]            @relation("UserWalletEntries")
   reviewedBundles         CourseBundle[]           @relation("BundleReviewer")
   tutorProfile            Tutor?
   analytics               UserAnalytics[]
@@ -1549,6 +1550,53 @@ enum BundleReviewStatus {
   PENDING_REVIEW
   APPROVED
   REJECTED
+}
+
+/// Append-only record of every change to User.walletBalance.
+///
+/// TutorEarning answers "what did I earn, and at what rate". This answers the
+/// different question "why is my balance this number" — including movements
+/// that are not earnings at all, like withdrawals and group cashback. Group
+/// cashback in particular moved money on both sides while writing nothing,
+/// which made wallet balances impossible to reconcile.
+///
+/// Invariant: walletBalance == sum(WalletEntry.amount) for a user.
+model WalletEntry {
+  id     String          @id @default(cuid())
+  userId String
+  /// Signed: positive credits the wallet, negative debits it.
+  amount Float
+  type   WalletEntryType
+  /// Balance immediately after this entry, for auditing without replaying.
+  balanceAfter Float?
+  description  String?
+
+  // Loose references. Nullable because no single one applies to every type.
+  transactionId       String?
+  tutorEarningId      String?
+  withdrawalRequestId String?
+  groupPurchaseId     String?
+
+  createdAt DateTime @default(now())
+
+  user User @relation("UserWalletEntries", fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([userId, createdAt])
+  @@index([type])
+  @@map("wallet_entries")
+}
+
+enum WalletEntryType {
+  COURSE_EARNING
+  MENTORSHIP_EARNING
+  PROGRAM_EARNING_RELEASE
+  GROUP_CASHBACK_CREDIT
+  GROUP_CASHBACK_DEBIT
+  WITHDRAWAL_REQUESTED
+  WITHDRAWAL_REVERSED
+  /// Opening balance or a manual correction. Never written automatically by
+  /// a payment path.
+  ADJUSTMENT
 }
 
 enum TutorEarningSource {

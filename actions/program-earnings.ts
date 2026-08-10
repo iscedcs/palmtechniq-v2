@@ -1,5 +1,6 @@
 "use server";
 
+import { creditWallet } from "@/lib/payments/wallet";
 import { auth } from "@/auth";
 import { db } from "@/lib/db";
 import { notify } from "@/lib/notify";
@@ -232,9 +233,12 @@ export async function releaseProgramEarnings(cohortId: string) {
       });
       if (claimed.count === 0) continue;
 
-      await tx.user.update({
-        where: { id: earning.tutorId },
-        data: { walletBalance: { increment: earning.amount } },
+      await creditWallet(tx, {
+        userId: earning.tutorId,
+        amount: earning.amount,
+        type: "PROGRAM_EARNING_RELEASE",
+        tutorEarningId: earning.id,
+        description: "Program cohort earnings released",
       });
 
       total += earning.amount;

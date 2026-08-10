@@ -1,5 +1,6 @@
 "use server";
 
+import { creditWallet, debitWallet } from "@/lib/payments/wallet";
 import { auth } from "@/auth";
 import { db } from "@/lib/db";
 import { paystackInitialize } from "./paystack";
@@ -334,14 +335,20 @@ export async function joinGroupPurchase(inviteCode: string) {
         );
       }
 
-      await tx.user.update({
-        where: { id: funderId },
-        data: { walletBalance: { decrement: group.cashbackTotal } },
+      await debitWallet(tx, {
+        userId: funderId,
+        amount: group.cashbackTotal,
+        type: "GROUP_CASHBACK_DEBIT",
+        groupPurchaseId: group.id,
+        description: "Funded group cashback",
       });
 
-      await tx.user.update({
-        where: { id: group.creatorId },
-        data: { walletBalance: { increment: group.cashbackTotal } },
+      await creditWallet(tx, {
+        userId: group.creatorId,
+        amount: group.cashbackTotal,
+        type: "GROUP_CASHBACK_CREDIT",
+        groupPurchaseId: group.id,
+        description: "Group purchase cashback",
       });
     }
 
