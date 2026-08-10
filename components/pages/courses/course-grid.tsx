@@ -39,6 +39,7 @@ import { useRouter } from "next/navigation";
 import { useState } from "react";
 import { toast } from "sonner";
 import { BundleStrip } from "@/components/pages/courses/bundle-strip";
+import { CourseThumbnail } from "@/components/shared/course-thumbnail";
 
 export default function CoursesGrid({
   courses,
@@ -268,9 +269,10 @@ export default function CoursesGrid({
                   className="group cursor-pointer">
                   <Card className="glass-card hover-glow h-full border-white/10 overflow-hidden relative">
                     <div className="relative">
-                      <img
-                        src={course.thumbnail || generateRandomAvatar()}
+                      <CourseThumbnail
+                        src={course.thumbnail}
                         alt={course.title}
+                        seed={course.id}
                         className="w-full h-48 object-cover"
                       />
 
