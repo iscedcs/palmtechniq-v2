@@ -1,5 +1,6 @@
 "use client"
 
+import { CourseThumbnail } from "@/components/shared/course-thumbnail";
 import { useState } from "react"
 import { motion } from "framer-motion"
 import { Card, CardContent } from "@/components/ui/card"
@@ -93,8 +94,8 @@ export default function StudentCoursesClient({
     >
       <Card className="glass-card hover-glow border-white/10 overflow-hidden h-full">
         <div className="relative">
-          <img
-            src={course.thumbnail || generateRandomAvatar()}
+          <CourseThumbnail
+            src={course.thumbnail}
             alt={course.title}
             className="w-full h-48 object-cover"
           />

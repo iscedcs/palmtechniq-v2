@@ -57,23 +57,24 @@ export async function getTutorDashboardData() {
     take: 5,
   });
 
-  const currentMonthTx = await db.transaction.aggregate({
-    where: {
-      status: "COMPLETED",
-      course: { tutorId: tutor.id },
-      createdAt: { gte: startOfMonth },
-    },
+  // Earnings come from TutorEarning, not Transaction.amount. Transaction.amount
+  // is the gross the student paid — it includes VAT owed to FIRS and the
+  // platform's share, neither of which the tutor receives. TutorEarning is the
+  // same ledger the wallet reads, so the two can never disagree.
+  const earningsWhere = {
+    tutorId: session.user.id,
+    status: { in: ["AVAILABLE", "PAID"] as const },
+  };
+
+  const currentMonthTx = await db.tutorEarning.aggregate({
+    where: { ...earningsWhere, createdAt: { gte: startOfMonth } },
     _sum: { amount: true },
   });
 
-  const lastMonthTx = await db.transaction.aggregate({
+  const lastMonthTx = await db.tutorEarning.aggregate({
     where: {
-      status: "COMPLETED",
-      course: { tutorId: tutor.id },
-      createdAt: {
-        gte: startOfLastMonth,
-        lt: startOfMonth,
-      },
+      ...earningsWhere,
+      createdAt: { gte: startOfLastMonth, lt: startOfMonth },
     },
     _sum: { amount: true },
   });
@@ -83,27 +84,29 @@ export async function getTutorDashboardData() {
     0,
   );
 
-  const totalEarnings =
-    courses.reduce(
-      (sum: any, c: any) =>
-        sum +
-        c.transactions.reduce(
-          (txSum: any, tx: any) => txSum + (tx.amount || 0),
-          0,
-        ),
-      0,
-    ) / 100;
-
-  const monthlyEarnings = await db.transaction.aggregate({
-    where: {
-      status: "COMPLETED",
-      course: { tutorId: tutor.id },
-      createdAt: {
-        gte: new Date(new Date().getFullYear(), new Date().getMonth(), 1),
-      },
-    },
+  const totalEarningsAgg = await db.tutorEarning.aggregate({
+    where: earningsWhere,
     _sum: { amount: true },
   });
+  const totalEarnings = totalEarningsAgg._sum.amount || 0;
+
+  const monthlyEarnings = await db.tutorEarning.aggregate({
+    where: { ...earningsWhere, createdAt: { gte: startOfMonth } },
+    _sum: { amount: true },
+  });
+
+  // Per-course earnings, so a course card shows what the tutor actually made
+  // on it rather than the gross the students paid.
+  const earningsByCourse = await db.tutorEarning.groupBy({
+    by: ["courseId"],
+    where: { ...earningsWhere, courseId: { not: null } },
+    _sum: { amount: true },
+  });
+  const courseEarnings = new Map<string, number>(
+    earningsByCourse
+      .filter((row: any) => row.courseId)
+      .map((row: any) => [row.courseId as string, row._sum.amount || 0]),
+  );
 
   const coursesSold = courses.reduce(
     (sum: any, c: any) => sum + c.enrollments.length,
@@ -114,8 +117,8 @@ export async function getTutorDashboardData() {
     courses.flatMap((c: any) => c.reviews),
   );
 
-  const currentMonthAmount = (currentMonthTx._sum.amount || 0) / 100;
-  const lastMonthAmount = (lastMonthTx._sum.amount || 0) / 100;
+  const currentMonthAmount = currentMonthTx._sum.amount || 0;
+  const lastMonthAmount = lastMonthTx._sum.amount || 0;
   const earningsChange =
     lastMonthAmount > 0
       ? ((currentMonthAmount - lastMonthAmount) / lastMonthAmount) * 100
@@ -168,21 +171,14 @@ export async function getTutorDashboardData() {
 
     const monthName = start.toLocaleString("default", { month: "short" });
 
-    const sum = await db.transaction.aggregate({
-      where: {
-        status: "COMPLETED",
-        course: { tutorId: tutor.id },
-        createdAt: {
-          gte: start,
-          lt: end,
-        },
-      },
+    const sum = await db.tutorEarning.aggregate({
+      where: { ...earningsWhere, createdAt: { gte: start, lt: end } },
       _sum: { amount: true },
     });
 
     earningsHistory.push({
       month: monthName,
-      amount: (sum._sum.amount || 0) / 100,
+      amount: sum._sum.amount || 0,
     });
   }
 
@@ -192,11 +188,7 @@ export async function getTutorDashboardData() {
     title: c.title,
     students: c.enrollments.length,
     rating: getAverageRating(c.reviews),
-    earnings:
-      c.transactions.reduce(
-        (txSum: any, tx: any) => txSum + (tx.amount || 0),
-        0,
-      ) / 100,
+    earnings: courseEarnings.get(c.id) ?? 0,
     status: c.status.toLowerCase(),
     thumbnail: c.thumbnail,
     lastUpdated: c.updatedAt.toLocaleDateString(),
@@ -205,36 +197,44 @@ export async function getTutorDashboardData() {
   const upcomingMentorships: any = []; // db.mentorshipSession.findMany(...)
   const pendingProjects: any = []; // db.project.findMany(...)
 
+  // Sort on the real timestamp, then format. Sorting the formatted strings
+  // orders them alphabetically — "2 minutes ago" against "about 1 hour ago" —
+  // so the newest activity could be buried and then cut by the slice.
   const recentActivity = [
     ...enrollments.map((e: any) => ({
       type: "enrollment" as const,
       message: `${e.user.name} enrolled in your course "${e.course.title}"`,
-      time: formatDistanceToNow(e.enrolledAt, { addSuffix: true }),
+      at: e.enrolledAt as Date,
     })),
     ...reviews.map((r: any) => ({
       type: "review" as const,
       message: `${r.user.name} rated "${r.course.title}" ${r.rating}⭐`,
-      time: formatDistanceToNow(r.createdAt, { addSuffix: true }),
+      at: r.createdAt as Date,
     })),
     ...mentorships.map((m: any) => ({
       type: "mentorship" as const,
       message: `New mentorship session scheduled: ${m.title}`,
-      time: formatDistanceToNow(m.createdAt, { addSuffix: true }),
+      at: m.createdAt as Date,
     })),
     ...projects.map((p: any) => ({
       type: "project" as const,
       message: `New project submission received.`,
-      time: formatDistanceToNow(p.createdAt, { addSuffix: true }),
+      at: p.createdAt as Date,
     })),
   ]
-    .sort((a, b) => (a.time < b.time ? 1 : -1))
-    .slice(0, 8);
+    .sort((a, b) => b.at.getTime() - a.at.getTime())
+    .slice(0, 8)
+    .map(({ type, message, at }) => ({
+      type,
+      message,
+      time: formatDistanceToNow(at, { addSuffix: true }),
+    }));
 
   return {
     stats: {
       totalStudents,
       totalEarnings,
-      monthlyEarnings: (monthlyEarnings._sum.amount || 0) / 100,
+      monthlyEarnings: monthlyEarnings._sum.amount || 0,
       earningsHistory,
       coursesSold,
       averageRating,

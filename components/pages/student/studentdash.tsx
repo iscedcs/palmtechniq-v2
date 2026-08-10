@@ -1,5 +1,6 @@
 "use client";
 
+import { CourseThumbnail } from "@/components/shared/course-thumbnail";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
@@ -514,8 +515,8 @@ export default function StudentDashboardClient({
                         animate={{ opacity: 1, x: 0 }}
                         transition={{ duration: 0.5, delay: index * 0.1 }}
                         className="flex items-center space-x-4 p-4 bg-white/5 rounded-lg hover:bg-white/10 transition-colors group cursor-pointer">
-                        <img
-                          src={course.thumbnail || generateRandomAvatar()}
+                        <CourseThumbnail
+                          src={course.thumbnail}
                           alt={course.title}
                           className="w-20 h-14 object-cover rounded-lg"
                         />

@@ -5,17 +5,13 @@ import { auth } from "@/auth";
 import { paystackInitialize } from "@/actions/paystack";
 import { db } from "@/lib/db";
 import { notify } from "@/lib/notify";
+import {
+  computeMentorshipPrice,
+  computeMentorshipSplit,
+} from "@/lib/payments/revenue";
 
 type BookingMode = "INSTANT" | "REQUEST";
 type PackageCode = "NONE" | "STARTER_3" | "GROWTH_5";
-
-const packageConfig: Record<
-  Exclude<PackageCode, "NONE">,
-  { sessions: number; discountPercent: number; label: string }
-> = {
-  STARTER_3: { sessions: 3, discountPercent: 10, label: "Starter Pack (3)" },
-  GROWTH_5: { sessions: 5, discountPercent: 18, label: "Growth Pack (5)" },
-};
 
 export async function getMentorshipMarketplaceData() {
   const mentors = await db.tutor.findMany({
@@ -143,26 +139,21 @@ export async function beginMentorshipCheckout(input: {
     return { error: "Please select a valid session date/time." };
   }
 
-  const duration = Math.max(30, Math.min(180, input.durationMinutes || 60));
   const tutorProfile = await db.tutor.findUnique({
     where: { userId: tutor.id },
     select: { hourlyRate: true },
   });
-  const hourlyRate = tutorProfile?.hourlyRate || 15000;
-  const basePrice = (hourlyRate / 60) * duration;
 
   const packageCode: PackageCode = input.packageCode || "NONE";
-  const packageEntry =
-    packageCode === "NONE"
-      ? null
-      : packageConfig[packageCode as "STARTER_3" | "GROWTH_5"];
-  const sessionsCount = packageEntry?.sessions || 1;
-  const discountPercent = packageEntry?.discountPercent || 0;
-  const discountedTotal =
-    basePrice * sessionsCount * (1 - discountPercent / 100);
-  const totalAmount = Number(discountedTotal.toFixed(2));
-  const tutorShareAmount = Number((totalAmount * 0.7).toFixed(2));
-  const platformShareAmount = Number((totalAmount * 0.3).toFixed(2));
+  const pricing = computeMentorshipPrice({
+    hourlyRate: tutorProfile?.hourlyRate,
+    durationMinutes: input.durationMinutes,
+    packageCode,
+  });
+  const { duration, sessions: sessionsCount, totalAmount } = pricing;
+  const packageEntry = pricing.label ? { label: pricing.label } : null;
+  const { tutorShareAmount, platformShareAmount } =
+    computeMentorshipSplit(totalAmount);
 
   const mentorshipSession = await db.mentorshipSession.create({
     data: {
@@ -651,9 +642,8 @@ export async function proceedWithApprovedBookingPayment(sessionId: string) {
     return { error: "This session has already been paid for" };
   }
 
-  const tutorShareAmount = Number((mentorshipSession.price * 0.7).toFixed(2));
-  const platformShareAmount = Number(
-    (mentorshipSession.price * 0.3).toFixed(2),
+  const { tutorShareAmount, platformShareAmount } = computeMentorshipSplit(
+    mentorshipSession.price,
   );
 
   const reference = `mentorship_${randomUUID()}`;
@@ -1027,8 +1017,9 @@ export async function beginOfferingCheckout(
     }
 
     // For INSTANT mode, create transaction and initialize payment
-    const tutorShareAmount = Number((offering.price * 0.7).toFixed(2));
-    const platformShareAmount = Number((offering.price * 0.3).toFixed(2));
+    const { tutorShareAmount, platformShareAmount } = computeMentorshipSplit(
+      offering.price,
+    );
     const reference = `mentorship_${booking.id}_${Date.now()}`;
 
     // Create transaction record for payment tracking

@@ -1,10 +1,12 @@
 "use client";
 
 import { useState } from "react";
+import { useSearchParams } from "next/navigation";
 import { motion } from "framer-motion";
 import { Github, Chrome, Loader2 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { signIn } from "next-auth/react";
+import { DEFAULT_LOGIN_REDIRECT } from "@/routes";
 
 interface OAuthButtonsProps {
   mode: "login" | "signup";
@@ -12,12 +14,15 @@ interface OAuthButtonsProps {
 
 export function OAuthButtons({ mode }: OAuthButtonsProps) {
   const [loadingProvider, setLoadingProvider] = useState<string | null>(null);
+  const searchParams = useSearchParams();
 
-  const DEFAULT_LOGIN_REDIRECT = "/dashboard";
   const onClick = (provider: "google" | "github") => {
     setLoadingProvider(provider);
+    // Honour ?callbackUrl= the same way the credentials form does. This was
+    // previously hardcoded, so OAuth silently dropped wherever the user was
+    // trying to get to — buying a bundle, for instance.
     signIn(provider, {
-      callbackUrl: DEFAULT_LOGIN_REDIRECT,
+      callbackUrl: searchParams?.get("callbackUrl") || DEFAULT_LOGIN_REDIRECT,
     });
   };
   return (

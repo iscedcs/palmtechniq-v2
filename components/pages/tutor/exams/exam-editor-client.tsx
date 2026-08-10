@@ -1,0 +1,702 @@
+"use client";
+
+import {
+  getPublishChecklist,
+  publishExam,
+  resendExamNotifications,
+} from "@/actions/exam";
+import { updateExam } from "@/actions/exam-authoring";
+import { Alert, AlertDescription } from "@/components/ui/alert";
+import { Badge } from "@/components/ui/badge";
+import { Button } from "@/components/ui/button";
+import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { Input } from "@/components/ui/input";
+import { Label } from "@/components/ui/label";
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select";
+import { Switch } from "@/components/ui/switch";
+import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
+import { Textarea } from "@/components/ui/textarea";
+import type { TutorExamDetail } from "@/data/tutor-exam";
+import { cn } from "@/lib/utils";
+import {
+  AlertCircle,
+  CheckCircle2,
+  ClipboardCheck,
+  Loader2,
+  Mail,
+  MonitorDot,
+  Rocket,
+} from "lucide-react";
+import Link from "next/link";
+import { useRouter } from "next/navigation";
+import { useState } from "react";
+import { toast } from "sonner";
+import { ExamQuestionsTab } from "./exam-questions-tab";
+import { ExamRosterTab } from "./exam-roster-tab";
+
+function formatSpan(minutes: number): string {
+  const h = Math.floor(minutes / 60);
+  const m = Math.round(minutes % 60);
+  if (h === 0) return `${m}m`;
+  return m === 0 ? `${h}h` : `${h}h ${m}m`;
+}
+
+/**
+ * Live feedback on whether the duration fits inside the window.
+ *
+ * The publish checklist already refused a duration longer than its window, but
+ * only at publish, and only as a sentence. A tutor transcribing "2 hours" from a
+ * paper has no reason to think about the window at all — so state both numbers
+ * as they type, and offer the fix rather than just the complaint.
+ */
+function ScheduleFit({
+  opensAt,
+  closesAt,
+  durationMinutes,
+  editable,
+  onExtendWindow,
+}: {
+  opensAt: string;
+  closesAt: string;
+  durationMinutes: number;
+  editable: boolean;
+  onExtendWindow: (closesAt: string) => void;
+}) {
+  if (!opensAt || !closesAt || !durationMinutes) {
+    return (
+      <p className="text-xs text-gray-400">
+        The window must be at least as long as the duration.
+      </p>
+    );
+  }
+
+  const opens = new Date(opensAt);
+  const closes = new Date(closesAt);
+  const windowMinutes = (closes.getTime() - opens.getTime()) / 60_000;
+
+  if (!Number.isFinite(windowMinutes)) return null;
+
+  if (windowMinutes <= 0) {
+    return (
+      <p className="text-xs text-destructive">
+        The exam closes before it opens.
+      </p>
+    );
+  }
+
+  const fits = durationMinutes <= windowMinutes;
+
+  if (fits) {
+    return (
+      <p className="text-xs text-gray-400">
+        Window is {formatSpan(windowMinutes)} — a {formatSpan(durationMinutes)} paper
+        fits, and candidates can start up to{" "}
+        {formatSpan(windowMinutes - durationMinutes)} late and still get full time.
+      </p>
+    );
+  }
+
+  // Extend the close time to exactly fit the duration.
+  const suggested = new Date(opens.getTime() + durationMinutes * 60_000);
+  const pad = (n: number) => String(n).padStart(2, "0");
+  const suggestedValue = `${suggested.getFullYear()}-${pad(suggested.getMonth() + 1)}-${pad(
+    suggested.getDate(),
+  )}T${pad(suggested.getHours())}:${pad(suggested.getMinutes())}`;
+
+  return (
+    <div className="space-y-1.5 rounded-lg border border-amber-500/40 bg-amber-500/5 p-2.5">
+      <p className="text-xs text-amber-500">
+        This is a {formatSpan(durationMinutes)} paper but the window is only{" "}
+        {formatSpan(windowMinutes)} — {formatSpan(durationMinutes - windowMinutes)}{" "}
+        short.
+      </p>
+      {editable && (
+        <Button
+          type="button"
+          size="sm"
+          variant="outline"
+          className="h-7 text-xs"
+          onClick={() => onExtendWindow(suggestedValue)}>
+          Close at {suggested.toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" })}{" "}
+          instead
+        </Button>
+      )}
+    </div>
+  );
+}
+
+/** Datetime-local wants "YYYY-MM-DDTHH:mm" in local time, not an ISO string. */
+function toLocalInput(date: Date | null): string {
+  if (!date) return "";
+  const d = new Date(date);
+  const pad = (n: number) => String(n).padStart(2, "0");
+  return `${d.getFullYear()}-${pad(d.getMonth() + 1)}-${pad(d.getDate())}T${pad(
+    d.getHours(),
+  )}:${pad(d.getMinutes())}`;
+}
+
+export function ExamEditorClient({
+  exam,
+  banks = [],
+  poolCounts = {},
+}: {
+  exam: TutorExamDetail;
+  banks?: { id: string; title: string; questionCount: number }[];
+  poolCounts?: Record<string, number>;
+}) {
+  const router = useRouter();
+
+  const isDraft = exam.status === "DRAFT";
+  const [saving, setSaving] = useState(false);
+  const [publishing, setPublishing] = useState(false);
+  const [resending, setResending] = useState(false);
+  const [problems, setProblems] = useState<
+    { field: string; message: string }[] | null
+  >(null);
+
+  const [form, setForm] = useState({
+    title: exam.title,
+    description: exam.description ?? "",
+    instructions: exam.instructions ?? "",
+    opensAt: toLocalInput(exam.opensAt),
+    closesAt: toLocalInput(exam.closesAt),
+    durationMinutes: exam.durationMinutes ?? 60,
+    maxAttempts: exam.maxAttempts,
+    passingScore: exam.passingScore,
+    shuffleQuestions: exam.shuffleQuestions,
+    shuffleOptions: exam.shuffleOptions,
+    onePerPage: exam.onePerPage,
+    allowBacktrack: exam.allowBacktrack,
+    accessMode: exam.accessMode,
+    accessCode: exam.accessCode ?? "",
+    resultsPolicy: exam.resultsPolicy,
+    showCorrectAnswers: exam.showCorrectAnswers,
+    showExplanations: exam.showExplanations,
+    isFinalAssessment: exam.isFinalAssessment,
+  });
+
+  const handleSave = async () => {
+    setSaving(true);
+
+    const payload: Record<string, unknown> = {
+      title: form.title,
+      description: form.description || null,
+      instructions: form.instructions || null,
+      passingScore: form.passingScore,
+      shuffleQuestions: form.shuffleQuestions,
+      shuffleOptions: form.shuffleOptions,
+      onePerPage: form.onePerPage,
+      allowBacktrack: form.allowBacktrack,
+      accessMode: form.accessMode,
+      accessCode: form.accessCode || null,
+      resultsPolicy: form.resultsPolicy,
+      showCorrectAnswers: form.showCorrectAnswers,
+      showExplanations: form.showExplanations,
+      isFinalAssessment: form.isFinalAssessment,
+    };
+
+    // The server refuses these after publish; don't even send them.
+    if (isDraft) {
+      payload.opensAt = form.opensAt ? new Date(form.opensAt) : null;
+      payload.closesAt = form.closesAt ? new Date(form.closesAt) : null;
+      payload.durationMinutes = form.durationMinutes;
+      payload.maxAttempts = form.maxAttempts;
+    }
+
+    const result = await updateExam(exam.id, payload);
+
+    if ("error" in result && result.error) toast.error(result.error);
+    else toast.success("Saved");
+
+    setSaving(false);
+    router.refresh();
+  };
+
+  const handleCheck = async () => {
+    const result = await getPublishChecklist(exam.id);
+    if ("error" in result && result.error) {
+      toast.error(result.error);
+      return;
+    }
+    setProblems(result.problems ?? []);
+    if (result.ready) toast.success("This exam is ready to publish");
+  };
+
+  const handlePublish = async () => {
+    setPublishing(true);
+
+    // Save first — publishing validates what is stored, not what is on screen.
+    await handleSave();
+
+    const result = await publishExam(exam.id);
+
+    if ("error" in result && result.error) {
+      toast.error(result.error);
+      setProblems(result.problems ?? null);
+      setPublishing(false);
+      return;
+    }
+
+    toast.success(
+      `Published to ${result.candidateCount} candidate${
+        result.candidateCount === 1 ? "" : "s"
+      }`,
+    );
+
+    // Email and in-app are separate channels. Students are always told in-app,
+    // but a mail failure used to be completely silent — the tutor believed the
+    // email went out. Say so, and point at the way to retry.
+    if (result.notificationsFailed && result.notificationsFailed > 0) {
+      toast.warning(
+        `Students were notified in the app, but ${result.notificationsFailed} email${
+          result.notificationsFailed === 1 ? "" : "s"
+        } did not send${result.emailError ? `: ${result.emailError}` : ""}. Use "Resend emails" once that is sorted.`,
+        { duration: 12_000 },
+      );
+    }
+
+    setPublishing(false);
+    router.refresh();
+  };
+
+  const handleResendEmails = async () => {
+    setResending(true);
+    const result = await resendExamNotifications(exam.id);
+    setResending(false);
+
+    if ("error" in result) {
+      toast.error(result.error);
+      return;
+    }
+    if (result.emailsFailed && result.emailsFailed > 0) {
+      toast.error(
+        `Still failing${result.emailError ? `: ${result.emailError}` : ""}`,
+        { duration: 12_000 },
+      );
+      return;
+    }
+    toast.success(
+      `Sent ${result.emailsSent} email${result.emailsSent === 1 ? "" : "s"}`,
+    );
+  };
+
+  /**
+   * What one candidate sits, mirroring drawPaper: fixed sections contribute
+   * every question, drawing sections contribute their draw count.
+   */
+  const perCandidate = exam.sections.reduce(
+    (acc, s) => {
+      if (s.selectionMode === "RANDOM_DRAW") {
+        const n = s.drawCount ?? 0;
+        acc.questions += n;
+        acc.points += n * (s.drawPoints ?? 1);
+        acc.pooled += s.questions.length;
+      } else {
+        acc.questions += s.questions.length;
+        acc.points += s.questions.reduce((p, q) => p + q.points, 0);
+        acc.pooled += s.questions.length;
+      }
+      return acc;
+    },
+    { questions: 0, points: 0, pooled: 0 },
+  );
+
+  const scopeLabel =
+    exam.course?.title ??
+    exam.cohort?.displayName ??
+    exam.track?.name ??
+    "Selected students";
+
+  return (
+    <div className="mx-auto max-w-4xl px-4 pt-20">
+      <div className="mb-6 flex flex-wrap items-start justify-between gap-3">
+        <div className="min-w-0">
+          <div className="flex flex-wrap items-center gap-2">
+            <h1 className="text-2xl font-semibold">{exam.title}</h1>
+            <Badge variant={isDraft ? "secondary" : "default"}>
+              {exam.status.toLowerCase()}
+            </Badge>
+          </div>
+          <p className="text-sm text-gray-400">{scopeLabel}</p>
+          {/*
+            The number that actually matters, stated plainly. A drawing section
+            can pool 100 questions and give each candidate 1; the tutor needs to
+            see the 1 before they publish, not after a student sits it.
+          */}
+          <p
+            className={cn(
+              "text-sm",
+              perCandidate.questions === 0 ? "text-amber-500" : "text-gray-400",
+            )}>
+            Each candidate answers <b>{perCandidate.questions}</b> question
+            {perCandidate.questions === 1 ? "" : "s"}
+            {perCandidate.pooled > perCandidate.questions
+              ? `, drawn from a pool of ${perCandidate.pooled}`
+              : ""}
+            {perCandidate.questions > 0 && ` · ${perCandidate.points} marks`}
+          </p>
+        </div>
+
+        <div className="flex gap-2">
+          {!isDraft && (
+            <>
+              <Button asChild variant="outline">
+                <Link href={`/tutor/exams/${exam.id}/monitor`}>
+                  <MonitorDot className="mr-2 size-4" />
+                  Monitor
+                </Link>
+              </Button>
+              <Button asChild variant="outline">
+                <Link href={`/tutor/exams/${exam.id}/grading`}>
+                  <ClipboardCheck className="mr-2 size-4" />
+                  Grading &amp; results
+                </Link>
+              </Button>
+              <Button
+                variant="outline"
+                onClick={handleResendEmails}
+                disabled={resending}
+                title="Re-send the exam notice by email to everyone on the roster">
+                {resending ? (
+                  <Loader2 className="mr-2 size-4 animate-spin" />
+                ) : (
+                  <Mail className="mr-2 size-4" />
+                )}
+                Resend emails
+              </Button>
+            </>
+          )}
+          <Button variant="outline" onClick={handleSave} disabled={saving}>
+            {saving && <Loader2 className="mr-2 size-4 animate-spin" />}
+            Save
+          </Button>
+          {isDraft && (
+            <Button onClick={handlePublish} disabled={publishing}>
+              {publishing ? (
+                <Loader2 className="mr-2 size-4 animate-spin" />
+              ) : (
+                <Rocket className="mr-2 size-4" />
+              )}
+              Publish
+            </Button>
+          )}
+        </div>
+      </div>
+
+      {!isDraft && (
+        <Alert className="mb-6">
+          <AlertCircle className="size-4" />
+          <AlertDescription>
+            This exam is published. Questions, sections and the schedule are
+            locked; wording, results settings and the roster can still be
+            changed.
+          </AlertDescription>
+        </Alert>
+      )}
+
+      {problems && problems.length > 0 && (
+        <Alert variant="destructive" className="mb-6">
+          <AlertCircle className="size-4" />
+          <AlertDescription>
+            <p className="mb-1 font-medium">Not ready to publish:</p>
+            <ul className="list-inside list-disc space-y-0.5">
+              {problems.map((p, i) => (
+                <li key={i}>{p.message}</li>
+              ))}
+            </ul>
+          </AlertDescription>
+        </Alert>
+      )}
+
+      {problems && problems.length === 0 && (
+        <Alert className="mb-6 border-emerald-500/40 bg-emerald-500/5">
+          <CheckCircle2 className="size-4 text-emerald-600" />
+          <AlertDescription>
+            Everything checks out. Ready to publish.
+          </AlertDescription>
+        </Alert>
+      )}
+
+      <Tabs defaultValue="questions">
+        <TabsList>
+          <TabsTrigger value="questions">
+            Questions (
+            {exam.sections.reduce((n, s) => n + s.questions.length, 0)})
+          </TabsTrigger>
+          <TabsTrigger value="settings">Schedule &amp; rules</TabsTrigger>
+          <TabsTrigger value="roster">
+            Roster ({exam.candidates.length})
+          </TabsTrigger>
+        </TabsList>
+
+        <TabsContent value="questions" className="mt-4">
+          <ExamQuestionsTab
+            examId={exam.id}
+            sections={exam.sections}
+            editable={isDraft}
+            banks={banks}
+            poolCounts={poolCounts}
+          />
+        </TabsContent>
+
+        <TabsContent value="settings" className="mt-4 space-y-4">
+          <Card>
+            <CardHeader>
+              <CardTitle className="text-base">Details</CardTitle>
+            </CardHeader>
+            <CardContent className="space-y-4">
+              <div className="space-y-1.5">
+                <Label>Title</Label>
+                <Input
+                  value={form.title}
+                  onChange={(e) => setForm({ ...form, title: e.target.value })}
+                />
+              </div>
+              <div className="space-y-1.5">
+                <Label>Description</Label>
+                <Textarea
+                  value={form.description}
+                  onChange={(e) =>
+                    setForm({ ...form, description: e.target.value })
+                  }
+                />
+              </div>
+              <div className="space-y-1.5">
+                <Label>Instructions</Label>
+                <Textarea
+                  value={form.instructions}
+                  onChange={(e) =>
+                    setForm({ ...form, instructions: e.target.value })
+                  }
+                  placeholder="Shown on the briefing page before students start."
+                />
+              </div>
+            </CardContent>
+          </Card>
+
+          <Card>
+            <CardHeader>
+              <CardTitle className="text-base">Schedule</CardTitle>
+            </CardHeader>
+            <CardContent className="grid gap-4 sm:grid-cols-2">
+              <div className="space-y-1.5">
+                <Label>Opens</Label>
+                <Input
+                  type="datetime-local"
+                  value={form.opensAt}
+                  disabled={!isDraft}
+                  onChange={(e) =>
+                    setForm({ ...form, opensAt: e.target.value })
+                  }
+                />
+              </div>
+              <div className="space-y-1.5">
+                <Label>Closes</Label>
+                <Input
+                  type="datetime-local"
+                  value={form.closesAt}
+                  disabled={!isDraft}
+                  onChange={(e) =>
+                    setForm({ ...form, closesAt: e.target.value })
+                  }
+                />
+              </div>
+              <div className="space-y-1.5">
+                <Label>Duration (minutes)</Label>
+                <Input
+                  type="number"
+                  min={1}
+                  value={form.durationMinutes}
+                  disabled={!isDraft}
+                  onChange={(e) =>
+                    setForm({
+                      ...form,
+                      durationMinutes: Number(e.target.value),
+                    })
+                  }
+                />
+                <ScheduleFit
+                  opensAt={form.opensAt}
+                  closesAt={form.closesAt}
+                  durationMinutes={form.durationMinutes}
+                  editable={isDraft}
+                  onExtendWindow={(closes) => setForm({ ...form, closesAt: closes })}
+                />
+              </div>
+              <div className="space-y-1.5">
+                <Label>Attempts allowed</Label>
+                <Input
+                  type="number"
+                  min={1}
+                  value={form.maxAttempts}
+                  disabled={!isDraft}
+                  onChange={(e) =>
+                    setForm({ ...form, maxAttempts: Number(e.target.value) })
+                  }
+                />
+              </div>
+            </CardContent>
+          </Card>
+
+          <Card>
+            <CardHeader>
+              <CardTitle className="text-base">Rules</CardTitle>
+            </CardHeader>
+            <CardContent className="space-y-4">
+              <div className="space-y-1.5">
+                <Label>Pass mark (%)</Label>
+                <Input
+                  type="number"
+                  min={0}
+                  max={100}
+                  className="max-w-32"
+                  value={form.passingScore}
+                  onChange={(e) =>
+                    setForm({ ...form, passingScore: Number(e.target.value) })
+                  }
+                />
+              </div>
+
+              {[
+                ["shuffleQuestions", "Shuffle the question order"],
+                ["shuffleOptions", "Shuffle the answer options"],
+                ["onePerPage", "Show one question per page"],
+                ["allowBacktrack", "Allow going back to earlier questions"],
+                [
+                  "isFinalAssessment",
+                  "This is the final assessment (issues a certificate on pass)",
+                ],
+              ].map(([key, label]) => (
+                <div
+                  key={key}
+                  className="flex items-center justify-between gap-4">
+                  <Label htmlFor={key} className="font-normal">
+                    {label}
+                  </Label>
+                  <Switch
+                    id={key}
+                    checked={form[key as keyof typeof form] as boolean}
+                    onCheckedChange={(v) => setForm({ ...form, [key]: v })}
+                  />
+                </div>
+              ))}
+
+              <div className="space-y-1.5">
+                <Label>Access</Label>
+                <Select
+                  value={form.accessMode}
+                  onValueChange={(v) =>
+                    setForm({ ...form, accessMode: v as never })
+                  }>
+                  <SelectTrigger>
+                    <SelectValue />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="ROSTER_ONLY">
+                      Anyone on the roster
+                    </SelectItem>
+                    <SelectItem value="ACCESS_CODE">
+                      Roster plus an access code
+                    </SelectItem>
+                    <SelectItem value="MANUAL_RELEASE">
+                      I admit each student
+                    </SelectItem>
+                  </SelectContent>
+                </Select>
+              </div>
+
+              {form.accessMode === "ACCESS_CODE" && (
+                <div className="space-y-1.5">
+                  <Label>Access code</Label>
+                  <Input
+                    value={form.accessCode}
+                    onChange={(e) =>
+                      setForm({ ...form, accessCode: e.target.value })
+                    }
+                    placeholder="Read this out at the start"
+                    className="max-w-xs"
+                  />
+                </div>
+              )}
+            </CardContent>
+          </Card>
+
+          <Card>
+            <CardHeader>
+              <CardTitle className="text-base">Results</CardTitle>
+            </CardHeader>
+            <CardContent className="space-y-4">
+              <div className="space-y-1.5">
+                <Label>When students see their score</Label>
+                <Select
+                  value={form.resultsPolicy}
+                  onValueChange={(v) =>
+                    setForm({ ...form, resultsPolicy: v as never })
+                  }>
+                  <SelectTrigger>
+                    <SelectValue />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="IMMEDIATE">
+                      As soon as they submit
+                    </SelectItem>
+                    <SelectItem value="AFTER_CLOSE">
+                      Once the exam closes
+                    </SelectItem>
+                    <SelectItem value="MANUAL">When I release them</SelectItem>
+                  </SelectContent>
+                </Select>
+              </div>
+
+              {[
+                ["showCorrectAnswers", "Show correct answers with results"],
+                ["showExplanations", "Show explanations with results"],
+              ].map(([key, label]) => (
+                <div
+                  key={key}
+                  className="flex items-center justify-between gap-4">
+                  <Label htmlFor={key} className="font-normal">
+                    {label}
+                  </Label>
+                  <Switch
+                    id={key}
+                    checked={form[key as keyof typeof form] as boolean}
+                    onCheckedChange={(v) => setForm({ ...form, [key]: v })}
+                  />
+                </div>
+              ))}
+            </CardContent>
+          </Card>
+
+          {isDraft && (
+            <div className="flex justify-end gap-2">
+              <Button variant="outline" onClick={handleCheck}>
+                Check readiness
+              </Button>
+              <Button onClick={handleSave} disabled={saving}>
+                {saving && <Loader2 className="mr-2 size-4 animate-spin" />}
+                Save
+              </Button>
+            </div>
+          )}
+        </TabsContent>
+
+        <TabsContent value="roster" className="mt-4">
+          <ExamRosterTab
+            examId={exam.id}
+            candidates={exam.candidates}
+            scopeType={exam.scopeType}
+            accessMode={exam.accessMode}
+            isDraft={isDraft}
+          />
+        </TabsContent>
+      </Tabs>
+    </div>
+  );
+}

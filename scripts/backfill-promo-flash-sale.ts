@@ -4,14 +4,27 @@
  *
  * Run with:
  *   pnpm tsx scripts/backfill-promo-flash-sale.ts
+ *
+ * Pass --dry-run to print what would change without writing to any course.
  */
 
-import { PrismaClient } from "@prisma/client";
+// Must come first: lib/db reads DATABASE_URL at module load, so the env has to
+// be populated before that import is evaluated.
+import "dotenv/config";
 
-const db = new PrismaClient();
+import { db as appDb } from "@/lib/db";
+import type { PrismaClient } from "@prisma/client";
+
+// Reuse the app's client rather than `new PrismaClient()` — Prisma 7 requires a
+// driver adapter, and lib/db already wires up the Neon one.
+const db = appDb as PrismaClient;
+
+const dryRun = process.argv.includes("--dry-run");
 
 async function main() {
   const now = new Date();
+
+  if (dryRun) console.log("Dry run — no courses will be written.\n");
 
   // Find all currently active promotions that have a promoPrice
   const activePromos = await db.coursePromotion.findMany({
@@ -50,6 +63,11 @@ async function main() {
       `  → Setting isFlashSale=true, currentPrice=${promoPrice}, flashSaleEnd=${endDate.toISOString()}`,
     );
 
+    if (dryRun) {
+      console.log(`  ⏭️  Skipped (dry run)\n`);
+      continue;
+    }
+
     await db.course.update({
       where: { id: courseId },
       data: {
@@ -62,7 +80,7 @@ async function main() {
     console.log(`  ✅ Done\n`);
   }
 
-  console.log("Backfill complete.");
+  console.log(dryRun ? "Dry run complete." : "Backfill complete.");
 }
 
 main()

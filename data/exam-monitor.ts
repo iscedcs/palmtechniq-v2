@@ -1,0 +1,239 @@
+"use server";
+
+import { auth } from "@/auth";
+import { db } from "@/lib/db";
+import { effectiveWindow } from "@/lib/exam/attempt";
+import { ExamAttemptStatus, ExamEventType, type PrismaClient } from "@prisma/client";
+
+const prisma = db as PrismaClient;
+
+/**
+ * Events that say something about how the exam was sat, as opposed to lifecycle
+ * bookkeeping. Only these are counted as integrity signals — counting
+ * ATTEMPT_STARTED and FOCUS_REGAINED alongside them produces a number that looks
+ * alarming and means nothing.
+ */
+const INTEGRITY_EVENT_TYPES: ExamEventType[] = [
+  ExamEventType.FOCUS_LOST,
+  ExamEventType.PASTE,
+  ExamEventType.FULLSCREEN_EXIT,
+  ExamEventType.IP_CHANGED,
+  ExamEventType.SECOND_DEVICE_BLOCKED,
+  ExamEventType.TIME_ANOMALY,
+];
+
+/**
+ * Plain-English label for a signal count, for the monitor row.
+ *
+ * NOT exported: this is a "use server" module, so every export must be an async
+ * function. The labels are baked into the snapshot below rather than exported
+ * for the client to call.
+ */
+function describeSignal(type: string, count: number): string {
+  const plural = (n: number, one: string, many: string) =>
+    `${n} ${n === 1 ? one : many}`;
+  switch (type) {
+    case "FOCUS_LOST":
+      return plural(count, "tab switch", "tab switches");
+    case "PASTE":
+      return plural(count, "paste", "pastes");
+    case "FULLSCREEN_EXIT":
+      return plural(count, "fullscreen exit", "fullscreen exits");
+    case "IP_CHANGED":
+      return plural(count, "network change", "network changes");
+    case "SECOND_DEVICE_BLOCKED":
+      return plural(count, "second device blocked", "second devices blocked");
+    case "TIME_ANOMALY":
+      return plural(count, "clock anomaly", "clock anomalies");
+    default:
+      return `${count} ${type.toLowerCase().replace(/_/g, " ")}`;
+  }
+}
+
+export type MonitorRow = {
+  candidateId: string;
+  userId: string;
+  name: string;
+  email: string;
+  status: string;
+  excluded: boolean;
+  admitted: boolean;
+  attemptId: string | null;
+  attemptStatus: string | null;
+  startedAt: Date | null;
+  expiresAt: Date | null;
+  submittedAt: Date | null;
+  submittedBy: string | null;
+  lastHeartbeatAt: Date | null;
+  answered: number;
+  totalQuestions: number;
+  extraTimeMinutes: number;
+  flags: {
+    /** Integrity signals only — lifecycle events are excluded. */
+    total: number;
+    warning: number;
+    critical: number;
+    /** Per-type counts, most frequent first, already worded for display. */
+    breakdown: { type: string; count: number; label: string }[];
+  };
+};
+
+export type MonitorSnapshot = {
+  examId: string;
+  title: string;
+  status: string;
+  serverTime: Date;
+  opensAt: Date | null;
+  closesAt: Date | null;
+  durationMinutes: number | null;
+  counts: {
+    total: number;
+    notStarted: number;
+    inProgress: number;
+    submitted: number;
+    missed: number;
+  };
+  rows: MonitorRow[];
+};
+
+/**
+ * A point-in-time view of who is sitting the exam.
+ *
+ * Deliberately returns `serverTime` alongside the rows so the page can count
+ * down against the same clock the engine uses. A monitor that disagreed with the
+ * server about how long someone has left would be worse than no monitor.
+ */
+export async function getExamMonitor(examId: string): Promise<MonitorSnapshot | null> {
+  const session = await auth();
+  if (!session?.user?.id) return null;
+
+  const isAdmin = session.user.role === "ADMIN" || session.user.role === "SUPERIOR";
+
+  const exam = await prisma.exam.findUnique({
+    where: { id: examId },
+    include: {
+      tutor: { select: { userId: true } },
+      candidates: {
+        orderBy: { createdAt: "asc" },
+        include: {
+          user: { select: { id: true, name: true, email: true } },
+          attempts: {
+            where: { isPractice: false },
+            orderBy: { attemptNumber: "desc" },
+            include: {
+              _count: { select: { responses: true } },
+              events: { select: { severity: true, type: true } },
+            },
+          },
+        },
+      },
+    },
+  });
+
+  if (!exam) return null;
+  if (!isAdmin && exam.tutor.userId !== session.user.id) return null;
+
+  const serverTime = new Date();
+
+  const rows: MonitorRow[] = exam.candidates.map((candidate) => {
+    const latest = candidate.attempts[0] ?? null;
+    const allEvents = latest?.events ?? [];
+
+    // Only genuine signals count towards the flag.
+    const events = allEvents.filter((e) =>
+      INTEGRITY_EVENT_TYPES.includes(e.type),
+    );
+
+    const counts = new Map<string, number>();
+    for (const event of events) {
+      counts.set(event.type, (counts.get(event.type) ?? 0) + 1);
+    }
+    const breakdown = Array.from(counts.entries())
+      .sort((a, b) => b[1] - a[1])
+      .map(([type, count]) => ({ type, count, label: describeSignal(type, count) }));
+
+    return {
+      candidateId: candidate.id,
+      userId: candidate.user.id,
+      name: candidate.user.name,
+      email: candidate.user.email,
+      status: candidate.status,
+      excluded: !!candidate.excludedAt,
+      admitted: !!candidate.admittedAt,
+      attemptId: latest?.id ?? null,
+      attemptStatus: latest?.status ?? null,
+      startedAt: latest?.startedAt ?? null,
+      expiresAt: latest?.expiresAt ?? null,
+      submittedAt: latest?.submittedAt ?? null,
+      submittedBy: latest?.submittedBy ?? null,
+      lastHeartbeatAt: latest?.lastHeartbeatAt ?? null,
+      answered: latest?._count.responses ?? 0,
+      totalQuestions: latest?.questionOrder.length ?? 0,
+      extraTimeMinutes: candidate.extraTimeMinutes,
+      flags: {
+        total: events.length,
+        warning: events.filter((e) => e.severity === "WARNING").length,
+        critical: events.filter((e) => e.severity === "CRITICAL").length,
+        breakdown,
+      },
+    };
+  });
+
+  const active = rows.filter((r) => !r.excluded);
+  const window = effectiveWindow(exam, {
+    windowOpensAt: null,
+    windowClosesAt: null,
+  });
+
+  return {
+    examId: exam.id,
+    title: exam.title,
+    status: exam.status,
+    serverTime,
+    opensAt: window.opensAt,
+    closesAt: window.closesAt,
+    durationMinutes: exam.durationMinutes,
+    counts: {
+      total: active.length,
+      notStarted: active.filter((r) => !r.attemptId).length,
+      inProgress: active.filter((r) => r.attemptStatus === ExamAttemptStatus.IN_PROGRESS)
+        .length,
+      submitted: active.filter(
+        (r) =>
+          r.attemptStatus === ExamAttemptStatus.SUBMITTED ||
+          r.attemptStatus === ExamAttemptStatus.AUTO_SUBMITTED,
+      ).length,
+      missed: active.filter((r) => r.status === "MISSED").length,
+    },
+    rows,
+  };
+}
+
+/** The integrity log for one attempt, for the drill-down. */
+export async function getAttemptEvents(attemptId: string) {
+  const session = await auth();
+  if (!session?.user?.id) return [];
+
+  const attempt = await prisma.examAttempt.findUnique({
+    where: { id: attemptId },
+    select: { exam: { select: { tutor: { select: { userId: true } } } } },
+  });
+  if (!attempt) return [];
+
+  const isAdmin = session.user.role === "ADMIN" || session.user.role === "SUPERIOR";
+  if (!isAdmin && attempt.exam.tutor.userId !== session.user.id) return [];
+
+  return prisma.examEvent.findMany({
+    where: { attemptId },
+    orderBy: { createdAt: "desc" },
+    take: 200,
+    select: {
+      id: true,
+      type: true,
+      severity: true,
+      metadata: true,
+      ipAddress: true,
+      createdAt: true,
+    },
+  });
+}

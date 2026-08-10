@@ -19,6 +19,9 @@ import {
   NotebookIcon,
   FileText,
   Megaphone,
+  ClipboardList,
+  Package,
+  Landmark,
 } from "lucide-react";
 
 export const courseTypes = [
@@ -92,6 +95,7 @@ export const roleNavItems = {
   TUTOR: [
     { icon: Home, label: "Dashboard", href: "/tutor" },
     { icon: BookOpen, label: "My Courses", href: "/tutor/courses" },
+    { icon: Package, label: "Course Bundles", href: "/tutor/bundles" },
     { icon: Users, label: "Students", href: "/tutor/students" },
     // { icon: Calendar, label: "Schedule", href: "/tutor/mentorship" },
     { icon: MessageSquare, label: "Projects", href: "/tutor/projects" },
@@ -108,6 +112,8 @@ export const roleNavItems = {
     { icon: Calendar, label: "Mentorship", href: "/admin/mentorship" },
     { icon: Wallet, label: "Finance", href: "/admin/finance" },
     { icon: Megaphone, label: "Promotions", href: "/admin/promotions" },
+    { icon: Package, label: "Bundle Reviews", href: "/admin/bundles" },
+    { icon: Landmark, label: "Program Revenue", href: "/admin/program-earnings" },
   ],
   TESTER: [
     { icon: Home, label: "Home", href: "/" },
@@ -137,6 +143,7 @@ export const roleMenuItems = {
     { icon: Calendar, label: "Manage Mentorship", href: "/student/mentorship" },
     { icon: MessageSquare, label: "Projects", href: "/student/projects" },
     { icon: NotebookIcon, label: "Tasks", href: "/student/assignments" },
+    { icon: ClipboardList, label: "Exams", href: "/student/exams" },
     // { icon: Settings, label: "Settings", href: "/student/settings" },
   ],
   MENTOR: [
@@ -151,11 +158,12 @@ export const roleMenuItems = {
   TUTOR: [
     { icon: User, label: "Profile", href: "/tutor/profile" },
     { icon: BookOpen, label: "My Courses", href: "/tutor/courses" },
+    { icon: Package, label: "Course Bundles", href: "/tutor/bundles" },
     { icon: Users, label: "Students", href: "/tutor/students" },
+    { icon: ClipboardList, label: "Exams", href: "/tutor/exams" },
     { icon: Wallet, label: "Earnings", href: "/tutor/wallet" },
     { icon: Star, label: "Reviews", href: "/tutor/reviews" },
     { icon: Calendar, label: "Mentorship", href: "/tutor/mentorship" },
-    // { icon: Settings, label: "Settings", href: "/tutor/settings" },
   ],
   ADMIN: [
     { icon: Shield, label: "Admin Panel", href: "/admin" },
@@ -167,10 +175,10 @@ export const roleMenuItems = {
     { icon: Wallet, label: "Financial Reports", href: "/admin/finance" },
     { icon: Megaphone, label: "Promotions", href: "/admin/promotions" },
     { icon: Settings, label: "System Settings", href: "/admin/settings" },
+    { icon: Package, label: "Bundle Reviews", href: "/admin/bundles" },
+    { icon: Landmark, label: "Program Earnings", href: "/admin/program-earnings" },
   ],
-  TESTER: [
-    { icon: FileText, label: "Documentation", href: "/documentation" },
-  ],
+  TESTER: [{ icon: FileText, label: "Documentation", href: "/documentation" }],
   SUPERIOR: [
     { icon: Home, label: "Dashboard", href: "/superior" },
     { icon: Users, label: "Manage Testers", href: "/superior/testers" },

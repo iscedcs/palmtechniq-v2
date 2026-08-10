@@ -53,7 +53,7 @@ export default function VerifyClient({ reference }: { reference?: string }) {
   return (
     <div className="min-h-[60vh] flex items-center justify-center p-6">
       <Card className="w-full max-w-md glass-card border-white/10">
-        <CardHeader>
+        <CardHeader className="items-center">
           <h1 className="text-xl font-semibold text-white">
             Payment Verification
           </h1>

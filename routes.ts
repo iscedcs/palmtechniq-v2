@@ -8,6 +8,9 @@ export const publicRoutes = [
   "/contact",
   "/courses",
   "/courses/[slug]", // Individual course pages are public for viewing
+  // Bundle links are shared publicly, so the landing page must render for
+  // signed-out visitors — they sign in from it and are returned here.
+  "/bundles/[slug]",
   "/bootcamp",
   "/bootcamp/[...slug]",
   "/mentorship", // External mentorship page is public
@@ -16,6 +19,10 @@ export const publicRoutes = [
   "/terms",
   "/privacy",
   "/api/chat",
+  // Authorised by the CRON_SECRET bearer token, not by a session — the proxy
+  // must let it through rather than redirecting it to the login page.
+  "/api/cron/exam-sweep",
+  "/api/cron/payment-sweep",
   "/blog",
   "/blog/[slug]",
   "/docs",
@@ -55,7 +62,17 @@ export const protectedRoutes = [
   "/student/assignments",
   "/student/profile",
   "/student/progress",
+  "/student/exams",
+  "/student/exams/[examId]",
+  "/student/exams/[examId]/sit",
   "/tutor",
+  "/tutor/exams",
+  "/tutor/exams/new",
+  "/tutor/exams/[examId]",
+  "/tutor/exams/[examId]/grading",
+  "/tutor/exams/[examId]/monitor",
+  "/tutor/question-banks",
+  "/tutor/question-banks/[bankId]",
   "/tutor/courses",
   "/tutor/courses/create",
   "/tutor/courses/[courseId]/edit",
@@ -120,6 +137,13 @@ export const adminRoutes = [
  */
 export const tutorRoutes = [
   "/tutor",
+  "/tutor/exams",
+  "/tutor/exams/new",
+  "/tutor/exams/[examId]",
+  "/tutor/exams/[examId]/grading",
+  "/tutor/exams/[examId]/monitor",
+  "/tutor/question-banks",
+  "/tutor/question-banks/[bankId]",
   "/tutor/courses",
   "/tutor/courses/create",
   "/tutor/courses/[courseId]/edit",
@@ -153,6 +177,9 @@ export const studentRoutes = [
   "/student/assignments",
   "/student/profile",
   "/student/progress",
+  "/student/exams",
+  "/student/exams/[examId]",
+  "/student/exams/[examId]/sit",
 ];
 
 /**

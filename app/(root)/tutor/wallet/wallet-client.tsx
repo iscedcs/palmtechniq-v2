@@ -63,6 +63,7 @@ type WalletSummary = {
   availableBalance: number;
   pendingPayouts: number;
   totalEarnings: number;
+  accruedPending?: number;
 };
 
 type WalletChartPoint = {
@@ -200,6 +201,8 @@ export default function WalletClient({
   const totalBalance = summary.availableBalance;
   const pendingPayouts = summary.pendingPayouts;
   const totalEarnings = summary.totalEarnings;
+  // Accrued program earnings: owed and recorded, but not in the wallet yet.
+  const accruedPending = summary.accruedPending ?? 0;
   const monthlyGrowth = 23.5;
 
   const refreshSummary = async () => {
@@ -380,13 +383,25 @@ export default function WalletClient({
                 color="from-neon-purple to-pink-400"
               />
               <StatCard
-                icon={Calendar}
-                title="This Month"
-                value="₦3,240"
-                change={15}
+                icon={Clock}
+                title="Accrued (awaiting release)"
+                value={
+                  loadingSummary
+                    ? "Loading..."
+                    : `₦${accruedPending.toLocaleString()}`
+                }
+                change={null}
                 color="from-neon-orange to-yellow-400"
               />
             </motion.div>
+            {accruedPending > 0 && (
+              <p className="mt-2 text-xs text-foreground py-3">
+                Program earnings are recorded when each installment is paid and
+                move into your available balance once the platform releases
+                them, 30 days after payment and no earlier than the cohort start
+                date. Accrued amounts are not yet withdrawable.
+              </p>
+            )}
 
             <Tabs
               value={activeTab}

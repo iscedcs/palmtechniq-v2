@@ -38,13 +38,17 @@ import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { useState } from "react";
 import { toast } from "sonner";
+import { BundleStrip } from "@/components/pages/courses/bundle-strip";
+import { CourseThumbnail } from "@/components/shared/course-thumbnail";
 
 export default function CoursesGrid({
   courses,
   categories,
+  bundles = [],
 }: {
   courses: CourseItem[];
   categories: { id: string; name: string }[];
+  bundles?: React.ComponentProps<typeof BundleStrip>["bundles"];
 }) {
   const { data: session, status } = useSession();
   const router = useRouter();
@@ -197,6 +201,11 @@ export default function CoursesGrid({
             ))}
           </motion.div>
 
+          {/* Bundles. Hidden while filtering: a bundle is not filtered by
+              category or search, so showing it against an active filter would
+              be noise rather than a suggestion. */}
+          {!hasActiveFilters && <BundleStrip bundles={bundles} />}
+
           {/* Sort & Filter Row */}
           <motion.div
             initial={{ opacity: 0 }}
@@ -260,9 +269,10 @@ export default function CoursesGrid({
                   className="group cursor-pointer">
                   <Card className="glass-card hover-glow h-full border-white/10 overflow-hidden relative">
                     <div className="relative">
-                      <img
-                        src={course.thumbnail || generateRandomAvatar()}
+                      <CourseThumbnail
+                        src={course.thumbnail}
                         alt={course.title}
+                        seed={course.id}
                         className="w-full h-48 object-cover"
                       />
 
