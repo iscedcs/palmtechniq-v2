@@ -1,0 +1,30 @@
+#!/bin/sh
+#
+# Keep documentation dates honest without anyone having to remember.
+#
+# When lib/docs/content.ts is part of a commit, stamp the pages whose content
+# actually changed and include the result in the same commit.
+#
+# This FIXES rather than complains. The alternative — failing CI when dates are
+# stale — blocks a deploy over a date, which is out of proportion to the harm.
+
+staged_docs=$(git diff --cached --name-only --diff-filter=ACM | grep -c '^lib/docs/content\.ts$')
+
+[ "$staged_docs" -eq 0 ] && exit 0
+
+echo "docs: syncing lastUpdated for changed pages…"
+
+# Call tsx directly rather than through `pnpm docs:sync`. Going via pnpm drags
+# the install lifecycle in — postinstall regenerates the Prisma client — which
+# turns a date stamp into a ten second wait on every docs commit.
+#
+# Fail soft. A date is not worth blocking a commit over, and the sync can be
+# run by hand afterwards. The warning is loud enough to notice.
+if ! ./node_modules/.bin/tsx scripts/sync-doc-dates.ts; then
+  echo "docs: sync failed — commit continuing. Run 'pnpm docs:sync' and amend." >&2
+  exit 0
+fi
+
+git add lib/docs/content.ts lib/docs/doc-hashes.json 2>/dev/null || true
+
+exit 0

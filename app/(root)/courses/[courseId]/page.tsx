@@ -32,6 +32,12 @@ export async function generateMetadata(props: {
     course.description?.slice(0, 160) || "Learn with PalmTechnIQ";
   const courseUrl = `https://palmtechniq.com/courses/${course.slug || course.id}`;
 
+  // A share card with no image is weak, so fall back to the site image rather
+  // than emitting an empty array. Note this cannot detect a thumbnail whose
+  // URL is present but dead; scripts/audit-course-thumbnails.ts clears those.
+  const shareImage =
+    course.thumbnail || "https://palmtechniq.com/opengraph-image";
+
   return {
     title: course.title,
     description,
@@ -42,16 +48,14 @@ export async function generateMetadata(props: {
       title: course.title,
       description,
       url: courseUrl,
-      images: course.thumbnail
-        ? [
-            {
-              url: course.thumbnail,
-              width: 1200,
-              height: 630,
-              alt: course.title,
-            },
-          ]
-        : [],
+      images: [
+        {
+          url: shareImage,
+          width: 1200,
+          height: 630,
+          alt: course.title,
+        },
+      ],
       type: "website",
       siteName: "PalmTechnIQ",
     },
@@ -59,7 +63,7 @@ export async function generateMetadata(props: {
       card: "summary_large_image",
       title: course.title,
       description,
-      images: course.thumbnail ? [course.thumbnail] : [],
+      images: [shareImage],
     },
   };
 }
@@ -144,6 +148,13 @@ export default async function CourseSlugPage(props: {
   const avgRating = getAverageRating(course.reviews);
   const courseUrl = `https://palmtechniq.com/courses/${course.slug || course.id}`;
 
+  // The price a student actually pays today, which is what the Offer must
+  // state. A flash sale sets currentPrice below basePrice.
+  const coursePrice =
+    course.currentPrice && course.currentPrice > 0
+      ? course.currentPrice
+      : (course.basePrice ?? course.price ?? 0);
+
   const courseJsonLd = {
     "@context": "https://schema.org",
     "@type": "Course",
@@ -155,7 +166,9 @@ export default async function CourseSlugPage(props: {
       name: "PalmTechnIQ",
       url: "https://palmtechniq.com",
     },
-    ...(course.thumbnail && { image: course.thumbnail }),
+    // Always emit an image. Clearing the dead S3 thumbnails left most courses
+    // with none at all, and Google treats a missing image as a weaker result.
+    image: course.thumbnail || "https://palmtechniq.com/opengraph-image",
     ...(course.tutor?.user?.name && {
       instructor: {
         "@type": "Person",
@@ -190,13 +203,41 @@ export default async function CourseSlugPage(props: {
     }),
     offers: {
       "@type": "Offer",
-      price:
-        course.currentPrice && course.currentPrice > 0
-          ? course.currentPrice
-          : (course.basePrice ?? 0),
+      price: coursePrice,
       priceCurrency: course.currency || "NGN",
+      // "Paid" or "Free" is what Google reads to decide whether to show a
+      // price on the result at all.
+      category: coursePrice > 0 ? "Paid" : "Free",
       availability: "https://schema.org/InStock",
       url: courseUrl,
+    },
+    isAccessibleForFree: coursePrice === 0,
+    // Google's Course rich result needs an instance describing HOW the course
+    // is delivered. Without hasCourseInstance the markup is valid but is not
+    // eligible for the course enhancement, which is the part that earns the
+    // extra space in results.
+    hasCourseInstance: {
+      "@type": "CourseInstance",
+      // Self-paced: no fixed schedule, a student starts whenever they buy.
+      courseMode: "Online",
+      courseWorkload: totalLessonDuration
+        ? `PT${Math.ceil(totalLessonDuration / 60)}H`
+        : "PT1H",
+      ...(course.language && { inLanguage: course.language }),
+      ...(course.tutor?.user?.name && {
+        instructor: {
+          "@type": "Person",
+          name: course.tutor.user.name,
+        },
+      }),
+      offers: {
+        "@type": "Offer",
+        price: coursePrice,
+        priceCurrency: course.currency || "NGN",
+        category: coursePrice > 0 ? "Paid" : "Free",
+        availability: "https://schema.org/InStock",
+        url: courseUrl,
+      },
     },
   };
 
