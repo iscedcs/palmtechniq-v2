@@ -38,6 +38,8 @@ export const metadata: Metadata = {
     // Technical intent retained — these are still core categories.
     "AI courses",
     "artificial intelligence course",
+    "cybersecurity course",
+    "cybersecurity training Nigeria",
     "web development",
     "data science",
     "online mentorship",

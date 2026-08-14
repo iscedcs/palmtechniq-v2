@@ -62,6 +62,10 @@ export default function HomePage() {
         },
         {
           "@type": "OfferCatalog",
+          name: "Cybersecurity",
+        },
+        {
+          "@type": "OfferCatalog",
           name: "Design, Photography & Creative Skills",
         },
         {
