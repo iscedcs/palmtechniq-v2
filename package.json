@@ -23,7 +23,8 @@
     "test": "vitest run",
     "test:watch": "vitest",
     "docs:sync": "tsx scripts/sync-doc-dates.ts",
-    "docs:check": "tsx scripts/sync-doc-dates.ts --check"
+    "docs:check": "tsx scripts/sync-doc-dates.ts --check",
+    "prepare": "git config core.hooksPath .githooks"
   },
   "prisma": {
     "seed": "tsx app/prisma/seed.ts"
