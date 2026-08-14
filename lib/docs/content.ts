@@ -1,6 +1,6 @@
 import type { DocPage, DocSection } from "./types";
 
-export const DOC_VERSION = "v2.3.0";
+export const DOC_VERSION = "2026.08.14";
 
 export const docSections: DocSection[] = [
   // ─── GETTING STARTED ─────────────────────────────────────
@@ -15,7 +15,7 @@ export const docSections: DocSection[] = [
         description:
           "Welcome to PalmTechnIQ — an overview of the platform and what it offers.",
         audience: "all",
-        lastUpdated: "2026-04-17",
+        lastUpdated: "2026-08-14",
         content: `
 # Welcome to PalmTechnIQ
 
@@ -493,7 +493,7 @@ The \`MentorshipSession\` model tracks:
         slug: "payments",
         description: "Paystack integration, pricing, splits, and promo codes.",
         audience: "all",
-        lastUpdated: "2026-04-17",
+        lastUpdated: "2026-08-14",
         content: `
 # Payment System
 
@@ -589,7 +589,7 @@ repeatedly. That is what makes the payment sweep safe to run every 15 minutes.
         description:
           "How money is split between tutors, mentors, instructors and the platform.",
         audience: "all",
-        lastUpdated: "2026-08-10",
+        lastUpdated: "2026-08-14",
         content: `
 # Revenue Sharing
 
@@ -712,7 +712,7 @@ pnpm test
         description:
           "Tutors package several courses at one price, reviewed by the platform.",
         audience: "all",
-        lastUpdated: "2026-08-10",
+        lastUpdated: "2026-08-14",
         content: `
 # Course Bundles
 
@@ -824,7 +824,7 @@ would let either override the other.
         description:
           "Proctored exams, question banks, auto-grading and live invigilation.",
         audience: "all",
-        lastUpdated: "2026-08-10",
+        lastUpdated: "2026-08-14",
         content: `
 # Exam Center
 
@@ -899,7 +899,7 @@ pnpm verify:exam
         description:
           "How balances are held, recorded, reconciled and withdrawn.",
         audience: "all",
-        lastUpdated: "2026-08-10",
+        lastUpdated: "2026-08-14",
         content: `
 # Wallets & Payouts
 
@@ -1355,7 +1355,7 @@ Your student profile can be independently verified by anyone:
         slug: "tutor-guide",
         description: "Complete guide for tutors creating and managing courses.",
         audience: "non-developer",
-        lastUpdated: "2026-04-17",
+        lastUpdated: "2026-08-14",
         content: `
 # Tutor Guide
 
@@ -1498,7 +1498,7 @@ you are not paid out of money that may still be refunded.
         slug: "admin-guide",
         description: "Complete guide for platform administrators.",
         audience: "non-developer",
-        lastUpdated: "2026-04-17",
+        lastUpdated: "2026-08-14",
         content: `
 # Admin Guide
 
@@ -1700,7 +1700,7 @@ always be zero. If it is not, a balance moved without a ledger entry — run
         slug: "database-schema",
         description: "Complete database model overview and relationships.",
         audience: "developer",
-        lastUpdated: "2026-04-17",
+        lastUpdated: "2026-08-14",
         content: `
 # Database Schema
 
@@ -2274,7 +2274,7 @@ node scripts/generate-integration-keys.js
         description:
           "Scheduled sweeps that recover stranded payments and close expired exams.",
         audience: "developer",
-        lastUpdated: "2026-08-10",
+        lastUpdated: "2026-08-14",
         content: `
 # Background Jobs
 
