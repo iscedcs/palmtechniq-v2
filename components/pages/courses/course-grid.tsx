@@ -45,16 +45,22 @@ export default function CoursesGrid({
   courses,
   categories,
   bundles = [],
+  initialCategory = "all",
 }: {
   courses: CourseItem[];
-  categories: { id: string; name: string }[];
+  categories: { id: string; name: string; slug?: string }[];
   bundles?: React.ComponentProps<typeof BundleStrip>["bundles"];
+  /**
+   * Category name to start filtered on. Set by /courses/category/[slug] so a
+   * category is a real, shareable, indexable URL rather than local state.
+   */
+  initialCategory?: string;
 }) {
   const { data: session, status } = useSession();
   const router = useRouter();
 
   const [searchTerm, setSearchTerm] = useState("");
-  const [selectedCategory, setSelectedCategory] = useState("all");
+  const [selectedCategory, setSelectedCategory] = useState(initialCategory);
   const [sortBy, setSortBy] = useState("latest");
   const [showGroupBuying, setShowGroupBuying] = useState<string | null>(null);
   const [previewModal, setPreviewModal] = useState<{
@@ -178,26 +184,28 @@ export default function CoursesGrid({
             animate={{ opacity: 1, y: 0 }}
             transition={{ duration: 0.6, delay: 0.2 }}
             className="flex flex-wrap justify-center gap-3 mb-6">
-            <button
-              onClick={() => setSelectedCategory("all")}
+            <Link
+              href="/courses"
               className={`px-4 py-2 rounded-full text-sm font-medium transition-all duration-300 ${
                 selectedCategory === "all"
                   ? "bg-neon-blue text-white shadow-lg shadow-neon-blue/30"
                   : "bg-white/10 text-gray-300 hover:bg-white/20 border border-white/10"
               }`}>
               All Courses
-            </button>
+            </Link>
             {categories.map((cat) => (
-              <button
+              <Link
                 key={cat.id}
-                onClick={() => setSelectedCategory(cat.name)}
+                href={
+                  cat.slug ? `/courses/category/${cat.slug}` : "/courses"
+                }
                 className={`px-4 py-2 rounded-full text-sm font-medium transition-all duration-300 ${
                   selectedCategory === cat.name
                     ? "bg-neon-blue text-white shadow-lg shadow-neon-blue/30"
                     : "bg-white/10 text-gray-300 hover:bg-white/20 border border-white/10"
                 }`}>
                 {cat.name}
-              </button>
+              </Link>
             ))}
           </motion.div>
 

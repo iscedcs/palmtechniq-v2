@@ -135,7 +135,9 @@ export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
     // DB may not be available during build
   }
 
-  // Dynamic category pages
+  // Category pages. Real paths, not ?category= query strings: nothing linked
+  // to those, the courses page never read them, and all 26 rendered the same
+  // unfiltered list.
   let categoryPages: MetadataRoute.Sitemap = [];
   try {
     const categories = await db.category.findMany({
@@ -148,7 +150,7 @@ export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
 
     categoryPages = categories.map(
       (category: { slug: string; updatedAt: Date }) => ({
-        url: `${baseUrl}/courses?category=${category.slug}`,
+        url: `${baseUrl}/courses/category/${category.slug}`,
         lastModified: category.updatedAt,
         changeFrequency: "weekly" as const,
         priority: 0.7,
