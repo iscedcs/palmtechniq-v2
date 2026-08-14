@@ -13,7 +13,7 @@ export const docSections: DocSection[] = [
         title: "Introduction",
         slug: "introduction",
         description:
-          "Welcome to PalmTechnIQ — an overview of the platform and what it offers.",
+          "Hands, technology and mind — what PalmTechnIQ is for, and who it is for.",
         audience: "all",
         lastUpdated: "2026-08-14",
         content: `
@@ -21,29 +21,54 @@ export const docSections: DocSection[] = [
 
 <version>${DOC_VERSION}</version>
 
-PalmTechnIQ is an education platform for AI, web development, data science and
-career-focused technical skills. It covers the whole path from discovery to
-credential — and, on the other side, the whole business of running it.
+**Palm** — your hands. **Tech** — technology. **IQ** — your mind. The name is
+the idea: what you can make when you put the three together.
+
+PalmTechnIQ is a place where anyone with a skill worth passing on can teach it,
+and anyone who wants that skill can learn it. A tailor showing how to thread a
+needle and finish a hem. A mechanic walking through servicing an engine. A
+caterer, a photographer, a data scientist, a developer. The platform does not
+care whether the skill is learned in a workshop or a lecture hall — only that
+someone knows it well enough to teach it, and someone else wants it.
+
+The point is that **everybody earns**. The tailor earns from what she already
+knows. The student earns from what she learns next. Skill has always been
+worth money; what has been missing is a way to package it, price it, sell it
+and get paid — without needing an institution behind you.
+
+## Closing the gap between learner and teacher
+
+Most of the distance between the two is practical, so that is what the platform
+removes.
+
+**For the person teaching** — no studio, no company, no gatekeeper. Publish a
+course, price it, and get paid to a Nigerian bank account. Bundle several
+courses together, run a group deal, share a referral link that doubles your
+share. Every sale is itemised so you can see exactly what you earned and why.
+
+**For the person learning** — you can see what you are buying before you pay,
+and get real value for the money: structured lessons, hands-on projects, an AI
+assistant sitting with you inside the lesson when you get stuck, 1-on-1
+mentorship when you need a person instead, proctored exams, and a certificate
+anyone can verify without an account.
+
+An AI advisor helps before any of that, if you are not sure which track fits.
+
+## What is on the platform
 
 **Four ways to learn.** Self-paced **courses**; multi-month **professional
 programs** taught in cohorts with installment plans; 1-on-1 **mentorship**; and
-seasonal **bootcamps**. Learning is reinforced with modules and lessons,
-quizzes, hands-on projects and tasks, and a proctored **Exam Center** with
-question banks, auto-grading and live invigilation. Completion produces a
-**certificate anyone can verify** without an account.
+seasonal **bootcamps**. Reinforced with quizzes, projects and tasks, and a
+proctored **Exam Center** with question banks, auto-grading and live
+invigilation.
 
 **Four ways to buy.** Individually, as a tutor-curated **bundle** at a single
 reviewed price, as a **group** where the leader earns course credit, or as a
 program in **two installments**.
 
-**A business, not just a catalogue.** Tutors and mentors earn a revenue share
-that depends on who drove the sale, track earnings per sale, and withdraw to a
-Nigerian bank account through Paystack. Every movement of money is recorded in
-a ledger that reconciles against the balance it explains.
-
-**Discovery and support around it.** An AI course advisor that guides
-prospective students to the right track and captures the lead, an in-lesson
-assistant, a Sanity-backed blog, global search, and reviews and discussions.
+**Paid properly.** Revenue share that depends on who drove the sale, earnings
+tracked per sale, withdrawal to a bank account via Paystack, and a ledger that
+reconciles against the balance it explains.
 
 ## Who Is This For?
 
@@ -51,15 +76,17 @@ PalmTechnIQ serves multiple audiences:
 
 | Audience | What You Get |
 |----------|-------------|
-| **Students** | Take courses, programs and bootcamps, get mentorship, sit exams, complete projects, earn verifiable certificates |
-| **Tutors** | Publish courses, package bundles, run group buying and flash sales, author exams, lead program cohorts, earn and withdraw |
+| **Learners** | Take courses, programs and bootcamps, get mentorship, sit exams, complete projects, earn verifiable certificates |
+| **Tutors** | Anyone with a skill worth teaching. Publish courses, package bundles, run group deals and flash sales, author exams, lead cohorts, earn and withdraw |
 | **Mentors** | Run 1-on-1 sessions at your own rate, sell session packages, automatic Zoom links, paid on confirmation |
 | **Admins** | Review applications and bundles, staff cohorts and release instructor earnings, oversee transactions, payouts and content |
 | **Testers** | Documentation and pre-release access |
 | **Superiors** | Manage tester accounts and testing operations |
 
-Roles are not exclusive in practice — a tutor can mentor, and a tutor can buy
-another tutor's course as a student.
+Roles are not exclusive, and are not meant to be. The tailor teaching hemming
+may be the student learning bookkeeping next month. Someone who arrives to
+learn often ends up teaching — that is the intended direction of travel, not an
+edge case.
 
 ## Key Features
 
