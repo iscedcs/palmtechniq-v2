@@ -21,7 +21,29 @@ export const docSections: DocSection[] = [
 
 <version>${DOC_VERSION}</version>
 
-PalmTechnIQ is a full-featured e-learning platform designed for AI, web development, data science, and career-focused technical skills. It offers a complete learning experience with courses, mentorship, projects, quizzes, and certificates.
+PalmTechnIQ is an education platform for AI, web development, data science and
+career-focused technical skills. It covers the whole path from discovery to
+credential — and, on the other side, the whole business of running it.
+
+**Four ways to learn.** Self-paced **courses**; multi-month **professional
+programs** taught in cohorts with installment plans; 1-on-1 **mentorship**; and
+seasonal **bootcamps**. Learning is reinforced with modules and lessons,
+quizzes, hands-on projects and tasks, and a proctored **Exam Center** with
+question banks, auto-grading and live invigilation. Completion produces a
+**certificate anyone can verify** without an account.
+
+**Four ways to buy.** Individually, as a tutor-curated **bundle** at a single
+reviewed price, as a **group** where the leader earns course credit, or as a
+program in **two installments**.
+
+**A business, not just a catalogue.** Tutors and mentors earn a revenue share
+that depends on who drove the sale, track earnings per sale, and withdraw to a
+Nigerian bank account through Paystack. Every movement of money is recorded in
+a ledger that reconciles against the balance it explains.
+
+**Discovery and support around it.** An AI course advisor that guides
+prospective students to the right track and captures the lead, an in-lesson
+assistant, a Sanity-backed blog, global search, and reviews and discussions.
 
 ## Who Is This For?
 
@@ -29,35 +51,66 @@ PalmTechnIQ serves multiple audiences:
 
 | Audience | What You Get |
 |----------|-------------|
-| **Students** | Access courses, get mentorship, complete projects, earn certificates |
-| **Tutors** | Create and sell courses, offer mentorship sessions, track earnings |
-| **Mentors** | Offer 1-on-1 guidance, schedule sessions via Zoom, earn from expertise |
-| **Admins** | Manage users, review applications, oversee finances and content |
-| **Testers** | Access platform documentation and test new features before release |
-| **Superiors** | Manage tester accounts, send invitations, oversee testing operations |
+| **Students** | Take courses, programs and bootcamps, get mentorship, sit exams, complete projects, earn verifiable certificates |
+| **Tutors** | Publish courses, package bundles, run group buying and flash sales, author exams, lead program cohorts, earn and withdraw |
+| **Mentors** | Run 1-on-1 sessions at your own rate, sell session packages, automatic Zoom links, paid on confirmation |
+| **Admins** | Review applications and bundles, staff cohorts and release instructor earnings, oversee transactions, payouts and content |
+| **Testers** | Documentation and pre-release access |
+| **Superiors** | Manage tester accounts and testing operations |
+
+Roles are not exclusive in practice — a tutor can mentor, and a tutor can buy
+another tutor's course as a student.
 
 ## Key Features
 
-- **Course Management** — Structured learning with modules, lessons, quizzes, and projects
-- **Mentorship System** — 1-on-1 sessions with instant booking or request-based scheduling
-- **Payment Processing** — Secure payments via Paystack with split revenue sharing
-- **Course Bundles** — Tutors package several courses at one reviewed price
-- **Group Buying** — Students buy together; the group leader earns course credit
-- **Exam Center** — Proctored exams, question banks, auto-grading, live invigilation
-- **Professional Programs** — Cohort-based programs with installment plans and instructor revenue share
-- **AI Coach** — Personalized feedback on assignments and quiz answers
-- **Certificates** — Verifiable certificates upon course completion
-- **Blog & CMS** — Content management powered by Sanity
-- **SEO Optimized** — Open Graph images, structured data, dynamic sitemaps
+### Learning
+- **Courses** — Modules, lessons, quizzes, projects and tasks, with progress tracking
+- **Professional Programs** — Cohort-based, multi-month, full or two-installment payment
+- **Mentorship** — Instant booking or request-first, multi-session packages, Zoom created automatically
+- **Bootcamps** — Seasonal intensives with tracks, tiers and teams
+- **Exam Center** — Server-authoritative attempts, reusable question banks with spreadsheet import, auto-grading, controlled results release, live invigilation
+- **Certificates** — Publicly verifiable, no account needed to check one
+
+### Selling
+- **Payments** — Paystack, with VAT handled and revenue split at settlement
+- **Revenue Sharing** — The rate follows who drove the sale; one module is the source of truth
+- **Course Bundles** — Several courses at one price, capped discount, platform-reviewed
+- **Group Buying** — Tutor-configured tiers; the group leader earns spendable course credit
+- **Referrals** — Every tutor gets a link that doubles their share, remembered for 30 days
+- **Promotions** — Flash sales and promo codes, platform- or instructor-funded
+- **Wallets & Payouts** — Ledgered balances, bank withdrawal via Paystack transfers
+
+### Around it
+- **AI Advisor** — Guides prospects to the right track and captures the lead
+- **Lesson Assistant** — In-context help while studying
+- **Blog & CMS** — Sanity-backed, with views, likes, bookmarks and comments
+- **Search, reviews, discussions, wishlists and cart**
+- **Notifications** — In-app and email
+- **SEO** — Dynamic OG images, structured data, sitemaps, RSS
+
+### Underneath
+- **Roles & permissions** enforced in middleware *and* in every action
+- **Scheduled sweeps** that recover payments taken but never settled, and close expired exams
+- **Security** — IP rate limiting, brute-force protection, signed webhooks
 
 ## Documentation Structure
 
-This documentation is organized into two perspectives:
+Pages are tagged by audience, so you can read the parts meant for you:
 
-- **User Guide** — For students, tutors, mentors, and admins using the platform
-- **Developer Guide** — For engineers building, maintaining, and extending the platform
+| Section | What is in it |
+|---|---|
+| **Getting Started** | Install, configure and run the platform |
+| **Features** | How each capability works, for users and engineers alike |
+| **User Guide** | Task-focused walkthroughs for students, tutors and admins |
+| **Architecture** | Tech stack, the 97-model schema, roles, integrations, layout |
+| **API Reference** | Server actions and every REST endpoint with its auth mode |
+| **Development** | Analytics, background jobs, security, SEO, deployment |
 
-Use the sidebar to navigate between sections, or use the search bar to find specific topics.
+Use the sidebar to navigate, or the search bar to jump straight to a topic.
+
+> Where a page describes something that does not work as intended, it says so
+> rather than describing the intent. If you find documentation that disagrees
+> with the code, treat the code as the truth and fix the page.
 `,
       },
       {
