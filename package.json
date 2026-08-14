@@ -21,7 +21,10 @@
     "verify:exam-notifications": "tsx --require ./scripts/_exam-test-bootstrap.cjs scripts/verify-exam-notifications.ts",
     "verify:exam-import": "tsx --require ./scripts/_exam-test-bootstrap.cjs scripts/verify-exam-import.ts",
     "test": "vitest run",
-    "test:watch": "vitest"
+    "test:watch": "vitest",
+    "docs:sync": "tsx scripts/sync-doc-dates.ts",
+    "docs:check": "tsx scripts/sync-doc-dates.ts --check",
+    "prepare": "git config core.hooksPath .githooks"
   },
   "prisma": {
     "seed": "tsx app/prisma/seed.ts"

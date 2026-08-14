@@ -5,7 +5,7 @@ export default function manifest(): MetadataRoute.Manifest {
     name: "PalmTechnIQ",
     short_name: "PalmTechnIQ",
     description:
-      "Advanced e-learning platform for AI, web development, data science, and career-focused technical skills.",
+      "Learn any skill — from tailoring and auto repair to design, coding and AI. Or teach what you know and earn from it.",
     start_url: "/",
     display: "standalone",
     background_color: "#0f172a",

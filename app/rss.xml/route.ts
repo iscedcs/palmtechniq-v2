@@ -68,7 +68,7 @@ export async function GET() {
 <channel>
   <title>PalmTechnIQ Blog</title>
   <link>${siteUrl}/blog</link>
-  <description>Latest articles on AI, web development, data science, and tech education.</description>
+  <description>Guides on learning skills, teaching online, and earning from what you know — plus AI, technology and career insight.</description>
   <language>en-us</language>
   <lastBuildDate>${buildDate}</lastBuildDate>
   <atom:link href="${siteUrl}/rss.xml" rel="self" type="application/rss+xml" />
