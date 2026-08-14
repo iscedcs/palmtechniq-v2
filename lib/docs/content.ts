@@ -1,6 +1,6 @@
 import type { DocPage, DocSection } from "./types";
 
-export const DOC_VERSION = "v2.2.0";
+export const DOC_VERSION = "v2.3.0";
 
 export const docSections: DocSection[] = [
   // ─── GETTING STARTED ─────────────────────────────────────
@@ -41,7 +41,10 @@ PalmTechnIQ serves multiple audiences:
 - **Course Management** — Structured learning with modules, lessons, quizzes, and projects
 - **Mentorship System** — 1-on-1 sessions with instant booking or request-based scheduling
 - **Payment Processing** — Secure payments via Paystack with split revenue sharing
-- **Group Buying** — Tiered discounts when students purchase courses together
+- **Course Bundles** — Tutors package several courses at one reviewed price
+- **Group Buying** — Students buy together; the group leader earns course credit
+- **Exam Center** — Proctored exams, question banks, auto-grading, live invigilation
+- **Professional Programs** — Cohort-based programs with installment plans and instructor revenue share
 - **AI Coach** — Personalized feedback on assignments and quiz answers
 - **Certificates** — Verifiable certificates upon course completion
 - **Blog & CMS** — Content management powered by Sanity
@@ -507,11 +510,20 @@ PalmTechnIQ uses Paystack for secure payment processing with support for multipl
 
 ## Revenue Split
 
-| Party | Course Share | Mentorship Share |
-|-------|-------------|-----------------|
-| **Tutor/Mentor** | 50–70% | 70% |
-| **Platform** | 20–50% | 30% |
-| **Referrer** | Up to 10% | — |
+The rate depends on **who drove the sale**, not on what was sold.
+
+| Sale path | Tutor | Platform |
+|---|---|---|
+| Platform traffic (organic, platform promo) | 25% | 75% |
+| Tutor's own referral link | 50% | 50% |
+| Tutor's own promo code | 50% | 50% |
+| Mentorship session | 70% | 30% |
+| Professional program (lead instructor) | 25% of full price | 75% |
+
+Splits are calculated on the **discounted, VAT-exclusive** amount. VAT (7.5%)
+is added on top and belongs to FIRS — it is never part of anyone's share.
+
+See **Revenue Sharing** for the full reference, including bundles and programs.
 
 ## Promotional Pricing
 
@@ -528,14 +540,12 @@ PalmTechnIQ uses Paystack for secure payment processing with support for multipl
 
 ### Group Buying
 - Invite-based group purchases at \`/group/[inviteCode]\`
-- Tiered discounts based on group size:
-
-| Group Size | Discount |
-|-----------|---------|
-| 3–5 | 10% |
-| 6–10 | 15% |
-| 11–20 | 20% |
-| 21+ | 25% |
+- Tiers are configured **per course** by the tutor (\`GroupTier\`), not fixed
+  platform-wide. Each tier sets a group size, a group price, and a cashback
+  percentage.
+- When the group fills, the group leader receives cashback as **course credit**,
+  funded by the tutor's wallet. It is spendable on future purchases, not
+  withdrawable as cash.
 
 ## Tax & VAT
 
@@ -546,18 +556,438 @@ PalmTechnIQ uses Paystack for secure payment processing with support for multipl
 ## For Developers
 
 ### Key Files
+- \`lib/payments/revenue.ts\` — **single source of truth** for every rate and formula
+- \`lib/payments/wallet.ts\` — credit/debit helpers; the only sanctioned way to move a balance
+- \`lib/payments/finalizePaystack.ts\` — settlement: enrollments, earnings, wallet credits
+- \`lib/payments/sweep.ts\` — recovers charges taken but never settled
+- \`actions/checkout.ts\` — course checkout
+- \`actions/bundles.ts\` — bundle lifecycle and checkout
+- \`actions/program-earnings.ts\` — program accrual and release
+- \`lib/payments/promo.ts\` — promo code validation
+- \`lib/payments/pricing.ts\` — compatibility shim re-exporting from revenue.ts
 - \`actions/paystack.ts\` — Paystack server actions
-- \`actions/checkout.ts\` — Checkout flow logic
-- \`lib/payments/pricing.ts\` — VAT & split calculations
-- \`lib/payments/promo.ts\` — Promo code validation
-- \`lib/payments/finalizePaystack.ts\` — Post-payment processing
-- \`components/paystack.tsx\` — Paystack popup component
+
+> Never hardcode a rate. Import a function from \`revenue.ts\`. A duplicated
+> constant is survivable; duplicated arithmetic is not — a rate change once
+> moved money at one number while recording another.
+
+### Settlement is idempotent
+\`finalizePaystackByReference\` returns early on an already-completed
+transaction and re-verifies with Paystack otherwise, so it is safe to call
+repeatedly. That is what makes the payment sweep safe to run every 15 minutes.
 
 ### Webhook
 - Endpoint: \`/api/webhook\`
 - Validates Paystack signature (HMAC SHA-512)
 - Processes \`charge.success\` events
 - Creates enrollments, activates sessions, sends notifications
+`,
+      },
+      {
+        title: "Revenue Sharing",
+        slug: "revenue-sharing",
+        description:
+          "How money is split between tutors, mentors, instructors and the platform.",
+        audience: "all",
+        lastUpdated: "2026-08-10",
+        content: `
+# Revenue Sharing
+
+Every rate on the platform lives in one file: \`lib/payments/revenue.ts\`. If a
+number about money appears anywhere else — a component, an action, a marketing
+page — it is either imported from there or it is a bug.
+
+## The rule
+
+> **The rate is determined by who drove the sale, not by what was sold.**
+
+A bundle, a single course and a cart are all the same economic event if the
+platform brought the student. Packaging does not change attribution.
+
+## Course sales
+
+| Sale path | Tutor | Platform |
+|---|---|---|
+| Organic / platform traffic | 25% | 75% |
+| Platform promo code applied | 25% | 75% |
+| **Tutor's own referral link** | **50%** | **50%** |
+| Tutor's own (instructor) promo code | 50% | 50% |
+
+Referral only counts when the referring tutor owns the course. A tutor's link
+does not earn them a share of somebody else's catalogue.
+
+## Mentorship
+
+Flat **70% mentor / 30% platform**, with no VAT applied. Session price is
+\`hourlyRate ÷ 60 × durationMinutes\`, clamped to 30–180 minutes. Multi-session
+packages apply a discount (Starter 3 → 10%, Growth 5 → 18%).
+
+## Professional programs
+
+The lead instructor earns **25% of the program's \`fullPrice\`** — deliberately
+not of \`installTotal\`. The installment surcharge is a financing fee that
+compensates the platform for carrying credit risk, so it is not shared.
+
+Programs differ from courses in one important way: **attribution does not exist
+at payment time.** A cohort is staffed separately from when students pay. So
+the share is:
+
+1. **Accrued** as each installment is paid, in proportion to cash actually
+   collected — never against money not yet received
+2. **Held** until \`max(paidAt + 30 days, cohort start date)\` — the refund
+   window protects against clawbacks, the start date protects against paying
+   out a cohort cancelled for low enrolment
+3. **Released** by an admin, who chooses the recipient and the timing. The
+   amount was fixed at accrual and is not editable
+
+Accrued money is recorded but is **not** in the instructor's spendable balance
+until released.
+
+### Worked example
+A ₦350,000 program on the installment plan (\`installTotal\` ₦370,000):
+
+| Installment | Collected | Instructor accrues |
+|---|---|---|
+| 1 of 2 | ₦259,000 | ₦61,250 |
+| 2 of 2 | ₦111,000 | ₦26,250 |
+| **total** | ₦370,000 | **₦87,500** = 25% × ₦350,000 |
+
+## Bundles
+
+Bundles carry **no rate of their own**. The bundle price is allocated across
+its courses in proportion to their list prices, and each resulting line item is
+attributed normally. See **Course Bundles**.
+
+## VAT
+
+7.5%, charged on the discounted subtotal and added on top. VAT belongs to FIRS
+and is **never** part of anyone's share — splits are always calculated on the
+VAT-exclusive amount.
+
+Where a purchase has several line items, VAT is allocated across them
+proportionally, with the last item absorbing the rounding remainder so the
+parts always sum exactly to the whole.
+
+## For Developers
+
+### Never duplicate a rate
+\`\`\`ts
+import { REVENUE, computeCheckoutTotals } from "@/lib/payments/revenue";
+\`\`\`
+
+The module is **pure** — no \`db\` import, no \`"use server"\` — so client
+components can import it for display and every function is testable without a
+database.
+
+### Applied rates are snapshots
+\`TutorEarning.splitPercent\` and \`Transaction.tutorShareAmount\` record what
+was actually applied. Changing a rate never rewrites earnings already recorded.
+
+At settlement, \`splitPercent\` is **derived** from the amounts that moved
+(\`tutorShareAmount / discountedPrice\`) rather than re-decided from the
+scenario, so the ledger cannot disagree with the money.
+
+### Money arithmetic
+All computation happens in **integer kobo**, converting once on the way in and
+once on the way out. Naira arithmetic accumulates binary floating-point error —
+this is why a recorded split once read \`0.2500000484693853\`.
+
+> Storage is still \`Float\` across the schema. The arithmetic is exact; the
+> columns have not been migrated. Do not introduce new \`Float\` money columns.
+
+### Tests
+\`lib/payments/__tests__/revenue.test.ts\` covers the split matrix, promo
+applicability, VAT allocation, bundle distribution and program allocation —
+using strict equality, because "approximately correct" is the thing being
+prevented.
+
+\`\`\`bash
+pnpm test
+\`\`\`
+`,
+      },
+      {
+        title: "Course Bundles",
+        slug: "course-bundles",
+        description:
+          "Tutors package several courses at one price, reviewed by the platform.",
+        audience: "all",
+        lastUpdated: "2026-08-10",
+        content: `
+# Course Bundles
+
+A bundle is a curated, discounted, price-capped, **reviewed** set of one
+tutor's courses sold at a single price.
+
+## For Tutors
+
+Create one at **/tutor/bundles** (also linked from My Courses).
+
+1. Pick at least two of your **published** courses
+2. Set a price — the form shows the list total and the lowest price allowed
+3. Save as a draft, then **Submit for review**
+4. Once approved, use **Referral Link** to share it
+
+### Rules
+- Minimum **2 courses**, all published and all yours
+- Maximum discount **40%** off the summed list price, minimum ₦500
+- Editing the **price or the courses** on an approved bundle sends it back for
+  review and takes it off sale. Editing the title or description does not.
+
+### Earnings
+Bundles pay the **normal rates** — 25% on platform traffic, **50% when you
+share your own referral link**. Use the Referral Link button rather than
+copying the address bar; a bare link earns you 25%.
+
+> Promo codes cannot be combined with a bundle price.
+
+## For Admins
+
+Review queue at **/admin/bundles**. Each bundle shows the list total, the
+bundle price, the discount depth against the floor, and **trailing 90-day sales
+and revenue per course**.
+
+### What to look for
+The tutor sets the price, but on a platform-attributed sale **the platform
+absorbs 75% of the discount**. So the question is whether the bundle grows the
+pie.
+
+A bundle of a tutor's two strongest sellers discounts sales that were already
+going to happen — pure cannibalisation. The screen flags this, but it is a
+**prompt for judgement, not an automated block**: volumes shift, new courses
+have no history, and legitimate track-based bundles would be wrongly rejected
+by a hard threshold. Favour bundles pairing a strong seller with weaker
+courses.
+
+Rejections carry a note back to the tutor, who can edit and resubmit.
+
+## For Developers
+
+### Design
+A bundle introduces **no new payment infrastructure**. The bundle price is
+allocated across its courses and fed through the existing checkout, so
+settlement, enrollment and earnings work unchanged — \`finalizePaystack\`
+required no modification.
+
+\`\`\`
+/bundles/[slug]?ref=CODE
+  → beginBundleCheckout(slug, ref)
+      1. resolve bundle → courseIds
+      2. re-validate every guard
+      3. allocateBundlePrices() across courses
+      4. existing attribution logic — no bundle branch
+      5. Transaction + TransactionLineItem[] (same shape as a cart)
+      6. Paystack
+  → finalizePaystackByReference — unchanged
+\`\`\`
+
+### Price allocation
+\`\`\`ts
+itemPrice = (coursePrice / listSum) * bundlePrice
+\`\`\`
+Computed in integer kobo, with the remainder assigned to the **highest-priced**
+course so the line items sum **exactly** to the bundle price. Checkout refuses
+if they do not reconcile.
+
+Per-course line items are deliberate: they preserve VAT granularity for FIRS
+reporting and keep \`TutorEarning\` per course.
+
+### Guards
+Re-checked at create, update **and** checkout, because course prices and
+publication state move independently of the bundle:
+
+| Guard | Where |
+|---|---|
+| price ≥ 60% of list sum, ≥ ₦500 | create, update, checkout |
+| ≥ 2 courses, no duplicates | create, update |
+| every course \`PUBLISHED\` and owned by the tutor | create, update, checkout |
+| \`APPROVED\` **and** \`isActive\` | checkout |
+| student owns none of the courses | checkout |
+| tutor cannot buy their own bundle | checkout |
+| no promo code | checkout |
+| line items reconcile to the bundle price | checkout |
+
+\`reviewStatus\` and \`isActive\` are separate on purpose: the platform controls
+approval, the tutor controls pause/resume, and collapsing them into one boolean
+would let either override the other.
+
+### Key files
+- \`actions/bundles.ts\` — lifecycle, guards, checkout
+- \`app/(root)/bundles/[slug]/\` — public landing (public route, carries \`?ref=\`)
+- \`app/(root)/tutor/bundles/\` — create, edit, submit, share
+- \`app/(root)/admin/bundles/\` — review queue
+`,
+      },
+      {
+        title: "Exam Center",
+        slug: "exam-center",
+        description:
+          "Proctored exams, question banks, auto-grading and live invigilation.",
+        audience: "all",
+        lastUpdated: "2026-08-10",
+        content: `
+# Exam Center
+
+A server-authoritative assessment system: tutors author exams, students sit
+them under invigilation, and grading and release are controlled.
+
+## For Tutors
+
+### Question banks
+Build reusable banks at **/tutor/question-banks**, or import them. The import
+wizard accepts spreadsheet uploads and is tolerant of how people actually
+write: it recognises the type labels tutors use in practice, not only the
+canonical ones, and reads real answer-key columns.
+
+### Authoring an exam
+Compose from a bank or write questions directly. Sections can **draw** a number
+of questions from a bank, so each candidate sits a different selection from the
+same pool.
+
+### Sitting and monitoring
+**/tutor/exams/[examId]/monitor** shows attempts live, with integrity signals
+surfaced as they happen. Grading queue at \`/grading\`, with explicit results
+release — grades are not visible to students until released.
+
+## For Students
+
+Exams appear under **/student/exams**. The timer and scoring are
+**server-authoritative**: the browser cannot change the clock or the result.
+Answers submit as you go, so a closed laptop or lost connection does not lose
+work.
+
+If time runs out, the attempt is submitted for you — first by your own browser,
+and as a backstop by a scheduled sweep.
+
+## For Developers
+
+### Server authority
+Attempts are scored on the server. Lesson quizzes are too — a client-scored
+quiz is not an assessment.
+
+### The sweep
+\`/api/cron/exam-sweep\` auto-submits expired attempts, closes finished exams
+and marks no-shows. It is a **backstop**, not the primary mechanism: a
+candidate's own browser submits when the clock runs out.
+
+Every pass is idempotent, so a late run does the same work and a skipped run is
+picked up by the next. Driven by \`.github/workflows/exam-sweep.yml\` every 5
+minutes.
+
+> GitHub scheduled workflows are best-effort and often drift 5–15 minutes. That
+> is acceptable precisely because this is a backstop. Do not build anything
+> requiring punctuality on top of it.
+
+### Device locking
+\`deviceLockToken\` binds an attempt to a browser. It is deliberately **not**
+unique — a second legitimate attempt from the same browser must work.
+
+### Key files
+- \`lib/exam/publish.ts\` — publish pipeline and roster sync
+- \`lib/exam/sweep.ts\` — expiry, closure, no-shows
+- \`app/api/cron/exam-sweep/\` — scheduled endpoint
+- \`scripts/verify-exam-*.ts\` — end-to-end verification scripts
+
+\`\`\`bash
+pnpm verify:exam
+\`\`\`
+`,
+      },
+      {
+        title: "Wallets & Payouts",
+        slug: "wallets",
+        description:
+          "How balances are held, recorded, reconciled and withdrawn.",
+        audience: "all",
+        lastUpdated: "2026-08-10",
+        content: `
+# Wallets & Payouts
+
+Every user has a \`walletBalance\`. What it means depends on who they are.
+
+## For Tutors and Mentors
+
+Earnings land in your wallet as sales settle, and can be withdrawn to your bank
+via Paystack once you have added your account details.
+
+The wallet page shows four figures:
+
+| Figure | Meaning |
+|---|---|
+| **Available balance** | Money you can withdraw now |
+| **Total earnings** | Lifetime earnings that reached your wallet |
+| **Pending payouts** | Withdrawals requested but not yet paid |
+| **Accrued (awaiting release)** | Program earnings recorded but **not yet spendable** |
+
+Accrued is deliberately separate. A program share is owed to you from the
+moment a student pays, but it only becomes withdrawable after the refund window
+and the cohort start — see **Revenue Sharing**.
+
+## For Students
+
+Students hold **course credit**, not cash. It comes from group-buying cashback
+and is applied automatically at checkout, reducing what you pay. It cannot be
+withdrawn — \`requestWithdrawal\` refuses non-tutor roles.
+
+If you abandon a checkout that had credit applied, the credit is returned.
+
+## For Developers
+
+### The invariant
+\`\`\`
+walletBalance === sum(WalletEntry.amount)
+\`\`\`
+
+\`WalletEntry\` is an append-only, **signed** record of every balance change. It
+answers a different question from \`TutorEarning\`: not "what did I earn and at
+what rate" but "why is my balance this number" — including movements that are
+not earnings at all.
+
+### Always use the helpers
+\`\`\`ts
+import { creditWallet, debitWallet } from "@/lib/payments/wallet";
+
+await creditWallet(tx, {
+  userId, amount, type: "COURSE_EARNING", transactionId,
+});
+\`\`\`
+
+They write the ledger entry in the **same transaction** as the balance change,
+so the two cannot diverge. Updating \`walletBalance\` directly is how group
+cashback once moved money on both sides while recording nothing — silently
+creating ₦1,250 that took a manual audit to find.
+
+> There should be no raw \`walletBalance: { increment }\` anywhere outside
+> \`lib/payments/wallet.ts\`. If you add one, you have created a hole.
+
+### Entry types
+\`COURSE_EARNING\`, \`MENTORSHIP_EARNING\`, \`PROGRAM_EARNING_RELEASE\`,
+\`GROUP_CASHBACK_CREDIT\`, \`GROUP_CASHBACK_DEBIT\`, \`WITHDRAWAL_REQUESTED\`,
+\`WITHDRAWAL_REVERSED\`, \`COURSE_CREDIT_APPLIED\`, \`COURSE_CREDIT_REFUNDED\`,
+\`ADJUSTMENT\`.
+
+\`ADJUSTMENT\` is for opening balances and manual corrections only. No payment
+path should ever write one.
+
+### Reconciling
+\`\`\`bash
+pnpm tsx scripts/reconcile-wallets.ts
+\`\`\`
+
+Reports any wallet that disagrees with its ledger. The payment sweep also
+counts drifting wallets on every run and logs an error if the count is not
+zero — a non-zero result means a balance moved without a ledger entry, and that
+needs looking at before it compounds.
+
+Balances that predate the ledger were recorded as a single \`ADJUSTMENT\`
+opening balance rather than reconstructed, because the movements they came from
+were never recorded and inventing them would bury the discrepancy.
+
+### Earning status
+- \`PENDING\` — accrued, not spendable (programs only)
+- \`AVAILABLE\` — in the wallet
+- \`PAID\` — settled by a completed withdrawal, oldest first
+- \`CANCELLED\` — voided by a refund before release
 `,
       },
       {
@@ -993,7 +1423,57 @@ Everything you need to know as a tutor on PalmTechnIQ.
 - Track earnings at \`/tutor/wallet\`
 - View transaction history
 - Request withdrawals to your bank account
-- Revenue split: You receive 50–70% of course sales
+- Revenue split: **25%** of course sales driven by the platform, **50%** for
+  students you bring yourself via your referral link (found on each course card
+  and on the Bundles page). Mentorship sessions pay **70%**.
+
+## Earn More With Your Referral Link
+
+This is the single biggest lever on your earnings, and it is easy to miss.
+
+- A student the **platform** sends you pays you **25%**
+- A student **you** send, through your referral link, pays you **50%**
+
+Your link is on every course card (**Referral Link**) and on the Bundles page.
+Share that link — not the address bar — anywhere you already have an audience:
+your bio, a WhatsApp group, a newsletter, a class. The rate doubles for the
+same course and the same student.
+
+The link is remembered for 30 days, so a student who clicks today and buys next
+week still counts as yours.
+
+## Course Bundles
+
+Package several of your courses at one price. Students get a discount, you get
+a bigger sale.
+
+1. Go to **Bundles** (from My Courses, or the menu)
+2. Pick at least two published courses
+3. Set a price — the form shows the lowest allowed as you choose courses
+4. Submit for review
+
+The platform reviews bundles before they go live, usually looking at whether
+the discount is deep enough to be worth it without simply discounting sales
+that were already going to happen. If a bundle is sent back you will see the
+reason and can edit and resubmit.
+
+Once approved you get a **Referral Link** for the bundle — the same 50% rule
+applies.
+
+> Changing a live bundle's price or its courses sends it back for review and
+> takes it off sale until approved again. Editing the title or description does
+> not.
+
+## Teaching a Program Cohort
+
+Professional programs run as cohorts with a lead instructor. If you are
+assigned as lead, you earn **25% of the program's full price**, accrued as each
+student installment is paid.
+
+Program earnings work differently from course sales: they appear as **Accrued
+(awaiting release)** in your wallet first, and become withdrawable after the
+refund window has passed and the cohort has started. This protects both sides —
+you are not paid out of money that may still be refunded.
 
 ## Promotions
 
@@ -1082,6 +1562,34 @@ Platform administration guide for managing PalmTechnIQ.
 | Unblock IP | Remove an IP from the block list |
 | View Attempts | See login attempt history |
 | Unlock Account | Unlock a locked user account |
+
+## Bundle Review
+
+**/admin/bundles** — approve or reject tutor bundles. The queue shows discount
+depth against the price floor and trailing 90-day sales per course, so you can
+judge whether a bundle grows the basket or just discounts sales that were
+already happening. Rejections carry a note back to the tutor.
+
+## Program Revenue Share
+
+**/admin/program-earnings** — assign a lead instructor to a cohort and release
+their accrued earnings.
+
+- Assigning an instructor **back-fills** accruals for installments already paid
+- Release is only possible after the refund window and the cohort start; the
+  screen says which is blocking
+- You choose the recipient and the timing. **The amount is fixed at accrual and
+  is not editable** — if an admin could type the amount, it would not be a
+  revenue share
+- Changing instructor mid-cohort does **not** move money already accrued. The
+  original instructor keeps what they earned while teaching; the screen shows
+  the held amount
+
+## Reconciliation
+
+The payment sweep reports drifting wallets on every run. That number should
+always be zero. If it is not, a balance moved without a ledger entry — run
+\`pnpm tsx scripts/reconcile-wallets.ts\` and investigate before it compounds.
 `,
       },
     ],
@@ -1221,6 +1729,20 @@ Course ──┬── CourseModule
          ├── Discussion ── DiscussionReply
          └── GroupPurchase ── GroupTier, GroupMember
 \`\`\`
+
+## Recently Added
+
+| Model | Purpose |
+|---|---|
+| \`WalletEntry\` | Append-only record of every \`walletBalance\` change. Invariant: \`walletBalance === sum(amount)\` |
+| \`CourseBundle\` / \`CourseBundleItem\` | Tutor-priced multi-course packages with a review workflow |
+| \`TutorEarning\` (extended) | Now covers COURSE, MENTORSHIP and PROGRAM sources. \`transactionId\`, \`transactionLineItemId\` and \`courseId\` are nullable so non-course earnings can share the table |
+| \`ProgramCohort.leadInstructorId\` | Attribution for program revenue share |
+
+> \`TutorEarning.installmentPaymentId\` and \`mentorshipSessionId\` are **unique**.
+> That is load-bearing, not incidental: accrual can fire from more than one
+> trigger, and the constraint is what makes the second one a no-op instead of a
+> double credit.
 
 ## Core Models
 
@@ -1746,6 +2268,85 @@ node scripts/generate-integration-keys.js
     slug: "development",
     icon: "Wrench",
     children: [
+      {
+        title: "Background Jobs",
+        slug: "background-jobs",
+        description:
+          "Scheduled sweeps that recover stranded payments and close expired exams.",
+        audience: "developer",
+        lastUpdated: "2026-08-10",
+        content: `
+# Background Jobs
+
+Two scheduled sweeps, both driven by **GitHub Actions** rather than a hosted
+cron. Actions is free for this workload and each run is a single \`curl\`.
+
+| Job | Schedule | Endpoint |
+|---|---|---|
+| Exam sweep | every 5 min | \`/api/cron/exam-sweep\` |
+| Payment sweep | every 15 min | \`/api/cron/payment-sweep\` |
+
+## Authorisation
+
+Both are authorised by a shared secret, not a session — there is no user behind
+them.
+
+\`\`\`
+Authorization: Bearer $CRON_SECRET
+\`\`\`
+
+Compared in constant time, and **failing closed**: if \`CRON_SECRET\` is unset
+the endpoint returns 503 rather than running unauthenticated.
+
+### Required configuration
+| Where | Keys |
+|---|---|
+| GitHub → Settings → Secrets → Actions | \`APP_URL\`, \`CRON_SECRET\` |
+| Hosting environment | \`CRON_SECRET\` |
+
+Generate the secret yourself — it is not issued by anyone:
+
+\`\`\`bash
+node -e "console.log(require('crypto').randomBytes(32).toString('hex'))"
+\`\`\`
+
+> **Scheduled workflows only run from the default branch.** A \`schedule:\`
+> trigger on a feature branch never fires. If a sweep appears never to have
+> run, check that its workflow is on \`main\` before debugging anything else.
+
+## Payment sweep
+
+Settlement normally happens on the Paystack callback and webhook. This catches
+what they miss — browser closed mid-redirect, webhook lost, or settlement
+itself throwing — where money is collected and nothing is delivered.
+
+- **15 minute grace period** so a student still on the Paystack page is never
+  touched
+- **90 day recovery horizon.** Deliberately generous: a charge that succeeded
+  weeks ago and never settled is the *worst* case, not the least important
+- Bounded batch per run; an abandoned checkout is marked \`FAILED\` on its first
+  pass and leaves the pending set, so nothing is retried forever
+- Also reports **wallet drift**, which should always be zero
+
+Every pass is idempotent because \`finalizePaystackByReference\` re-verifies
+with Paystack and returns early on an already-completed transaction.
+
+## Exam sweep
+
+Auto-submits expired attempts, closes finished exams, marks no-shows. A
+backstop — the candidate's own browser submits when the clock runs out.
+
+## Testing by hand
+
+\`\`\`bash
+curl -i -X POST -H "Authorization: Bearer $CRON_SECRET" "$APP_URL/api/cron/payment-sweep"
+\`\`\`
+
+401 means the secret does not match; 503 means it is not configured. Both
+workflows also support **Run workflow** from the Actions tab for an immediate
+run.
+`,
+      },
       {
         title: "Security",
         slug: "security",
