@@ -28,13 +28,13 @@ PalmTechnIQ is a place where anyone with a skill worth passing on can teach it,
 and anyone who wants that skill can learn it. A tailor showing how to thread a
 needle and finish a hem. A mechanic walking through servicing an engine. A
 caterer, a photographer, a data scientist, a developer. The platform does not
-care whether the skill is learned in a workshop or a lecture hall — only that
+care whether the skill is learned in a workshop or a lecture hall, only that
 someone knows it well enough to teach it, and someone else wants it.
 
 The point is that **everybody earns**. The tailor earns from what she already
 knows. The student earns from what she learns next. Skill has always been
 worth money; what has been missing is a way to package it, price it, sell it
-and get paid — without needing an institution behind you.
+and get paid, without needing an institution behind you.
 
 ## Closing the gap between learner and teacher
 
@@ -2149,7 +2149,8 @@ to raise the migration rather than widen the problem.
       {
         title: "Roles & Permissions",
         slug: "roles",
-        description: "The seven roles, what each can reach, and how it is enforced.",
+        description:
+          "The seven roles, what each can reach, and how it is enforced.",
         audience: "developer",
         lastUpdated: "2026-08-14",
         content: `

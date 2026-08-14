@@ -13,6 +13,7 @@ import {
   ChevronDown,
   Search,
 } from "lucide-react";
+import Image from "next/image";
 
 const iconMap: Record<string, React.ElementType> = {
   Rocket,
@@ -72,8 +73,13 @@ export function DocSidebar({
         <Link
           href="/documentation"
           className="flex items-center gap-2 text-lg font-semibold text-white hover:text-green-400 transition-colors">
-          <div className="w-8 h-8 rounded-lg bg-gradient-to-br from-teal-500 to-green-500 flex items-center justify-center text-xs font-bold">
-            PT
+          <div className="w-8 h-8 rounded-lg flex items-center justify-center text-xs font-bold">
+            <Image
+              src="/assets/standalone.png"
+              alt="PalmTechnIQ"
+              width={20}
+              height={20}
+            />
           </div>
           <span>PalmTechnIQ</span>
         </Link>
