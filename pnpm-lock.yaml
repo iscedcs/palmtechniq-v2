@@ -20,12 +20,12 @@ overrides:
   hono: '>=4.12.25'
   '@hono/node-server': '>=1.19.13'
   js-yaml: '>=3.15.0'
-  linkify-it: 5.0.2
+  linkify-it: '>=5.0.2 <6'
   lodash: '>=4.18.0'
-  minimatch: 10.2.3
+  minimatch: '>=10.2.3 <11'
   picomatch: '>=4.0.4'
   postcss: '>=8.5.18'
-  '@portabletext/sanity-bridge': 1.2.14
+  '@portabletext/sanity-bridge': '>=1.2.14 <2'
   sharp: '>=0.35.0'
   socket.io-parser: '>=4.2.6'
   tar: '>=7.5.19'
@@ -3235,7 +3235,7 @@ packages:
     resolution: {integrity: sha512-8xN7gxZ+03QbgEVhJjqMFNmc5fsgHUIfRwm/DIjT7QmfBDkfQnhJTb1/q7/XIfGjt6iLpTk6KTdJWwE6slS0eQ==}
     engines: {node: '>=20.19 <22 || >=22.12'}
     peerDependencies:
-      '@portabletext/sanity-bridge': 1.2.14
+      '@portabletext/sanity-bridge': '>=1.2.14 <2'
       react: ^18.3 || ^19
       rxjs: ^7.8.2
 

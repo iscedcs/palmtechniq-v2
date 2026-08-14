@@ -56,12 +56,40 @@ jobs:
       - name: Lint
         run: pnpm lint
 
-      - name: Dependency Audit
+      # Two passes, deliberately. A HIGH in a transitive dependency often has
+      # no same-day fix available, and blocking a release on one turns a report
+      # into a false emergency. So HIGH is recorded and CRITICAL blocks.
+      #
+      # The second pass reuses the vulnerability DB the first one cached, so it
+      # costs seconds rather than another 100MB download.
+      - name: Dependency Audit (report)
         uses: aquasecurity/trivy-action@master
         with:
           scan-type: fs
           scanners: vuln
           severity: HIGH,CRITICAL
+          format: sarif
+          output: trivy-results.sarif
+          exit-code: 0
+          skip-dirs: .next
+
+      - name: Upload audit results
+        uses: github/codeql-action/upload-sarif@v3
+        # Runs even when a later step fails, so findings are still recorded.
+        # Non-blocking: code scanning upload needs GitHub Advanced Security on
+        # a private repo, and a missing entitlement must not fail the build.
+        if: always()
+        continue-on-error: true
+        with:
+          sarif_file: trivy-results.sarif
+          category: trivy-fs
+
+      - name: Dependency Audit (block on critical)
+        uses: aquasecurity/trivy-action@master
+        with:
+          scan-type: fs
+          scanners: vuln
+          severity: CRITICAL
           exit-code: 1
           skip-dirs: .next
 
