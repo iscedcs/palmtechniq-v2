@@ -9,14 +9,14 @@ import type { Metadata } from "next";
 export const metadata: Metadata = {
   title: "Courses",
   description:
-    "Browse expert-led courses in AI, web development, data science, and career-focused technical skills. Learn at your own pace with practical projects and mentorship.",
+    "Browse courses across trades, crafts, business, AI and technology — taught by people who do the work. Learn at your own pace with projects, mentorship and certificates.",
   alternates: {
     canonical: "/courses",
   },
   openGraph: {
     title: "Browse Courses | PalmTechnIQ",
     description:
-      "Browse expert-led courses in AI, web development, data science, and career-focused technical skills.",
+      "Browse courses across trades, crafts, business, AI and technology — taught by people who do the work.",
     url: "https://palmtechniq.com/courses",
     type: "website",
   },
