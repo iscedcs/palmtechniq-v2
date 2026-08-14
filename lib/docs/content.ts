@@ -991,6 +991,218 @@ were never recorded and inventing them would bury the discrepancy.
 `,
       },
       {
+        title: "Professional Programs",
+        slug: "programs",
+        description:
+          "Cohort-based programs with installment plans and lead instructors.",
+        audience: "all",
+        lastUpdated: "2026-08-14",
+        content: `
+# Professional Programs
+
+Programs are cohort-based, multi-month tracks — distinct from self-paced
+courses. A student enrols in a **cohort**, pays in full or in two installments,
+and is taught by a **lead instructor**.
+
+## For Students
+
+Enrol at **/enroll**. You choose a program, a cohort, and a payment plan.
+
+### Paying in installments
+Paying in two parts costs slightly more than paying in full — the difference is
+a financing fee, shown before you commit.
+
+| | Example |
+|---|---|
+| Full payment | ₦350,000 |
+| Installment total | ₦370,000 |
+| First payment (default 70%) | ₦259,000 |
+| Balance, due mid-programme | ₦111,000 |
+
+You may choose a larger first payment. The **minimum is 50%** of the
+installment total, so the outstanding balance never exceeds what you have
+already paid.
+
+The balance is paid from **/student/programs** when it falls due.
+
+## Cohorts
+
+Cohorts are named on a fixed system — cycle number, year, quarter and a
+phonetic label, for example **Cycle 42 · 26Q2 Delta**. Each has a seat limit
+and an open/closed state.
+
+## For Admins
+
+Cohorts are staffed at **/admin/program-earnings**, where you assign the lead
+instructor and later release their earnings. See **Revenue Sharing** for how
+the 25% share accrues and when it can be released.
+
+Enrolments and payment status are visible at **/admin/enrollments**.
+
+## For Developers
+
+### Payment shape
+Programs deliberately do **not** flow through \`Transaction\` /
+\`TransactionLineItem\`. They use \`ProgramEnrollment\` plus
+\`InstallmentPayment\` rows and call Paystack directly.
+
+> **Consequence:** program revenue does not appear in the admin transaction
+> reports, and programs charge **no VAT** while courses charge 7.5%. Both are
+> known gaps, not intentional design — see the implementation plan before
+> assuming either is settled.
+
+### Account provisioning
+A student who pays without an account gets one created automatically on first
+successful payment, with a password-reset link emailed to them. An existing
+email is linked to the enrolment instead.
+
+### Key files
+- \`actions/enrollment.ts\` — enrolment, installment schedule, verification
+- \`actions/program-balance-payment.ts\` — second installment
+- \`actions/program-earnings.ts\` — accrual and release
+- \`lib/cohort.ts\` — cohort naming and availability
+- \`data/programs.ts\` — the program catalogue and pricing
+`,
+      },
+      {
+        title: "Bootcamp",
+        slug: "bootcamp",
+        description:
+          "The seasonal bootcamp portal — tracks, tiers, teams and enrolment.",
+        audience: "all",
+        lastUpdated: "2026-08-14",
+        content: `
+# Bootcamp
+
+A seasonal, standalone portal for intensive cohorts, with its own landing
+experience separate from the main catalogue.
+
+## Structure
+
+| Model | What it is |
+|---|---|
+| \`Bootcamp\` | One season, e.g. "Summer Bootcamp 2026". Has a slug, dates, seat cap |
+| \`BootcampTrack\` | A specialisation within a season |
+| \`BootcampTier\` | A price tier / package for a track |
+| \`BootcampEnrollment\` | A student's place, tied to a track and tier |
+| \`BootcampTeam\` | Team formation for group work and hackathons |
+
+A season is toggled with \`isActive\`, so an old bootcamp can be archived
+without deleting its enrolments.
+
+## Routing
+
+The bootcamp lives in its own route group at \`app/bootcamp\`, separate from
+\`app/(root)\`, so it can carry a distinct visual identity without inheriting
+the main layout.
+
+> It is currently a **single landing page**. Track pages, the enrolment flow
+> and the team/hackathon surfaces described in the implementation plan are not
+> yet built — see \`docs/implementation/bootcamp/implementation-plan.md\`.
+
+## For Developers
+
+Bootcamp enrolment does **not** currently share the course checkout pipeline,
+so it does not produce \`Transaction\` rows, revenue splits or \`TutorEarning\`
+records. If bootcamp is monetised through the platform, route it through the
+existing checkout rather than adding a fourth payment path — the same argument
+that kept course bundles from needing new payment infrastructure.
+`,
+      },
+      {
+        title: "AI Features",
+        slug: "ai-features",
+        description:
+          "Course advisor, lesson chat, and personalised recommendations.",
+        audience: "all",
+        lastUpdated: "2026-08-14",
+        content: `
+# AI Features
+
+Three distinct AI surfaces, each with a different job.
+
+## Course Advisor
+
+A guided conversation that helps a prospective student choose a track, at
+**/features/ai-interview** and on the bootcamp advisor CTA.
+
+Conversations persist so they can be picked up later and reviewed by the team:
+
+| Model | Purpose |
+|---|---|
+| \`AdvisorSession\` | One conversation, identified by a \`sessionToken\` so an anonymous visitor keeps their thread |
+| \`AdvisorTurn\` | Individual messages |
+| \`AdvisorRecommendation\` | Courses or programs the advisor suggested |
+| \`AdvisorFollowUp\` | A captured lead, with status NEW → CONTACTED → CLOSED |
+
+Admins work the resulting leads at **/admin/advisor**.
+
+## Lesson Chat
+
+An in-lesson assistant that answers questions in the context of the lesson the
+student is currently on, at \`/api/lessons/[lessonId]/chat\`.
+
+## Recommendations
+
+\`AIRecommendation\` stores personalised course suggestions surfaced on the
+student dashboard.
+
+## For Developers
+
+- \`lib/ai/course-advisor.ts\` — advisor prompt and flow
+- \`lib/ai/lesson-chat.ts\` — lesson-scoped assistant
+- \`app/api/advisor/chat\` — advisor endpoint, rate limited per session
+- \`app/api/advisor/lead\` — lead capture
+
+Both advisor endpoints are **rate limited in memory** with a per-key bucket.
+That is per-instance, so it is a courtesy limit rather than a guarantee — a
+multi-instance deployment needs a shared store (Redis is already available)
+before it can be relied on.
+`,
+      },
+      {
+        title: "Certificates",
+        slug: "certificates",
+        description: "Issuing and publicly verifying completion certificates.",
+        audience: "all",
+        lastUpdated: "2026-08-14",
+        content: `
+# Certificates
+
+## For Students
+
+Complete a course and a certificate is issued to your account. Each carries a
+unique code, and anyone can confirm it is genuine at **/verify-certificate**
+without needing an account — useful when an employer asks.
+
+## Verification
+
+- Public page: \`/verify-certificate?code=<code>\`
+- API: \`/api/certificates/verify\`
+- Legacy \`/certificate/[id]\` links permanently redirect to the verification
+  page, so certificates issued under the old scheme keep working
+
+Verification is deliberately public and unauthenticated. A certificate nobody
+outside the platform can check is not worth issuing.
+
+## Volunteer Certificates
+
+\`VolunteerCertificate\` covers certificates awarded outside course completion
+— community and volunteer contributions — carried over from the previous
+platform. Seeded via \`scripts/seed-volunteer-certificates.ts\` from a CSV
+export.
+
+## For Developers
+
+- \`Certificate\` — issued on course completion, linked to user and course
+- \`VolunteerCertificate\` — standalone, unique \`certCode\`
+- Redirect configured in \`next.config.mjs\`
+
+> Certificate codes appear in public URLs and are the only credential needed to
+> view one. Keep them unguessable; do not switch them to sequential ids.
+`,
+      },
+      {
         title: "User Management",
         slug: "user-management",
         description: "Roles, permissions, and user lifecycle.",
@@ -1808,6 +2020,42 @@ enum UserRole {
 - **LoginAttempt** — Security audit trail
 - **BlockedIP** — IP-based rate limit records
 
+## Domain Map
+
+97 models. Grouped by what they are for, so you know where to look.
+
+| Domain | Models |
+|---|---|
+| **Identity** | \`User\`, \`Student\`, \`Tutor\`, \`Admin\`, \`Account\`, \`Session\`, \`VerificationToken\`, \`PasswordResetToken\` |
+| **Security** | \`LoginAttempt\`, \`IPBlacklist\` |
+| **Catalogue** | \`Course\`, \`CourseModule\`, \`Lesson\`, \`Category\`, \`CourseTag\`, \`Resource\` |
+| **Learning** | \`Enrollment\`, \`LessonProgress\`, \`Quiz\`, \`Question\`, \`QuizAttempt\`, \`QuizAnswer\`, \`Project\`, \`Submission\`, \`Task\`, \`TaskSubmission\`, \`LearningPath\`, \`Skill\`, \`UserSkill\`, \`ProgressMilestone\` |
+| **Commerce** | \`Transaction\`, \`TransactionLineItem\`, \`CartItem\`, \`Wishlist\`, \`PromoCode\`, \`PromoCodeUser\`, \`PromoRedemption\`, \`CoursePromotion\` |
+| **Bundles** | \`CourseBundle\`, \`CourseBundleItem\` |
+| **Group buying** | \`GroupTier\`, \`GroupPurchase\`, \`GroupMember\` |
+| **Money out** | \`TutorEarning\`, \`WalletEntry\`, \`WithdrawalRequest\`, \`Payout\`, \`PaymentMethod\`, \`VatLedger\` |
+| **Programs** | \`ProfessionalProgram\`, \`ProgramCohort\`, \`ProgramEnrollment\`, \`InstallmentPayment\`, \`ProgramRegistration\` |
+| **Bootcamp** | \`Bootcamp\`, \`BootcampTrack\`, \`BootcampTier\`, \`BootcampEnrollment\`, \`BootcampTeam\` |
+| **Mentorship** | \`MentorshipSession\`, \`MentorshipPackage\`, \`MentorshipPackageOrder\` |
+| **Exam Center** | \`Exam\`, \`ExamSection\`, \`ExamQuestion\`, \`ExamCandidate\`, \`ExamAttempt\`, \`ExamResponse\`, \`ExamGrade\`, \`ExamGradeAudit\`, \`ExamEvent\`, \`QuestionBank\`, \`QuestionBankShare\`, \`BankQuestion\`, \`QuestionImportBatch\` |
+| **AI** | \`AdvisorSession\`, \`AdvisorTurn\`, \`AdvisorRecommendation\`, \`AdvisorFollowUp\`, \`AIRecommendation\`, \`Chat\` |
+| **Content** | \`BlogLike\`, \`BlogView\`, \`BlogBookmark\`, \`BlogComment\` (posts live in Sanity, not Postgres) |
+| **Community** | \`Discussion\`, \`DiscussionReply\`, \`Review\`, \`ReviewReaction\`, \`Report\` |
+| **Credentials** | \`Certificate\`, \`VolunteerCertificate\` |
+| **Ops** | \`Notification\`, \`UserAnalytics\`, \`CourseAnalytics\`, \`PlatformSettings\`, \`Registration\` |
+
+> \`PlatformEvent\` is referenced by \`lib/analytics/track.ts\` but **does not
+> exist** in the schema. See **Analytics & Tracking**.
+
+## Money Columns
+
+Every currency column is \`Float\` (Postgres \`double precision\`) — 53 of them.
+Arithmetic in \`lib/payments/revenue.ts\` is done in integer kobo to avoid
+accumulating error, but storage has not been migrated.
+
+**Do not add new \`Float\` money columns.** If you need one, that is the moment
+to raise the migration rather than widen the problem.
+
 ## Key Relationships
 
 - A **User** can be a Student, Tutor, and/or Admin simultaneously
@@ -1816,6 +2064,140 @@ enum UserRole {
 - **Enrollments** connect Students to Courses with progress tracking
 - **Transactions** link to Users and can contain multiple line items
 - **MentorshipSessions** bridge Student and Tutor with Zoom integration
+`,
+      },
+      {
+        title: "Roles & Permissions",
+        slug: "roles",
+        description: "The seven roles, what each can reach, and how it is enforced.",
+        audience: "developer",
+        lastUpdated: "2026-08-14",
+        content: `
+# Roles & Permissions
+
+## The roles
+
+| Role | Purpose |
+|---|---|
+| \`USER\` | Signed up, has not bought anything yet |
+| \`STUDENT\` | Has at least one enrolment. Promoted automatically on first purchase |
+| \`TUTOR\` | Creates and sells courses, bundles and programs |
+| \`MENTOR\` | Runs 1-on-1 sessions. Overlaps tutor routes |
+| \`ADMIN\` | Full operational access |
+| \`TESTER\` | Documentation and pre-release access only |
+| \`SUPERIOR\` | Manages testers and testing operations |
+
+\`USER\` → \`STUDENT\` promotion happens inside settlement, alongside creating
+the \`Student\` profile row.
+
+## Enforcement happens in two places
+
+Both must agree, and forgetting one is the usual source of "it works locally
+but not in production" routing bugs.
+
+### 1. Middleware — \`proxy.ts\`
+Route lists in \`routes.ts\` classify every path as public, auth, protected,
+admin, tutor, mentor, student, payment, documentation or superior. The
+middleware matches the request path and redirects when the role does not fit.
+
+Patterns support segments: \`/courses/[slug]\` matches any single segment.
+
+### 2. The action or page itself
+Every server action re-checks. Middleware is routing, not authorisation — an
+action reachable by any other path must defend itself:
+
+\`\`\`ts
+const session = await auth();
+if (!session?.user?.id || session.user.role !== "ADMIN") {
+  return { ok: false, error: "Forbidden" };
+}
+\`\`\`
+
+## Post-login redirects
+
+\`resolvePostLoginRedirect\` in \`actions/auth.ts\` validates \`?callbackUrl=\`
+against a **per-role allowlist**, falling back to the role's default if the
+path is not permitted.
+
+> A public route with a return-to flow must be added to **both** the allowlist
+> and \`publicRoutes\`. Miss the allowlist and the callbackUrl is silently
+> discarded — the redirect looks wired up and quietly sends the user somewhere
+> else. \`/bundles\` failed exactly this way.
+
+OAuth sign-in reads the same \`?callbackUrl=\`; it previously hardcoded a
+destination and dropped it.
+
+## Adding a role-gated route
+
+1. Add the path to the right list in \`routes.ts\`
+2. Re-check the role inside the page or action
+3. If it is public **and** returns users after login, add it to
+   \`publicRoutes\` **and** the allowlist in \`resolvePostLoginRedirect\`
+4. Add it to the relevant menu in \`lib/const.tsx\` — there are **two**
+   structures, a sidebar nav and \`roleMenuItems\` for the profile dropdown.
+   Editing one leaves the page unreachable from the other
+`,
+      },
+      {
+        title: "Integrations",
+        slug: "integrations",
+        description: "Third-party services, what each does, and how it fails.",
+        audience: "developer",
+        lastUpdated: "2026-08-14",
+        content: `
+# Integrations
+
+| Service | Used for | Key env |
+|---|---|---|
+| **Paystack** | Payments, transfers, subaccounts | \`PAYSTACK_SECRET_KEY\`, \`PAYSTACK_PUBLIC_KEY\` |
+| **Neon Postgres** | Database, via the Prisma Neon adapter | \`DATABASE_URL\` |
+| **Resend** | Transactional email | \`RESEND_API_KEY\` |
+| **Sanity** | Blog and CMS content | \`NEXT_PUBLIC_SANITY_PROJECT_ID\`, \`NEXT_PUBLIC_SANITY_DATASET\` |
+| **DigitalOcean Spaces** | Uploads (S3-compatible) | \`DO_SPACES_*\` |
+| **Zoom** | Mentorship meeting links | Zoom app credentials |
+| **YouTube** | Lesson video hosting and chunked upload | OAuth credentials |
+| **Upstash Redis** | Rate limiting | \`UPSTASH_REDIS_REST_*\` |
+| **Meta** | Pixel and Conversions API | Pixel + access token |
+| **Mixpanel / GA** | Product and web analytics | Project token / measurement id |
+| **Socket.io** | Realtime notifications | — |
+
+## Paystack
+
+Payments initialise server-side and settle in
+\`finalizePaystackByReference\`, which is **idempotent** — it returns early on
+an already-completed transaction. The webhook at \`/api/webhook\` validates the
+signature with HMAC SHA-512.
+
+Amounts are sent in **kobo** (\`amount * 100\`); everything stored is naira.
+
+## Storage — read this before debugging a broken image
+
+Uploads go to **DigitalOcean Spaces**. Older records still point at an AWS S3
+bucket (\`isce-image-uploader\`) that **no longer exists** and returns
+\`NoSuchBucket\`.
+
+Those rows hold a well-formed URL that 404s, so a fallback testing only for a
+*missing* value never fires. Use \`CourseThumbnail\`, which falls back on the
+load **error** as well as on absence.
+
+## Zoom
+
+Meeting links are created when a mentorship session starts. Failure is caught
+and logged rather than blocking the session — the tutor is prompted to add a
+link manually. Do not make it fatal; a payment has already succeeded by then.
+
+## Rate limiting
+
+Two mechanisms, deliberately different:
+- **Upstash Redis** for anything that must hold across instances
+- **In-memory buckets** in the advisor endpoints — per-instance, therefore a
+  courtesy limit rather than a guarantee
+
+## Failure posture
+
+Integrations that are not on the critical path should degrade, not throw. CRM
+events, analytics and Zoom creation all catch their own errors. A payment must
+never fail because Meta Conversions was unreachable.
 `,
       },
       {
@@ -1992,7 +2374,7 @@ Server actions follow a consistent pattern:
         slug: "rest-api",
         description: "HTTP API endpoints for external integrations.",
         audience: "developer",
-        lastUpdated: "2026-04-28",
+        lastUpdated: "2026-08-14",
         content: `
 # REST API Endpoints
 
@@ -2257,6 +2639,91 @@ Generate new keys with:
 \`\`\`bash
 node scripts/generate-integration-keys.js
 \`\`\`
+
+## Full Endpoint Index
+
+Every route under \`app/api\`, grouped. Auth column: **session** = signed-in
+user, **secret** = bearer token, **public** = no auth.
+
+### Payments
+| Endpoint | Auth | Purpose |
+|---|---|---|
+| \`POST /api/paystack/finalize\` | session | Settle a transaction by reference |
+| \`POST /api/webhook\` | signature | Paystack webhook, HMAC SHA-512 verified |
+| \`GET /api/promos/validate\` | session | Validate a promo code |
+| \`GET /api/wallet/summary\` | session | Balance, earnings, accrued, pending |
+| \`POST /api/wallet/withdraw\` | session | Request a withdrawal |
+| \`POST /api/admin/withdrawals/approve\` | admin | Approve and transfer |
+| \`POST /api/admin/withdrawals/reject\` | admin | Reject and return funds |
+| \`POST /api/group-purchase/join\` | session | Join a group by invite code |
+
+### Learning
+| Endpoint | Auth | Purpose |
+|---|---|---|
+| \`POST /api/lessons/[lessonId]/complete\` | session | Mark a lesson complete |
+| \`GET /api/lessons/[lessonId]/video\` | session | Signed video access |
+| \`POST /api/lessons/[lessonId]/chat\` | session | Lesson AI assistant |
+| \`GET /api/quiz/[quizId]/questions\` | session | Quiz questions |
+| \`POST /api/quiz/[quizId]/submit\` | session | Submit — **scored server-side** |
+| \`GET /api/quiz/[quizId]/attempts\` | session | Attempt history |
+
+### Mentorship
+| Endpoint | Auth | Purpose |
+|---|---|---|
+| \`GET /api/mentorship/offerings\` | public | Browse offerings |
+| \`GET/DELETE /api/mentorship/offerings/[offeringId]\` | session | Manage one |
+| \`POST /api/mentorship/proceed-payment\` | session | Pay an approved request |
+| \`GET /api/mentorship/session/[sessionId]\` | session | Session detail |
+| \`GET /api/mentorship/suggestions\` | session | Suggested mentors |
+
+### AI
+| Endpoint | Auth | Purpose |
+|---|---|---|
+| \`POST /api/advisor/chat\` | public | Course advisor, rate limited |
+| \`POST /api/advisor/lead\` | public | Capture a lead |
+
+### Content & discovery
+| Endpoint | Auth | Purpose |
+|---|---|---|
+| \`GET /api/search\` | public | Global search |
+| \`GET /api/resources\` | session | Course resources |
+| \`POST /api/blog/view\` · \`like\` · \`bookmark\` · \`comments\` | mixed | Blog engagement |
+| \`GET /api/wishlist/check\` | session | Wishlist state |
+
+### Identity & credentials
+| Endpoint | Auth | Purpose |
+|---|---|---|
+| \`GET/POST /api/auth/[...nextauth]\` | public | NextAuth |
+| \`GET /api/certificates/verify\` | public | Verify a certificate |
+| \`POST /api/students/verify\` | session | Student verification |
+| \`POST /api/applications\` | public | Tutor/mentor application |
+| \`GET /api/referral/track\` | public | Set the 30-day referral cookie |
+| \`GET /api/notifications\` | session | Poll notifications |
+
+### Media
+| Endpoint | Auth | Purpose |
+|---|---|---|
+| \`POST /api/upload\` | session | Upload to DigitalOcean Spaces |
+| \`POST /api/youtube/upload\` · \`/chunk\` | session | Chunked video upload |
+| \`GET /api/youtube/channel\` | session | Channel info |
+
+### Scheduled & integration
+| Endpoint | Auth | Purpose |
+|---|---|---|
+| \`POST /api/cron/exam-sweep\` | secret | Close expired attempts |
+| \`POST /api/cron/payment-sweep\` | secret | Settle stranded charges |
+| \`GET /api/integrations/mailing/users\` | api key | Mailing list sync |
+| \`POST /api/analytics/track\` | session | Event tracking (see Analytics) |
+| \`POST /api/admin/fix-students\` | admin | Backfill missing student profiles |
+
+## Conventions
+
+- Cron endpoints **fail closed**: an unset \`CRON_SECRET\` returns 503, never
+  an unauthenticated run
+- Secrets are compared in constant time
+- Public endpoints that write are rate limited
+- Anything touching money re-checks authorisation inside the handler; the
+  middleware is routing, not authorisation
 `,
       },
     ],
@@ -2268,6 +2735,67 @@ node scripts/generate-integration-keys.js
     slug: "development",
     icon: "Wrench",
     children: [
+      {
+        title: "Analytics & Tracking",
+        slug: "analytics",
+        description:
+          "Product events, web analytics, and a tracking table that does not exist.",
+        audience: "developer",
+        lastUpdated: "2026-08-14",
+        content: `
+# Analytics & Tracking
+
+## Known defect — read first
+
+\`trackEvent\` writes to \`db.platformEvent\`, but **there is no
+\`PlatformEvent\` model in the schema**. Every call fails:
+
+\`\`\`
+[Analytics] Failed to track event: checkout_started
+TypeError: Cannot read properties of undefined (reading 'create')
+\`\`\`
+
+The failure is caught and logged, so nothing breaks — which is precisely why it
+went unnoticed. **No product event has ever been recorded.** Any funnel
+analysis based on \`PlatformEvent\` is analysing an empty table.
+
+Fixing it means adding the model and pushing the schema. Until then, treat
+in-app event data as absent rather than sparse.
+
+## What does work
+
+| Layer | Mechanism |
+|---|---|
+| Web analytics | Google Analytics via \`lib/gtag.ts\` |
+| Product analytics | Mixpanel |
+| Ad attribution | Meta Pixel (\`lib/fbpixel.ts\`) and the Conversions API server-side |
+| Course/user rollups | \`CourseAnalytics\`, \`UserAnalytics\` |
+| Tutor dashboards | Derived from \`TutorEarning\` and enrolments directly |
+
+Meta receives both a browser Pixel event and a server-side Conversions event
+for purchases, which is deliberate — the server event survives ad blockers.
+
+## Tutor earnings figures
+
+Anything labelled *earnings* reads from \`TutorEarning\`, filtered to
+\`AVAILABLE\` and \`PAID\`. It must not be computed from \`Transaction.amount\`:
+that is the gross the student paid, including VAT owed to FIRS and the
+platform's share. Reporting it as tutor earnings overstates by roughly 4x.
+
+## Adding an event
+
+\`\`\`ts
+import { trackEvent, PLATFORM_EVENTS } from "@/lib/analytics/track";
+
+trackEvent(PLATFORM_EVENTS.CHECKOUT_COMPLETED, {
+  userId, entityType: "transaction", entityId: tx.id, value: tx.amount,
+});
+\`\`\`
+
+Never \`await\` it in a payment path, and never let it throw — a failed
+analytics write must not fail a purchase.
+`,
+      },
       {
         title: "Background Jobs",
         slug: "background-jobs",
@@ -2482,7 +3010,7 @@ Add the output values to your \`.env\` file. During a key rotation:
         slug: "seo",
         description: "Search engine optimization strategy and implementation.",
         audience: "developer",
-        lastUpdated: "2026-04-17",
+        lastUpdated: "2026-08-14",
         content: `
 # SEO Implementation
 
@@ -2561,6 +3089,80 @@ export default function robots() {
 - Branded 404 page at \`app/not-found.tsx\`
 - Helpful navigation links
 - Search functionality
+
+## Current Coverage — audited 2026-08-14
+
+Measured against the codebase, not aspiration.
+
+| Surface | State |
+|---|---|
+| \`sitemap.ts\` | Static pages, courses, categories, blog posts |
+| \`robots.ts\` | Present |
+| \`rss.xml\`, \`news-sitemap.xml\` | Present |
+| \`manifest.ts\` | PWA manifest present |
+| Dynamic OG images | \`opengraph-image.tsx\`, \`twitter-image.tsx\` |
+| JSON-LD | Home, blog index, blog post, course detail, help, root layout |
+| \`generateMetadata\` | **5 files** |
+
+## Gaps To Close
+
+These are the concrete items for an SEO push, in rough order of value.
+
+### 1. Missing from the sitemap
+Three revenue surfaces are not submitted at all:
+
+- **Bundles** — \`/bundles/[slug]\`, already a public route
+- **Programs** — \`/enroll\` exists, but individual programs have no indexable page
+- **Bootcamp** — its own route group, entirely absent
+
+Anything that can be linked and bought should be in the sitemap.
+
+### 2. Metadata coverage is thin
+Only five files export \`generateMetadata\`. Every public, indexable route
+wants a title and description written for search, not inherited from the
+layout. Highest value first: course detail, bundle landing, blog post, program
+and bootcamp pages.
+
+### 3. Structured data
+JSON-LD is on six pages. Missing where it would matter most:
+
+| Page | Schema |
+|---|---|
+| Course detail | \`Course\` with \`provider\`, \`offers\`, \`aggregateRating\` |
+| Bundle landing | \`Product\` / \`ItemList\` with \`offers\` |
+| Program | \`Course\` with \`hasCourseInstance\` for cohort dates |
+| Tutor profile | \`Person\` |
+| Certificate verification | \`EducationalOccupationalCredential\` |
+
+Course and Product markup drive rich results — the difference between a blue
+link and a listing with price and rating.
+
+### 4. Canonicals and duplicates
+\`/courses/[courseId]\` accepts both a slug and a cuid. Two URLs serving one
+course splits ranking signals. Set a canonical to the slug form, and make sure
+category filter URLs (\`/courses?category=\`) either canonicalise to
+\`/courses\` or are genuinely distinct pages.
+
+### 5. Images
+Course thumbnails point at a deleted bucket and fall back to generated
+placeholders. Placeholder images cannot rank, cannot be shared meaningfully,
+and weaken OG cards. Restoring real thumbnails is an SEO task as much as a
+cosmetic one.
+
+### 6. Content depth
+The blog is the main organic surface and is already wired for it — Sanity CMS,
+RSS, a news sitemap, JSON-LD, and engagement models (\`BlogView\`,
+\`BlogLike\`, \`BlogComment\`, \`BlogBookmark\`). It is the cheapest place to
+add indexable depth.
+
+## Before Changing Anything
+
+- Confirm \`NEXT_PUBLIC_URL\` is the canonical production origin. Sitemap and
+  OG URLs are built from it, and a wrong value poisons every absolute URL
+- \`/documentation\` and \`/studio\` should not be competing for search traffic
+  with the marketing surfaces; decide deliberately whether they are indexable
+- Do not index anything behind auth. Student, tutor and admin routes are
+  redirected by the middleware, but a sitemap entry still invites a crawl
 `,
       },
       {
