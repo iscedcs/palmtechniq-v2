@@ -12,16 +12,16 @@ import { TrustSignalsSection } from "@/components/trust-signals-section";
 import type { Metadata } from "next";
 
 export const metadata: Metadata = {
-  title: "PalmTechnIQ - Learn AI, Web Development & Data Science Online",
+  title: "PalmTechnIQ — Learn Any Skill, from Tailoring to AI",
   description:
-    "Master in-demand tech skills with PalmTechnIQ. Practical courses in AI, web development, data science, and more — with expert mentorship and real-world projects.",
+    "Master a trade, a craft, or AI and technology — with practical courses, real projects and mentorship. Already skilled? Publish a course and get paid to your bank.",
   alternates: {
     canonical: "/",
   },
   openGraph: {
-    title: "PalmTechnIQ - Learn AI, Web Development & Data Science Online",
+    title: "PalmTechnIQ — Learn Any Skill, from Tailoring to AI",
     description:
-      "Master in-demand tech skills with practical courses, expert mentorship, and real-world projects.",
+      "Practical courses, real projects and mentorship. Already skilled? Publish a course and get paid.",
     url: "https://palmtechniq.com",
     type: "website",
   },
@@ -35,7 +35,7 @@ export default function HomePage() {
     url: "https://palmtechniq.com",
     logo: "https://palmtechniq.com/opengraph-image",
     description:
-      "Advanced e-learning platform for AI, web development, data science, and career-focused technical skills.",
+      "PalmTechnIQ is a learning marketplace where anyone can learn a skill — from tailoring and auto repair to design, coding and AI — or teach what they know and earn from it.",
     email: "support@palmtechniq.com",
     sameAs: [
       "https://www.facebook.com/palmtechniq/",
@@ -45,21 +45,40 @@ export default function HomePage() {
       "https://x.com/palmtechniq/",
     ],
     areaServed: "Worldwide",
+    // Mirrors the real category list, which spans trades and creative skills
+    // as well as technology. Declaring only "Tech Courses" told search engines
+    // the catalogue was narrower than it is.
     hasOfferCatalog: {
       "@type": "OfferCatalog",
-      name: "Tech Courses",
+      name: "Courses & Skills",
       itemListElement: [
         {
           "@type": "OfferCatalog",
-          name: "AI & Data Science Courses",
+          name: "AI, Data Science & Machine Learning",
         },
         {
           "@type": "OfferCatalog",
-          name: "Web Development Courses",
+          name: "Web, Mobile & Cloud Development",
         },
         {
           "@type": "OfferCatalog",
-          name: "Career-Focused Technical Skills",
+          name: "Cybersecurity",
+        },
+        {
+          "@type": "OfferCatalog",
+          name: "Design, Photography & Creative Skills",
+        },
+        {
+          "@type": "OfferCatalog",
+          name: "Business, Marketing & Entrepreneurship",
+        },
+        {
+          "@type": "OfferCatalog",
+          name: "Trades & Vocational Skills",
+        },
+        {
+          "@type": "OfferCatalog",
+          name: "Health, Lifestyle & Personal Development",
         },
       ],
     },

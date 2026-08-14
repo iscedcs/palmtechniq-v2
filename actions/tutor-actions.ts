@@ -694,7 +694,9 @@ export async function getCategories() {
     const categories = await db.category.findMany({
       where: { isActive: true },
       orderBy: { sortOrder: "asc" },
-      select: { id: true, name: true },
+      // slug is needed so category chips can link to /courses/category/<slug>
+      // rather than filtering in local state only.
+      select: { id: true, name: true, slug: true },
     });
     return { success: true, categories };
   } catch (error) {

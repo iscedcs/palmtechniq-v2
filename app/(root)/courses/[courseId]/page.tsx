@@ -32,6 +32,12 @@ export async function generateMetadata(props: {
     course.description?.slice(0, 160) || "Learn with PalmTechnIQ";
   const courseUrl = `https://palmtechniq.com/courses/${course.slug || course.id}`;
 
+  // A share card with no image is weak, so fall back to the site image rather
+  // than emitting an empty array. Note this cannot detect a thumbnail whose
+  // URL is present but dead; scripts/audit-course-thumbnails.ts clears those.
+  const shareImage =
+    course.thumbnail || "https://palmtechniq.com/opengraph-image";
+
   return {
     title: course.title,
     description,
@@ -42,16 +48,14 @@ export async function generateMetadata(props: {
       title: course.title,
       description,
       url: courseUrl,
-      images: course.thumbnail
-        ? [
-            {
-              url: course.thumbnail,
-              width: 1200,
-              height: 630,
-              alt: course.title,
-            },
-          ]
-        : [],
+      images: [
+        {
+          url: shareImage,
+          width: 1200,
+          height: 630,
+          alt: course.title,
+        },
+      ],
       type: "website",
       siteName: "PalmTechnIQ",
     },
@@ -59,7 +63,7 @@ export async function generateMetadata(props: {
       card: "summary_large_image",
       title: course.title,
       description,
-      images: course.thumbnail ? [course.thumbnail] : [],
+      images: [shareImage],
     },
   };
 }

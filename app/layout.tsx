@@ -18,20 +18,32 @@ const inter = Inter({ subsets: ["latin"] });
 
 export const metadata: Metadata = {
   title: {
-    default: "PalmTechnIQ - Advanced E-Learning Platform",
+    default: "PalmTechnIQ — Learn a Skill, Teach a Skill, Get Paid",
     template: "%s | PalmTechnIQ",
   },
   description:
-    "PalmTechnIQ is an advanced e-learning platform for AI, web development, data science, and career-focused technical skills.",
+    "Learn any skill — tailoring, auto repair, catering, design, coding and AI. Or teach what you already know and earn from it. Courses, mentorship, certificates.",
   applicationName: "PalmTechnIQ",
   keywords: [
     "PalmTechnIQ",
-    "e-learning platform",
-    "online courses",
+    // Broad intent — the platform is for any skill, not only technical ones.
+    "learn a skill online",
+    "teach online and earn",
+    "sell your course online",
+    "online courses Nigeria",
+    "vocational skills training",
+    "artisan training",
+    "tailoring course",
+    "auto repair course",
+    // Technical intent retained — these are still core categories.
     "AI courses",
+    "artificial intelligence course",
+    "cybersecurity course",
+    "cybersecurity training Nigeria",
     "web development",
     "data science",
-    "tech mentorship",
+    "online mentorship",
+    "e-learning platform",
   ],
   authors: [{ name: "PalmTechnIQ Team" }, { name: "Ignatius Emeka Joshua" }],
   creator: "PalmTechnIQ",

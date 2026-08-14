@@ -1,6 +1,7 @@
 import type { MetadataRoute } from "next";
 import { db } from "@/lib/db";
 import { getPostSlugs } from "@/lib/sanity-queries";
+import { PROGRAMS } from "@/data/programs";
 
 export const dynamic = "force-dynamic";
 
@@ -93,7 +94,22 @@ export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
       changeFrequency: "monthly",
       priority: 0.4,
     },
+    {
+      url: `${baseUrl}/bootcamp`,
+      lastModified: new Date(),
+      changeFrequency: "weekly",
+      priority: 0.8,
+    },
   ];
+
+  // Professional programs. The catalogue is static, so unlike the sections
+  // below this needs no database and cannot silently produce nothing.
+  const programPages: MetadataRoute.Sitemap = PROGRAMS.map((program) => ({
+    url: `${baseUrl}/enroll/${program.slug}`,
+    lastModified: new Date(),
+    changeFrequency: "weekly" as const,
+    priority: 0.85,
+  }));
 
   // Dynamic course pages
   let coursePages: MetadataRoute.Sitemap = [];
@@ -119,7 +135,9 @@ export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
     // DB may not be available during build
   }
 
-  // Dynamic category pages
+  // Category pages. Real paths, not ?category= query strings: nothing linked
+  // to those, the courses page never read them, and all 26 rendered the same
+  // unfiltered list.
   let categoryPages: MetadataRoute.Sitemap = [];
   try {
     const categories = await db.category.findMany({
@@ -132,10 +150,32 @@ export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
 
     categoryPages = categories.map(
       (category: { slug: string; updatedAt: Date }) => ({
-        url: `${baseUrl}/courses?category=${category.slug}`,
+        url: `${baseUrl}/courses/category/${category.slug}`,
         lastModified: category.updatedAt,
         changeFrequency: "weekly" as const,
         priority: 0.7,
+      }),
+    );
+  } catch {
+    // DB may not be available during build
+  }
+
+  // Course bundles. Only ones the platform has approved and the tutor has left
+  // live, matching exactly what beginBundleCheckout will accept. Submitting a
+  // bundle that refuses to sell would earn a crawl and a bounce.
+  let bundlePages: MetadataRoute.Sitemap = [];
+  try {
+    const bundles = await db.courseBundle.findMany({
+      where: { reviewStatus: "APPROVED", isActive: true },
+      select: { slug: true, updatedAt: true },
+    });
+
+    bundlePages = bundles.map(
+      (bundle: { slug: string; updatedAt: Date }) => ({
+        url: `${baseUrl}/bundles/${bundle.slug}`,
+        lastModified: bundle.updatedAt,
+        changeFrequency: "weekly" as const,
+        priority: 0.8,
       }),
     );
   } catch {
@@ -158,5 +198,12 @@ export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
     // CMS may not be available during build
   }
 
-  return [...staticPages, ...coursePages, ...categoryPages, ...blogPages];
+  return [
+    ...staticPages,
+    ...programPages,
+    ...coursePages,
+    ...bundlePages,
+    ...categoryPages,
+    ...blogPages,
+  ];
 }
