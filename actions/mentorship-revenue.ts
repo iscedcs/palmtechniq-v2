@@ -666,7 +666,7 @@ export async function proceedWithApprovedBookingPayment(sessionId: string) {
     },
   });
 
-  const callbackBase = process.env.NEXT_PUBLIC_URL || "http://localhost:3000";
+  const callbackBase = process.env.NEXT_PUBLIC_URL || "http://localhost:2026";
   const pay = await paystackInitialize({
     email: session.user.email,
     amountKobo: Math.round(tx.amount * 100),

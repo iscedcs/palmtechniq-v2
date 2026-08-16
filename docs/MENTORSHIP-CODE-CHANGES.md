@@ -10,10 +10,12 @@
 ### File: `prisma/schema.prisma`
 
 **Location Line 1402-1415:**
+
 - ✅ Added enum value: `PENDING_MENTOR_REVIEW` (new state for REQUEST mode awaiting mentor)
 - ✅ Added enum value: `REJECTED` (new state for mentor-declined REQUEST)
 
 **Location Line 623-651:**
+
 - ✅ Added field: `approvalNotes: String?` (mentor's rejection reason)
 - ✅ Added field: `rejectedAt: DateTime?` (timestamp when rejected)
 - ✅ Added field: `approvalDeadline: DateTime?` (72-hour deadline, future feature)
@@ -29,6 +31,7 @@
 **Changes Made:**
 
 #### Import Addition
+
 ```typescript
 + import { notify } from "@/lib/notify";
 ```
@@ -36,46 +39,53 @@
 #### Function: `beginMentorshipCheckout()` (Lines ~165-175)
 
 **Before:**
+
 ```typescript
 status: "SCHEDULED",  // Always set to SCHEDULED
 ```
 
 **After:**
+
 ```typescript
 status: input.bookingMode === "REQUEST" ? "PENDING_MENTOR_REVIEW" : "SCHEDULED",
 bookingMode: input.bookingMode,  // Store the mode
-approvalDeadline: input.bookingMode === "REQUEST" 
-  ? new Date(Date.now() + 72 * 60 * 60 * 1000) 
+approvalDeadline: input.bookingMode === "REQUEST"
+  ? new Date(Date.now() + 72 * 60 * 60 * 1000)
   : null,
 ```
 
 **New Actions Added:**
 
 #### `approveMentorshipRequest(sessionId)`
+
 - Validates: tutor is owner, status is PENDING_MENTOR_REVIEW
 - Updates: status → SCHEDULED, notes → APPROVED_BY_MENTOR
 - Notifies: student via socket (approval callback with payment link)
 - Returns: updated session
 
 #### `rejectMentorshipRequest(sessionId, reason)`
+
 - Validates: tutor is owner, status is PENDING_MENTOR_REVIEW
 - Updates: status → REJECTED, approvalNotes → reason, rejectedAt → now
 - Notifies: student with rejection reason
 - Returns: updated session
 
 #### `proceedWithApprovedBookingPayment(sessionId)`
+
 - Validates: session is approved REQUEST (status SCHEDULED + bookingMode REQUEST)
 - Creates: new Transaction record (70/30 split)
 - Initiates: Paystack payment (same flow as INSTANT)
 - Returns: authorizationUrl for payment
 
 #### `getTutorPendingApprovals()`
+
 - Fetches: all PENDING_MENTOR_REVIEW sessions for tutor
 - Includes: student info, session details
 - Ordered: by creation date (newest first)
 - Returns: list of pending requests
 
 #### `getApprovedSessionsReadyForPayment()`
+
 - Fetches: student's SCHEDULED REQUEST sessions (not yet paid)
 - Validation: paymentStatus = PENDING, bookingMode = REQUEST
 - Returns: list of approved sessions ready for payment
@@ -87,6 +97,7 @@ approvalDeadline: input.bookingMode === "REQUEST"
 ### File: `lib/payments/finalizePaystack.ts`
 
 **Import Addition:**
+
 ```typescript
 + import { createZoomMeeting } from "@/lib/zoom-integration";
 ```
@@ -94,6 +105,7 @@ approvalDeadline: input.bookingMode === "REQUEST"
 **Function: Payment Verification (Lines ~51-95)**
 
 **Before (Old Code):**
+
 ```typescript
 if (isMentorshipPayment) {
   const mentorshipSessionId = metadata?.mentorshipSessionId;
@@ -102,7 +114,7 @@ if (isMentorshipPayment) {
       where: { id: mentorshipSessionId },
       data: {
         status: "SCHEDULED",
-        notes: `PAYMENT_CONFIRMED | ...`
+        notes: `PAYMENT_CONFIRMED | ...`,
       },
     });
   }
@@ -111,6 +123,7 @@ if (isMentorshipPayment) {
 ```
 
 **After (New Code):**
+
 ```typescript
 if (isMentorshipPayment) {
   const session = await px.mentorshipSession.findUnique({
@@ -165,7 +178,7 @@ if (isMentorshipPayment) {
         actionUrl: `/mentorship/session/${mentorshipSessionId}`,
         actionLabel: "View Session",
       });
-      
+
       notify.user(session.tutorId, {
         type: "payment",
         title: "Mentorship Payment Received",
@@ -189,14 +202,15 @@ if (isMentorshipPayment) {
 **Exports 5 Functions:**
 
 ```typescript
-export async function createZoomMeeting(input)    // Create meeting
-export async function getZoomMeeting(meetingId)   // Fetch details
-export async function updateZoomMeeting(meetingId, updates)  // Reschedule
-export async function deleteZoomMeeting(meetingId) // Cancel
-export async function getZoomMeetingRecordings(meetingId) // Get recordings
+export async function createZoomMeeting(input); // Create meeting
+export async function getZoomMeeting(meetingId); // Fetch details
+export async function updateZoomMeeting(meetingId, updates); // Reschedule
+export async function deleteZoomMeeting(meetingId); // Cancel
+export async function getZoomMeetingRecordings(meetingId); // Get recordings
 ```
 
 **Key Features:**
+
 - JWT-based OAuth (server-to-server)
 - Handles token expiry automatically
 - Comprehensive error handling
@@ -212,6 +226,7 @@ export async function getZoomMeetingRecordings(meetingId) // Get recordings
 **Size:** ~250 lines
 
 **Props:**
+
 ```typescript
 interface MentorshipPendingApprovalsProps {
   initialSessions: PendingSession[];
@@ -220,6 +235,7 @@ interface MentorshipPendingApprovalsProps {
 ```
 
 **Features:**
+
 - Displays list of pending REQUEST bookings
 - Shows student info, session details, pricing
 - "Approve" button → Updates status, notifies student
@@ -231,6 +247,7 @@ interface MentorshipPendingApprovalsProps {
 **Size:** ~350 lines
 
 **Features:**
+
 - Fetches session via API
 - Displays full session details
 - Renders Zoom meeting embed (if URL exists)
@@ -243,12 +260,14 @@ interface MentorshipPendingApprovalsProps {
 ### Updated: `app/(root)/tutor/mentorship/page.tsx`
 
 **Lines ~1-70:**
+
 - ✅ Added imports: `getTutorPendingApprovals`, `MentorshipPendingApprovals`
 - ✅ Added state: `pendingApprovals`
 - ✅ Added type union: Include `PENDING_MENTOR_REVIEW` and `REJECTED` statuses
 - ✅ Updated `loadData()` to fetch both sessions and pending approvals
 
 **Lines ~130-210:**
+
 - ✅ Added stats card: "Pending Approvals" count
 - ✅ Changed tab grid: 4 columns → 5 columns (added approvals tab)
 - ✅ Added "Approvals" tab (first): Yellow notification dot if pending > 0
@@ -258,9 +277,11 @@ interface MentorshipPendingApprovalsProps {
 ### Updated: `app/(root)/student/mentorship/page.tsx`
 
 **Lines ~17-35:**
+
 - ✅ Added type fields: `bookingMode`, `paymentStatus`
 
 **Lines ~90-120:**
+
 - ✅ Updated `useMemo` filters:
   - `pendingApprovals` → status = PENDING_MENTOR_REVIEW
   - `upcoming` → status in [SCHEDULED, IN_PROGRESS] && time >= now
@@ -268,6 +289,7 @@ interface MentorshipPendingApprovalsProps {
   - `rejected` → status = REJECTED
 
 **Lines ~150-210:**
+
 - ✅ Changed tab grid: 3 columns → 5 columns
 - ✅ Reordered tabs: Pending Approvals → Upcoming → History → Rejected → Book
 - ✅ Added "Awaiting Approval" tab (shows pendingApprovals list)
@@ -334,29 +356,30 @@ ZOOM_CLIENT_ID=your_client_id
 ZOOM_CLIENT_SECRET=your_client_secret
 
 # Ensure this exists:
-NEXT_PUBLIC_URL=http://localhost:3000  # or production URL
+NEXT_PUBLIC_URL=http://localhost:2026  # or production URL
 ```
 
 ---
 
 ## Code Statistics
 
-| Type | Count | Status |
-|------|-------|--------|
-| Files Created | 5 | ✅ NEW |
-| Files Modified | 5 | ✅ UPDATED |
-| Functions Added | 6 | ✅ NEW |
-| TypeScript Lines | ~1,500 | ✅ NEW |
-| Dependencies | 2 | ✅ ADDED |
-| Database Fields | 3 | ✅ NEW |
-| Enum Values | 2 | ✅ NEW |
-| API Endpoints | 2 | ✅ NEW |
+| Type             | Count  | Status     |
+| ---------------- | ------ | ---------- |
+| Files Created    | 5      | ✅ NEW     |
+| Files Modified   | 5      | ✅ UPDATED |
+| Functions Added  | 6      | ✅ NEW     |
+| TypeScript Lines | ~1,500 | ✅ NEW     |
+| Dependencies     | 2      | ✅ ADDED   |
+| Database Fields  | 3      | ✅ NEW     |
+| Enum Values      | 2      | ✅ NEW     |
+| API Endpoints    | 2      | ✅ NEW     |
 
 ---
 
 ## Backward Compatibility
 
 ✅ **INSTANT mode unchanged** - All existing INSTANT bookings work as before:
+
 - Direct Paystack redirect (no approval step)
 - Zoom meeting creation after payment
 - Session page still loads

@@ -30,11 +30,26 @@ jobs:
     steps:
       - name: Call the sweep endpoint
         env:
-          APP_URL: ${{ secrets.APP_URL }}
+          # The site URL is not a secret — it is on every page we serve. It was
+          # one, which meant two things to configure instead of one and a
+          # failure mode where the secret was set and the URL silently was not.
+          # Overridable for staging; the default is the canonical origin.
+          #
+          # It must be the host the apex redirects TO, www included. curl drops
+          # the Authorization header when a redirect crosses hosts, so an apex
+          # URL turns into a 401 that looks like a wrong secret.
+          APP_URL: ${{ secrets.APP_URL || 'https://www.palmtechniq.com' }}
           CRON_SECRET: ${{ secrets.CRON_SECRET }}
         run: |
-          if [ -z "$APP_URL" ] || [ -z "$CRON_SECRET" ]; then
-            echo "APP_URL or CRON_SECRET is not set in repository secrets."
+          if [ -z "$CRON_SECRET" ]; then
+            echo "CRON_SECRET is not set in this repository's Actions secrets."
+            echo
+            echo "This is separate from the CRON_SECRET in the hosting"
+            echo "environment. That one lets the endpoint VERIFY the request;"
+            echo "this one lets the workflow SEND it. Both must hold the same"
+            echo "value. Set it under Settings > Secrets and variables >"
+            echo "Actions > Repository secrets — not Environments, and not the"
+            echo "Variables tab."
             exit 1
           fi
 
@@ -54,6 +69,20 @@ jobs:
           echo "HTTP $status"
           cat "$response"
           echo
+
+          # A redirect is not followed on purpose. curl drops the Authorization
+          # header when it crosses to a different host, so following one would
+          # turn a config mistake into a silent 401. APP_URL must be the
+          # canonical host — the one the apex redirects TO, www included.
+          case "$status" in
+            30*)
+              echo "APP_URL points at a host that redirects. Set it to the"
+              echo "canonical origin so the Authorization header survives."
+              exit 1
+              ;;
+            401) echo "CRON_SECRET does not match the value in the hosting environment."; exit 1 ;;
+            503) echo "CRON_SECRET is not set in the hosting environment."; exit 1 ;;
+          esac
 
           if [ "$status" != "200" ]; then
             exit 1

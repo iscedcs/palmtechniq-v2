@@ -1,6 +1,6 @@
 import type { DocPage, DocSection } from "./types";
 
-export const DOC_VERSION = "2026.08.14";
+export const DOC_VERSION = "2026.08.16";
 
 export const docSections: DocSection[] = [
   // ─── GETTING STARTED ─────────────────────────────────────
@@ -146,7 +146,7 @@ Use the sidebar to navigate, or the search bar to jump straight to a topic.
         description:
           "Set up the PalmTechnIQ development environment from scratch.",
         audience: "developer",
-        lastUpdated: "2026-04-28",
+        lastUpdated: "2026-08-16",
         content: `
 # Installation
 
@@ -177,7 +177,7 @@ DATABASE_URL="postgresql://..."
 
 # Auth
 AUTH_SECRET="your-auth-secret"
-NEXTAUTH_URL="http://localhost:3000"
+NEXTAUTH_URL="http://localhost:2026"
 
 # OAuth Providers
 GOOGLE_CLIENT_ID="..."
@@ -235,7 +235,7 @@ npx prisma db seed
 pnpm dev
 \`\`\`
 
-The app will be available at \`http://localhost:3000\`.
+The app will be available at \`http://localhost:2026\`.
 
 ## Build for Production
 
