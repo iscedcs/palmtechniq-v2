@@ -196,9 +196,7 @@ export default function CoursesGrid({
             {categories.map((cat) => (
               <Link
                 key={cat.id}
-                href={
-                  cat.slug ? `/courses/category/${cat.slug}` : "/courses"
-                }
+                href={cat.slug ? `/courses/category/${cat.slug}` : "/courses"}
                 className={`px-4 py-2 rounded-full text-sm font-medium transition-all duration-300 ${
                   selectedCategory === cat.name
                     ? "bg-neon-blue text-white shadow-lg shadow-neon-blue/30"
@@ -212,8 +210,8 @@ export default function CoursesGrid({
           {/* Bundles. Hidden while filtering: a bundle is not filtered by
               category or search, so showing it against an active filter would
               be noise rather than a suggestion. */}
-          {!hasActiveFilters && <BundleStrip bundles={bundles} />}
 
+          {!hasActiveFilters && <BundleStrip bundles={bundles} />}
           {/* Sort & Filter Row */}
           <motion.div
             initial={{ opacity: 0 }}
