@@ -106,6 +106,7 @@ export default function TutorReviewsPage() {
   >([]);
   const [loading, setLoading] = useState(true);
   const [tutorId, setTutorId] = useState("");
+  const [username, setUsername] = useState("");
   const [referralCode, setReferralCode] = useState("");
   const [copiedShareLink, setCopiedShareLink] = useState(false);
   const [qrModalOpen, setQrModalOpen] = useState(false);
@@ -129,6 +130,7 @@ export default function TutorReviewsPage() {
       }
 
       setTutorId(result.tutorId || "");
+      setUsername(result.username || "");
       setReferralCode(result.referralCode || "");
 
       const mappedReviews = result.reviews.map((review: any) => {
@@ -534,15 +536,15 @@ export default function TutorReviewsPage() {
                     <div className="flex flex-col sm:flex-row items-stretch sm:items-center gap-2.5 w-full lg:w-auto">
                       <div className="bg-black/60 border border-white/15 rounded-xl px-3 py-2 text-xs font-mono text-neon-blue truncate max-w-xs select-all">
                         {typeof window !== "undefined"
-                          ? `${window.location.origin}/tutors/${referralCode || tutorId}/review`
-                          : `/tutors/${referralCode || tutorId}/review`}
+                          ? `${window.location.origin}/tutors/${username || referralCode || tutorId}/review`
+                          : `/tutors/${username || referralCode || tutorId}/review`}
                       </div>
 
                       <Button
                         type="button"
                         variant="outline"
                         onClick={() => {
-                          const url = `${window.location.origin}/tutors/${referralCode || tutorId}/review`;
+                          const url = `${window.location.origin}/tutors/${username || referralCode || tutorId}/review`;
                           navigator.clipboard.writeText(url);
                           setCopiedShareLink(true);
                           toast.success("Review link copied to clipboard!");
