@@ -304,7 +304,7 @@ export async function getStudentProgramEnrollments() {
                   name: true,
                   image: true,
                   avatar: true,
-                  tutor: { select: { id: true, referralCode: true, title: true } },
+                  tutorProfile: { select: { id: true, referralCode: true, title: true } },
                 },
               },
             },
@@ -353,8 +353,8 @@ export async function getStudentProgramEnrollments() {
 
         const instructor = enrollment.cohort?.leadInstructor;
         const instructorTutorId =
-          instructor?.tutor?.referralCode ||
-          instructor?.tutor?.id ||
+          instructor?.tutorProfile?.referralCode ||
+          instructor?.tutorProfile?.id ||
           instructor?.id ||
           null;
 
@@ -375,7 +375,7 @@ export async function getStudentProgramEnrollments() {
           ? {
               id: instructor.id,
               name: instructor.name || "Lead Instructor",
-              title: instructor.tutor?.title || "Lead Instructor",
+              title: instructor.tutorProfile?.title || "Lead Instructor",
               avatar: instructor.avatar || instructor.image || null,
               tutorReviewId: instructorTutorId,
             }
