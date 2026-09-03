@@ -162,6 +162,7 @@ model Tutor {
   referralCode   String?   @unique @map("referral_code")
   Course         Course[]
   bundles        CourseBundle[]
+  reviews        Review[]
   user           User      @relation(fields: [userId], references: [id], onDelete: Cascade)
 
   // Exam Center
@@ -773,23 +774,36 @@ model ProgramRegistration {
 }
 
 model Review {
-  id           String           @id @default(cuid())
-  rating       Int
-  comment      String?
-  isPublic     Boolean          @default(true)
-  userId       String
-  courseId     String
-  tutorName    String
-  reviewerName String
-  createdAt    DateTime         @default(now())
-  updatedAt    DateTime         @updatedAt
-  respondedAt  DateTime?
-  responseText String?
-  reactions    ReviewReaction[]
-  course       Course           @relation(fields: [courseId], references: [id], onDelete: Cascade)
-  user         User             @relation(fields: [userId], references: [id], onDelete: Cascade)
+  id                  String               @id @default(cuid())
+  rating              Int
+  comment             String?
+  isPublic            Boolean              @default(true)
+  userId              String
+  courseId            String?
+  tutorId             String?
+  programId           String?
+  reviewType          String               @default("COURSE") // "COURSE" | "PROGRAM" | "DIRECT"
+  reviewerRole        String?              // e.g. "STUDENT", "PROGRAM_STUDENT", "ALUMNI"
+  isVerifiedStudent   Boolean              @default(true)
+  verifiedContext     String?              // e.g. "Frontend Engineering Immersion · Cycle 42"
+  communicationRating Int?
+  clarityRating       Int?
+  expertiseRating     Int?
+  tutorName           String
+  reviewerName        String
+  createdAt           DateTime             @default(now())
+  updatedAt           DateTime             @updatedAt
+  respondedAt         DateTime?
+  responseText        String?
+  reactions           ReviewReaction[]
+  course              Course?              @relation(fields: [courseId], references: [id], onDelete: Cascade)
+  tutor               Tutor?               @relation(fields: [tutorId], references: [id], onDelete: Cascade)
+  program             ProfessionalProgram? @relation(fields: [programId], references: [id], onDelete: SetNull)
+  user                User                 @relation(fields: [userId], references: [id], onDelete: Cascade)
 
-  @@unique([userId, courseId])
+  @@index([tutorId])
+  @@index([userId, tutorId])
+  @@index([courseId])
   @@map("reviews")
 }
 
@@ -1406,6 +1420,7 @@ model ProfessionalProgram {
   cohorts      ProgramCohort[]
   enrollments  ProgramEnrollment[]
   certificates Certificate[]
+  reviews      Review[]
 
   @@map("professional_programs")
 }

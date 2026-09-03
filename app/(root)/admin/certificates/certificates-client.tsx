@@ -759,7 +759,6 @@ export default function CertificatesClient({
             <CardHeader className="pb-3">
               <div className="flex items-center justify-between">
                 <div className="flex items-center gap-2">
-                  <Sparkles className="w-4 h-4 text-neon-purple" />
                   <CardTitle className="text-base text-white font-semibold">
                     Fast Action: Recent Completed / Paid Program Enrollments
                   </CardTitle>
@@ -1092,59 +1091,60 @@ export default function CertificatesClient({
                                     </Link>
                                   </DropdownMenuItem>
 
-                                  <DropdownMenuItem onClick={() => openQrModal(cert)}>
+                                  <DropdownMenuItem
+                                    onClick={() => openQrModal(cert)}>
                                     <QrCode className="w-4 h-4 mr-2 text-neon-purple" />
                                     Get QR Code (PNG)
                                   </DropdownMenuItem>
 
-                                <DropdownMenuItem
-                                  onClick={() => {
-                                    const url = `${window.location.origin}/verify-certificate?code=${encodeURIComponent(
-                                      cert.credentialId,
-                                    )}`;
-                                    handleCopy(
-                                      url,
-                                      cert.id,
-                                      "Verification Link",
-                                    );
-                                  }}>
-                                  <Share2 className="w-4 h-4 mr-2 text-neon-purple" />
-                                  Copy Verification URL
-                                </DropdownMenuItem>
+                                  <DropdownMenuItem
+                                    onClick={() => {
+                                      const url = `${window.location.origin}/verify-certificate?code=${encodeURIComponent(
+                                        cert.credentialId,
+                                      )}`;
+                                      handleCopy(
+                                        url,
+                                        cert.id,
+                                        "Verification Link",
+                                      );
+                                    }}>
+                                    <Share2 className="w-4 h-4 mr-2 text-neon-purple" />
+                                    Copy Verification URL
+                                  </DropdownMenuItem>
 
-                                <DropdownMenuItem
-                                  onClick={() => openEditModal(cert)}>
-                                  <Edit2 className="w-4 h-4 mr-2 text-cyan-400" />
-                                  Edit & Attach URL
-                                </DropdownMenuItem>
+                                  <DropdownMenuItem
+                                    onClick={() => openEditModal(cert)}>
+                                    <Edit2 className="w-4 h-4 mr-2 text-cyan-400" />
+                                    Edit & Attach URL
+                                  </DropdownMenuItem>
 
-                                <DropdownMenuSeparator className="bg-white/10" />
+                                  <DropdownMenuSeparator className="bg-white/10" />
 
-                                <DropdownMenuItem
-                                  onClick={() => openRevokeModal(cert)}
-                                  className={
-                                    cert.isRevoked
-                                      ? "text-emerald-400"
-                                      : "text-amber-400"
-                                  }>
-                                  <AlertTriangle className="w-4 h-4 mr-2" />
-                                  {cert.isRevoked
-                                    ? "Reinstate Certificate"
-                                    : "Revoke Certificate"}
-                                </DropdownMenuItem>
+                                  <DropdownMenuItem
+                                    onClick={() => openRevokeModal(cert)}
+                                    className={
+                                      cert.isRevoked
+                                        ? "text-emerald-400"
+                                        : "text-amber-400"
+                                    }>
+                                    <AlertTriangle className="w-4 h-4 mr-2" />
+                                    {cert.isRevoked
+                                      ? "Reinstate Certificate"
+                                      : "Revoke Certificate"}
+                                  </DropdownMenuItem>
 
-                                <DropdownMenuItem
-                                  onClick={() => openDeleteModal(cert)}
-                                  className="text-red-400 focus:text-red-400">
-                                  <Trash2 className="w-4 h-4 mr-2" />
-                                  Delete Certificate
-                                </DropdownMenuItem>
-                              </DropdownMenuContent>
-                            </DropdownMenu>
-                          </div>
-                        </TableCell>
-                      </TableRow>
-                    );
+                                  <DropdownMenuItem
+                                    onClick={() => openDeleteModal(cert)}
+                                    className="text-red-400 focus:text-red-400">
+                                    <Trash2 className="w-4 h-4 mr-2" />
+                                    Delete Certificate
+                                  </DropdownMenuItem>
+                                </DropdownMenuContent>
+                              </DropdownMenu>
+                            </div>
+                          </TableCell>
+                        </TableRow>
+                      );
                     })
                   )}
                 </TableBody>
@@ -1236,8 +1236,12 @@ export default function CertificatesClient({
                     {filteredStudents.length > 0 ? (
                       filteredStudents.map((std) => (
                         <SelectItem key={std.id} value={std.id}>
-                          <span className="font-medium text-white">{std.name}</span>{" "}
-                          <span className="text-gray-400 text-xs">({std.email})</span>
+                          <span className="font-medium text-white">
+                            {std.name}
+                          </span>{" "}
+                          <span className="text-gray-400 text-xs">
+                            ({std.email})
+                          </span>
                         </SelectItem>
                       ))
                     ) : (

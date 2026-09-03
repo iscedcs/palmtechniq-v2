@@ -31,7 +31,13 @@ import {
   Heart,
   Flag,
   MoreHorizontal,
+  Copy,
+  QrCode,
+  Share2,
+  Sparkles,
+  Check,
 } from "lucide-react";
+import { CertificateQrModal } from "@/components/certificate/qr-code-modal";
 import {
   LineChart,
   Line,
@@ -75,6 +81,8 @@ type ReviewItem = {
   reports: number;
   response: { text: string; date: string } | null;
   verified: boolean;
+  verifiedContext?: string;
+  reviewType?: string;
 };
 
 type RatingTrend = { month: string; rating: number };
@@ -97,6 +105,10 @@ export default function TutorReviewsPage() {
     RatingDistribution[]
   >([]);
   const [loading, setLoading] = useState(true);
+  const [tutorId, setTutorId] = useState("");
+  const [referralCode, setReferralCode] = useState("");
+  const [copiedShareLink, setCopiedShareLink] = useState(false);
+  const [qrModalOpen, setQrModalOpen] = useState(false);
   const [filterFrom, setFilterFrom] = useState("");
   const [filterTo, setFilterTo] = useState("");
   const [sortBy, setSortBy] = useState("newest");
@@ -116,6 +128,9 @@ export default function TutorReviewsPage() {
         return;
       }
 
+      setTutorId(result.tutorId || "");
+      setReferralCode(result.referralCode || "");
+
       const mappedReviews = result.reviews.map((review: any) => {
         const name = review.user?.name || "Student";
         const initials = name
@@ -124,6 +139,11 @@ export default function TutorReviewsPage() {
           .join("")
           .slice(0, 2)
           .toUpperCase();
+
+        const courseOrProgram = review.program?.name
+          ? `Program: ${review.program.name}`
+          : review.course?.title || review.verifiedContext || "Tutoring & Mentorship";
+
         return {
           id: review.id,
           student: {
@@ -134,7 +154,7 @@ export default function TutorReviewsPage() {
               generateRandomAvatar(),
             initials,
           },
-          course: review.course?.title || "Course",
+          course: courseOrProgram,
           rating: review.rating,
           createdAt: new Date(review.createdAt),
           date: new Date(review.createdAt).toLocaleDateString(),
@@ -153,6 +173,14 @@ export default function TutorReviewsPage() {
               }
             : null,
           verified: true,
+          verifiedContext:
+            review.verifiedContext ||
+            (review.program
+              ? `Verified Program Student · ${review.program.name}`
+              : review.course
+                ? `Verified Course Student · ${review.course.title}`
+                : "Verified Platform Student"),
+          reviewType: review.reviewType || "COURSE",
         };
       });
 
@@ -475,6 +503,72 @@ export default function TutorReviewsPage() {
                 </div>
               </DialogContent>
             </Dialog>
+
+            {/* Share Review Link & QR Code Banner */}
+            {tutorId && (
+              <motion.div
+                initial={{ opacity: 0, y: 20 }}
+                animate={{ opacity: 1, y: 0 }}
+                transition={{ duration: 0.6 }}
+                className="mb-8">
+                <Card className="glass-card border-neon-purple/40 bg-gradient-to-r from-neon-blue/10 via-neon-purple/10 to-transparent p-5 sm:p-6 rounded-3xl relative overflow-hidden shadow-2xl">
+                  <div className="flex flex-col lg:flex-row items-start lg:items-center justify-between gap-5">
+                    <div className="space-y-1.5 max-w-xl">
+                      <div className="flex items-center gap-2">
+                        <Badge className="bg-neon-purple/20 text-neon-purple border-neon-purple/40 text-xs">
+                          <Sparkles className="w-3 h-3 mr-1" />
+                          Shareable Review Link & QR
+                        </Badge>
+                        <span className="text-xs text-gray-400">
+                          Invite students from Courses, Cohorts & Workshops
+                        </span>
+                      </div>
+                      <h3 className="text-xl font-bold text-white tracking-tight">
+                        Collect Verified Reviews from Your Students
+                      </h3>
+                      <p className="text-xs sm:text-sm text-gray-300 leading-relaxed">
+                        Share your custom link or QR code with students after class. Students who log in can rate your mentorship and post verified feedback.
+                      </p>
+                    </div>
+
+                    <div className="flex flex-col sm:flex-row items-stretch sm:items-center gap-2.5 w-full lg:w-auto">
+                      <div className="bg-black/60 border border-white/15 rounded-xl px-3 py-2 text-xs font-mono text-neon-blue truncate max-w-xs select-all">
+                        {typeof window !== "undefined"
+                          ? `${window.location.origin}/tutors/${referralCode || tutorId}/review`
+                          : `/tutors/${referralCode || tutorId}/review`}
+                      </div>
+
+                      <Button
+                        type="button"
+                        variant="outline"
+                        onClick={() => {
+                          const url = `${window.location.origin}/tutors/${referralCode || tutorId}/review`;
+                          navigator.clipboard.writeText(url);
+                          setCopiedShareLink(true);
+                          toast.success("Review link copied to clipboard!");
+                          setTimeout(() => setCopiedShareLink(false), 2000);
+                        }}
+                        className="border-white/20 text-white hover:bg-white/10 text-xs h-10 shrink-0">
+                        {copiedShareLink ? (
+                          <Check className="w-3.5 h-3.5 mr-1.5 text-emerald-400" />
+                        ) : (
+                          <Copy className="w-3.5 h-3.5 mr-1.5 text-neon-blue" />
+                        )}
+                        {copiedShareLink ? "Copied" : "Copy Link"}
+                      </Button>
+
+                      <Button
+                        type="button"
+                        onClick={() => setQrModalOpen(true)}
+                        className="bg-gradient-to-r from-neon-blue to-neon-purple hover:opacity-90 text-white text-xs h-10 shrink-0 font-semibold shadow-lg shadow-neon-blue/20">
+                        <QrCode className="w-3.5 h-3.5 mr-1.5" />
+                        Download QR
+                      </Button>
+                    </div>
+                  </div>
+                </Card>
+              </motion.div>
+            )}
 
             {/* Stats Cards */}
             <motion.div
@@ -842,6 +936,13 @@ export default function TutorReviewsPage() {
           </div>
         </section>
       </div>
+
+      <CertificateQrModal
+        isOpen={qrModalOpen}
+        onClose={() => setQrModalOpen(false)}
+        credentialId={`tutor/${referralCode || tutorId}`}
+        certificateTitle="PalmTechnIQ Tutor Review Portal"
+      />
     </div>
   );
 }

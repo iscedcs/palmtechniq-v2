@@ -277,15 +277,37 @@ export const gradeTaskSubmissionSchema = z.object({
 });
 
 export const reviewSchema = z.object({
-  courseId: z.string().min(1, "Course ID is required"),
+  courseId: z.string().optional(),
+  tutorId: z.string().optional(),
+  programId: z.string().optional(),
+  reviewType: z.enum(["COURSE", "PROGRAM", "DIRECT"]).optional().default("COURSE"),
   rating: z.number().int().min(1).max(5),
   comment: z.string().min(3, "Review must be at least 3 characters"),
+  communicationRating: z.number().int().min(1).max(5).optional(),
+  clarityRating: z.number().int().min(1).max(5).optional(),
+  expertiseRating: z.number().int().min(1).max(5).optional(),
+});
+
+export const tutorDirectReviewSchema = z.object({
+  tutorId: z.string().min(1, "Tutor ID is required"),
+  courseId: z.string().optional(),
+  programId: z.string().optional(),
+  reviewType: z.enum(["COURSE", "PROGRAM", "DIRECT"]).optional().default("DIRECT"),
+  verifiedContext: z.string().optional(),
+  rating: z.number().int().min(1).max(5),
+  comment: z.string().min(3, "Review must be at least 3 characters"),
+  communicationRating: z.number().int().min(1).max(5).optional(),
+  clarityRating: z.number().int().min(1).max(5).optional(),
+  expertiseRating: z.number().int().min(1).max(5).optional(),
 });
 
 export const updateReviewSchema = z.object({
   reviewId: z.string().min(1, "Review ID is required"),
   rating: z.number().int().min(1).max(5),
   comment: z.string().min(3, "Review must be at least 3 characters"),
+  communicationRating: z.number().int().min(1).max(5).optional(),
+  clarityRating: z.number().int().min(1).max(5).optional(),
+  expertiseRating: z.number().int().min(1).max(5).optional(),
 });
 
 const optionalUrlSchema = z
