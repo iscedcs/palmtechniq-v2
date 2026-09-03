@@ -452,7 +452,7 @@ export async function getTutorPublicReviewProfile(tutorIdentifier: string) {
         },
       },
       Course: {
-        where: { isPublished: true },
+        where: { status: "PUBLISHED" },
         select: {
           id: true,
           title: true,
@@ -616,6 +616,7 @@ export async function getTutorReviewsOverview() {
 
   const tutor = await db.tutor.findFirst({
     where: { userId: session.user.id },
+    include: { user: { select: { username: true } } },
   });
   if (!tutor) return { error: "Tutor account not found" };
 
@@ -687,6 +688,7 @@ export async function getTutorReviewsOverview() {
   return {
     tutorId: tutor.id,
     userId: tutor.userId,
+    username: tutor.user?.username ?? null,
     referralCode: tutor.referralCode,
     reviews,
     averageRating,
