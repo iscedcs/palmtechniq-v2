@@ -282,7 +282,9 @@ export async function getEligibleStudentsAndPrograms() {
   try {
     const [users, programs, courses, programEnrollments] = await Promise.all([
       db.user.findMany({
-        where: { isActive: true },
+        where: {
+          role: "STUDENT",
+        },
         select: {
           id: true,
           name: true,
@@ -291,8 +293,10 @@ export async function getEligibleStudentsAndPrograms() {
           image: true,
           avatar: true,
         },
-        orderBy: { name: "asc" },
-        take: 300,
+        orderBy: [
+          { name: "asc" },
+          { email: "asc" },
+        ],
       }),
       db.professionalProgram.findMany({
         where: { isActive: true },

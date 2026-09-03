@@ -581,14 +581,12 @@ export default function CertificatesClient({
 
   // Filtered student list for student picker
   const filteredStudents = useMemo(() => {
-    if (!studentSearch.trim()) return lookupData.students.slice(0, 30);
+    if (!studentSearch.trim()) return lookupData.students;
     const q = studentSearch.toLowerCase();
-    return lookupData.students
-      .filter(
-        (s) =>
-          s.name.toLowerCase().includes(q) || s.email.toLowerCase().includes(q),
-      )
-      .slice(0, 30);
+    return lookupData.students.filter(
+      (s) =>
+        s.name.toLowerCase().includes(q) || s.email.toLowerCase().includes(q),
+    );
   }, [lookupData.students, studentSearch]);
 
   return (
@@ -1195,12 +1193,19 @@ export default function CertificatesClient({
                   <SelectTrigger className="glass-card border-white/20 text-white">
                     <SelectValue placeholder="Choose a student account" />
                   </SelectTrigger>
-                  <SelectContent className="glass-card border-white/20 max-h-56">
-                    {filteredStudents.map((std) => (
-                      <SelectItem key={std.id} value={std.id}>
-                        {std.name} ({std.email}) - {std.role}
-                      </SelectItem>
-                    ))}
+                  <SelectContent className="glass-card border-white/20 max-h-64 overflow-y-auto">
+                    {filteredStudents.length > 0 ? (
+                      filteredStudents.map((std) => (
+                        <SelectItem key={std.id} value={std.id}>
+                          <span className="font-medium text-white">{std.name}</span>{" "}
+                          <span className="text-gray-400 text-xs">({std.email})</span>
+                        </SelectItem>
+                      ))
+                    ) : (
+                      <div className="p-3 text-center text-xs text-gray-400">
+                        No students found matching "{studentSearch}"
+                      </div>
+                    )}
                   </SelectContent>
                 </Select>
 
