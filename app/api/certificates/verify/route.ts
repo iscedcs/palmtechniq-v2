@@ -12,11 +12,13 @@ export async function GET(req: NextRequest) {
     );
   }
 
+  const trimmedCode = code.trim().toUpperCase();
+
   try {
-    // Check if it's a volunteer certificate (PTV- prefix)
-    if (code.startsWith("PTV-")) {
+    // 1. Check Volunteer Certificates (PTV- prefix or direct code)
+    if (trimmedCode.startsWith("PTV-")) {
       const volunteerCert = await db.volunteerCertificate.findUnique({
-        where: { certCode: code },
+        where: { certCode: trimmedCode },
       });
 
       if (!volunteerCert) {
@@ -31,8 +33,11 @@ export async function GET(req: NextRequest) {
         type: "volunteer",
         certificate: {
           certCode: volunteerCert.certCode,
+          certificateId: volunteerCert.certCode,
+          studentName: volunteerCert.volunteerName,
           volunteerName: volunteerCert.volunteerName,
           eventName: volunteerCert.eventName,
+          title: `${volunteerCert.eventName} - ${volunteerCert.role || "Volunteer"}`,
           role: volunteerCert.role,
           description: volunteerCert.description,
           issuedAt: volunteerCert.issuedAt,
@@ -42,9 +47,9 @@ export async function GET(req: NextRequest) {
       });
     }
 
-    // Otherwise, treat as a course certificate
+    // 2. Query Regular Certificate (Program, Course, or General)
     const certificate = await db.certificate.findUnique({
-      where: { certificateId: code },
+      where: { certificateId: trimmedCode },
       include: {
         course: {
           select: {
@@ -52,36 +57,90 @@ export async function GET(req: NextRequest) {
             slug: true,
           },
         },
+        program: {
+          select: {
+            name: true,
+            slug: true,
+          },
+        },
+        cohort: {
+          select: {
+            displayName: true,
+          },
+        },
         user: {
           select: {
             name: true,
             image: true,
+            avatar: true,
+          },
+        },
+        issuedBy: {
+          select: {
+            name: true,
           },
         },
       },
     });
 
     if (!certificate) {
+      // Check if it's a volunteer certificate that didn't have PTV- prefix
+      const volunteerFallback = await db.volunteerCertificate.findUnique({
+        where: { certCode: trimmedCode },
+      });
+
+      if (volunteerFallback) {
+        return NextResponse.json({
+          valid: !volunteerFallback.isRevoked,
+          type: "volunteer",
+          certificate: {
+            certCode: volunteerFallback.certCode,
+            certificateId: volunteerFallback.certCode,
+            studentName: volunteerFallback.volunteerName,
+            volunteerName: volunteerFallback.volunteerName,
+            eventName: volunteerFallback.eventName,
+            title: `${volunteerFallback.eventName} - ${volunteerFallback.role || "Volunteer"}`,
+            role: volunteerFallback.role,
+            description: volunteerFallback.description,
+            issuedAt: volunteerFallback.issuedAt,
+            isRevoked: volunteerFallback.isRevoked,
+            certificateUrl: volunteerFallback.certificateUrl,
+          },
+        });
+      }
+
       return NextResponse.json(
         { error: "Certificate not found", valid: false },
         { status: 404 },
       );
     }
 
+    const certType = certificate.programId
+      ? "program"
+      : certificate.courseId
+      ? "course"
+      : "general";
+
     return NextResponse.json({
       valid: !certificate.isRevoked,
-      type: "course",
+      type: certType,
       certificate: {
         certificateId: certificate.certificateId,
         title: certificate.title,
         studentName: certificate.studentName,
-        courseName: certificate.course.title,
-        courseSlug: certificate.course.slug,
+        programName: certificate.program?.name || null,
+        cohortName: certificate.cohort?.displayName || null,
+        courseName: certificate.course?.title || certificate.program?.name || certificate.title,
+        courseSlug: certificate.course?.slug || certificate.program?.slug || null,
         description: certificate.description,
+        grade: certificate.grade,
+        score: certificate.score,
         issuedAt: certificate.issuedAt,
         isRevoked: certificate.isRevoked,
+        revocationReason: certificate.revocationReason,
         certificateUrl: certificate.certificateUrl,
-        holderImage: certificate.user.image,
+        holderImage: certificate.user?.image || certificate.user?.avatar || null,
+        issuedByName: certificate.issuedBy?.name || null,
       },
     });
   } catch (error) {

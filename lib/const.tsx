@@ -22,6 +22,7 @@ import {
   ClipboardList,
   Package,
   Landmark,
+  Award,
 } from "lucide-react";
 
 export const courseTypes = [
@@ -107,6 +108,7 @@ export const roleNavItems = {
     { icon: Home, label: "Dashboard", href: "/admin" },
     { icon: Users, label: "Users", href: "/admin/users" },
     { icon: BookOpen, label: "Courses", href: "/admin/courses" },
+    { icon: Award, label: "Certificates", href: "/admin/certificates" },
     { icon: Brain, label: "AI Leads", href: "/admin/advisor" },
     { icon: FileText, label: "Applications", href: "/admin/applications" },
     { icon: Calendar, label: "Mentorship", href: "/admin/mentorship" },
@@ -121,6 +123,7 @@ export const roleNavItems = {
   ],
   SUPERIOR: [
     { icon: Home, label: "Dashboard", href: "/superior" },
+    { icon: Award, label: "Certificates", href: "/admin/certificates" },
     { icon: Users, label: "Testers", href: "/superior/testers" },
     { icon: FileText, label: "Documentation", href: "/documentation" },
     { icon: Shield, label: "Admin Panel", href: "/admin" },
@@ -169,6 +172,7 @@ export const roleMenuItems = {
     { icon: Shield, label: "Admin Panel", href: "/admin" },
     { icon: Users, label: "User Management", href: "/admin/users" },
     { icon: BookOpen, label: "Course Management", href: "/admin/courses" },
+    { icon: Award, label: "Certificates", href: "/admin/certificates" },
     { icon: Brain, label: "AI Leads", href: "/admin/advisor" },
     { icon: FileText, label: "Applications", href: "/admin/applications" },
     { icon: Calendar, label: "Mentorship Ops", href: "/admin/mentorship" },
@@ -181,6 +185,7 @@ export const roleMenuItems = {
   TESTER: [{ icon: FileText, label: "Documentation", href: "/documentation" }],
   SUPERIOR: [
     { icon: Home, label: "Dashboard", href: "/superior" },
+    { icon: Award, label: "Manage Certificates", href: "/admin/certificates" },
     { icon: Users, label: "Manage Testers", href: "/superior/testers" },
     { icon: FileText, label: "Documentation", href: "/documentation" },
     { icon: Shield, label: "Admin Panel", href: "/admin" },

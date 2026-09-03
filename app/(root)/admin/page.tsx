@@ -31,6 +31,7 @@ import {
   Clock,
   Globe,
   GraduationCap,
+  Award,
 } from "lucide-react";
 import { NairaSign } from "@/components/shared/naira-sign-icon";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
@@ -414,7 +415,16 @@ export default function AdminDashboard() {
               location
             </p>
           </div>
-          <div className="flex items-center gap-4 mt-4 md:mt-0">
+          <div className="flex items-center gap-4 mt-4 md:mt-0 flex-wrap">
+            <Button
+              asChild
+              variant="outline"
+              className="border-neon-blue/50 hover:bg-neon-blue/10 bg-transparent text-neon-blue">
+              <Link href="/admin/certificates">
+                <Award className="w-4 h-4 mr-2" />
+                Certificates
+              </Link>
+            </Button>
             <Button
               asChild
               variant="outline"

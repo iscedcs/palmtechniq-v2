@@ -57,6 +57,22 @@ export default async function SuperiorDashboardPage() {
             </Card>
           </Link>
 
+          <Link href="/admin/certificates">
+            <Card className="hover:shadow-md transition-shadow cursor-pointer border-neon-blue/30 bg-neon-blue/5">
+              <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+                <CardTitle className="text-sm font-medium text-white">
+                  Manage Certificates
+                </CardTitle>
+                <Shield className="h-5 w-5 text-neon-blue" />
+              </CardHeader>
+              <CardContent>
+                <p className="text-sm text-gray-300">
+                  Generate credential IDs, issue certificates, attach Mega links, and manage verification
+                </p>
+              </CardContent>
+            </Card>
+          </Link>
+
           <Link href="/admin">
             <Card className="hover:shadow-md transition-shadow cursor-pointer">
               <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">

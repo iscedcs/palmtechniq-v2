@@ -10,7 +10,12 @@ import {
   Calendar,
   Clock,
   CheckCircle2,
+  Award,
+  ExternalLink,
+  ShieldCheck,
+  FileCheck,
 } from "lucide-react";
+import Link from "next/link";
 import { format } from "date-fns";
 import PayBalanceModal from "./pay-balance-modal";
 import { NairaSign } from "@/components/shared/naira-sign-icon";
@@ -31,6 +36,13 @@ export interface ProgramEnrollmentData {
   balancePaid: boolean;
   balanceOverdue: boolean;
   firstInstallmentPaid: boolean;
+  certificate?: {
+    id: string;
+    credentialId: string;
+    certificateUrl?: string;
+    title: string;
+    issuedAt: string | Date;
+  } | null;
   createdAt: Date;
 }
 
@@ -146,6 +158,62 @@ export default function ProgramEnrollmentCard({
                 <NairaSign className="mr-2 text-base" />
                 Pay Remaining Balance
               </Button>
+            </div>
+          )}
+
+          {/* Certificate Section if issued */}
+          {enrollment.certificate && (
+            <div className="space-y-3 rounded-2xl border border-neon-purple/30 bg-neon-purple/10 p-4">
+              <div className="flex items-center justify-between">
+                <div className="flex items-center gap-2">
+                  <Award className="h-5 w-5 text-neon-purple" />
+                  <div>
+                    <p className="text-sm font-semibold text-white">
+                      Official Certificate Issued
+                    </p>
+                    <p className="text-xs text-neon-purple font-mono">
+                      ID: {enrollment.certificate.credentialId}
+                    </p>
+                  </div>
+                </div>
+                <Badge className="bg-neon-purple/20 text-neon-purple border-neon-purple/40 text-xs">
+                  Verified
+                </Badge>
+              </div>
+
+              <div className="flex flex-wrap gap-2 pt-1">
+                {enrollment.certificate.certificateUrl ? (
+                  <Button
+                    asChild
+                    size="sm"
+                    className="flex-1 bg-neon-purple hover:bg-neon-purple/80 text-white text-xs h-9">
+                    <a
+                      href={enrollment.certificate.certificateUrl}
+                      target="_blank"
+                      rel="noopener noreferrer"
+                      className="flex items-center justify-center gap-1.5">
+                      <FileCheck className="w-3.5 h-3.5" />
+                      <span>View / Download Certificate</span>
+                      <ExternalLink className="w-3 h-3 ml-0.5" />
+                    </a>
+                  </Button>
+                ) : null}
+
+                <Button
+                  asChild
+                  size="sm"
+                  variant="outline"
+                  className="border-neon-purple/40 text-white hover:bg-neon-purple/10 text-xs h-9">
+                  <Link
+                    href={`/verify-certificate?code=${encodeURIComponent(
+                      enrollment.certificate.credentialId,
+                    )}`}
+                    target="_blank">
+                    <ShieldCheck className="w-3.5 h-3.5 mr-1 text-neon-purple" />
+                    Verify Authenticity
+                  </Link>
+                </Button>
+              </div>
             </div>
           )}
 

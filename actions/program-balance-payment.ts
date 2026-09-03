@@ -289,17 +289,34 @@ export async function getStudentProgramEnrollments() {
       return { success: false, error: "Not authenticated" };
     }
 
-    const enrollments = await db.programEnrollment.findMany({
-      where: {
-        userId: session.user.id,
-      },
-      include: {
-        program: true,
-        cohort: true,
-        installments: true,
-      },
-      orderBy: { createdAt: "desc" },
-    });
+    const [enrollments, certificates] = await Promise.all([
+      db.programEnrollment.findMany({
+        where: {
+          userId: session.user.id,
+        },
+        include: {
+          program: true,
+          cohort: true,
+          installments: true,
+        },
+        orderBy: { createdAt: "desc" },
+      }),
+      db.certificate.findMany({
+        where: {
+          userId: session.user.id,
+          isRevoked: false,
+        },
+        select: {
+          id: true,
+          certificateId: true,
+          programId: true,
+          cohortId: true,
+          certificateUrl: true,
+          title: true,
+          issuedAt: true,
+        },
+      }),
+    ]);
 
     // Calculate balance info for each enrollment
     const enrollmentsWithBalance = enrollments.map(
@@ -317,11 +334,18 @@ export async function getStudentProgramEnrollments() {
           (i: InstallmentPayment) => i.installmentNo === 1,
         );
 
-      const remainingBalance =
-        enrollment.totalAmount - enrollment.amountPaid;
+        const remainingBalance =
+          enrollment.totalAmount - enrollment.amountPaid;
+
+        const matchingCert = certificates.find(
+          (c: any) =>
+            (c.programId && c.programId === enrollment.programId) ||
+            (c.cohortId && c.cohortId === enrollment.cohortId),
+        );
 
       return {
         id: enrollment.id,
+        programId: enrollment.programId,
         programName: enrollment.program.name,
         cohortName: enrollment.cohort.displayName,
         totalAmount: enrollment.totalAmount,
@@ -343,6 +367,17 @@ export async function getStudentProgramEnrollments() {
 
         // First installment status
         firstInstallmentPaid: firstInstallment?.status === "PAID",
+
+        // Certificate info
+        certificate: matchingCert
+          ? {
+              id: matchingCert.id,
+              credentialId: matchingCert.certificateId,
+              certificateUrl: matchingCert.certificateUrl,
+              title: matchingCert.title,
+              issuedAt: matchingCert.issuedAt,
+            }
+          : null,
 
         createdAt: enrollment.createdAt,
       };

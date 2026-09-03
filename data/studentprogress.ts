@@ -427,7 +427,7 @@ export async function getStudentAchievementsData() {
 
   const userId = session.user.id;
 
-  const [student, allMilestones] = await Promise.all([
+  const [student, allMilestones, certificates] = await Promise.all([
     db.student.findUnique({
       where: { userId },
       select: {
@@ -444,9 +444,31 @@ export async function getStudentAchievementsData() {
       where: { userId },
       orderBy: { achievedAt: "desc" },
     }),
+    db.certificate.findMany({
+      where: { userId, isRevoked: false },
+      include: {
+        course: { select: { title: true } },
+        program: { select: { name: true } },
+        cohort: { select: { displayName: true } },
+      },
+      orderBy: { issuedAt: "desc" },
+    }),
   ]);
 
   if (!student) return { error: "Student profile not found" };
+
+  const formattedCertificates = certificates.map((cert: any) => ({
+    id: cert.id,
+    credentialId: cert.certificateId,
+    title: cert.title,
+    programName: cert.program?.name || null,
+    cohortName: cert.cohort?.displayName || null,
+    courseName: cert.course?.title || null,
+    grade: cert.grade,
+    certificateUrl: cert.certificateUrl,
+    issuedAt: cert.issuedAt.toISOString(),
+    issuedFormatted: formatDistanceToNow(cert.issuedAt, { addSuffix: true }),
+  }));
 
   const achievements = allMilestones.map((m: any) => ({
     id: m.id,
@@ -473,8 +495,10 @@ export async function getStudentAchievementsData() {
 
   return {
     achievements,
+    certificates: formattedCertificates,
     summary: {
       total: allMilestones.length,
+      totalCertificates: certificates.length,
       byType: counts,
       streak: student.streak,
       longestStreak: student.streak,

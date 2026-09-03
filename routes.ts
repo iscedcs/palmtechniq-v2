@@ -92,6 +92,8 @@ export const protectedRoutes = [
   "/courses/[courseId]/quiz",
   "/courses/[courseId]/quiz/[quizId]",
   "/admin",
+  "/admin/certificates",
+  "/admin/enrollments",
   "/admin/finance",
   "/admin/users",
   "/admin/users/[userId]",
@@ -118,6 +120,8 @@ export const protectedRoutes = [
  */
 export const adminRoutes = [
   "/admin",
+  "/admin/certificates",
+  "/admin/enrollments",
   "/admin/finance",
   "/admin/users",
   "/admin/users/[userId]",

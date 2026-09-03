@@ -17,40 +17,46 @@ import {
   Calendar,
   User,
   BookOpen,
+  GraduationCap,
   Loader2,
   AlertCircle,
+  ExternalLink,
+  Copy,
+  Check,
+  Share2,
+  FileCheck,
 } from "lucide-react";
+import { toast } from "sonner";
 
-type CertificateType = "course" | "volunteer";
+type CertificateType = "program" | "course" | "volunteer" | "general";
 
-interface CourseCertificate {
+interface VerifiedCertificate {
   certificateId: string;
+  certCode?: string;
   title: string;
   studentName: string;
-  courseName: string;
-  courseSlug: string;
+  volunteerName?: string;
+  programName?: string | null;
+  cohortName?: string | null;
+  courseName?: string | null;
+  courseSlug?: string | null;
+  eventName?: string | null;
+  role?: string | null;
   description: string | null;
+  grade?: string | null;
+  score?: number | null;
   issuedAt: string;
   isRevoked: boolean;
+  revocationReason?: string | null;
   certificateUrl: string;
-  holderImage: string | null;
-}
-
-interface VolunteerCertificate {
-  certCode: string;
-  volunteerName: string;
-  eventName: string;
-  role: string | null;
-  description: string | null;
-  issuedAt: string;
-  isRevoked: boolean;
-  certificateUrl: string;
+  holderImage?: string | null;
+  issuedByName?: string | null;
 }
 
 interface VerifyResult {
   valid: boolean;
   type: CertificateType;
-  certificate: CourseCertificate | VolunteerCertificate;
+  certificate: VerifiedCertificate;
 }
 
 export default function VerifyCertificatePageWrapper() {
@@ -67,6 +73,7 @@ function VerifyCertificatePage() {
   const [result, setResult] = useState<VerifyResult | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [loading, setLoading] = useState(false);
+  const [copied, setCopied] = useState(false);
 
   const verifyCode = useCallback(async (codeToVerify: string) => {
     const trimmed = codeToVerify.trim();
@@ -108,6 +115,19 @@ function VerifyCertificatePage() {
     verifyCode(code);
   }
 
+  const handleCopyId = (id: string) => {
+    navigator.clipboard.writeText(id);
+    setCopied(true);
+    toast.success("Credential ID copied to clipboard!");
+    setTimeout(() => setCopied(false), 2000);
+  };
+
+  const handleShareLink = (id: string) => {
+    const shareUrl = `${window.location.origin}/verify-certificate?code=${encodeURIComponent(id)}`;
+    navigator.clipboard.writeText(shareUrl);
+    toast.success("Verification link copied to clipboard!");
+  };
+
   return (
     <div className="min-h-screen bg-background">
       {/* Hero */}
@@ -128,7 +148,7 @@ function VerifyCertificatePage() {
             <div className="inline-flex items-center gap-2 px-4 py-2 rounded-full bg-neon-blue/10 border border-neon-blue/20 mb-6">
               <ShieldCheck className="w-4 h-4 text-neon-blue" />
               <span className="text-sm text-neon-blue font-medium">
-                Certificate Verification
+                Official Credential Verification
               </span>
             </div>
             <h1 className="text-4xl md:text-5xl font-bold mb-4">
@@ -136,8 +156,7 @@ function VerifyCertificatePage() {
               <span className="text-gradient">Certificate</span>
             </h1>
             <p className="text-lg text-gray-300 mb-8">
-              Enter the certificate ID or code to verify its authenticity. Works
-              for both course completion and volunteer certificates.
+              Enter the unique Credential ID to instantly verify authenticity. Validates Professional Program, Course, and Volunteer certifications issued by PalmTechnIQ.
             </p>
 
             {/* Search form */}
@@ -145,10 +164,10 @@ function VerifyCertificatePage() {
               onSubmit={handleVerify}
               className="flex flex-col sm:flex-row gap-3 max-w-lg mx-auto">
               <Input
-                placeholder="e.g. PTV-2025-P0X8 or certificate ID"
+                placeholder="e.g. PTQ-PRG-2026-9F3K8A or PTV-2026-P0X8"
                 value={code}
                 onChange={(e) => setCode(e.target.value)}
-                className="glass-card border-white/20 focus:border-neon-blue/50 text-white placeholder:text-gray-400 h-12"
+                className="glass-card border-white/20 focus:border-neon-blue/50 text-white placeholder:text-gray-400 h-12 uppercase font-mono"
                 disabled={loading}
               />
               <Button
@@ -167,7 +186,7 @@ function VerifyCertificatePage() {
         </div>
       </section>
 
-      {/* Result */}
+      {/* Result Section */}
       <section className="relative pb-24">
         <div className="container mx-auto px-6 max-w-2xl">
           <AnimatePresence mode="wait">
@@ -180,9 +199,9 @@ function VerifyCertificatePage() {
                 <Card className="glass-card border-red-500/30 p-8 text-center">
                   <ShieldX className="w-16 h-16 text-red-400 mx-auto mb-4" />
                   <h2 className="text-xl font-semibold text-white mb-2">
-                    Verification Failed
+                    Verification Not Found
                   </h2>
-                  <p className="text-gray-400">{error}</p>
+                  <p className="text-gray-400 text-sm">{error}</p>
                 </Card>
               </motion.div>
             )}
@@ -193,66 +212,183 @@ function VerifyCertificatePage() {
                 initial={{ opacity: 0, y: 20 }}
                 animate={{ opacity: 1, y: 0 }}
                 exit={{ opacity: 0, y: -20 }}>
-                <Card className="glass-card border-white/10 overflow-hidden">
+                <Card className="glass-card border-white/10 overflow-hidden shadow-2xl">
                   {/* Status banner */}
                   <div
-                    className={`px-6 py-4 flex items-center gap-3 ${
+                    className={`px-6 py-4 flex items-center justify-between gap-3 ${
                       result.valid
-                        ? "bg-green-500/10 border-b border-green-500/20"
+                        ? "bg-emerald-500/10 border-b border-emerald-500/20"
                         : "bg-red-500/10 border-b border-red-500/20"
                     }`}>
-                    {result.valid ? (
-                      <ShieldCheck className="w-6 h-6 text-green-400" />
-                    ) : (
-                      <ShieldX className="w-6 h-6 text-red-400" />
-                    )}
-                    <div>
-                      <p
-                        className={`font-semibold ${
-                          result.valid ? "text-green-400" : "text-red-400"
-                        }`}>
-                        {result.valid
-                          ? "Valid Certificate"
-                          : "Certificate Revoked"}
-                      </p>
-                      <p className="text-sm text-gray-400">
-                        {result.valid
-                          ? "This certificate is authentic and verified by PalmTechnIQ."
-                          : "This certificate has been revoked and is no longer valid."}
-                      </p>
+                    <div className="flex items-center gap-3">
+                      {result.valid ? (
+                        <ShieldCheck className="w-7 h-7 text-emerald-400 shrink-0" />
+                      ) : (
+                        <ShieldX className="w-7 h-7 text-red-400 shrink-0" />
+                      )}
+                      <div>
+                        <p
+                          className={`font-bold text-base ${
+                            result.valid ? "text-emerald-400" : "text-red-400"
+                          }`}>
+                          {result.valid
+                            ? "Verified Authentic Certificate"
+                            : "Certificate Revoked"}
+                        </p>
+                        <p className="text-xs text-gray-300 mt-0.5">
+                          {result.valid
+                            ? "This credential has been officially verified by PalmTechnIQ."
+                            : "This certificate has been revoked by administration and is no longer valid."}
+                        </p>
+                      </div>
                     </div>
+
+                    <Button
+                      variant="ghost"
+                      size="sm"
+                      onClick={() => handleShareLink(result.certificate.certificateId)}
+                      className="text-gray-300 hover:text-white shrink-0 text-xs">
+                      <Share2 className="w-3.5 h-3.5 mr-1" />
+                      Share
+                    </Button>
                   </div>
 
                   {/* Certificate details */}
-                  <div className="p-6 space-y-5">
-                    {/* Type badge */}
-                    <div className="flex items-center gap-2">
+                  <div className="p-6 sm:p-8 space-y-6">
+                    {/* Category badge */}
+                    <div className="flex items-center justify-between flex-wrap gap-2">
                       <Badge
                         variant="outline"
                         className={`${
-                          result.type === "volunteer"
-                            ? "border-neon-purple/40 text-neon-purple"
-                            : "border-neon-blue/40 text-neon-blue"
-                        }`}>
-                        {result.type === "volunteer" ? (
-                          <Heart className="w-3 h-3 mr-1" />
+                          result.type === "program"
+                            ? "border-neon-purple/40 text-neon-purple bg-neon-purple/10"
+                            : result.type === "volunteer"
+                            ? "border-pink-500/40 text-pink-400 bg-pink-500/10"
+                            : "border-neon-blue/40 text-neon-blue bg-neon-blue/10"
+                        } px-3 py-1 text-xs font-semibold`}>
+                        {result.type === "program" ? (
+                          <GraduationCap className="w-3.5 h-3.5 mr-1.5" />
+                        ) : result.type === "volunteer" ? (
+                          <Heart className="w-3.5 h-3.5 mr-1.5" />
                         ) : (
-                          <Award className="w-3 h-3 mr-1" />
+                          <Award className="w-3.5 h-3.5 mr-1.5" />
                         )}
-                        {result.type === "volunteer"
-                          ? "Volunteer Certificate"
-                          : "Certificate of Completion"}
+                        {result.type === "program"
+                          ? "Professional Program Certification"
+                          : result.type === "volunteer"
+                          ? "Volunteer Recognition"
+                          : "Course Certificate of Completion"}
                       </Badge>
+
+                      <div className="flex items-center gap-2">
+                        <code className="font-mono text-xs font-semibold px-2.5 py-1 rounded-md bg-black/40 border border-white/10 text-neon-blue">
+                          {result.certificate.certificateId}
+                        </code>
+                        <Button
+                          variant="ghost"
+                          size="icon"
+                          className="h-7 w-7 text-gray-400 hover:text-white"
+                          onClick={() => handleCopyId(result.certificate.certificateId)}
+                          title="Copy Credential ID">
+                          {copied ? (
+                            <Check className="w-3.5 h-3.5 text-green-400" />
+                          ) : (
+                            <Copy className="w-3.5 h-3.5" />
+                          )}
+                        </Button>
+                      </div>
                     </div>
 
-                    {result.type === "course" ? (
-                      <CourseCertDetails
-                        cert={result.certificate as CourseCertificate}
+                    {/* Information Details */}
+                    <div className="space-y-4 pt-2 border-t border-white/10">
+                      <InfoRow
+                        icon={User}
+                        label="Recipient Name"
+                        value={result.certificate.studentName || result.certificate.volunteerName || ""}
                       />
-                    ) : (
-                      <VolunteerCertDetails
-                        cert={result.certificate as VolunteerCertificate}
+
+                      {result.certificate.programName && (
+                        <InfoRow
+                          icon={GraduationCap}
+                          label="Program"
+                          value={result.certificate.programName}
+                        />
+                      )}
+
+                      {result.certificate.cohortName && (
+                        <InfoRow
+                          icon={Calendar}
+                          label="Cohort / Cycle"
+                          value={result.certificate.cohortName}
+                        />
+                      )}
+
+                      {result.certificate.courseName && !result.certificate.programName && (
+                        <InfoRow
+                          icon={BookOpen}
+                          label="Course / Event"
+                          value={result.certificate.courseName}
+                        />
+                      )}
+
+                      {result.certificate.title && (
+                        <InfoRow
+                          icon={Award}
+                          label="Award Title"
+                          value={result.certificate.title}
+                        />
+                      )}
+
+                      {result.certificate.grade && (
+                        <InfoRow
+                          icon={FileCheck}
+                          label="Final Grade"
+                          value={result.certificate.grade}
+                        />
+                      )}
+
+                      {result.certificate.description && (
+                        <InfoRow
+                          icon={AlertCircle}
+                          label="Details / Commendation"
+                          value={result.certificate.description}
+                        />
+                      )}
+
+                      <InfoRow
+                        icon={Calendar}
+                        label="Issued On"
+                        value={new Date(result.certificate.issuedAt).toLocaleDateString("en-US", {
+                          year: "numeric",
+                          month: "long",
+                          day: "numeric",
+                        })}
                       />
+
+                      <InfoRow
+                        icon={ShieldCheck}
+                        label="Credential ID"
+                        value={result.certificate.certificateId}
+                      />
+                    </div>
+
+                    {/* Prominent Certificate Document Download / View Button */}
+                    {result.certificate.certificateUrl && result.certificate.certificateUrl.trim() && (
+                      <div className="pt-4 border-t border-white/10">
+                        <Button
+                          asChild
+                          className="w-full h-12 bg-gradient-to-r from-neon-blue via-cyan-500 to-neon-purple hover:opacity-90 text-white font-semibold text-sm shadow-lg shadow-neon-blue/20">
+                          <a
+                            href={result.certificate.certificateUrl}
+                            target="_blank"
+                            rel="noopener noreferrer"
+                            className="flex items-center justify-center gap-2">
+                            <FileCheck className="w-5 h-5" />
+                            <span>View / Download Original Certificate Document</span>
+                            <ExternalLink className="w-4 h-4 ml-1" />
+                          </a>
+                        </Button>
+                      </div>
                     )}
                   </div>
                 </Card>
@@ -265,10 +401,10 @@ function VerifyCertificatePage() {
                 initial={{ opacity: 0 }}
                 animate={{ opacity: 1 }}
                 exit={{ opacity: 0 }}
-                className="text-center text-gray-500 space-y-4">
-                <AlertCircle className="w-12 h-12 mx-auto opacity-30" />
+                className="text-center text-gray-500 space-y-4 py-8">
+                <ShieldCheck className="w-12 h-12 mx-auto opacity-30 text-neon-blue" />
                 <p className="text-sm">
-                  Enter a certificate code above to verify
+                  Enter a credential code above (e.g. <span className="font-mono text-gray-400">PTQ-PRG-2026-9F3K8A</span>) to verify
                 </p>
               </motion.div>
             )}
@@ -277,64 +413,6 @@ function VerifyCertificatePage() {
       </section>
 
       <Footer />
-    </div>
-  );
-}
-
-function CourseCertDetails({ cert }: { cert: CourseCertificate }) {
-  return (
-    <div className="space-y-4">
-      <InfoRow icon={User} label="Student Name" value={cert.studentName} />
-      <InfoRow icon={BookOpen} label="Course" value={cert.courseName} />
-      {cert.title && <InfoRow icon={Award} label="Title" value={cert.title} />}
-      {cert.description && (
-        <InfoRow
-          icon={AlertCircle}
-          label="Description"
-          value={cert.description}
-        />
-      )}
-      <InfoRow
-        icon={Calendar}
-        label="Issued On"
-        value={new Date(cert.issuedAt).toLocaleDateString("en-US", {
-          year: "numeric",
-          month: "long",
-          day: "numeric",
-        })}
-      />
-      <InfoRow
-        icon={ShieldCheck}
-        label="Certificate ID"
-        value={cert.certificateId}
-      />
-    </div>
-  );
-}
-
-function VolunteerCertDetails({ cert }: { cert: VolunteerCertificate }) {
-  return (
-    <div className="space-y-4">
-      <InfoRow icon={User} label="Volunteer Name" value={cert.volunteerName} />
-      <InfoRow icon={Award} label="Event" value={cert.eventName} />
-      {cert.role && <InfoRow icon={Heart} label="Role" value={cert.role} />}
-      {cert.description && (
-        <InfoRow
-          icon={AlertCircle}
-          label="Description"
-          value={cert.description}
-        />
-      )}
-      <InfoRow
-        icon={Calendar}
-        label="Issued On"
-        value={new Date(cert.issuedAt).toLocaleDateString("en-US", {
-          year: "numeric",
-          month: "long",
-          day: "numeric",
-        })}
-      />
-      <InfoRow icon={ShieldCheck} label="Cert Code" value={cert.certCode} />
     </div>
   );
 }
@@ -349,13 +427,15 @@ function InfoRow({
   value: string;
 }) {
   return (
-    <div className="flex items-start gap-3">
-      <Icon className="w-5 h-5 text-gray-400 mt-0.5 shrink-0" />
+    <div className="flex items-start gap-3.5">
+      <div className="p-2 rounded-lg bg-white/5 border border-white/10 text-gray-400 shrink-0 mt-0.5">
+        <Icon className="w-4 h-4" />
+      </div>
       <div>
-        <p className="text-xs uppercase tracking-wider text-gray-500">
+        <p className="text-xs uppercase tracking-wider text-gray-400 font-semibold">
           {label}
         </p>
-        <p className="text-white font-medium">{value}</p>
+        <p className="text-white font-medium text-sm sm:text-base mt-0.5">{value}</p>
       </div>
     </div>
   );
