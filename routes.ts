@@ -34,6 +34,7 @@ export const publicRoutes = [
   "/enroll",
   "/enroll/verify",
   "/verify-certificate",
+  "/verify-certificate/[id]",
   "/certificate/[id]",
 ];
 

@@ -31,7 +31,9 @@ import {
   ChevronRight,
   Share2,
   Sparkles,
+  QrCode,
 } from "lucide-react";
+import { CertificateQrModal } from "@/components/certificate/qr-code-modal";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -218,6 +220,27 @@ export default function CertificatesClient({
     null,
   );
   const [isDeleting, setIsDeleting] = useState(false);
+
+  // QR Code Modal States
+  const [qrModalOpen, setQrModalOpen] = useState(false);
+  const [qrCertData, setQrCertData] = useState<{
+    credentialId: string;
+    studentName?: string;
+    certificateTitle?: string;
+  }>({ credentialId: "" });
+
+  const openQrModal = (cert: {
+    credentialId: string;
+    studentName?: string;
+    title?: string;
+  }) => {
+    setQrCertData({
+      credentialId: cert.credentialId,
+      studentName: cert.studentName,
+      certificateTitle: cert.title,
+    });
+    setQrModalOpen(true);
+  };
 
   // Refresh certificate list
   const refreshData = async () => {
@@ -1037,27 +1060,42 @@ export default function CertificatesClient({
 
                           {/* Actions */}
                           <TableCell className="text-right">
-                            <DropdownMenu>
-                              <DropdownMenuTrigger asChild>
-                                <Button
-                                  variant="ghost"
-                                  size="icon"
-                                  className="h-8 w-8 text-gray-400 hover:text-white">
-                                  <MoreVertical className="w-4 h-4" />
-                                </Button>
-                              </DropdownMenuTrigger>
-                              <DropdownMenuContent
-                                align="end"
-                                className="glass-card border-white/10 w-52">
-                                <DropdownMenuItem asChild>
-                                  <Link
-                                    href={`/verify-certificate?code=${encodeURIComponent(cert.credentialId)}`}
-                                    target="_blank"
-                                    className="cursor-pointer">
-                                    <Eye className="w-4 h-4 mr-2 text-neon-blue" />
-                                    View Verification
-                                  </Link>
-                                </DropdownMenuItem>
+                            <div className="flex items-center justify-end gap-1">
+                              <Button
+                                variant="ghost"
+                                size="icon"
+                                className="h-8 w-8 text-neon-purple hover:text-neon-purple hover:bg-neon-purple/10"
+                                onClick={() => openQrModal(cert)}
+                                title="Get Certificate QR Code">
+                                <QrCode className="w-4 h-4" />
+                              </Button>
+
+                              <DropdownMenu>
+                                <DropdownMenuTrigger asChild>
+                                  <Button
+                                    variant="ghost"
+                                    size="icon"
+                                    className="h-8 w-8 text-gray-400 hover:text-white">
+                                    <MoreVertical className="w-4 h-4" />
+                                  </Button>
+                                </DropdownMenuTrigger>
+                                <DropdownMenuContent
+                                  align="end"
+                                  className="glass-card border-white/10 w-52">
+                                  <DropdownMenuItem asChild>
+                                    <Link
+                                      href={`/verify-certificate?code=${encodeURIComponent(cert.credentialId)}`}
+                                      target="_blank"
+                                      className="cursor-pointer">
+                                      <Eye className="w-4 h-4 mr-2 text-neon-blue" />
+                                      View Verification
+                                    </Link>
+                                  </DropdownMenuItem>
+
+                                  <DropdownMenuItem onClick={() => openQrModal(cert)}>
+                                    <QrCode className="w-4 h-4 mr-2 text-neon-purple" />
+                                    Get QR Code (PNG)
+                                  </DropdownMenuItem>
 
                                 <DropdownMenuItem
                                   onClick={() => {
@@ -1103,9 +1141,10 @@ export default function CertificatesClient({
                                 </DropdownMenuItem>
                               </DropdownMenuContent>
                             </DropdownMenu>
-                          </TableCell>
-                        </TableRow>
-                      );
+                          </div>
+                        </TableCell>
+                      </TableRow>
+                    );
                     })
                   )}
                 </TableBody>
@@ -1393,10 +1432,28 @@ export default function CertificatesClient({
                 className="font-mono text-sm uppercase bg-black/40 border-neon-blue/30 text-neon-blue"
                 required
               />
-              <p className="text-[11px] text-gray-400">
-                This ID can be printed on your certificate graphic. Anyone can
-                enter this ID on the verification portal to verify authenticity.
-              </p>
+              <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2 pt-1">
+                <p className="text-[11px] text-gray-400">
+                  This ID can be printed on your certificate graphic.
+                </p>
+                {credentialId.trim() && (
+                  <Button
+                    type="button"
+                    size="sm"
+                    variant="outline"
+                    onClick={() =>
+                      openQrModal({
+                        credentialId,
+                        studentName: customStudentName,
+                        title: certTitle,
+                      })
+                    }
+                    className="border-neon-purple/40 text-neon-purple hover:bg-neon-purple/10 text-xs h-7 shrink-0">
+                    <QrCode className="w-3.5 h-3.5 mr-1.5" />
+                    Download QR Code
+                  </Button>
+                )}
+              </div>
             </div>
 
             {/* Certificate Document URL (Mega Link / Cloud Storage) */}
@@ -1678,6 +1735,17 @@ export default function CertificatesClient({
           </DialogFooter>
         </DialogContent>
       </Dialog>
+
+      {/* ============================================================ */}
+      {/* 5. QR CODE PREVIEW & DOWNLOAD MODAL */}
+      {/* ============================================================ */}
+      <CertificateQrModal
+        isOpen={qrModalOpen}
+        onClose={() => setQrModalOpen(false)}
+        credentialId={qrCertData.credentialId}
+        studentName={qrCertData.studentName}
+        certificateTitle={qrCertData.certificateTitle}
+      />
     </div>
   );
 }
