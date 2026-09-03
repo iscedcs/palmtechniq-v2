@@ -12,13 +12,20 @@ export async function GET(req: NextRequest) {
     );
   }
 
-  const trimmedCode = code.trim().toUpperCase();
+  const rawCode = code.trim();
+  const upperCode = rawCode.toUpperCase();
 
   try {
-    // 1. Check Volunteer Certificates (PTV- prefix or direct code)
-    if (trimmedCode.startsWith("PTV-")) {
-      const volunteerCert = await db.volunteerCertificate.findUnique({
-        where: { certCode: trimmedCode },
+    // 1. Check Volunteer Certificates (PTV- prefix, certCode, or DB ID)
+    if (upperCode.startsWith("PTV-")) {
+      const volunteerCert = await db.volunteerCertificate.findFirst({
+        where: {
+          OR: [
+            { certCode: upperCode },
+            { certCode: rawCode },
+            { id: rawCode },
+          ],
+        },
       });
 
       if (!volunteerCert) {
@@ -47,9 +54,20 @@ export async function GET(req: NextRequest) {
       });
     }
 
-    // 2. Query Regular Certificate (Program, Course, or General)
-    const certificate = await db.certificate.findUnique({
-      where: { certificateId: trimmedCode },
+    // 2. Query Regular Certificate:
+    // Matches by:
+    // - certificateId (e.g. PTQ-PRG-2026-ATMPZ7 or lowercase)
+    // - id (certificate DB primary key cuid)
+    // - userId (student's user cuid, e.g. cmsn9wwkf000004jpro7s1awm)
+    let certificate = await db.certificate.findFirst({
+      where: {
+        OR: [
+          { certificateId: upperCode },
+          { certificateId: rawCode },
+          { id: rawCode },
+          { userId: rawCode },
+        ],
+      },
       include: {
         course: {
           select: {
@@ -81,12 +99,19 @@ export async function GET(req: NextRequest) {
           },
         },
       },
+      orderBy: { issuedAt: "desc" },
     });
 
+    // 3. Fallback check for Volunteer Certificate (if passed without PTV- prefix or by DB ID)
     if (!certificate) {
-      // Check if it's a volunteer certificate that didn't have PTV- prefix
-      const volunteerFallback = await db.volunteerCertificate.findUnique({
-        where: { certCode: trimmedCode },
+      const volunteerFallback = await db.volunteerCertificate.findFirst({
+        where: {
+          OR: [
+            { certCode: upperCode },
+            { certCode: rawCode },
+            { id: rawCode },
+          ],
+        },
       });
 
       if (volunteerFallback) {
