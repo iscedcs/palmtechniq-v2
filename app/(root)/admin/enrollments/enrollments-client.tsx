@@ -17,6 +17,7 @@ import {
   Mail,
   CalendarDays,
   CreditCard,
+  Award,
 } from "lucide-react";
 import { NairaSign } from "@/components/shared/naira-sign-icon";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
@@ -187,24 +188,35 @@ export default function AdminEnrollmentsClient({
           initial={{ opacity: 0, y: -20 }}
           animate={{ opacity: 1, y: 0 }}
           transition={{ duration: 0.6 }}>
-          <div className="flex items-center gap-4">
+          <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 w-full">
+            <div className="flex items-center gap-4">
+              <Button
+                asChild
+                variant="ghost"
+                size="icon"
+                className="text-gray-400 hover:text-white">
+                <Link href="/admin">
+                  <ArrowLeft className="w-5 h-5" />
+                </Link>
+              </Button>
+              <div>
+                <h1 className="text-3xl font-bold text-gradient">
+                  Program Enrollments
+                </h1>
+                <p className="text-gray-400 text-sm mt-1">
+                  Track and manage professional program enrollments &amp; payments
+                </p>
+              </div>
+            </div>
+
             <Button
               asChild
-              variant="ghost"
-              size="icon"
-              className="text-gray-400 hover:text-white">
-              <Link href="/admin">
-                <ArrowLeft className="w-5 h-5" />
+              className="bg-gradient-to-r from-neon-blue to-neon-purple hover:from-neon-blue/80 hover:to-neon-purple/80 text-white shrink-0">
+              <Link href="/admin/certificates">
+                <Award className="w-4 h-4 mr-2" />
+                Manage Certificates
               </Link>
             </Button>
-            <div>
-              <h1 className="text-3xl font-bold text-gradient">
-                Program Enrollments
-              </h1>
-              <p className="text-gray-400 text-sm mt-1">
-                Track and manage professional program enrollments &amp; payments
-              </p>
-            </div>
           </div>
         </motion.div>
 

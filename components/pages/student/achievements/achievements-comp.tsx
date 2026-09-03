@@ -1,6 +1,7 @@
 "use client";
 
 import { Badge } from "@/components/ui/badge";
+import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import type { StudentAchievementsData } from "@/data/studentprogress";
@@ -13,8 +14,17 @@ import {
   Target,
   Trophy,
   Zap,
+  Award,
+  FileCheck,
+  ExternalLink,
+  ShieldCheck,
+  Copy,
+  Check,
+  GraduationCap,
 } from "lucide-react";
+import Link from "next/link";
 import React, { useMemo, useState } from "react";
+import { toast } from "sonner";
 
 const iconMap: Record<string, React.ElementType> = {
   Zap,
@@ -44,11 +54,20 @@ type Props = StudentAchievementsData;
 
 export default function AchievementsClient({
   achievements,
+  certificates = [],
   summary,
   userName,
 }: Props) {
   const [search, setSearch] = useState("");
   const [activeFilter, setActiveFilter] = useState("ALL");
+  const [copiedId, setCopiedId] = useState<string | null>(null);
+
+  const handleCopyId = (id: string) => {
+    navigator.clipboard.writeText(id);
+    setCopiedId(id);
+    toast.success("Credential ID copied to clipboard!");
+    setTimeout(() => setCopiedId(null), 2000);
+  };
 
   const filtered = useMemo(() => {
     return achievements.filter((a: any) => {
@@ -136,6 +155,132 @@ export default function AchievementsClient({
               </Card>
             ))}
           </motion.div>
+
+          {/* Earned Certificates Section */}
+          {certificates.length > 0 && (
+            <motion.div
+              initial={{ opacity: 0, y: 20 }}
+              animate={{ opacity: 1, y: 0 }}
+              transition={{ duration: 0.8, delay: 0.15 }}
+              className="mb-10 space-y-4">
+              <div className="flex items-center justify-between">
+                <div className="flex items-center gap-2">
+                  <Award className="w-5 h-5 text-neon-purple" />
+                  <h3 className="text-lg font-bold text-white">
+                    Official Certificates &amp; Credentials
+                  </h3>
+                </div>
+                <Badge className="bg-neon-purple/20 text-neon-purple border-neon-purple/40">
+                  {certificates.length} Verified
+                </Badge>
+              </div>
+
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                {certificates.map((cert: any) => {
+                  const isCopied = copiedId === cert.credentialId;
+                  const hasUrl = Boolean(cert.certificateUrl && cert.certificateUrl.trim());
+
+                  return (
+                    <Card
+                      key={cert.id}
+                      className="glass-card border-neon-purple/30 bg-neon-purple/5 hover:border-neon-purple/50 transition-all overflow-hidden">
+                      <CardContent className="p-5 space-y-3">
+                        <div className="flex items-start justify-between gap-3">
+                          <div>
+                            <div className="flex items-center gap-2 mb-1">
+                              <Badge
+                                variant="outline"
+                                className="border-neon-purple/40 text-neon-purple bg-neon-purple/10 text-[10px]">
+                                {cert.programName ? "Program" : "Course"}
+                              </Badge>
+                              {cert.grade && (
+                                <Badge
+                                  variant="outline"
+                                  className="border-emerald-500/40 text-emerald-400 bg-emerald-500/10 text-[10px]">
+                                  {cert.grade}
+                                </Badge>
+                              )}
+                            </div>
+                            <h4 className="text-white font-semibold text-base leading-snug">
+                              {cert.title}
+                            </h4>
+                            {(cert.programName || cert.courseName) && (
+                              <p className="text-xs text-gray-400 mt-0.5">
+                                {cert.programName || cert.courseName}
+                                {cert.cohortName ? ` · ${cert.cohortName}` : ""}
+                              </p>
+                            )}
+                          </div>
+
+                          <div className="p-2.5 rounded-xl bg-neon-purple/20 border border-neon-purple/40 shrink-0">
+                            <Award className="w-6 h-6 text-neon-purple" />
+                          </div>
+                        </div>
+
+                        {/* Credential ID row */}
+                        <div className="flex items-center justify-between p-2.5 rounded-lg bg-black/40 border border-white/10">
+                          <div>
+                            <p className="text-[10px] uppercase tracking-wider text-gray-400 font-semibold">
+                              Credential ID
+                            </p>
+                            <code className="text-xs font-mono font-semibold text-neon-blue">
+                              {cert.credentialId}
+                            </code>
+                          </div>
+                          <button
+                            type="button"
+                            onClick={() => handleCopyId(cert.credentialId)}
+                            className="text-gray-400 hover:text-white p-1 rounded transition-colors"
+                            title="Copy Credential ID">
+                            {isCopied ? (
+                              <Check className="w-4 h-4 text-green-400" />
+                            ) : (
+                              <Copy className="w-4 h-4" />
+                            )}
+                          </button>
+                        </div>
+
+                        {/* Actions */}
+                        <div className="flex items-center gap-2 pt-1">
+                          {hasUrl ? (
+                            <Button
+                              asChild
+                              size="sm"
+                              className="flex-1 bg-gradient-to-r from-neon-blue to-neon-purple hover:opacity-90 text-white text-xs h-9">
+                              <a
+                                href={cert.certificateUrl}
+                                target="_blank"
+                                rel="noopener noreferrer"
+                                className="flex items-center justify-center gap-1.5">
+                                <FileCheck className="w-3.5 h-3.5" />
+                                <span>Download / View</span>
+                                <ExternalLink className="w-3 h-3 ml-0.5" />
+                              </a>
+                            </Button>
+                          ) : null}
+
+                          <Button
+                            asChild
+                            size="sm"
+                            variant="outline"
+                            className="border-white/20 text-gray-300 hover:text-white text-xs h-9">
+                            <Link
+                              href={`/verify-certificate?code=${encodeURIComponent(
+                                cert.credentialId,
+                              )}`}
+                              target="_blank">
+                              <ShieldCheck className="w-3.5 h-3.5 mr-1 text-neon-blue" />
+                              Verify
+                            </Link>
+                          </Button>
+                        </div>
+                      </CardContent>
+                    </Card>
+                  );
+                })}
+              </div>
+            </motion.div>
+          )}
 
           {/* Filters & Search */}
           <motion.div

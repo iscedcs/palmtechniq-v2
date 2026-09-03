@@ -48,6 +48,7 @@ model User {
   AIRecommendation        AIRecommendation[]
   cartItems               CartItem[]
   certificates            Certificate[]
+  issuedCertificates      Certificate[]            @relation("CertificateIssuer")
   createdCourses          Course[]                 @relation("CourseCreator")
   ownedCourses            Course[]                 @relation("CourseOwner")
   discussionReplies       DiscussionReply[]
@@ -1144,27 +1145,44 @@ model Resource {
 }
 
 model Certificate {
-  id             String    @id @default(cuid())
-  certificateId  String    @unique
-  title          String
-  description    String?
-  imageUrl       String?
-  issuedAt       DateTime  @default(now())
-  expiresAt      DateTime?
-  isRevoked      Boolean   @default(false)
-  userId         String
-  courseId       String
-  studentName    String
-  issuedDate     DateTime  @default(now())
-  certificateUrl String    @default("")
-  createdAt      DateTime  @default(now())
-  updatedAt      DateTime  @updatedAt
-  course         Course    @relation(fields: [courseId], references: [id], onDelete: Cascade)
-  user           User      @relation(fields: [userId], references: [id], onDelete: Cascade)
+  id               String               @id @default(cuid())
+  certificateId    String               @unique
+  title            String
+  description      String?
+  imageUrl         String?
+  issuedAt         DateTime             @default(now())
+  expiresAt        DateTime?
+  isRevoked        Boolean              @default(false)
+  revocationReason String?
+  revokedAt        DateTime?
+  userId           String
+  courseId         String?
+  programId        String?
+  cohortId         String?
+  issuedById       String?
+  studentName      String
+  issuedDate       DateTime             @default(now())
+  certificateUrl   String               @default("")
+  type             CertificateType      @default(CertificateOfCompletion)
+  grade            String?
+  score            Float?
+  metadata         Json?
+  createdAt        DateTime             @default(now())
+  updatedAt        DateTime             @updatedAt
+  course           Course?              @relation(fields: [courseId], references: [id], onDelete: Cascade)
+  program          ProfessionalProgram? @relation(fields: [programId], references: [id], onDelete: SetNull)
+  cohort           ProgramCohort?       @relation(fields: [cohortId], references: [id], onDelete: SetNull)
+  issuedBy         User?                @relation("CertificateIssuer", fields: [issuedById], references: [id], onDelete: SetNull)
+  user             User                 @relation(fields: [userId], references: [id], onDelete: Cascade)
 
   // Set when this certificate was auto-issued by passing a final exam.
   examGrade ExamGrade?
 
+  @@index([userId])
+  @@index([courseId])
+  @@index([programId])
+  @@index([cohortId])
+  @@index([certificateId])
   @@map("certificates")
 }
 
@@ -1385,8 +1403,9 @@ model ProfessionalProgram {
   createdAt      DateTime        @default(now())
   updatedAt      DateTime        @updatedAt
 
-  cohorts     ProgramCohort[]
-  enrollments ProgramEnrollment[]
+  cohorts      ProgramCohort[]
+  enrollments  ProgramEnrollment[]
+  certificates Certificate[]
 
   @@map("professional_programs")
 }
@@ -1411,9 +1430,10 @@ model ProgramCohort {
   leadInstructorId String?
   leadInstructor   User?    @relation("CohortLeadInstructor", fields: [leadInstructorId], references: [id], onDelete: SetNull)
   tutorEarnings    TutorEarning[]
-  program     ProfessionalProgram @relation(fields: [programId], references: [id], onDelete: Cascade)
-  enrollments ProgramEnrollment[]
-  exams       Exam[]
+  program      ProfessionalProgram @relation(fields: [programId], references: [id], onDelete: Cascade)
+  enrollments  ProgramEnrollment[]
+  certificates Certificate[]
+  exams        Exam[]
 
   @@unique([programId, cycleNumber])
   @@map("program_cohorts")
