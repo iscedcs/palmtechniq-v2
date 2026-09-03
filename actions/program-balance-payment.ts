@@ -296,7 +296,19 @@ export async function getStudentProgramEnrollments() {
         },
         include: {
           program: true,
-          cohort: true,
+          cohort: {
+            include: {
+              leadInstructor: {
+                select: {
+                  id: true,
+                  name: true,
+                  image: true,
+                  avatar: true,
+                  tutor: { select: { id: true, referralCode: true, title: true } },
+                },
+              },
+            },
+          },
           installments: true,
         },
         orderBy: { createdAt: "desc" },
@@ -321,11 +333,7 @@ export async function getStudentProgramEnrollments() {
     // Calculate balance info for each enrollment
     const enrollmentsWithBalance = enrollments.map(
       (
-        enrollment: ProgramEnrollment & {
-          program: { name: string };
-          cohort: { displayName: string };
-          installments: InstallmentPayment[];
-        },
+        enrollment: any,
       ) => {
         const secondInstallment = enrollment.installments.find(
           (i: InstallmentPayment) => i.installmentNo === 2,
@@ -343,6 +351,13 @@ export async function getStudentProgramEnrollments() {
             (c.cohortId && c.cohortId === enrollment.cohortId),
         );
 
+        const instructor = enrollment.cohort?.leadInstructor;
+        const instructorTutorId =
+          instructor?.tutor?.referralCode ||
+          instructor?.tutor?.id ||
+          instructor?.id ||
+          null;
+
       return {
         id: enrollment.id,
         programId: enrollment.programId,
@@ -355,6 +370,17 @@ export async function getStudentProgramEnrollments() {
         learningMode: enrollment.learningMode,
         paymentPlan: enrollment.paymentPlan,
         
+        // Lead Instructor Info
+        leadInstructor: instructor
+          ? {
+              id: instructor.id,
+              name: instructor.name || "Lead Instructor",
+              title: instructor.tutor?.title || "Lead Instructor",
+              avatar: instructor.avatar || instructor.image || null,
+              tutorReviewId: instructorTutorId,
+            }
+          : null,
+
         // Balance payment specific info
         hasBalancePayment: !!secondInstallment,
         balanceAmount: secondInstallment?.amount || 0,
@@ -368,12 +394,12 @@ export async function getStudentProgramEnrollments() {
         // First installment status
         firstInstallmentPaid: firstInstallment?.status === "PAID",
 
-        // Certificate info
+        // Certificate if issued
         certificate: matchingCert
           ? {
               id: matchingCert.id,
               credentialId: matchingCert.certificateId,
-              certificateUrl: matchingCert.certificateUrl,
+              certificateUrl: matchingCert.certificateUrl || undefined,
               title: matchingCert.title,
               issuedAt: matchingCert.issuedAt,
             }
@@ -383,7 +409,10 @@ export async function getStudentProgramEnrollments() {
       };
     });
 
-    return { success: true, enrollments: enrollmentsWithBalance };
+    return {
+      success: true,
+      enrollments: enrollmentsWithBalance,
+    };
   } catch (error) {
     console.error("[getStudentProgramEnrollments]", error);
     return {

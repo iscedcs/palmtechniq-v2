@@ -14,11 +14,15 @@ import {
   ExternalLink,
   ShieldCheck,
   FileCheck,
+  Star,
+  User,
+  GraduationCap,
 } from "lucide-react";
 import Link from "next/link";
 import { format } from "date-fns";
 import PayBalanceModal from "./pay-balance-modal";
 import { NairaSign } from "@/components/shared/naira-sign-icon";
+import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 
 export interface ProgramEnrollmentData {
   id: string;
@@ -36,6 +40,13 @@ export interface ProgramEnrollmentData {
   balancePaid: boolean;
   balanceOverdue: boolean;
   firstInstallmentPaid: boolean;
+  leadInstructor?: {
+    id: string;
+    name: string;
+    title: string;
+    avatar?: string | null;
+    tutorReviewId: string;
+  } | null;
   certificate?: {
     id: string;
     credentialId: string;
@@ -157,6 +168,47 @@ export default function ProgramEnrollmentCard({
               >
                 <NairaSign className="mr-2 text-base" />
                 Pay Remaining Balance
+              </Button>
+            </div>
+          )}
+
+          {/* Lead Instructor & Review Section */}
+          {enrollment.leadInstructor && (
+            <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 rounded-2xl border border-white/10 bg-white/[0.03] p-3.5">
+              <div className="flex items-center gap-3">
+                <Avatar className="h-10 w-10 border border-white/10">
+                  <AvatarImage src={enrollment.leadInstructor.avatar || undefined} />
+                  <AvatarFallback className="bg-neon-purple/20 text-neon-purple text-xs font-bold">
+                    {enrollment.leadInstructor.name.slice(0, 2).toUpperCase()}
+                  </AvatarFallback>
+                </Avatar>
+                <div>
+                  <div className="flex items-center gap-2">
+                    <span className="text-xs font-semibold text-white">
+                      {enrollment.leadInstructor.name}
+                    </span>
+                    <Badge className="bg-neon-blue/10 text-neon-blue border-neon-blue/30 text-[10px] py-0 px-1.5">
+                      Lead Instructor
+                    </Badge>
+                  </div>
+                  <p className="text-[11px] text-gray-400">
+                    {enrollment.leadInstructor.title}
+                  </p>
+                </div>
+              </div>
+
+              <Button
+                asChild
+                size="sm"
+                variant="outline"
+                className="border-neon-purple/40 text-neon-purple hover:bg-neon-purple/10 text-xs h-8 shrink-0">
+                <Link
+                  href={`/tutors/${encodeURIComponent(
+                    enrollment.leadInstructor.tutorReviewId,
+                  )}/review`}>
+                  <Star className="w-3.5 h-3.5 mr-1.5 fill-neon-purple text-neon-purple" />
+                  Rate & Review Instructor
+                </Link>
               </Button>
             </div>
           )}

@@ -2,7 +2,11 @@
 
 import { auth } from "@/auth";
 import { db } from "@/lib/db";
-import { reviewSchema, updateReviewSchema } from "@/schemas";
+import {
+  reviewSchema,
+  tutorDirectReviewSchema,
+  updateReviewSchema,
+} from "@/schemas";
 import { z } from "zod";
 import { getAverageRating } from "@/lib/reviews";
 import { notify } from "@/lib/notify";
@@ -16,6 +20,41 @@ const canEditReview = (createdAt: Date) => {
   return new Date() <= cutoff;
 };
 
+/**
+ * Recalculates and updates a tutor's average rating and total reviews.
+ */
+async function recalculateTutorRating(tutorId: string) {
+  try {
+    const reviews = await db.review.findMany({
+      where: {
+        OR: [{ tutorId }, { course: { tutorId } }],
+        isPublic: true,
+      },
+      select: { rating: true },
+    });
+
+    const totalReviews = reviews.length;
+    const averageRating =
+      totalReviews > 0
+        ? Number(
+            (
+              reviews.reduce((acc: number, curr: { rating: number }) => acc + curr.rating, 0) / totalReviews
+            ).toFixed(2),
+          )
+        : 0;
+
+    await db.tutor.update({
+      where: { id: tutorId },
+      data: {
+        totalReviews,
+        averageRating,
+      },
+    });
+  } catch (error) {
+    console.error("Failed to recalculate tutor rating:", error);
+  }
+}
+
 const ensureEnrolled = async (userId: string, courseId: string) => {
   const enrollment = await db.enrollment.findFirst({
     where: {
@@ -28,7 +67,10 @@ const ensureEnrolled = async (userId: string, courseId: string) => {
   return Boolean(enrollment);
 };
 
-export async function createReview(input: z.infer<typeof reviewSchema>) {
+/**
+ * Standard course review submission
+ */
+export async function createReview(input: z.input<typeof reviewSchema>) {
   const session = await auth();
   if (!session?.user?.id) return { error: "Unauthorized" };
 
@@ -37,12 +79,16 @@ export async function createReview(input: z.infer<typeof reviewSchema>) {
     return { error: validated.error.issues[0]?.message || "Invalid review" };
   }
 
+  if (!validated.data.courseId) {
+    return { error: "Course ID is required" };
+  }
+
   const isEnrolled = await ensureEnrolled(
     session.user.id,
     validated.data.courseId,
   );
   if (!isEnrolled) {
-    return { error: "Only enrolled students can leave a review" };
+    return { error: "Only enrolled students can leave a course review" };
   }
 
   const existing = await db.review.findFirst({
@@ -56,7 +102,9 @@ export async function createReview(input: z.infer<typeof reviewSchema>) {
   const course = await db.course.findUnique({
     where: { id: validated.data.courseId },
     select: {
-      tutor: { select: { userId: true, user: { select: { name: true } } } },
+      id: true,
+      tutorId: true,
+      tutor: { select: { id: true, userId: true, user: { select: { name: true } } } },
       title: true,
     },
   });
@@ -65,13 +113,24 @@ export async function createReview(input: z.infer<typeof reviewSchema>) {
     data: {
       userId: session.user.id,
       courseId: validated.data.courseId,
+      tutorId: course?.tutor?.id || null,
+      reviewType: "COURSE",
       rating: validated.data.rating,
       comment: validated.data.comment,
+      communicationRating: validated.data.communicationRating,
+      clarityRating: validated.data.clarityRating,
+      expertiseRating: validated.data.expertiseRating,
       isPublic: true,
+      isVerifiedStudent: true,
+      verifiedContext: `Verified Course Student · ${course?.title || "Course"}`,
       reviewerName: session.user.name || "Student",
       tutorName: course?.tutor?.user?.name || "Tutor",
     },
   });
+
+  if (course?.tutor?.id) {
+    await recalculateTutorRating(course.tutor.id);
+  }
 
   if (course?.tutor?.userId) {
     await notify.user(course.tutor.userId, {
@@ -98,6 +157,187 @@ export async function createReview(input: z.infer<typeof reviewSchema>) {
   return { review };
 }
 
+/**
+ * Direct Tutor & Program Student Review Submission
+ */
+export async function createTutorDirectReview(
+  input: z.input<typeof tutorDirectReviewSchema>,
+) {
+  const session = await auth();
+  if (!session?.user?.id) return { error: "Please sign in to leave a review." };
+
+  const validated = tutorDirectReviewSchema.safeParse(input);
+  if (!validated.success) {
+    return { error: validated.error.issues[0]?.message || "Invalid review data" };
+  }
+
+  const {
+    tutorId,
+    courseId,
+    programId,
+    reviewType,
+    verifiedContext,
+    rating,
+    comment,
+    communicationRating,
+    clarityRating,
+    expertiseRating,
+  } = validated.data;
+
+  // Resolve tutor
+  const tutor = await db.tutor.findFirst({
+    where: {
+      OR: [
+        { id: tutorId },
+        { userId: tutorId },
+        { referralCode: tutorId },
+        { user: { username: tutorId } },
+      ],
+    },
+    include: {
+      user: { select: { id: true, name: true } },
+    },
+  });
+
+  if (!tutor) {
+    return { error: "Tutor profile not found." };
+  }
+
+  // Prevent tutor from reviewing themselves
+  if (tutor.userId === session.user.id) {
+    return { error: "You cannot review your own tutor profile." };
+  }
+
+  // Check student role / status
+  const currentUser = await db.user.findUnique({
+    where: { id: session.user.id },
+    select: { id: true, name: true, role: true },
+  });
+
+  // Verify learning context
+  let finalContext = verifiedContext || "Verified Student";
+  let isVerified = true;
+
+  if (programId) {
+    const program = await db.professionalProgram.findUnique({
+      where: { id: programId },
+      select: { name: true },
+    });
+    if (program) {
+      finalContext = `Verified Program Student · ${program.name}`;
+    }
+  } else if (courseId) {
+    const course = await db.course.findUnique({
+      where: { id: courseId },
+      select: { title: true },
+    });
+    if (course) {
+      finalContext = `Verified Course Student · ${course.title}`;
+    }
+  } else {
+    // Check if the student has enrolled in any courses or programs with this tutor
+    const [enrolledCourse, enrolledCohort] = await Promise.all([
+      db.enrollment.findFirst({
+        where: {
+          userId: session.user.id,
+          course: { tutorId: tutor.id },
+          status: { in: ["ACTIVE", "COMPLETED"] },
+        },
+        include: { course: { select: { title: true } } },
+      }),
+      db.programCohort.findFirst({
+        where: {
+          leadInstructorId: tutor.userId,
+          enrollments: {
+            some: {
+              userId: session.user.id,
+              status: { in: ["ACTIVE", "COMPLETED"] },
+            },
+          },
+        },
+        include: { program: { select: { name: true } } },
+      }),
+    ]);
+
+    if (enrolledCohort) {
+      finalContext = `Verified Program Student · ${enrolledCohort.program.name}`;
+    } else if (enrolledCourse) {
+      finalContext = `Verified Course Student · ${enrolledCourse.course.title}`;
+    } else if (currentUser?.role === "STUDENT") {
+      finalContext = "Verified PalmTechnIQ Student";
+    }
+  }
+
+  // Check for existing review
+  const existingReview = await db.review.findFirst({
+    where: {
+      userId: session.user.id,
+      tutorId: tutor.id,
+      ...(courseId ? { courseId } : {}),
+      ...(programId ? { programId } : {}),
+    },
+  });
+
+  let review;
+  if (existingReview) {
+    // Update existing review
+    review = await db.review.update({
+      where: { id: existingReview.id },
+      data: {
+        rating,
+        comment: comment.trim(),
+        communicationRating,
+        clarityRating,
+        expertiseRating,
+        reviewType,
+        verifiedContext: finalContext,
+        isVerifiedStudent: isVerified,
+      },
+    });
+  } else {
+    // Create new review
+    review = await db.review.create({
+      data: {
+        userId: session.user.id,
+        tutorId: tutor.id,
+        courseId: courseId || null,
+        programId: programId || null,
+        reviewType,
+        rating,
+        comment: comment.trim(),
+        communicationRating,
+        clarityRating,
+        expertiseRating,
+        isPublic: true,
+        isVerifiedStudent: isVerified,
+        verifiedContext: finalContext,
+        reviewerName: session.user.name || "Student",
+        tutorName: tutor.user.name || "Tutor",
+        reviewerRole: currentUser?.role || "STUDENT",
+      },
+    });
+  }
+
+  // Recalculate tutor aggregates
+  await recalculateTutorRating(tutor.id);
+
+  // Notify tutor
+  await notify.user(tutor.userId, {
+    type: "info",
+    title: "New Student Review Received",
+    message: `${session.user.name || "A student"} left you a ${rating}-star review!`,
+    actionUrl: "/tutor/reviews",
+    actionLabel: "View Reviews",
+    metadata: {
+      category: "tutor_reviewed",
+      tutorId: tutor.id,
+      reviewId: review.id,
+    },
+  });
+
+  return { success: true, review };
+}
+
 export async function updateReview(input: z.infer<typeof updateReviewSchema>) {
   const session = await auth();
   if (!session?.user?.id) return { error: "Unauthorized" };
@@ -115,7 +355,7 @@ export async function updateReview(input: z.infer<typeof updateReviewSchema>) {
     return { error: "Unauthorized" };
   }
   if (!canEditReview(review.createdAt)) {
-    return { error: "Review can no longer be edited" };
+    return { error: "Review can no longer be edited (7-day window passed)" };
   }
 
   const updated = await db.review.update({
@@ -123,8 +363,15 @@ export async function updateReview(input: z.infer<typeof updateReviewSchema>) {
     data: {
       rating: validated.data.rating,
       comment: validated.data.comment,
+      communicationRating: validated.data.communicationRating,
+      clarityRating: validated.data.clarityRating,
+      expertiseRating: validated.data.expertiseRating,
     },
   });
+
+  if (review.tutorId) {
+    await recalculateTutorRating(review.tutorId);
+  }
 
   return { review: updated };
 }
@@ -143,10 +390,15 @@ export async function deleteReview(reviewId: string) {
     return { error: "Unauthorized" };
   }
   if (!canEditReview(review.createdAt)) {
-    return { error: "Review can no longer be deleted" };
+    return { error: "Review can no longer be deleted (7-day window passed)" };
   }
 
   await db.review.delete({ where: { id: reviewId } });
+
+  if (review.tutorId) {
+    await recalculateTutorRating(review.tutorId);
+  }
+
   return { success: true };
 }
 
@@ -155,7 +407,7 @@ export async function getCourseReviews(courseId: string) {
     where: { courseId, isPublic: true },
     orderBy: { createdAt: "desc" },
     include: {
-      user: { select: { name: true, avatar: true } },
+      user: { select: { name: true, avatar: true, image: true } },
     },
   });
 
@@ -173,6 +425,191 @@ export async function getMyReview(courseId: string) {
   return { review };
 }
 
+/**
+ * Public Tutor Profile and Review Form Context
+ */
+export async function getTutorPublicReviewProfile(tutorIdentifier: string) {
+  const session = await auth();
+
+  const tutor = await db.tutor.findFirst({
+    where: {
+      OR: [
+        { id: tutorIdentifier },
+        { userId: tutorIdentifier },
+        { referralCode: tutorIdentifier },
+        { user: { username: tutorIdentifier } },
+      ],
+    },
+    include: {
+      user: {
+        select: {
+          id: true,
+          name: true,
+          username: true,
+          image: true,
+          avatar: true,
+          role: true,
+        },
+      },
+      Course: {
+        where: { isPublished: true },
+        select: {
+          id: true,
+          title: true,
+          slug: true,
+          category: true,
+          level: true,
+        },
+      },
+    },
+  });
+
+  if (!tutor) {
+    return { error: "Tutor not found", tutor: null };
+  }
+
+  // Find cohorts where this tutor is the lead instructor
+  const leadCohorts = await db.programCohort.findMany({
+    where: { leadInstructorId: tutor.userId },
+    include: {
+      program: {
+        select: {
+          id: true,
+          name: true,
+          slug: true,
+        },
+      },
+    },
+  });
+
+  // Recent public reviews for this tutor
+  const reviews = await db.review.findMany({
+    where: {
+      OR: [{ tutorId: tutor.id }, { course: { tutorId: tutor.id } }],
+      isPublic: true,
+    },
+    include: {
+      user: { select: { name: true, image: true, avatar: true } },
+      course: { select: { title: true } },
+      program: { select: { name: true } },
+      reactions: { select: { type: true } },
+    },
+    orderBy: { createdAt: "desc" },
+    take: 30,
+  });
+
+  const totalReviews = reviews.length;
+  const averageRating =
+    totalReviews > 0
+      ? Number(
+          (
+            reviews.reduce((acc: number, curr: { rating: number }) => acc + curr.rating, 0) / totalReviews
+          ).toFixed(1),
+        )
+      : tutor.averageRating || 0;
+
+  // If user is logged in, find their existing review and student relationship options
+  let userReview = null;
+  let studentContexts: {
+    type: "PROGRAM" | "COURSE" | "DIRECT";
+    id: string;
+    label: string;
+    sublabel?: string;
+  }[] = [
+    {
+      type: "DIRECT",
+      id: "general",
+      label: "General Mentorship & Tutoring",
+      sublabel: "Platform Student Review",
+    },
+  ];
+
+  let isOwnProfile = false;
+  let isStudent = false;
+
+  if (session?.user?.id) {
+    isOwnProfile = tutor.userId === session.user.id;
+    isStudent = session.user.role === "STUDENT";
+
+    userReview = await db.review.findFirst({
+      where: {
+        userId: session.user.id,
+        OR: [{ tutorId: tutor.id }, { course: { tutorId: tutor.id } }],
+      },
+    });
+
+    // Check course enrollments with this tutor
+    const courseEnrollments = await db.enrollment.findMany({
+      where: {
+        userId: session.user.id,
+        course: { tutorId: tutor.id },
+      },
+      include: {
+        course: { select: { id: true, title: true } },
+      },
+    });
+
+    for (const enr of courseEnrollments) {
+      studentContexts.push({
+        type: "COURSE",
+        id: enr.course.id,
+        label: enr.course.title,
+        sublabel: "Enrolled Course",
+      });
+    }
+
+    // Check program cohort enrollments with this tutor
+    const programEnrollments = await db.programEnrollment.findMany({
+      where: {
+        userId: session.user.id,
+        cohort: { leadInstructorId: tutor.userId },
+      },
+      include: {
+        program: { select: { id: true, name: true } },
+        cohort: { select: { displayName: true } },
+      },
+    });
+
+    for (const prog of programEnrollments) {
+      studentContexts.push({
+        type: "PROGRAM",
+        id: prog.program.id,
+        label: prog.program.name,
+        sublabel: prog.cohort.displayName,
+      });
+    }
+  }
+
+  return {
+    tutor: {
+      id: tutor.id,
+      userId: tutor.userId,
+      name: tutor.user.name || "Tutor",
+      username: tutor.user.username || null,
+      avatar: tutor.user.avatar || tutor.user.image || null,
+      title: tutor.title,
+      expertise: tutor.expertise,
+      experience: tutor.experience,
+      totalReviews,
+      averageRating,
+      isVerified: tutor.isVerified,
+      referralCode: tutor.referralCode,
+      courses: tutor.Course,
+      programs: leadCohorts.map((c: any) => ({
+        id: c.program.id,
+        name: c.program.name,
+        slug: c.program.slug,
+        cohort: c.displayName,
+      })),
+    },
+    reviews,
+    userReview,
+    studentContexts,
+    isOwnProfile,
+    isStudent,
+  };
+}
+
 export async function getTutorReviewsOverview() {
   const session = await auth();
   if (!session?.user?.id) return { error: "Unauthorized" };
@@ -183,10 +620,14 @@ export async function getTutorReviewsOverview() {
   if (!tutor) return { error: "Tutor account not found" };
 
   const reviews = await db.review.findMany({
-    where: { course: { tutorId: tutor.id }, isPublic: true },
+    where: {
+      OR: [{ tutorId: tutor.id }, { course: { tutorId: tutor.id } }],
+      isPublic: true,
+    },
     include: {
       user: { select: { name: true, avatar: true, image: true } },
       course: { select: { title: true } },
+      program: { select: { name: true } },
       reactions: { select: { type: true } },
     },
     orderBy: { createdAt: "desc" },
@@ -244,6 +685,9 @@ export async function getTutorReviewsOverview() {
         : 0;
 
   return {
+    tutorId: tutor.id,
+    userId: tutor.userId,
+    referralCode: tutor.referralCode,
     reviews,
     averageRating,
     totalReviews,
@@ -269,7 +713,10 @@ export async function respondToReview(reviewId: string, responseText: string) {
   if (!tutor) return { error: "Tutor account not found" };
 
   const review = await db.review.findFirst({
-    where: { id: reviewId, course: { tutorId: tutor.id } },
+    where: {
+      id: reviewId,
+      OR: [{ tutorId: tutor.id }, { course: { tutorId: tutor.id } }],
+    },
   });
   if (!review) return { error: "Review not found" };
 
@@ -298,13 +745,6 @@ export async function toggleReviewReaction(
     select: {
       id: true,
       userId: true,
-      courseId: true,
-      course: {
-        select: {
-          title: true,
-          tutor: { select: { userId: true } },
-        },
-      },
     },
   });
   if (!review) return { error: "Review not found" };
@@ -317,16 +757,19 @@ export async function toggleReviewReaction(
         type,
       },
     },
-    select: { id: true },
   });
 
   if (existing) {
     await db.reviewReaction.delete({
       where: {
-        reviewId_userId_type: { reviewId, userId: session.user.id, type },
+        reviewId_userId_type: {
+          reviewId,
+          userId: session.user.id,
+          type,
+        },
       },
     });
-    return { added: false };
+    return { status: "removed", added: false };
   }
 
   await db.reviewReaction.create({
@@ -337,40 +780,5 @@ export async function toggleReviewReaction(
     },
   });
 
-  const actorId = session.user.id;
-  const actorName = session.user.name || "Someone";
-  if (review.userId && review.userId !== actorId) {
-    await notify.user(review.userId, {
-      type: "info",
-      title: "New reaction on your review",
-      message: `${actorName} reacted to your review on "${review.course.title}".`,
-      actionUrl: `/courses/${review.courseId}`,
-      actionLabel: "View Course",
-      metadata: {
-        category: "review_reacted",
-        reviewId,
-        courseId: review.courseId,
-        reactionType: type,
-      },
-    });
-  }
-
-  const tutorUserId = review.course?.tutor?.userId;
-  if (tutorUserId && tutorUserId !== actorId) {
-    await notify.user(tutorUserId, {
-      type: "info",
-      title: "Course review reaction",
-      message: `${actorName} added a ${type.toLowerCase()} reaction to a review for "${review.course.title}".`,
-      actionUrl: `/tutor/reviews?reviewId=${reviewId}`,
-      actionLabel: "View Reviews",
-      metadata: {
-        category: "course_review_reacted",
-        reviewId,
-        courseId: review.courseId,
-        reactionType: type,
-      },
-    });
-  }
-
-  return { added: true };
+  return { status: "added", added: true };
 }
