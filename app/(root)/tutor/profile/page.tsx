@@ -32,7 +32,17 @@ import {
   Github,
   Instagram,
   Loader2,
+  ExternalLink,
+  CheckCircle2,
+  MapPin,
 } from "lucide-react";
+import {
+  Dialog,
+  DialogContent,
+  DialogDescription,
+  DialogHeader,
+  DialogTitle,
+} from "@/components/ui/dialog";
 import { NairaSign } from "@/components/shared/naira-sign-icon";
 import { generateRandomAvatar } from "@/lib/utils";
 import { toast } from "sonner";
@@ -106,6 +116,8 @@ export default function TutorProfilePage() {
   const [availability, setAvailability] =
     useState<Availability>(defaultAvailability);
   const [preferences, setPreferences] = useState(defaultUserPreferences);
+  const [publicSlug, setPublicSlug] = useState<string>("");
+  const [previewOpen, setPreviewOpen] = useState(false);
 
   const addSkill = () => {
     if (newSkill.trim() && !skills.includes(newSkill.trim())) {
@@ -271,6 +283,11 @@ export default function TutorProfilePage() {
       setSocialLinks(data.socialLinks);
       setAvailability(data.availability);
       setPreferences(data.preferences);
+      if ("publicSlug" in data && data.publicSlug) {
+        setPublicSlug(data.publicSlug);
+      } else if ("tutorId" in data && data.tutorId) {
+        setPublicSlug(data.tutorId);
+      }
       setLoading(false);
     };
 
@@ -309,35 +326,38 @@ export default function TutorProfilePage() {
             }}
           />
 
-          <div className="container mx-auto px-6 relative z-10">
+          <div className="container mx-auto px-4 sm:px-6 relative z-10">
             <motion.div
               initial={{ opacity: 0, y: 30 }}
               animate={{ opacity: 1, y: 0 }}
               transition={{ duration: 0.8 }}
-              className="flex items-center justify-between mb-8">
+              className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 mb-6 sm:mb-8">
               <div>
-                <h1 className="text-4xl md:text-5xl font-bold text-white mb-4">
+                <h1 className="text-3xl sm:text-4xl md:text-5xl font-bold text-white mb-2 sm:mb-4">
                   Profile <span className="text-gradient">Management</span>
                 </h1>
-                <p className="text-xl text-gray-300">
+                <p className="text-sm sm:text-base md:text-xl text-gray-300">
                   Customize your tutor profile and settings
                 </p>
               </div>
-              <div className="flex gap-3">
+              <div className="flex flex-wrap items-center gap-2 sm:gap-3">
                 <Button
+                  type="button"
                   variant="outline"
-                  className="gap-2 border-white/20 text-white hover:bg-white/10 bg-transparent">
-                  <Eye className="w-4 h-4" />
+                  onClick={() => setPreviewOpen(true)}
+                  className="flex-1 sm:flex-none gap-1.5 sm:gap-2 text-xs sm:text-sm h-9 sm:h-10 px-3 sm:px-4 border-white/20 text-white hover:bg-white/10 bg-transparent justify-center group">
+                  <Eye className="w-3.5 h-3.5 sm:w-4 sm:h-4 text-neon-blue group-hover:scale-110 transition-transform" />
                   Preview Profile
                 </Button>
                 <Button
+                  type="button"
                   onClick={handleSave}
                   disabled={saving || uploadingImage}
-                  className="gap-2 bg-gradient-to-r from-neon-blue to-neon-purple text-white">
+                  className="flex-1 sm:flex-none gap-1.5 sm:gap-2 text-xs sm:text-sm h-9 sm:h-10 px-3 sm:px-4 bg-gradient-to-r from-neon-blue to-neon-purple text-white justify-center shadow-lg shadow-neon-blue/20 hover:shadow-neon-blue/40 transition-all">
                   {saving ? (
-                    <Loader2 className="w-4 h-4 animate-spin" />
+                    <Loader2 className="w-3.5 h-3.5 sm:w-4 sm:h-4 animate-spin" />
                   ) : (
-                    <Save className="w-4 h-4" />
+                    <Save className="w-3.5 h-3.5 sm:w-4 sm:h-4" />
                   )}
                   {saving ? "Saving..." : "Save Changes"}
                 </Button>
@@ -347,42 +367,42 @@ export default function TutorProfilePage() {
             <Tabs
               value={activeTab}
               onValueChange={setActiveTab}
-              className="space-y-8">
-              <TabsList className="grid w-full grid-cols-6 bg-white/5 backdrop-blur-sm border border-white/10">
+              className="space-y-6 sm:space-y-8">
+              <TabsList className="flex w-full overflow-x-auto justify-start sm:grid sm:grid-cols-6 bg-white/5 backdrop-blur-sm border border-white/10 p-1 rounded-xl h-auto gap-1 no-scrollbar">
                 <TabsTrigger
                   value="basic"
-                  className="gap-2 text-white data-[state=active]:bg-white/10">
-                  <User className="w-4 h-4" />
+                  className="flex-shrink-0 gap-1.5 sm:gap-2 text-xs sm:text-sm px-3 py-2 text-white data-[state=active]:bg-white/10 data-[state=active]:text-neon-blue">
+                  <User className="w-3.5 h-3.5 sm:w-4 sm:h-4" />
                   Basic Info
                 </TabsTrigger>
                 <TabsTrigger
                   value="professional"
-                  className="gap-2 text-white data-[state=active]:bg-white/10">
-                  <Briefcase className="w-4 h-4" />
+                  className="flex-shrink-0 gap-1.5 sm:gap-2 text-xs sm:text-sm px-3 py-2 text-white data-[state=active]:bg-white/10 data-[state=active]:text-neon-blue">
+                  <Briefcase className="w-3.5 h-3.5 sm:w-4 sm:h-4" />
                   Professional
                 </TabsTrigger>
                 <TabsTrigger
                   value="availability"
-                  className="gap-2 text-white data-[state=active]:bg-white/10">
-                  <Clock className="w-4 h-4" />
+                  className="flex-shrink-0 gap-1.5 sm:gap-2 text-xs sm:text-sm px-3 py-2 text-white data-[state=active]:bg-white/10 data-[state=active]:text-neon-blue">
+                  <Clock className="w-3.5 h-3.5 sm:w-4 sm:h-4" />
                   Availability
                 </TabsTrigger>
                 <TabsTrigger
                   value="pricing"
-                  className="gap-2 text-white data-[state=active]:bg-white/10">
-                  <NairaSign className="w-4 h-4" />
+                  className="flex-shrink-0 gap-1.5 sm:gap-2 text-xs sm:text-sm px-3 py-2 text-white data-[state=active]:bg-white/10 data-[state=active]:text-neon-blue">
+                  <NairaSign className="w-3.5 h-3.5 sm:w-4 sm:h-4" />
                   Pricing
                 </TabsTrigger>
                 <TabsTrigger
                   value="social"
-                  className="gap-2 text-white data-[state=active]:bg-white/10">
-                  <Globe className="w-4 h-4" />
+                  className="flex-shrink-0 gap-1.5 sm:gap-2 text-xs sm:text-sm px-3 py-2 text-white data-[state=active]:bg-white/10 data-[state=active]:text-neon-blue">
+                  <Globe className="w-3.5 h-3.5 sm:w-4 sm:h-4" />
                   Social
                 </TabsTrigger>
                 <TabsTrigger
                   value="settings"
-                  className="gap-2 text-white data-[state=active]:bg-white/10">
-                  <Shield className="w-4 h-4" />
+                  className="flex-shrink-0 gap-1.5 sm:gap-2 text-xs sm:text-sm px-3 py-2 text-white data-[state=active]:bg-white/10 data-[state=active]:text-neon-blue">
+                  <Shield className="w-3.5 h-3.5 sm:w-4 sm:h-4" />
                   Settings
                 </TabsTrigger>
               </TabsList>
@@ -445,7 +465,7 @@ export default function TutorProfilePage() {
                       </div>
 
                       {/* Name Fields */}
-                      <div className="grid grid-cols-2 gap-4">
+                      <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                         <div className="space-y-2">
                           <Label htmlFor="firstName" className="text-white">
                             First Name
@@ -481,7 +501,7 @@ export default function TutorProfilePage() {
                       </div>
 
                       {/* Contact Information */}
-                      <div className="grid grid-cols-2 gap-4">
+                      <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                         <div className="space-y-2">
                           <Label htmlFor="email" className="text-white">
                             Email Address
@@ -1143,6 +1163,257 @@ export default function TutorProfilePage() {
           </div>
         </section>
       </div>
+
+      {/* Profile Preview Modal */}
+      <Dialog open={previewOpen} onOpenChange={setPreviewOpen}>
+        <DialogContent className="max-w-3xl max-h-[90vh] overflow-y-auto bg-[#070b14]/95 border-white/15 text-white backdrop-blur-xl p-0 sm:rounded-2xl no-scrollbar">
+          <DialogHeader className="sr-only">
+            <DialogTitle>Tutor Profile Preview</DialogTitle>
+            <DialogDescription>Preview how your profile appears to students and visitors.</DialogDescription>
+          </DialogHeader>
+          <div className="relative">
+            {/* Header Banner */}
+            <div className="h-28 sm:h-36 bg-gradient-to-r from-neon-blue/30 via-neon-purple/30 to-neon-pink/30 relative overflow-hidden flex items-end p-4 sm:p-6">
+              <div className="absolute inset-0 cyber-grid opacity-30" />
+              <div className="absolute top-3 left-4 flex items-center gap-2 bg-black/40 backdrop-blur-md px-3 py-1 rounded-full text-xs text-neon-blue border border-white/10">
+                <Eye className="w-3.5 h-3.5" />
+                <span>Live Draft Preview</span>
+              </div>
+            </div>
+
+            {/* Profile Header Info */}
+            <div className="px-4 sm:px-6 pb-6 pt-0">
+              <div className="flex flex-col sm:flex-row sm:items-end justify-between gap-4 -mt-10 sm:-mt-14 mb-6">
+                <div className="flex items-end gap-3 sm:gap-4">
+                  <div className="relative">
+                    <Avatar className="w-20 h-20 sm:w-24 sm:h-24 border-4 border-[#070b14] shadow-2xl bg-[#0d121f]">
+                      <AvatarImage src={profileImage || fallbackAvatar} alt="Tutor Avatar" />
+                      <AvatarFallback className="bg-gradient-to-r from-neon-blue to-neon-purple text-white text-lg sm:text-xl font-bold">
+                        {initials}
+                      </AvatarFallback>
+                    </Avatar>
+                    <span className="absolute bottom-1 right-1 w-3.5 h-3.5 rounded-full bg-emerald-500 border-2 border-[#070b14]" title="Online / Active" />
+                  </div>
+                  <div className="pb-1">
+                    <div className="flex items-center gap-2">
+                      <h2 className="text-lg sm:text-2xl font-bold text-white">
+                        {profile.firstName || profile.lastName
+                          ? `${profile.firstName} ${profile.lastName}`.trim()
+                          : "Your Name"}
+                      </h2>
+                      <CheckCircle2 className="w-4 h-4 sm:w-5 sm:h-5 text-neon-blue shrink-0" />
+                    </div>
+                    <p className="text-xs sm:text-sm text-neon-cyan font-medium">
+                      {profile.title || "PalmTechnIQ Tutor / Instructor"}
+                    </p>
+                    {profile.course && (
+                      <p className="text-xs text-gray-400 mt-0.5">
+                        Specializes in <span className="text-gray-200">{profile.course}</span>
+                      </p>
+                    )}
+                  </div>
+                </div>
+
+                <div className="flex items-center gap-2 self-start sm:self-end">
+                  <Button
+                    type="button"
+                    onClick={() => {
+                      const url = `/tutors/${publicSlug || "me"}`;
+                      window.open(url, "_blank", "noopener,noreferrer");
+                    }}
+                    className="gap-2 bg-gradient-to-r from-neon-blue to-neon-purple text-white text-xs sm:text-sm h-9 shadow-lg shadow-neon-blue/20 hover:shadow-neon-blue/40 transition-all">
+                    <ExternalLink className="w-4 h-4" />
+                    Open Public Page
+                  </Button>
+                </div>
+              </div>
+
+              {/* Quick Key Badges */}
+              <div className="grid grid-cols-2 sm:grid-cols-4 gap-2 sm:gap-3 p-3 sm:p-4 rounded-xl bg-white/[0.03] border border-white/10 mb-6 text-xs sm:text-sm">
+                <div>
+                  <span className="text-gray-400 block text-[11px] uppercase tracking-wider">Hourly Rate</span>
+                  <span className="text-sm sm:text-base font-bold text-white flex items-center gap-0.5 mt-0.5">
+                    <NairaSign className="w-3.5 h-3.5 text-neon-green" />
+                    {profile.hourlyRate ? Number(profile.hourlyRate).toLocaleString() : "0"}
+                    <span className="text-xs font-normal text-gray-400">/hr</span>
+                  </span>
+                </div>
+                <div>
+                  <span className="text-gray-400 block text-[11px] uppercase tracking-wider">Experience</span>
+                  <span className="text-sm sm:text-base font-bold text-white mt-0.5 block">
+                    {profile.experience ? `${profile.experience} yrs` : "N/A"}
+                  </span>
+                </div>
+                <div>
+                  <span className="text-gray-400 block text-[11px] uppercase tracking-wider">Location</span>
+                  <span className="text-xs sm:text-sm font-medium text-white truncate mt-0.5 block">
+                    {profile.location || "Remote / Global"}
+                  </span>
+                </div>
+                <div>
+                  <span className="text-gray-400 block text-[11px] uppercase tracking-wider">Language</span>
+                  <span className="text-xs sm:text-sm font-medium text-white truncate mt-0.5 block">
+                    {profile.language || "English"}
+                  </span>
+                </div>
+              </div>
+
+              {/* Bio Section */}
+              <div className="space-y-2 mb-6">
+                <h4 className="text-xs uppercase tracking-wider font-semibold text-gray-400">About Me</h4>
+                <div className="p-3.5 sm:p-4 rounded-xl bg-white/[0.02] border border-white/10 text-xs sm:text-sm text-gray-300 whitespace-pre-wrap leading-relaxed">
+                  {profile.bio || "No bio added yet. Write a compelling summary to attract students."}
+                </div>
+              </div>
+
+              {/* Skills */}
+              <div className="space-y-2 mb-6">
+                <h4 className="text-xs uppercase tracking-wider font-semibold text-gray-400">Skills & Focus Areas</h4>
+                {skills.length > 0 ? (
+                  <div className="flex flex-wrap gap-1.5 sm:gap-2">
+                    {skills.map((skill) => (
+                      <Badge
+                        key={skill}
+                        className="bg-neon-blue/10 border-neon-blue/30 text-neon-blue hover:bg-neon-blue/20 text-xs px-2.5 py-1">
+                        {skill}
+                      </Badge>
+                    ))}
+                  </div>
+                ) : (
+                  <p className="text-xs text-gray-500 italic">No skills added yet.</p>
+                )}
+              </div>
+
+              {/* Education & Certifications */}
+              {(education.length > 0 || certifications.length > 0) && (
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 mb-6">
+                  {education.length > 0 && (
+                    <div className="p-3.5 rounded-xl bg-white/[0.02] border border-white/10 space-y-2">
+                      <h5 className="text-xs uppercase tracking-wider font-semibold text-gray-400 flex items-center gap-1.5">
+                        <BookOpen className="w-3.5 h-3.5 text-neon-purple" />
+                        Education
+                      </h5>
+                      <ul className="space-y-1 text-xs text-gray-300">
+                        {education.map((item, idx) => (
+                          <li key={idx} className="truncate">• {item}</li>
+                        ))}
+                      </ul>
+                    </div>
+                  )}
+                  {certifications.length > 0 && (
+                    <div className="p-3.5 rounded-xl bg-white/[0.02] border border-white/10 space-y-2">
+                      <h5 className="text-xs uppercase tracking-wider font-semibold text-gray-400 flex items-center gap-1.5">
+                        <Award className="w-3.5 h-3.5 text-neon-yellow" />
+                        Certifications
+                      </h5>
+                      <ul className="space-y-1 text-xs text-gray-300">
+                        {certifications.map((item, idx) => (
+                          <li key={idx} className="truncate">• {item}</li>
+                        ))}
+                      </ul>
+                    </div>
+                  )}
+                </div>
+              )}
+
+              {/* Social Links */}
+              {Object.values(socialLinks).some(Boolean) && (
+                <div className="space-y-2 mb-6">
+                  <h4 className="text-xs uppercase tracking-wider font-semibold text-gray-400">Connect</h4>
+                  <div className="flex flex-wrap gap-2">
+                    {socialLinks.website && (
+                      <a
+                        href={socialLinks.website}
+                        target="_blank"
+                        rel="noopener noreferrer"
+                        className="flex items-center gap-1.5 text-xs text-gray-300 hover:text-white px-3 py-1.5 rounded-lg bg-white/5 border border-white/10 transition-colors">
+                        <Globe className="w-3.5 h-3.5 text-neon-blue" />
+                        Website
+                      </a>
+                    )}
+                    {socialLinks.github && (
+                      <a
+                        href={socialLinks.github}
+                        target="_blank"
+                        rel="noopener noreferrer"
+                        className="flex items-center gap-1.5 text-xs text-gray-300 hover:text-white px-3 py-1.5 rounded-lg bg-white/5 border border-white/10 transition-colors">
+                        <Github className="w-3.5 h-3.5 text-gray-200" />
+                        GitHub
+                      </a>
+                    )}
+                    {socialLinks.linkedin && (
+                      <a
+                        href={socialLinks.linkedin}
+                        target="_blank"
+                        rel="noopener noreferrer"
+                        className="flex items-center gap-1.5 text-xs text-gray-300 hover:text-white px-3 py-1.5 rounded-lg bg-white/5 border border-white/10 transition-colors">
+                        <Linkedin className="w-3.5 h-3.5 text-blue-400" />
+                        LinkedIn
+                      </a>
+                    )}
+                    {socialLinks.twitter && (
+                      <a
+                        href={socialLinks.twitter}
+                        target="_blank"
+                        rel="noopener noreferrer"
+                        className="flex items-center gap-1.5 text-xs text-gray-300 hover:text-white px-3 py-1.5 rounded-lg bg-white/5 border border-white/10 transition-colors">
+                        <Twitter className="w-3.5 h-3.5 text-cyan-400" />
+                        Twitter / X
+                      </a>
+                    )}
+                    {socialLinks.youtube && (
+                      <a
+                        href={socialLinks.youtube}
+                        target="_blank"
+                        rel="noopener noreferrer"
+                        className="flex items-center gap-1.5 text-xs text-gray-300 hover:text-white px-3 py-1.5 rounded-lg bg-white/5 border border-white/10 transition-colors">
+                        <Youtube className="w-3.5 h-3.5 text-red-500" />
+                        YouTube
+                      </a>
+                    )}
+                    {socialLinks.instagram && (
+                      <a
+                        href={socialLinks.instagram}
+                        target="_blank"
+                        rel="noopener noreferrer"
+                        className="flex items-center gap-1.5 text-xs text-gray-300 hover:text-white px-3 py-1.5 rounded-lg bg-white/5 border border-white/10 transition-colors">
+                        <Instagram className="w-3.5 h-3.5 text-pink-400" />
+                        Instagram
+                      </a>
+                    )}
+                  </div>
+                </div>
+              )}
+
+              {/* Modal Footer Controls */}
+              <div className="flex flex-col sm:flex-row items-center justify-between gap-3 pt-4 border-t border-white/10 mt-6">
+                <p className="text-xs text-gray-400 text-center sm:text-left">
+                  This preview reflects your current inputs. Changes must be saved to update your live public profile.
+                </p>
+                <div className="flex items-center gap-2 w-full sm:w-auto">
+                  <Button
+                    type="button"
+                    variant="outline"
+                    onClick={() => setPreviewOpen(false)}
+                    className="flex-1 sm:flex-none text-xs sm:text-sm border-white/20 text-white hover:bg-white/10 bg-transparent">
+                    Close Preview
+                  </Button>
+                  <Button
+                    type="button"
+                    onClick={() => {
+                      const url = `/tutors/${publicSlug || "me"}`;
+                      window.open(url, "_blank", "noopener,noreferrer");
+                    }}
+                    className="flex-1 sm:flex-none gap-1.5 text-xs sm:text-sm bg-gradient-to-r from-neon-blue to-neon-purple text-white">
+                    <ExternalLink className="w-3.5 h-3.5" />
+                    Visit Live Page
+                  </Button>
+                </div>
+              </div>
+            </div>
+          </div>
+        </DialogContent>
+      </Dialog>
     </div>
   );
 }

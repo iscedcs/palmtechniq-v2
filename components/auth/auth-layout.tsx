@@ -34,18 +34,19 @@ export function AuthLayout({
             animate={{ opacity: 1, scale: 1 }}
             transition={{ duration: 0.8 }}
             className="mb-8">
-            <div className="w-24 h-24 rounded-2xl bg-gradient-to-r from-black to-black flex items-center justify-center mb-6 mx-auto">
+            {/* <Link
+              href="/"
+              className="shrink-0 justify-center items-center gap-2.5"
+              aria-label="PalmTechnIQ — home">
               <Image
-                src="/assets/standalone.png"
-                alt=""
-                width={100}
-                height={100}
-                className="w-10 h-10"
+                src="/assets/palmtechniqlogo.png"
+                alt="PalmTechnIQ"
+                width={362}
+                height={71}
+                priority
+                className="h-10 w-auto"
               />
-            </div>
-            <h1 className="text-4xl font-bold text-gradient mb-4">
-              PalmTechnIQ
-            </h1>
+            </Link>{" "} */}
             <p className="text-xl text-white/80 max-w-md">
               Transform your learning journey with AI-powered education
             </p>
@@ -90,20 +91,21 @@ export function AuthLayout({
       <div className="w-full lg:w-1/2 flex flex-col justify-center px-8 lg:px-12">
         <div className="w-full max-w-md mx-auto">
           {/* Mobile Logo */}
-          <div className="lg:hidden flex items-center justify-center mb-8">
-            <div className="w-24 h-24 rounded-2xl bg-gradient-to-r from-black to-black flex items-center justify-center mb-6 mx-auto">
+          {/* <div className="lg:hidden flex items-center justify-center mb-8">
+            <Link
+              href="/"
+              className="flex shrink-0 items-center gap-2.5"
+              aria-label="PalmTechnIQ — home">
               <Image
-                src="/assets/standalone.png"
-                alt=""
-                width={100}
-                height={100}
-                className="w-10 h-10"
+                src="/assets/palmtechniqlogo.png"
+                alt="PalmTechnIQ"
+                width={362}
+                height={71}
+                priority
+                className="h-10 w-auto"
               />
-            </div>
-            <span className="text-2xl font-bold text-gradient">
-              PalmTechnIQ
-            </span>
-          </div>
+            </Link>{" "}
+          </div> */}
 
           {/* Back Button */}
           {showBackButton && (

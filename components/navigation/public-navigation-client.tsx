@@ -92,20 +92,21 @@ export function PublicNavigationClient({
         <div className="mx-auto max-w-7xl px-6 py-4">
           <div className="flex items-center justify-between">
             {/* Logo */}
-            <Link href="/">
+            <Link
+              href="/"
+              className="flex shrink-0 items-center"
+              aria-label="PalmTechnIQ — home">
               <motion.div
-                className="flex items-center space-x-2 cursor-pointer"
+                className="flex items-center cursor-pointer"
                 whileHover={{ scale: 1.05 }}>
                 <Image
-                  src="/assets/standalone.png"
+                  src="/assets/palmtechniqlogo.png"
                   alt="PalmTechnIQ"
-                  width={100}
-                  height={100}
-                  className="w-10 h-10"
+                  width={362}
+                  height={73}
+                  priority
+                  className="h-10 w-auto"
                 />
-                <span className="text-2xl font-bold text-gradient hidden sm:inline">
-                  PalmTechnIQ
-                </span>
               </motion.div>
             </Link>
 

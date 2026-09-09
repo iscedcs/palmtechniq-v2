@@ -78,7 +78,9 @@ export async function getCourseById(courseId: string) {
           tutor: {
             include: {
               user: true,
-              Course: true,
+              Course: {
+                where: { status: "PUBLISHED" },
+              },
             },
           },
           category: true,

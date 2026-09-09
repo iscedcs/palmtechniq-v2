@@ -282,6 +282,10 @@ export default async function CourseSlugPage(props: {
               tutor={
                 course.tutor
                   ? {
+                      id:
+                        course.tutor.user?.username ||
+                        course.tutor.referralCode ||
+                        course.tutor.id,
                       user: {
                         name: course.tutor.user.name,
                         image: course.tutor.user.avatar || undefined,
@@ -323,16 +327,30 @@ export default async function CourseSlugPage(props: {
               <TabsContent value="instructor">
                 <InstructorTab
                   tutor={{
+                    id:
+                      course.tutor?.user?.username ||
+                      course.tutor?.referralCode ||
+                      course.tutor?.id,
+                    userId: course.tutor?.userId,
                     user: {
                       name: course.tutor?.user?.name || "PalmTechnIQ Tutor",
                       image:
-                        course.tutor?.user.avatar || generateRandomAvatar(),
+                        course.tutor?.user.avatar ||
+                        course.tutor?.user.image ||
+                        generateRandomAvatar(),
                     },
                     rating: course.reviews.length ? avgRating : undefined,
                     students: course.enrollments.length || 0,
                     courses: course.tutor?.Course.length || 0,
                     bio: course.tutor?.user.bio || undefined,
                     title: course.tutor?.title || undefined,
+                    expertise: course.tutor?.expertise || [],
+                    experience: course.tutor?.experience || undefined,
+                    hourlyRate: course.tutor?.hourlyRate || undefined,
+                    otherCourses:
+                      course.tutor?.Course.filter(
+                        (c: any) => c.id !== course.id,
+                      ) || [],
                   }}
                 />
               </TabsContent>

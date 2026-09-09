@@ -1,7 +1,7 @@
 import { notFound } from "next/navigation";
 import { auth } from "@/auth";
 import { getTutorPublicReviewProfile } from "@/actions/review";
-import { TutorReviewClient } from "@/components/pages/tutor/tutor-review-client";
+import { TutorPublicProfileClient } from "@/components/pages/tutor/tutor-public-profile-client";
 
 interface TutorReviewPageProps {
   params: Promise<{ id: string }>;
@@ -35,7 +35,7 @@ export default async function TutorReviewPage({ params }: TutorReviewPageProps) 
   }
 
   return (
-    <TutorReviewClient
+    <TutorPublicProfileClient
       tutor={data.tutor}
       reviews={data.reviews as any}
       userReview={data.userReview as any}
@@ -45,6 +45,7 @@ export default async function TutorReviewPage({ params }: TutorReviewPageProps) 
       currentUserId={session?.user?.id}
       currentUserRole={session?.user?.role}
       currentPath={`/tutors/${id}/review`}
+      initialTab="reviews"
     />
   );
 }

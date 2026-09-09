@@ -19,6 +19,7 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Separator } from "@/components/ui/separator";
 import Image from "next/image";
+import Link from "next/link";
 
 const footerLinks = {
   platform: [
@@ -33,7 +34,7 @@ const footerLinks = {
     { name: "Verify Certificate", href: "/verify-certificate" },
     // { name: "LinkedIn Builder", href: "/features/linkedin-builder" },
     { name: "Live Mentorship", href: "/features/mentorship" },
-    // { name: "Project-Based Learning", href: "/features/projects" },
+    { name: "Bootcamps", href: "https://bootcamp.palmtechniq.com" },
   ],
   company: [
     { name: "About Us", href: "/about" },
@@ -149,16 +150,19 @@ export function Footer() {
               viewport={{ once: true }}
               className="lg:col-span-2">
               <div className="flex items-center space-x-3 mb-6">
-                <Image
-                  src="/assets/standalone.png"
-                  alt=""
-                  width={100}
-                  height={100}
-                  className="w-10 h-10"
-                />
-                <span className="text-2xl font-bold text-gradient">
-                  PalmTechnIQ
-                </span>
+                <Link
+                  href="/"
+                  className="flex shrink-0 items-center gap-2.5"
+                  aria-label="PalmTechnIQ — home">
+                  <Image
+                    src="/assets/palmtechniqlogo.png"
+                    alt="PalmTechnIQ"
+                    width={362}
+                    height={71}
+                    priority
+                    className="h-10 w-auto"
+                  />
+                </Link>{" "}
               </div>
               <p className="text-gray-300 mb-6 leading-relaxed">
                 Changing education with AI-powered learning, expert mentorship,

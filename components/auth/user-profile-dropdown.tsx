@@ -137,9 +137,11 @@ export function UserProfileDropdown({
               {userName.charAt(0).toUpperCase()}
             </AvatarFallback>
           </Avatar>
-          <div className="hidden md:block text-left">
-            <p className="text-sm font-medium text-white">{userName}</p>
-            <p className="text-xs text-gray-400">{userRole}</p>
+          <div className="hidden sm:block text-left min-w-0">
+            <p className="text-xs xl:text-sm font-medium text-white truncate max-w-[90px] xl:max-w-[130px]">
+              {userName}
+            </p>
+            <p className="text-[10px] xl:text-xs text-gray-400">{userRole}</p>
           </div>
           <ChevronDown
             className={`w-4 h-4 transition-transform duration-200 ₦{

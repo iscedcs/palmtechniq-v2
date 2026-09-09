@@ -1,6 +1,7 @@
 "use client";
 
 import { useEffect, useMemo, useState } from "react";
+import Link from "next/link";
 import { motion } from "framer-motion";
 import { toast } from "sonner";
 import { Badge } from "@/components/ui/badge";
@@ -178,24 +179,28 @@ export default function MentorshipPage() {
                       className="glass-card border-white/10">
                       <CardContent className="p-6">
                         <div className="flex items-start gap-4 mb-4">
-                          <Avatar className="w-14 h-14">
-                            <AvatarImage src={mentor.avatar} />
-                            <AvatarFallback>
-                              {mentor.name.charAt(0)}
-                            </AvatarFallback>
-                          </Avatar>
-                          <div className="flex-1">
-                            <h3 className="text-xl font-semibold text-white">
+                          <Link href={`/tutors/${encodeURIComponent(mentor.tutorUserId)}`} className="group shrink-0">
+                            <Avatar className="w-14 h-14 ring-2 ring-transparent group-hover:ring-neon-blue transition-all">
+                              <AvatarImage src={mentor.avatar} />
+                              <AvatarFallback>
+                                {mentor.name.charAt(0)}
+                              </AvatarFallback>
+                            </Avatar>
+                          </Link>
+                          <div className="flex-1 min-w-0">
+                            <Link
+                              href={`/tutors/${encodeURIComponent(mentor.tutorUserId)}`}
+                              className="text-xl font-semibold text-white hover:text-neon-blue transition-colors block truncate">
                               {mentor.name}
-                            </h3>
-                            <p className="text-gray-300 text-sm">
+                            </Link>
+                            <p className="text-gray-300 text-sm truncate">
                               {mentor.title}
                             </p>
-                            <p className="text-gray-400 text-xs">
+                            <p className="text-gray-400 text-xs truncate">
                               {mentor.location} · {mentor.timezone}
                             </p>
                           </div>
-                          <Badge className="bg-neon-blue/20 text-neon-blue border-neon-blue/30">
+                          <Badge className="bg-neon-blue/20 text-neon-blue border-neon-blue/30 shrink-0">
                             ₦{mentor.hourlyRate}/hr
                           </Badge>
                         </div>
@@ -213,13 +218,22 @@ export default function MentorshipPage() {
                           ))}
                         </div>
 
-                        <Dialog>
-                          <DialogTrigger asChild>
-                            <Button className="w-full bg-gradient-to-r from-neon-blue to-neon-purple text-white">
-                              <Calendar className="w-4 h-4 mr-2" />
-                              Book Mentorship
-                            </Button>
-                          </DialogTrigger>
+                        <div className="flex items-center gap-2">
+                          <Button
+                            asChild
+                            variant="outline"
+                            className="flex-1 border-white/20 text-white hover:bg-white/10 text-xs h-10">
+                            <Link href={`/tutors/${encodeURIComponent(mentor.tutorUserId)}`}>
+                              View Profile
+                            </Link>
+                          </Button>
+                          <Dialog>
+                            <DialogTrigger asChild>
+                              <Button className="flex-1 bg-gradient-to-r from-neon-blue to-neon-purple text-white text-xs h-10">
+                                <Calendar className="w-4 h-4 mr-1.5" />
+                                Book Session
+                              </Button>
+                            </DialogTrigger>
                           <DialogContent className="max-w-xl bg-gray-900 border-white/20 text-white">
                             <DialogHeader>
                               <DialogTitle>Book with {mentor.name}</DialogTitle>
@@ -315,7 +329,8 @@ export default function MentorshipPage() {
                             </div>
                           </DialogContent>
                         </Dialog>
-                      </CardContent>
+                      </div>
+                    </CardContent>
                     </Card>
                   ))}
                 </div>
