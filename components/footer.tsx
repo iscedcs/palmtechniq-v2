@@ -81,7 +81,7 @@ const socialLinks = [
 export function Footer() {
   const currentYear = new Date().getFullYear();
   return (
-    <footer className="relative overflow-hidden bg-gradient-to-b from-background to-gray-900/50">
+    <footer className="relative overflow-hidden glass-card">
       {/* Background Effects */}
       <div className="absolute inset-0 cyber-grid opacity-10" />
       <motion.div

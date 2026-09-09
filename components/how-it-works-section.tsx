@@ -1,183 +1,126 @@
 "use client";
 
 import { motion } from "framer-motion";
-import { BookOpen, Brain, Users, Trophy, ArrowRight, Zap } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import Link from "next/link";
 
 const steps = [
   {
-    number: 1,
-    icon: BookOpen,
-    title: "Choose Your Path",
+    number: "01",
+    title: "Pick your track",
     description:
-      "Select from our curated career tracks and learning modules designed for your skill level",
-    features: [
-      "Structured curriculum",
-      "Multiple learning speeds",
-      "Flexible scheduling",
-    ],
+      "Cybersecurity, Frontend, Backend, Design, Data, Marketing, and more whichever fits where you're headed.",
   },
   {
-    number: 2,
-    icon: Brain,
-    title: "Learn with AI & Mentorship",
+    number: "02",
+    title: "Learn by building",
     description:
-      "Master concepts through interactive lessons, AI-powered practice sessions, and live expert guidance",
-    features: ["AI Interview Coach", "Live sessions", "Personalized feedback"],
+      "Structured lessons, an AI coach to practice with, mentors on call when you're stuck.",
   },
   {
-    number: 3,
-    icon: Zap,
-    title: "Build Real Projects",
+    number: "03",
+    title: "Build something real",
     description:
-      "Apply your knowledge with real-world projects, building a portfolio that impresses employers",
-    features: ["Industry projects", "Portfolio building", "Code reviews"],
+      "Every track ends in a portfolio project not a certificate you can't back up.",
   },
   {
-    number: 4,
-    icon: Users,
-    title: "Get Professional Support",
+    number: "04",
+    title: "Graduate and get placed",
     description:
-      "Receive career guidance, interview prep, resume optimization, and networking opportunities",
-    features: ["Career coaching", "Interview prep", "Job placement support"],
-  },
-  {
-    number: 5,
-    icon: Trophy,
-    title: "Launch Your Career",
-    description:
-      "Graduate with certifications, a strong portfolio, and direct connections to top companies",
-    features: [
-      "Professional certification",
-      "Job opportunities",
-      "Alumni network",
-    ],
+      "Interview prep, a LinkedIn overhaul, and support landing your first or next role.",
   },
 ];
 
 export function HowItWorksSection() {
   return (
-    <section className="py-20 px-6 bg-gradient-to-b from-transparent via-blue-500/5 to-transparent relative overflow-hidden">
-      {/* Background Elements */}
-      <div className="absolute inset-0 opacity-10">
-        <div className="absolute top-1/3 -left-96 w-96 h-96 bg-neon-blue rounded-full blur-3xl" />
-        <div className="absolute bottom-1/3 -right-96 w-96 h-96 bg-neon-purple rounded-full blur-3xl" />
-      </div>
+    <section className="py-24 md:py-32 px-6 cyber-grid relative overflow-hidden border-t border-b border-white/5">
+      {/* Subtle ambient lighting */}
 
       <div className="max-w-7xl mx-auto relative z-10">
-        {/* Header */}
-        <motion.div
-          initial={{ opacity: 0, y: 20 }}
-          whileInView={{ opacity: 1, y: 0 }}
-          transition={{ duration: 0.6 }}
-          viewport={{ once: true }}
-          className="text-center mb-20">
-          <h2 className="text-5xl md:text-6xl font-bold mb-6">
-            <span className="text-gradient">How It Works</span>
-          </h2>
-          <p className="text-xl text-gray-300 max-w-3xl mx-auto">
-            A proven 5-step methodology to take you from beginner to
-            industry-ready professional
-          </p>
-        </motion.div>
+        {/* Top Section: Two-column layout */}
+        <div className="grid grid-cols-1 lg:grid-cols-12 gap-12 lg:gap-16 mb-20 md:mb-28">
+          {/* Left Column: Heading */}
+          <motion.div
+            initial={{ opacity: 0, y: 20 }}
+            whileInView={{ opacity: 1, y: 0 }}
+            transition={{ duration: 0.6 }}
+            viewport={{ once: true }}
+            className="lg:col-span-5 text-left">
+            <h2 className="text-4xl sm:text-5xl md:text-6xl font-bold text-white tracking-tight mb-4">
+              How it works
+            </h2>
+            <p className="text-lg md:text-xl text-gray-400 font-normal">
+              Four steps. No detours.
+            </p>
+          </motion.div>
 
-        {/* Steps Container */}
-        <div className="relative">
-          {/* Connecting Line */}
-          <div className="hidden lg:block absolute left-1/2 top-0 bottom-0 w-1 bg-gradient-to-b from-neon-blue/50 via-neon-purple/50 to-transparent transform -translate-x-1/2" />
+          {/* Right Column: 4-step vertical timeline */}
+          <div className="lg:col-span-7 relative text-left">
+            {/* Connecting Vertical Line */}
 
-          {/* Steps Grid - 3 cols on desktop with center alignment for last row */}
-          <div className="grid md:grid-cols-2 lg:grid-cols-3 gap-8">
-            {steps.map((step, index) => {
-              const Icon = step.icon;
-              // For 3-column layout: only first of the last two cards should start at col-2 to center them
-              const shouldCenterLastRow = index === steps.length - 2;
-
-              return (
+            <div className="space-y-10 relative">
+              {steps.map((step, index) => (
                 <motion.div
                   key={step.number}
-                  initial={{ opacity: 0, y: 40 }}
-                  whileInView={{ opacity: 1, y: 0 }}
-                  transition={{ duration: 0.6, delay: index * 0.1 }}
+                  initial={{ opacity: 0, x: 20 }}
+                  whileInView={{ opacity: 1, x: 0 }}
+                  transition={{ duration: 0.5, delay: index * 0.1 }}
                   viewport={{ once: true }}
-                  className={`relative ${shouldCenterLastRow ? "lg:col-start-2" : ""}`}>
-                  {/* Step Card */}
-                  <div className="glass-card p-8 h-full border border-white/10 hover:border-neon-blue/30 transition-all group hover:shadow-lg hover:shadow-neon-blue/20">
-                    {/* Step Number Badge */}
-                    <motion.div
-                      initial={{ scale: 0 }}
-                      whileInView={{ scale: 1 }}
-                      transition={{ duration: 0.5, delay: index * 0.1 }}
-                      viewport={{ once: true }}
-                      className="absolute -top-6 -left-6 w-12 h-12 rounded-full bg-gradient-to-br from-neon-blue to-neon-purple flex items-center justify-center border-2 border-background font-bold text-white text-lg">
-                      {step.number}
-                    </motion.div>
+                  className="relative flex items-start gap-5">
+                  {/* Step Badge */}
+                  <div className="w-7 h-7 rounded-full bg-primary/20 text-primary border border-primary/40 flex items-center justify-center font-mono text-xs font-semibold shrink-0 relative z-10 bg-background">
+                    {step.number}
+                  </div>
 
-                    {/* Icon */}
-                    <motion.div
-                      whileHover={{ scale: 1.1, rotate: 5 }}
-                      className="mb-6 inline-flex p-3 rounded-lg bg-neon-blue/10 group-hover:bg-neon-blue/20 transition-colors">
-                      <Icon className="w-8 h-8 text-neon-blue" />
-                    </motion.div>
-
-                    {/* Content */}
-                    <h3 className="text-2xl font-bold text-white mb-3 group-hover:text-neon-blue transition-colors">
+                  {/* Step Content */}
+                  <div className="pt-0.5">
+                    <h3 className="text-xl md:text-2xl font-bold text-white mb-2 leading-snug">
                       {step.title}
                     </h3>
-                    <p className="text-gray-400 mb-6 leading-relaxed">
+                    <p className="text-gray-400 text-sm md:text-base leading-relaxed max-w-xl">
                       {step.description}
                     </p>
-
-                    {/* Features List */}
-                    <ul className="space-y-2">
-                      {step.features.map((feature) => (
-                        <li
-                          key={feature}
-                          className="text-sm text-gray-400 flex items-center">
-                          <span className="w-1.5 h-1.5 rounded-full bg-neon-blue mr-3 flex-shrink-0" />
-                          {feature}
-                        </li>
-                      ))}
-                    </ul>
-
-                    {/* Arrow for desktop - horizontal flow on same row */}
-                    {index < steps.length - 1 && (index + 1) % 3 !== 0 && (
-                      <motion.div
-                        initial={{ opacity: 0, x: 20 }}
-                        whileInView={{ opacity: 1, x: 0 }}
-                        transition={{ duration: 0.5, delay: index * 0.1 }}
-                        viewport={{ once: true }}
-                        className="hidden lg:flex absolute -right-10 top-1/2 transform -translate-y-1/2 z-20">
-                        <ArrowRight className="w-6 h-6 text-neon-blue/50" />
-                      </motion.div>
-                    )}
                   </div>
                 </motion.div>
-              );
-            })}
+              ))}
+            </div>
           </div>
         </div>
 
-        {/* CTA Section */}
+        {/* Bottom CTA Card */}
         <motion.div
-          initial={{ opacity: 0, y: 20 }}
+          initial={{ opacity: 0, y: 30 }}
           whileInView={{ opacity: 1, y: 0 }}
-          transition={{ duration: 0.6, delay: 0.3 }}
+          transition={{ duration: 0.7 }}
           viewport={{ once: true }}
-          className="text-center mt-20">
-          <p className="text-xl text-gray-300 mb-8">
-            Ready to transform your career? Start your journey with PalmTechnIQ
-            today
-          </p>
-          <Link href="/courses">
-            <Button
-              size="lg"
-              className="bg-gradient-to-r from-neon-blue to-neon-purple hover:from-neon-blue/80 hover:to-neon-purple/80 text-white px-8 py-4 text-lg font-semibold rounded-2xl hover-glow group">
-              Browse Courses
-              <ArrowRight className="ml-2 w-5 h-5 group-hover:translate-x-1 transition-transform" />
-            </Button>
-          </Link>
+          className="glass-card p-8 sm:p-12 md:p-14 border border-white/10 rounded-3xl flex flex-col lg:flex-row items-start lg:items-center justify-between gap-8 text-left">
+          <div className="max-w-2xl">
+            <h3 className="text-3xl sm:text-4xl md:text-5xl font-bold text-white tracking-tight leading-tight mb-4">
+              Ready to break the tutorial loop?
+            </h3>
+            <p className="text-gray-400 text-sm sm:text-base leading-relaxed">
+              Admissions are open for our upcoming hybrid engineering track.
+              Cohort sizes are capped to maintain strict 1:1 mentor quality.
+            </p>
+          </div>
+
+          <div className="flex flex-col sm:flex-row items-stretch sm:items-center gap-4 shrink-0 w-full sm:w-auto">
+            <Link href="/courses">
+              <Button
+                size="lg"
+                className="w-full sm:w-auto bg-primary hover:bg-primary/90 text-black font-semibold px-7 py-3.5 h-auto text-base rounded-xl transition-all hover-glow">
+                Explore Career Tracks
+              </Button>
+            </Link>
+            <Link href="/enroll">
+              <Button
+                size="lg"
+                variant="outline"
+                className="w-full sm:w-auto bg-white/10 hover:bg-white/15 text-white border-white/15 px-7 py-3.5 h-auto text-base rounded-xl font-medium transition-all">
+                Join Lagos Campus Tour
+              </Button>
+            </Link>
+          </div>
         </motion.div>
       </div>
     </section>

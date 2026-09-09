@@ -74,7 +74,7 @@ export function TestimonialsSection() {
   return (
     <section className="py-32 relative overflow-hidden">
       {/* Background Effects */}
-      <div className="absolute inset-0 cyber-grid opacity-20" />
+      <div className="absolute inset-0 cyber-grid" />
       <motion.div
         className="absolute bottom-0 left-1/3 w-96 h-96 bg-neon-blue/5 rounded-full blur-3xl"
         animate={{

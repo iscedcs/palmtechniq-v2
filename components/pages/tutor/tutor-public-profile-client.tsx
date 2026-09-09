@@ -540,7 +540,6 @@ export function TutorPublicProfileClient({
         {isOwnProfile && (
           <div className="p-4 rounded-2xl bg-neon-blue/10 border border-neon-blue/30 text-white flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3">
             <div className="flex items-center gap-3">
-              <Sparkles className="w-5 h-5 text-neon-blue shrink-0" />
               <div>
                 <p className="text-sm font-semibold">
                   You are viewing your public instructor profile

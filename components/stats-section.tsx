@@ -100,7 +100,7 @@ export function StatsSection() {
 
   return (
     <section className="py-24 relative">
-      <div className="absolute inset-0 bg-gradient-to-r from-neon-blue/5 via-transparent to-neon-purple/5" />
+      <div className="absolute inset-0 cyber-grid" />
 
       <div className="container mx-auto px-6 relative z-10">
         {/* <motion.div

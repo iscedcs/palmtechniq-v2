@@ -18,6 +18,7 @@ import {
 import Image from "next/image";
 import Link from "next/link";
 import { useEffect, useState } from "react";
+import { AnnouncementBanner } from "@/components/announcement-banner";
 
 interface PublicNavigationClientProps {
   coursesByLevel: Record<string, Array<{ label: string; href: string }>>;
@@ -79,9 +80,10 @@ export function PublicNavigationClient({
   }, []);
 
   return (
-    <>
+    <header className="fixed top-0 left-0 right-0 z-50">
+      <AnnouncementBanner />
       <motion.nav
-        className={`fixed top-0 left-0 right-0 z-50 transition-all duration-300 ${
+        className={`w-full transition-all duration-300 ${
           isScrolled
             ? "glass-card border-b border-white/10 backdrop-blur-3xl bg-black/20"
             : "bg-transparent"
@@ -327,7 +329,7 @@ export function PublicNavigationClient({
               </Link>
 
               <Link href="/enroll">
-                <Button className="bg-gradient-to-r from-green-500 to-emerald-600 hover:from-green-600 hover:to-emerald-700 text-white transition-all">
+                <Button className="btext-neon-blue hover:text-neon-blue/80 font-medium transition-colors">
                   Enroll Now
                 </Button>
               </Link>
@@ -372,7 +374,7 @@ export function PublicNavigationClient({
             initial={{ opacity: 0, y: -20 }}
             animate={{ opacity: 1, y: 0 }}
             exit={{ opacity: 0, y: -20 }}
-            className="fixed top-20 left-0 right-0 bg-black/95 border-b border-white/10 z-40 lg:hidden">
+            className="absolute top-full left-0 right-0 bg-black/95 border-b border-white/10 z-40 lg:hidden shadow-2xl">
             <div className="max-w-7xl mx-auto px-6 py-6">
               <div className="space-y-4">
                 <Link href="/courses" onClick={() => setIsMobileOpen(false)}>
@@ -433,6 +435,6 @@ export function PublicNavigationClient({
           </motion.div>
         )}
       </AnimatePresence>
-    </>
+    </header>
   );
 }
