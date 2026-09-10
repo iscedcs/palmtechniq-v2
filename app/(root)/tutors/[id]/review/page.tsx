@@ -20,10 +20,15 @@ export async function generateMetadata({ params }: TutorReviewPageProps): Promis
   }
 
   const tutor = data.tutor;
-  const siteUrl = "https://palmtechniq.com";
+  const siteUrl = "https://www.palmtechniq.com";
   const canonicalPath = `/tutors/${id}/review`;
   const fullUrl = `${siteUrl}${canonicalPath}`;
-  const shareImage = `${siteUrl}/tutors/${id}/opengraph-image`;
+
+  const tutorPhoto = tutor.avatar;
+  const shareImage = tutorPhoto
+    ? encodeURI(tutorPhoto.trim())
+    : `${siteUrl}/opengraph-image`;
+
   const pageTitle = `Reviews for ${tutor.name} | PalmTechnIQ Instructor`;
   const pageDescription = `Read verified student reviews and leave feedback for ${tutor.name} (${tutor.title || "Instructor"}) on PalmTechnIQ.`;
 
