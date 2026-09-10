@@ -559,4 +559,51 @@ export async function sendPasswordChangedEmail(params: {
   }
 }
 
+// ============ WITHDRAWAL 2FA OTP EMAIL ============
+export async function sendWithdrawalOtpEmail(params: {
+  email: string;
+  name?: string;
+  amount: number;
+  code: string;
+  bankName?: string;
+  accountNumber?: string;
+  expiresInMinutes?: number;
+}) {
+  try {
+    const { default: WithdrawalOtpEmail } = await import(
+      "./email-templates/withdrawal-otp"
+    );
+    const resend = new Resend(process.env.RESEND_API_KEY!);
+    const expiresIn = params.expiresInMinutes ?? 10;
+    const formattedAmount = new Intl.NumberFormat("en-NG", {
+      style: "currency",
+      currency: "NGN",
+      minimumFractionDigits: 2,
+    }).format(params.amount);
+
+    await resend.emails.send({
+      from:
+        process.env.FROM_EMAIL_ADDRESS ||
+        "PalmTechnIQ Security <security@palmtechniq.com>",
+      to: params.email,
+      subject: `${params.code} is your authorization code for withdrawal of ${formattedAmount}`,
+      react: WithdrawalOtpEmail({
+        email: params.email,
+        name: params.name,
+        amount: params.amount,
+        otpCode: params.code,
+        expiresInMinutes: expiresIn,
+        bankName: params.bankName,
+        accountNumber: params.accountNumber,
+      }),
+      text: `Your authorization code for withdrawing ${formattedAmount} is ${params.code}. This code expires in ${expiresIn} minutes. Do not share this code with anyone.`,
+    });
+    return { success: true };
+  } catch (error) {
+    console.error("[sendWithdrawalOtpEmail] Failed to send email:", error);
+    return { error: "Failed to send withdrawal authorization code." };
+  }
+}
+
+
 

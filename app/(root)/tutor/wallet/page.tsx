@@ -11,11 +11,14 @@ export default async function TutorWalletPage() {
   };
   const fallbackUser = {
     name: "Tutor",
+    email: "",
     avatar: null,
     role: "TUTOR" as const,
     recipientCode: null,
     bankName: null,
     accountNumber: null,
+    twoFactorEnabled: false,
+    twoFactorMethod: null as "AUTHENTICATOR" | "EMAIL" | null,
   };
 
   const initialSummary =
