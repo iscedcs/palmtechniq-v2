@@ -1,9 +1,12 @@
 "use server";
 
+import crypto, { randomUUID } from "crypto";
 import { creditWallet, debitWallet } from "@/lib/payments/wallet";
 import { auth } from "@/auth";
 import { db } from "@/lib/db";
-import { randomUUID } from "crypto";
+import { verifyTotpToken } from "@/lib/totp";
+import { sendWithdrawalOtpEmail } from "@/lib/mail";
+import { type TwoFactorMethod } from "@/actions/account-security";
 import {
   paystackCreateSubaccount,
   paystackCreateTransferRecipient,
@@ -90,12 +93,14 @@ export async function getWalletDashboardData() {
       where: { id: userId },
       select: {
         name: true,
+        email: true,
         avatar: true,
         role: true,
         walletBalance: true,
         recipientCode: true,
         bankName: true,
         accountNumber: true,
+        preferences: true,
       },
     }),
     // Only money that has actually reached the wallet. PENDING program
@@ -215,15 +220,23 @@ export async function getWalletDashboardData() {
     { name: "Projects", value: 0, color: "#06d6a0" },
   ];
 
+  const userPrefs = (user?.preferences as Record<string, unknown>) || {};
+  const twoFactorEnabled = Boolean(userPrefs.twoFactorEnabled);
+  const twoFactorMethod =
+    (userPrefs.twoFactorMethod as TwoFactorMethod) || (twoFactorEnabled ? "AUTHENTICATOR" : null);
+
   return {
     success: true,
     user: {
       name: user?.name ?? "Tutor",
+      email: user?.email ?? "",
       avatar: user?.avatar ?? null,
       role: user?.role ?? "TUTOR",
       recipientCode: user?.recipientCode ?? null,
       bankName: user?.bankName ?? null,
       accountNumber: user?.accountNumber ?? null,
+      twoFactorEnabled,
+      twoFactorMethod,
     },
     summary,
     transactions,
@@ -512,7 +525,75 @@ export async function getAdminWithdrawalQueue() {
   };
 }
 
-export async function requestWithdrawal(amount: number) {
+export async function sendWithdrawalAuthorizationOtp(amount: number) {
+  const session = await auth();
+  if (!session?.user?.id) {
+    return { success: false, error: "Unauthorized" };
+  }
+
+  const user = await db.user.findUnique({
+    where: { id: session.user.id },
+    select: {
+      email: true,
+      name: true,
+      bankName: true,
+      accountNumber: true,
+      preferences: true,
+    },
+  });
+
+  if (!user || !user.email) {
+    return { success: false, error: "User email not found." };
+  }
+
+  const prefs = (user.preferences as Record<string, unknown>) || {};
+  if (!prefs.twoFactorEnabled) {
+    return {
+      success: false,
+      error:
+        "Two-Factor Authentication is required to withdraw funds. Please set up 2FA in your settings.",
+      requires2faSetup: true,
+    };
+  }
+
+  // Generate 6-digit numeric OTP
+  const otpCode = crypto.randomInt(100000, 999999).toString();
+  const expiresAt = new Date(Date.now() + 10 * 60 * 1000).toISOString();
+  const otpHash = crypto.createHash("sha256").update(otpCode).digest("hex");
+
+  const updatedPrefs = {
+    ...prefs,
+    pendingWithdrawalOtpHash: otpHash,
+    pendingWithdrawalOtpExpiresAt: expiresAt,
+    pendingWithdrawalAmount: amount,
+  };
+
+  await db.user.update({
+    where: { id: session.user.id },
+    data: { preferences: updatedPrefs },
+  });
+
+  const mailResult = await sendWithdrawalOtpEmail({
+    email: user.email,
+    name: user.name || undefined,
+    amount,
+    code: otpCode,
+    bankName: user.bankName || undefined,
+    accountNumber: user.accountNumber || undefined,
+    expiresInMinutes: 10,
+  });
+
+  if (mailResult && "error" in mailResult && mailResult.error) {
+    return { success: false, error: mailResult.error };
+  }
+
+  return {
+    success: true,
+    message: `A 6-digit authorization code has been sent to ${user.email}.`,
+  };
+}
+
+export async function requestWithdrawal(amount: number, twoFactorCode?: string) {
   const session = await auth();
   if (!session?.user?.id) {
     return { error: "Unauthorized" };
@@ -524,7 +605,13 @@ export async function requestWithdrawal(amount: number) {
 
   const user = await db.user.findUnique({
     where: { id: session.user.id },
-    select: { walletBalance: true, recipientCode: true, role: true },
+    select: {
+      walletBalance: true,
+      recipientCode: true,
+      role: true,
+      preferences: true,
+      email: true,
+    },
   });
 
   if (!user) return { error: "User not found" };
@@ -542,6 +629,85 @@ export async function requestWithdrawal(amount: number) {
 
   if (!user.recipientCode) return { error: "No payout recipient configured" };
   if (user.walletBalance < amount) return { error: "Insufficient balance" };
+
+  // ================= 2FA SECURITY ENFORCEMENT =================
+  const prefs = (user.preferences as Record<string, unknown>) || {};
+  const twoFactorEnabled = Boolean(prefs.twoFactorEnabled);
+
+  if (!twoFactorEnabled) {
+    return {
+      error:
+        "Two-Factor Authentication (2FA) is required to withdraw funds. Please enable 2FA in your account settings before submitting a withdrawal request.",
+      requires2faSetup: true,
+    };
+  }
+
+  if (!twoFactorCode || twoFactorCode.trim().length !== 6) {
+    return {
+      error: "Please provide a valid 6-digit Two-Factor verification code.",
+      requires2faCode: true,
+    };
+  }
+
+  const twoFactorMethod =
+    (prefs.twoFactorMethod as TwoFactorMethod) || "AUTHENTICATOR";
+
+  if (twoFactorMethod === "AUTHENTICATOR") {
+    const secret = prefs.twoFactorSecret as string | undefined;
+    if (!secret) {
+      return {
+        error:
+          "Authenticator configuration error. Please reconfigure 2FA in your settings.",
+      };
+    }
+
+    const isValid = verifyTotpToken(secret, twoFactorCode.trim());
+    if (!isValid) {
+      return {
+        error:
+          "Invalid authenticator code. Please check your authenticator app and try again.",
+      };
+    }
+  } else if (twoFactorMethod === "EMAIL") {
+    const expectedHash = prefs.pendingWithdrawalOtpHash as string | undefined;
+    const expiresAtStr = prefs.pendingWithdrawalOtpExpiresAt as string | undefined;
+
+    if (!expectedHash || !expiresAtStr) {
+      return {
+        error:
+          "No authorization code was requested or the code has expired. Please request a new code.",
+      };
+    }
+
+    if (new Date(expiresAtStr).getTime() < Date.now()) {
+      return {
+        error: "Authorization code has expired. Please request a new code.",
+      };
+    }
+
+    const inputHash = crypto
+      .createHash("sha256")
+      .update(twoFactorCode.trim())
+      .digest("hex");
+    if (inputHash !== expectedHash) {
+      return {
+        error:
+          "Invalid verification code. Please check your email and try again.",
+      };
+    }
+
+    // Clean up one-time withdrawal OTP
+    const {
+      pendingWithdrawalOtpHash,
+      pendingWithdrawalOtpExpiresAt,
+      pendingWithdrawalAmount,
+      ...cleanedPrefs
+    } = prefs;
+    await db.user.update({
+      where: { id: session.user.id },
+      data: { preferences: cleanedPrefs },
+    });
+  }
 
   await db.$transaction(async (tx: any) => {
     await debitWallet(tx, {

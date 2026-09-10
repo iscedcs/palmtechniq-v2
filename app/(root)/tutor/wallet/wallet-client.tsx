@@ -31,6 +31,8 @@ import {
   AlertCircle,
   CheckCircle,
   Clock,
+  ShieldCheck,
+  ShieldAlert,
 } from "lucide-react";
 import { NairaSign } from "@/components/shared/naira-sign-icon";
 import {
@@ -58,6 +60,9 @@ import {
   setDefaultPaymentMethod,
   verifyBankAccount,
 } from "@/actions/withdrawal";
+import { TwoFactorDialog } from "@/components/pages/tutor/settings/two-factor-dialog";
+import { WithdrawalVerificationDialog } from "@/components/pages/tutor/wallet/withdrawal-verification-dialog";
+import { type TwoFactorMethod } from "@/actions/account-security";
 
 type WalletSummary = {
   availableBalance: number;
@@ -111,11 +116,14 @@ export default function WalletClient({
   initialSummary: WalletSummary;
   initialUser: {
     name: string;
+    email?: string;
     avatar: string | null;
     role: UserRole;
     recipientCode: string | null;
     bankName: string | null;
     accountNumber: string | null;
+    twoFactorEnabled?: boolean;
+    twoFactorMethod?: TwoFactorMethod | null;
   };
   initialTransactions: WalletTransaction[];
   initialEarningsData: WalletChartPoint[];
@@ -124,6 +132,17 @@ export default function WalletClient({
 }) {
   const [activeTab, setActiveTab] = useState("overview");
   const [withdrawalAmount, setWithdrawalAmount] = useState("");
+  const [twoFactorEnabled, setTwoFactorEnabled] = useState<boolean>(
+    Boolean(initialUser.twoFactorEnabled)
+  );
+  const [twoFactorMethod, setTwoFactorMethod] = useState<TwoFactorMethod | null>(
+    initialUser.twoFactorMethod || null
+  );
+  const [userEmail, setUserEmail] = useState<string>(initialUser.email || "");
+  const [setup2faOpen, setSetup2faOpen] = useState(false);
+  const [withdrawalVerifyOpen, setWithdrawalVerifyOpen] = useState(false);
+  const [pendingWithdrawalAmount, setPendingWithdrawalAmount] = useState<number>(0);
+
   const [summary, setSummary] = useState<WalletSummary>(initialSummary);
   const [transactions, setTransactions] =
     useState<WalletTransaction[]>(initialTransactions);
@@ -227,6 +246,13 @@ export default function WalletClient({
           setBankName(refreshed.user.bankName || "");
           setAccountNumber(refreshed.user.accountNumber || "");
           setRecipientCode(refreshed.user.recipientCode || "");
+          if ("twoFactorEnabled" in refreshed.user) {
+            setTwoFactorEnabled(Boolean(refreshed.user.twoFactorEnabled));
+            setTwoFactorMethod(refreshed.user.twoFactorMethod || null);
+          }
+          if ("email" in refreshed.user && refreshed.user.email) {
+            setUserEmail(refreshed.user.email);
+          }
         }
       }
     } finally {
@@ -736,25 +762,66 @@ export default function WalletClient({
                         )}
                       </div>
 
+                      {twoFactorEnabled ? (
+                        <div className="flex items-center gap-2.5 p-3 rounded-lg bg-emerald-500/10 border border-emerald-500/20 text-xs text-emerald-300">
+                          <ShieldCheck className="w-4 h-4 shrink-0 text-emerald-400" />
+                          <span>
+                            Protected by 2FA (
+                            {twoFactorMethod === "AUTHENTICATOR"
+                              ? "Authenticator App"
+                              : "Email OTP"}
+                            ). You will verify your code before payout.
+                          </span>
+                        </div>
+                      ) : (
+                        <div className="flex items-start gap-2.5 p-3 rounded-lg bg-amber-500/10 border border-amber-500/20 text-xs text-amber-300">
+                          <ShieldAlert className="w-4 h-4 shrink-0 text-amber-400 mt-0.5" />
+                          <div className="flex-1 space-y-1">
+                            <p className="font-medium text-amber-200">
+                              2FA Required to Withdraw
+                            </p>
+                            <p className="text-amber-300/80">
+                              For your security, Two-Factor Authentication must be set up before withdrawing funds.
+                            </p>
+                            <button
+                              type="button"
+                              onClick={() => setSetup2faOpen(true)}
+                              className="text-emerald-400 hover:text-emerald-300 font-semibold underline inline-flex items-center gap-1 pt-0.5">
+                              Setup 2FA now →
+                            </button>
+                          </div>
+                        </div>
+                      )}
+
                       <Button
-                        className="w-full bg-gradient-to-r from-neon-green to-emerald-400 text-white"
+                        className="w-full bg-gradient-to-r from-neon-green to-emerald-400 text-white flex items-center justify-center gap-2"
                         disabled={paymentMethods.length === 0 || !recipientCode}
-                        onClick={async () => {
+                        onClick={() => {
                           const amount = Number(withdrawalAmount);
                           if (!amount || amount <= 0) {
                             toast.error("Enter a valid withdrawal amount");
                             return;
                           }
-                          const result = await requestWithdrawal(amount);
-                          if ("error" in result) {
-                            toast.error(result.error || "Withdrawal failed");
+                          if (amount > totalBalance) {
+                            toast.error("Withdrawal amount exceeds available balance");
                             return;
                           }
-                          toast.success("Withdrawal request submitted");
-                          setWithdrawalAmount("");
-                          await refreshSummary();
+                          if (!twoFactorEnabled) {
+                            toast.error("Two-Factor Authentication is required to withdraw funds.");
+                            setSetup2faOpen(true);
+                            return;
+                          }
+                          setPendingWithdrawalAmount(amount);
+                          setWithdrawalVerifyOpen(true);
                         }}>
-                        Withdraw ₦{withdrawalAmount || "0.00"}
+                        {twoFactorEnabled ? (
+                          <ShieldCheck className="w-4 h-4" />
+                        ) : (
+                          <ShieldAlert className="w-4 h-4" />
+                        )}
+                        {twoFactorEnabled
+                          ? `Withdraw ₦${withdrawalAmount || "0.00"}`
+                          : "Setup 2FA & Withdraw"}
                       </Button>
                     </CardContent>
                   </Card>
@@ -1061,6 +1128,37 @@ export default function WalletClient({
             </Tabs>
           </div>
         </section>
+
+        {/* 2FA Setup Dialog for in-place enablement */}
+        <TwoFactorDialog
+          open={setup2faOpen}
+          onOpenChange={setSetup2faOpen}
+          enabled={twoFactorEnabled}
+          currentMethod={twoFactorMethod}
+          userEmail={userEmail}
+          onStatusChange={(enabled, method) => {
+            setTwoFactorEnabled(enabled);
+            setTwoFactorMethod(method);
+            if (enabled) {
+              toast.success("2FA enabled! You can now proceed with your withdrawal.");
+            }
+          }}
+        />
+
+        {/* Withdrawal 2FA Verification Dialog */}
+        <WithdrawalVerificationDialog
+          open={withdrawalVerifyOpen}
+          onOpenChange={setWithdrawalVerifyOpen}
+          amount={pendingWithdrawalAmount}
+          twoFactorMethod={twoFactorMethod}
+          userEmail={userEmail}
+          bankName={bankName}
+          accountNumber={accountNumber}
+          onSuccess={async () => {
+            setWithdrawalAmount("");
+            await refreshSummary();
+          }}
+        />
       </div>
     </div>
   );

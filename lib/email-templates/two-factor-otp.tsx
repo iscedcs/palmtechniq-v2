@@ -1,5 +1,6 @@
 import {
   Body,
+  Button,
   Container,
   Head,
   Hr,
@@ -10,6 +11,7 @@ import {
   Tailwind,
   Text,
 } from "@react-email/components";
+import React from "react";
 
 interface TwoFactorOtpEmailProps {
   email: string;
@@ -33,27 +35,30 @@ export const TwoFactorOtpEmail = ({
         <Head>
           <Preview>Your PalmTechnIQ verification code is {otpCode}</Preview>
         </Head>
-        <Body className="w-full bg-[#0a0d14] font-sans text-[#e2e8f0]">
-          <Container className="mx-auto my-8 max-w-[520px] rounded-2xl border border-slate-800 bg-[#0f172a] p-8 shadow-2xl">
-            <Section className="text-center pb-4">
+        <Body className="w-full bg-gray-50 font-sans">
+          <Container className="w-full mx-auto max-w-2xl bg-white my-8 rounded-xl overflow-hidden shadow-sm">
+            {/* Header with Logo */}
+            <Section className="bg-[#021A1A] text-center py-6">
               <Img
-                className="mx-auto"
+                className="mx-auto h-full object-cover py-2"
                 src="https://www.palmtechniq.com/assets/palmtechniqlogo.png"
-                width="160"
-                alt="PalmTechnIQ"
+                width="200"
+                height="200"
+                alt="PalmTechnIQ Logo"
               />
             </Section>
 
-            <Section className="pt-2 text-left">
-              <Text className="text-xl font-bold text-white mb-2">
+            {/* Main Content */}
+            <Section className="px-8 py-6">
+              <Text className="text-2xl font-bold text-[#021A1A] mb-3">
                 Security Verification Code
               </Text>
-              <Text className="text-sm text-slate-300 leading-relaxed mb-4">
-                Hi {displayName},
+              <Text className="text-gray-800 text-base leading-relaxed">
+                Hi, <strong>{displayName}</strong>
               </Text>
-              <Text className="text-sm text-slate-300 leading-relaxed mb-6">
+              <Text className="text-gray-700 text-base leading-relaxed">
                 You requested a security verification code to configure Two-Factor
-                Authentication (2FA) for your PalmTechnIQ account. Use the code below
+                Authentication (2FA) for your PalmTechnIQ account (<strong>{email}</strong>). Use the code below
                 to complete the setup:
               </Text>
 
@@ -61,14 +66,14 @@ export const TwoFactorOtpEmail = ({
               <div
                 style={{
                   background: "#021A1A",
-                  border: "1px solid #10b981",
+                  border: "2px solid #16a34a",
                   borderRadius: "12px",
                   padding: "20px",
                   textAlign: "center",
                   letterSpacing: "8px",
                   fontSize: "32px",
                   fontWeight: "bold",
-                  color: "#34d399",
+                  color: "#22c55e",
                   margin: "24px 0",
                   fontFamily: "monospace",
                 }}
@@ -76,23 +81,80 @@ export const TwoFactorOtpEmail = ({
                 {otpCode}
               </div>
 
-              <Text className="text-xs text-slate-400 mt-2">
+              <Text className="text-xs text-gray-500 mt-2">
                 ⏱️ This code is valid for <strong>{expiresInMinutes} minutes</strong>. Do not share this code with anyone.
               </Text>
-              <Text className="text-xs text-slate-400 mt-1">
-                If you did not make this request, please sign in to your PalmTechnIQ account immediately and update your password.
+              <Text className="text-xs text-gray-500 mt-1">
+                If you did not make this request, please sign in to your PalmTechnIQ account immediately and change your password.
+              </Text>
+
+              <Section className="text-left mt-6">
+                <span>
+                  <Text className="text-gray-700">
+                    Thanks, <br />
+                    <b>PalmTechnIQ Team</b>
+                  </Text>
+                </span>
+              </Section>
+            </Section>
+
+            <Hr className="mt-[20px] border-gray-200" />
+
+            {/* Footer */}
+            <Section className="text-center text-[#333333] px-6 py-2 text-xs">
+              <Text>
+                <p>Copyright © {year} PalmTechnIQ, All Rights Reserved.</p>
+                <p>
+                  You are receiving this email because a two-factor security action was requested on your account.
+                </p>
+                <p>
+                  Mailing Address: 1st Floor, (Festac Tower) Chicken Republic Building, 22Rd, Festac Town, Lagos, Nigeria.
+                </p>
               </Text>
             </Section>
 
-            <Hr className="my-6 border-slate-800" />
-
-            <Section className="text-center text-slate-500 text-xs">
-              <Text className="m-0">
-                © {year} PalmTechnIQ Inc. All rights reserved.
-              </Text>
-              <Text className="mt-1 m-0">
-                1st Floor, Festac Tower, 22Rd, Festac Town, Lagos, Nigeria.
-              </Text>
+            {/* Social Icons */}
+            <Section className="pb-[30px] text-center">
+              <Button
+                href="https://www.facebook.com/profile.php?id=61561459226438&mibextid=ZbWKwL"
+                className="m-[5px] rounded-full bg-green-600 px-[10px] py-[8px]">
+                <Img
+                  width="23"
+                  height="23"
+                  alt="PalmTechnIQ Facebook"
+                  src="https://uxwing.com/wp-content/themes/uxwing/download/brands-and-social-media/facebook-app-round-white-icon.png"
+                />
+              </Button>
+              <Button
+                href="https://www.linkedin.com/company/palmtechniq/"
+                className="m-[5px] rounded-full bg-green-600 px-[10px] py-[8px]">
+                <Img
+                  width="23"
+                  height="23"
+                  alt="PalmTechnIQ LinkedIn"
+                  src="https://uxwing.com/wp-content/themes/uxwing/download/brands-and-social-media/linkedin-app-icon.png"
+                />
+              </Button>
+              <Button
+                href="https://www.instagram.com/palmtechniq/"
+                className="m-[5px] rounded-full bg-green-600 px-[10px] py-[8px]">
+                <Img
+                  width="23"
+                  height="23"
+                  alt="PalmTechnIQ Instagram"
+                  src="https://uxwing.com/wp-content/themes/uxwing/download/brands-and-social-media/ig-instagram-icon.png"
+                />
+              </Button>
+              <Button
+                href="https://app.slack.com/client/T076LDT7109/C0764SE3VB7"
+                className="m-[5px] rounded-full bg-green-600 px-[10px] py-[8px]">
+                <Img
+                  width="23"
+                  height="23"
+                  alt="PalmTechnIQ Slack"
+                  src="https://uxwing.com/wp-content/themes/uxwing/download/brands-and-social-media/slack-icon.png"
+                />
+              </Button>
             </Section>
           </Container>
         </Body>

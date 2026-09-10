@@ -13,41 +13,38 @@ import {
 } from "@react-email/components";
 import React from "react";
 
-interface PasswordChangedEmailProps {
+interface WithdrawalOtpEmailProps {
   email: string;
   name?: string;
-  changedAt?: string;
-  ipAddress?: string;
-  userAgent?: string;
+  amount: number;
+  otpCode: string;
+  expiresInMinutes?: number;
+  bankName?: string;
+  accountNumber?: string;
 }
 
-export const PasswordChangedEmail = ({
+export const WithdrawalOtpEmail = ({
   email,
   name,
-  changedAt,
-  ipAddress,
-  userAgent,
-}: PasswordChangedEmailProps) => {
-  const domain = process.env.NEXT_PUBLIC_URL || "https://www.palmtechniq.com";
-  const secureAccountLink = `${domain}/forgot-password`;
-  const supportEmail =
-    process.env.SUPPORT_EMAIL_ADDRESS || "support@palmtechniq.com";
+  amount,
+  otpCode,
+  expiresInMinutes = 10,
+  bankName,
+  accountNumber,
+}: WithdrawalOtpEmailProps) => {
   const year = new Date().getFullYear();
   const displayName = name?.trim() || email;
-
-  const formattedTime =
-    changedAt ||
-    new Intl.DateTimeFormat("en-US", {
-      dateStyle: "medium",
-      timeStyle: "short",
-      timeZone: "UTC",
-    }).format(new Date()) + " UTC";
+  const formattedAmount = new Intl.NumberFormat("en-NG", {
+    style: "currency",
+    currency: "NGN",
+    minimumFractionDigits: 2,
+  }).format(amount);
 
   return (
     <Tailwind>
       <Html>
         <Head>
-          <Preview>Security Alert: Your PalmTechnIQ password was changed</Preview>
+          <Preview>{otpCode} is your authorization code for withdrawal of {formattedAmount}</Preview>
         </Head>
         <Body className="w-full bg-gray-50 font-sans">
           <Container className="w-full mx-auto max-w-2xl bg-white my-8 rounded-xl overflow-hidden shadow-sm">
@@ -65,115 +62,95 @@ export const PasswordChangedEmail = ({
             {/* Main Content */}
             <Section className="px-8 py-6">
               <Text className="text-2xl font-bold text-[#021A1A] mb-3">
-                Password Changed
+                Authorize Wallet Withdrawal
               </Text>
               <Text className="text-gray-800 text-base leading-relaxed">
                 Hi, <strong>{displayName}</strong>
               </Text>
               <Text className="text-gray-700 text-base leading-relaxed">
-                The password for your PalmTechnIQ account (<strong>{email}</strong>) was successfully updated on <strong>{formattedTime}</strong>.
+                A payout withdrawal request was initiated from your PalmTechnIQ tutor wallet. To authorize this transaction, enter the security verification code below:
               </Text>
 
-              {/* Activity Details Box */}
-              {(ipAddress || userAgent) && (
-                <div
-                  style={{
-                    backgroundColor: "#f8fafc",
-                    border: "1px solid #e2e8f0",
-                    borderRadius: "8px",
-                    padding: "14px 18px",
-                    margin: "18px 0",
-                    fontSize: "13px",
-                    color: "#475569",
-                    lineHeight: "1.6",
-                  }}
-                >
-                  <p style={{ margin: "0 0 6px 0", fontWeight: "bold", color: "#0f172a" }}>
-                    Activity Details:
-                  </p>
-                  {ipAddress && (
-                    <p style={{ margin: "3px 0" }}>
-                      • <strong>IP Address:</strong> {ipAddress}
-                    </p>
-                  )}
-                  {userAgent && (
-                    <p style={{ margin: "3px 0" }}>
-                      • <strong>Device / Browser:</strong> {userAgent}
-                    </p>
-                  )}
-                </div>
-              )}
-
-              {/* Guidance: Legitimate change */}
+              {/* Transaction Snapshot Box */}
               <div
                 style={{
-                  backgroundColor: "#f0fdf4",
-                  borderLeft: "4px solid #16a34a",
-                  padding: "12px 16px",
-                  borderRadius: "4px",
-                  margin: "16px 0",
+                  backgroundColor: "#f8fafc",
+                  border: "1px solid #e2e8f0",
+                  borderRadius: "8px",
+                  padding: "16px 20px",
+                  margin: "18px 0",
                   fontSize: "14px",
-                  color: "#166534",
+                  color: "#334155",
+                  lineHeight: "1.6",
                 }}
               >
-                <strong>✅ If you made this change:</strong>
-                <p style={{ margin: "4px 0 0 0" }}>
-                  No further action is required. Your account is now active with your new password.
-                </p>
+                <div style={{ display: "flex", justifyContent: "space-between", marginBottom: "8px" }}>
+                  <span style={{ color: "#64748b" }}>Withdrawal Amount:</span>
+                  <strong style={{ color: "#021A1A", fontSize: "16px" }}>{formattedAmount}</strong>
+                </div>
+                {bankName && (
+                  <div style={{ display: "flex", justifyContent: "space-between", marginBottom: "4px" }}>
+                    <span style={{ color: "#64748b" }}>Destination Bank:</span>
+                    <strong>{bankName}</strong>
+                  </div>
+                )}
+                {accountNumber && (
+                  <div style={{ display: "flex", justifyContent: "space-between" }}>
+                    <span style={{ color: "#64748b" }}>Account Number:</span>
+                    <span style={{ fontFamily: "monospace" }}>•••• {accountNumber.slice(-4)}</span>
+                  </div>
+                )}
               </div>
 
-              {/* Guidance: Unauthorized change */}
+              {/* OTP Box */}
+              <div
+                style={{
+                  background: "#021A1A",
+                  border: "2px solid #16a34a",
+                  borderRadius: "12px",
+                  padding: "20px",
+                  textAlign: "center",
+                  letterSpacing: "8px",
+                  fontSize: "32px",
+                  fontWeight: "bold",
+                  color: "#22c55e",
+                  margin: "24px 0",
+                  fontFamily: "monospace",
+                }}
+              >
+                {otpCode}
+              </div>
+
+              <Text className="text-xs text-gray-500 mt-2">
+                ⏱️ This authorization code is valid for <strong>{expiresInMinutes} minutes</strong>.
+              </Text>
+
+              {/* Security Warning */}
               <div
                 style={{
                   backgroundColor: "#fef2f2",
                   borderLeft: "4px solid #dc2626",
                   padding: "12px 16px",
                   borderRadius: "4px",
-                  margin: "16px 0 24px 0",
-                  fontSize: "14px",
+                  margin: "20px 0",
+                  fontSize: "13px",
                   color: "#991b1b",
                 }}
               >
-                <strong>⚠️ If you did NOT make this change:</strong>
+                <strong>⚠️ Did NOT request this withdrawal?</strong>
                 <p style={{ margin: "4px 0 0 0" }}>
-                  Your account may have been accessed without your permission. Please secure your account immediately by resetting your password below.
+                  Do not share this code. Please immediately change your account password and contact our security team at{" "}
+                  <a href="mailto:security@palmtechniq.com" style={{ color: "#dc2626", textDecoration: "underline" }}>
+                    security@palmtechniq.com
+                  </a>.
                 </p>
               </div>
-
-              {/* CTA Button */}
-              <Section className="text-center my-6">
-                <Button
-                  href={secureAccountLink}
-                  className="cursor-pointer rounded-full bg-green-600 text-[14px] font-semibold text-white"
-                  style={{
-                    backgroundColor: "#16a34a",
-                    padding: "12px 28px",
-                    margin: "0 auto",
-                    display: "inline-block",
-                    textDecoration: "none",
-                    color: "#ffffff",
-                  }}
-                >
-                  Secure My Account / Reset Password
-                </Button>
-              </Section>
-
-              <Text className="text-xs text-gray-500 mt-6 leading-relaxed">
-                If you are locked out or need urgent help, contact our security team at{" "}
-                <a
-                  href={`mailto:${supportEmail}`}
-                  style={{ color: "#16a34a", textDecoration: "underline" }}
-                >
-                  {supportEmail}
-                </a>
-                .
-              </Text>
 
               <Section className="text-left mt-6">
                 <span>
                   <Text className="text-gray-700">
                     Thanks, <br />
-                    <b>PalmTechnIQ Team</b>
+                    <b>PalmTechnIQ Security Team</b>
                   </Text>
                 </span>
               </Section>
@@ -185,9 +162,6 @@ export const PasswordChangedEmail = ({
             <Section className="text-center text-[#333333] px-6 py-2 text-xs">
               <Text>
                 <p>Copyright © {year} PalmTechnIQ, All Rights Reserved.</p>
-                <p>
-                  You are receiving this security notification because an update was made to your PalmTechnIQ account.
-                </p>
                 <p>
                   Mailing Address: 1st Floor, (Festac Tower) Chicken Republic Building, 22Rd, Festac Town, Lagos, Nigeria.
                 </p>
@@ -244,4 +218,4 @@ export const PasswordChangedEmail = ({
   );
 };
 
-export default PasswordChangedEmail;
+export default WithdrawalOtpEmail;
