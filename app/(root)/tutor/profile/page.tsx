@@ -53,6 +53,13 @@ import {
   type TutorAvailabilityDay,
   updateTutorProfile,
 } from "../../../../actions/tutor-profile";
+import {
+  getAccountSecurityStatus,
+  savePreferences,
+  type TwoFactorMethod,
+} from "@/actions/account-security";
+import { ChangePasswordDialog } from "@/components/pages/tutor/settings/change-password-dialog";
+import { TwoFactorDialog } from "@/components/pages/tutor/settings/two-factor-dialog";
 import ProfileLoading from "./loading";
 
 type AvailabilityDay = TutorAvailabilityDay;
@@ -118,6 +125,23 @@ export default function TutorProfilePage() {
   const [preferences, setPreferences] = useState(defaultUserPreferences);
   const [publicSlug, setPublicSlug] = useState<string>("");
   const [previewOpen, setPreviewOpen] = useState(false);
+
+  // Security & 2FA State
+  const [passwordDialogOpen, setPasswordDialogOpen] = useState(false);
+  const [twoFactorDialogOpen, setTwoFactorDialogOpen] = useState(false);
+  const [securityStatus, setSecurityStatus] = useState<{
+    hasPassword: boolean;
+    twoFactorEnabled: boolean;
+    twoFactorMethod: TwoFactorMethod | null;
+    email: string;
+  }>({
+    hasPassword: true,
+    twoFactorEnabled: false,
+    twoFactorMethod: null,
+    email: "",
+  });
+  const [savingNotificationPrefs, setSavingNotificationPrefs] = useState(false);
+  const [savingPrivacyPrefs, setSavingPrivacyPrefs] = useState(false);
 
   const addSkill = () => {
     if (newSkill.trim() && !skills.includes(newSkill.trim())) {
@@ -246,18 +270,77 @@ export default function TutorProfilePage() {
     });
   };
 
+  const refreshSecurityStatus = async () => {
+    try {
+      const secData = await getAccountSecurityStatus();
+      if (secData.success && secData.data) {
+        setSecurityStatus(secData.data);
+      }
+    } catch {
+      // background error handled quietly
+    }
+  };
+
+  const handleSaveNotificationPreferences = async () => {
+    setSavingNotificationPrefs(true);
+    try {
+      const res = await savePreferences({
+        emailNotifications: preferences.emailNotifications,
+        courseReminders: preferences.courseReminders,
+        mentorshipAlerts: preferences.mentorshipAlerts,
+        weeklyProgress: preferences.weeklyProgress,
+      });
+      if (!res.success) {
+        toast.error(res.error);
+      } else {
+        toast.success("Notification preferences saved successfully.");
+      }
+    } catch {
+      toast.error("Failed to save notification preferences.");
+    } finally {
+      setSavingNotificationPrefs(false);
+    }
+  };
+
+  const handleSavePrivacyPreferences = async () => {
+    setSavingPrivacyPrefs(true);
+    try {
+      const res = await savePreferences({
+        publicProfile: preferences.publicProfile,
+        showProgress: preferences.showProgress,
+        showAchievements: preferences.showAchievements,
+      });
+      if (!res.success) {
+        toast.error(res.error);
+      } else {
+        toast.success("Privacy preferences saved successfully.");
+      }
+    } catch {
+      toast.error("Failed to save privacy preferences.");
+    } finally {
+      setSavingPrivacyPrefs(false);
+    }
+  };
+
   useEffect(() => {
     let isMounted = true;
 
     const loadProfile = async () => {
       setLoading(true);
-      const data = await getTutorProfileData();
+      const [data, secData] = await Promise.all([
+        getTutorProfileData(),
+        getAccountSecurityStatus(),
+      ]);
       if (!isMounted) return;
 
       if ("error" in data) {
         toast.error(data.error);
         setLoading(false);
         return;
+      }
+
+      if (secData.success && secData.data) {
+        setSecurityStatus(secData.data);
       }
 
       setProfile({
@@ -1014,50 +1097,56 @@ export default function TutorProfilePage() {
                   animate={{ opacity: 1, y: 0 }}
                   transition={{ duration: 0.5 }}
                   className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+                  {/* Notifications Card */}
                   <Card className="glass-card border-white/10">
                     <CardHeader>
                       <CardTitle className="flex items-center gap-2 text-white">
-                        <Bell className="w-5 h-5" />
+                        <Bell className="w-5 h-5 text-neon-blue" />
                         Notifications
                       </CardTitle>
+                      <p className="text-xs text-gray-400">
+                        Choose how and when PalmTechnIQ notifies you about student activity.
+                      </p>
                     </CardHeader>
-                    <CardContent className="space-y-4">
+                    <CardContent className="space-y-5">
                       {[
                         {
                           key: "emailNotifications",
                           title: "Email Notifications",
-                          desc: "Receive updates via email",
+                          desc: "Receive platform alerts and updates via email",
                         },
                         {
                           key: "courseReminders",
                           title: "New Student Enrollments",
-                          desc: "Get notified of new enrollments",
+                          desc: "Get notified immediately when students enroll in your courses",
                         },
                         {
                           key: "mentorshipAlerts",
                           title: "Mentorship Bookings",
-                          desc: "Session booking notifications",
+                          desc: "Receive booking confirmations and reminder alerts",
                         },
                         {
                           key: "weeklyProgress",
-                          title: "Weekly Reports",
-                          desc: "Performance summaries",
+                          title: "Weekly Performance Digest",
+                          desc: "A weekly summary of course completions and student engagement",
                         },
                       ].map((item) => (
                         <div
                           key={item.key}
-                          className="flex items-center justify-between">
+                          className="flex items-center justify-between gap-4 py-1">
                           <div>
-                            <p className="font-medium text-white">
+                            <p className="font-medium text-white text-sm">
                               {item.title}
                             </p>
-                            <p className="text-sm text-gray-300">{item.desc}</p>
+                            <p className="text-xs text-gray-400 leading-relaxed">{item.desc}</p>
                           </div>
                           <Switch
                             checked={
-                              preferences[
-                                item.key as keyof typeof preferences
-                              ] || false
+                              Boolean(
+                                preferences[
+                                  item.key as keyof typeof preferences
+                                ]
+                              )
                             }
                             onCheckedChange={(checked) =>
                               setPreferences((prev) => ({
@@ -1068,93 +1157,193 @@ export default function TutorProfilePage() {
                           />
                         </div>
                       ))}
+
+                      <div className="pt-3 border-t border-white/10">
+                        <Button
+                          type="button"
+                          onClick={handleSaveNotificationPreferences}
+                          disabled={savingNotificationPrefs}
+                          className="w-full bg-white/10 hover:bg-white/15 text-white border border-white/10 text-sm font-medium transition-all"
+                        >
+                          {savingNotificationPrefs ? (
+                            <>
+                              <Loader2 className="w-4 h-4 animate-spin mr-2" />
+                              Saving Preferences...
+                            </>
+                          ) : (
+                            <>
+                              <Save className="w-4 h-4 mr-2 text-neon-blue" />
+                              Save Notification Preferences
+                            </>
+                          )}
+                        </Button>
+                      </div>
                     </CardContent>
                   </Card>
 
+                  {/* Privacy & Security Card */}
                   <Card className="glass-card border-white/10">
                     <CardHeader>
                       <CardTitle className="flex items-center gap-2 text-white">
-                        <Shield className="w-5 h-5" />
+                        <Shield className="w-5 h-5 text-neon-purple" />
                         Privacy & Security
                       </CardTitle>
+                      <p className="text-xs text-gray-400">
+                        Control public profile visibility and manage login authentication methods.
+                      </p>
                     </CardHeader>
-                    <CardContent className="space-y-4">
-                      <div className="flex items-center justify-between">
-                        <div>
-                          <p className="font-medium text-white">
-                            Profile Visibility
-                          </p>
-                          <p className="text-sm text-gray-300">
-                            Show profile to students
-                          </p>
+                    <CardContent className="space-y-5">
+                      {/* Privacy Toggles */}
+                      <div className="space-y-4">
+                        <div className="flex items-center justify-between gap-4 py-1">
+                          <div>
+                            <p className="font-medium text-white text-sm">
+                              Public Profile Visibility
+                            </p>
+                            <p className="text-xs text-gray-400 leading-relaxed">
+                              Allow students and visitors to discover your instructor profile
+                            </p>
+                          </div>
+                          <Switch
+                            checked={preferences.publicProfile}
+                            onCheckedChange={(checked) =>
+                              setPreferences((prev) => ({
+                                ...prev,
+                                publicProfile: checked,
+                              }))
+                            }
+                          />
                         </div>
-                        <Switch
-                          checked={preferences.publicProfile}
-                          onCheckedChange={(checked) =>
-                            setPreferences((prev) => ({
-                              ...prev,
-                              publicProfile: checked,
-                            }))
-                          }
-                        />
-                      </div>
-                      <div className="flex items-center justify-between">
-                        <div>
-                          <p className="font-medium text-white">
-                            Show Progress
-                          </p>
-                          <p className="text-sm text-gray-300">
-                            Display progress stats on your profile
-                          </p>
+                        <div className="flex items-center justify-between gap-4 py-1">
+                          <div>
+                            <p className="font-medium text-white text-sm">
+                              Show Teaching Stats & Experience
+                            </p>
+                            <p className="text-xs text-gray-400 leading-relaxed">
+                              Display years of experience and teaching milestones publicly
+                            </p>
+                          </div>
+                          <Switch
+                            checked={preferences.showProgress}
+                            onCheckedChange={(checked) =>
+                              setPreferences((prev) => ({
+                                ...prev,
+                                showProgress: checked,
+                              }))
+                            }
+                          />
                         </div>
-                        <Switch
-                          checked={preferences.showProgress}
-                          onCheckedChange={(checked) =>
-                            setPreferences((prev) => ({
-                              ...prev,
-                              showProgress: checked,
-                            }))
-                          }
-                        />
-                      </div>
-                      <div className="flex items-center justify-between">
-                        <div>
-                          <p className="font-medium text-white">
-                            Show Achievements
-                          </p>
-                          <p className="text-sm text-gray-300">
-                            Display badges and milestones
-                          </p>
+                        <div className="flex items-center justify-between gap-4 py-1">
+                          <div>
+                            <p className="font-medium text-white text-sm">
+                              Show Certifications & Badges
+                            </p>
+                            <p className="text-xs text-gray-400 leading-relaxed">
+                              Showcase verified certificates and achievements on your page
+                            </p>
+                          </div>
+                          <Switch
+                            checked={preferences.showAchievements}
+                            onCheckedChange={(checked) =>
+                              setPreferences((prev) => ({
+                                ...prev,
+                                showAchievements: checked,
+                              }))
+                            }
+                          />
                         </div>
-                        <Switch
-                          checked={preferences.showAchievements}
-                          onCheckedChange={(checked) =>
-                            setPreferences((prev) => ({
-                              ...prev,
-                              showAchievements: checked,
-                            }))
-                          }
-                        />
-                      </div>
-                      <div className="flex items-center justify-between">
-                        <div>
-                          <p className="font-medium text-white">
-                            Two-Factor Authentication
-                          </p>
-                          <p className="text-sm text-gray-300">
-                            Extra security for your account
-                          </p>
-                        </div>
+
                         <Button
-                          variant="outline"
-                          size="sm"
-                          className="border-white/20 text-white hover:bg-white/10 bg-transparent">
-                          Enable
+                          type="button"
+                          onClick={handleSavePrivacyPreferences}
+                          disabled={savingPrivacyPrefs}
+                          className="w-full bg-white/10 hover:bg-white/15 text-white border border-white/10 text-sm font-medium transition-all"
+                        >
+                          {savingPrivacyPrefs ? (
+                            <>
+                              <Loader2 className="w-4 h-4 animate-spin mr-2" />
+                              Saving Privacy Settings...
+                            </>
+                          ) : (
+                            <>
+                              <Save className="w-4 h-4 mr-2 text-neon-purple" />
+                              Save Privacy Settings
+                            </>
+                          )}
                         </Button>
                       </div>
-                      <Button className="w-full bg-gradient-to-r from-red-500 to-red-600 hover:from-red-600 hover:to-red-700">
-                        Change Password
-                      </Button>
+
+                      {/* Security Divider */}
+                      <div className="border-t border-white/10 pt-4 space-y-4">
+                        <div className="text-xs font-semibold uppercase tracking-wider text-gray-400">
+                          Account Authentication & Protection
+                        </div>
+
+                        {/* Two-Factor Authentication Item */}
+                        <div className="p-3.5 rounded-xl bg-white/5 border border-white/10 flex flex-col sm:flex-row sm:items-center justify-between gap-3">
+                          <div className="space-y-1">
+                            <div className="flex items-center gap-2">
+                              <p className="font-medium text-white text-sm">
+                                Two-Factor Authentication (2FA)
+                              </p>
+                              {securityStatus.twoFactorEnabled ? (
+                                <Badge className="bg-emerald-500/10 text-emerald-400 border border-emerald-500/30 text-[11px] gap-1 py-0.5">
+                                  <CheckCircle2 className="w-3 h-3" />
+                                  {securityStatus.twoFactorMethod === "EMAIL"
+                                    ? "Email OTP"
+                                    : "Authenticator App"}
+                                </Badge>
+                              ) : (
+                                <Badge
+                                  variant="outline"
+                                  className="border-white/15 text-gray-400 text-[11px] py-0.5"
+                                >
+                                  Disabled
+                                </Badge>
+                              )}
+                            </div>
+                            <p className="text-xs text-gray-400">
+                              Support for Google Authenticator and secure Email verification codes.
+                            </p>
+                          </div>
+                          <Button
+                            type="button"
+                            variant={securityStatus.twoFactorEnabled ? "outline" : "default"}
+                            size="sm"
+                            onClick={() => setTwoFactorDialogOpen(true)}
+                            className={
+                              securityStatus.twoFactorEnabled
+                                ? "border-white/20 text-white hover:bg-white/10 bg-transparent shrink-0"
+                                : "bg-gradient-to-r from-neon-blue to-neon-purple hover:opacity-90 text-white shrink-0 font-medium"
+                            }
+                          >
+                            {securityStatus.twoFactorEnabled ? "Manage 2FA" : "Enable 2FA"}
+                          </Button>
+                        </div>
+
+                        {/* Change Password Item */}
+                        <div className="p-3.5 rounded-xl bg-white/5 border border-white/10 flex flex-col sm:flex-row sm:items-center justify-between gap-3">
+                          <div className="space-y-1">
+                            <p className="font-medium text-white text-sm">
+                              Account Password
+                            </p>
+                            <p className="text-xs text-gray-400">
+                              {securityStatus.hasPassword
+                                ? "Update your current password to keep your account safe."
+                                : "You currently sign in via Google. Set a password for direct login."}
+                            </p>
+                          </div>
+                          <Button
+                            type="button"
+                            variant="outline"
+                            size="sm"
+                            onClick={() => setPasswordDialogOpen(true)}
+                            className="border-white/20 text-white hover:bg-white/10 bg-transparent shrink-0"
+                          >
+                            {securityStatus.hasPassword ? "Change Password" : "Set Password"}
+                          </Button>
+                        </div>
+                      </div>
                     </CardContent>
                   </Card>
                 </motion.div>
@@ -1163,6 +1352,30 @@ export default function TutorProfilePage() {
           </div>
         </section>
       </div>
+
+      {/* Change Password Dialog */}
+      <ChangePasswordDialog
+        open={passwordDialogOpen}
+        onOpenChange={setPasswordDialogOpen}
+        hasPassword={securityStatus.hasPassword}
+        onSuccess={refreshSecurityStatus}
+      />
+
+      {/* Two-Factor Authentication Dialog */}
+      <TwoFactorDialog
+        open={twoFactorDialogOpen}
+        onOpenChange={setTwoFactorDialogOpen}
+        enabled={securityStatus.twoFactorEnabled}
+        currentMethod={securityStatus.twoFactorMethod}
+        userEmail={securityStatus.email || profile.email}
+        onStatusChange={(enabled, method) => {
+          setSecurityStatus((prev) => ({
+            ...prev,
+            twoFactorEnabled: enabled,
+            twoFactorMethod: method,
+          }));
+        }}
+      />
 
       {/* Profile Preview Modal */}
       <Dialog open={previewOpen} onOpenChange={setPreviewOpen}>
