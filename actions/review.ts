@@ -460,6 +460,7 @@ export async function getTutorPublicReviewProfile(tutorIdentifier: string) {
           location: true,
           timezone: true,
           language: true,
+          preferences: true,
         },
       },
       Course: {
@@ -552,7 +553,21 @@ export async function getTutorPublicReviewProfile(tutorIdentifier: string) {
   if (session?.user?.id) {
     isOwnProfile = tutor.userId === session.user.id;
     isStudent = session.user.role === "STUDENT";
+  }
 
+  const isStaff = session?.user?.role === "ADMIN" || session?.user?.role === "SUPERIOR";
+  const userPrefs = (tutor.user.preferences as Record<string, unknown>) || {};
+  const isPublicProfile = userPrefs.publicProfile !== false;
+
+  // Enforce privacy: if profile is private, only the tutor or staff can view it
+  if (!isPublicProfile && !isOwnProfile && !isStaff) {
+    return { error: "This instructor profile is currently set to private.", tutor: null };
+  }
+
+  const showAchievements = userPrefs.showAchievements !== false || isOwnProfile || isStaff;
+  const showProgress = userPrefs.showProgress !== false || isOwnProfile || isStaff;
+
+  if (session?.user?.id) {
     userReview = await db.review.findFirst({
       where: {
         userId: session.user.id,
@@ -611,11 +626,11 @@ export async function getTutorPublicReviewProfile(tutorIdentifier: string) {
       avatar: tutor.user.avatar || tutor.user.image || null,
       title: tutor.title,
       expertise: tutor.expertise || [],
-      experience: tutor.experience || 0,
+      experience: showProgress ? (tutor.experience || 0) : 0,
       hourlyRate: tutor.hourlyRate || null,
       course: tutor.course || null,
       education: tutor.education || [],
-      certifications: tutor.certifications || [],
+      certifications: showAchievements ? (tutor.certifications || []) : [],
       bio: tutor.user.bio || null,
       location: tutor.user.location || null,
       timezone: tutor.user.timezone || null,

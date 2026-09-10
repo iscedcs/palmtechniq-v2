@@ -486,3 +486,39 @@ export async function sendTesterInviteEmail(
     throw error;
   }
 }
+
+// ============ TWO-FACTOR AUTHENTICATION OTP EMAIL ============
+export async function sendTwoFactorOtpEmail(params: {
+  email: string;
+  name?: string;
+  code: string;
+  expiresInMinutes?: number;
+}) {
+  try {
+    const { default: TwoFactorOtpEmail } = await import(
+      "./email-templates/two-factor-otp"
+    );
+    const resend = new Resend(process.env.RESEND_API_KEY!);
+    const expiresIn = params.expiresInMinutes ?? 10;
+
+    await resend.emails.send({
+      from:
+        process.env.FROM_EMAIL_ADDRESS ||
+        "PalmTechnIQ Security <security@palmtechniq.com>",
+      to: params.email,
+      subject: `${params.code} is your PalmTechnIQ verification code`,
+      react: TwoFactorOtpEmail({
+        email: params.email,
+        name: params.name,
+        otpCode: params.code,
+        expiresInMinutes: expiresIn,
+      }),
+      text: `Your PalmTechnIQ verification code is ${params.code}. This code expires in ${expiresIn} minutes. Do not share this code with anyone.`,
+    });
+    return { success: true };
+  } catch (error) {
+    console.error("[sendTwoFactorOtpEmail] Failed to send email:", error);
+    return { error: "Failed to deliver verification code. Please try again." };
+  }
+}
+

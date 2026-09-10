@@ -329,6 +329,17 @@ export async function updateTutorProfile(
   const socialLinks = data.socialLinks ?? {};
   const availability = data.availability ?? defaultAvailability;
 
+  const existingUser = await db.user.findUnique({
+    where: { id: session.user.id },
+    select: { preferences: true },
+  });
+  const existingPrefs =
+    (existingUser?.preferences as Record<string, unknown>) || {};
+  const finalPreferences = {
+    ...existingPrefs,
+    ...mergedPreferences,
+  };
+
   await Promise.all([
     db.user.update({
       where: { id: session.user.id },
@@ -341,7 +352,7 @@ export async function updateTutorProfile(
         language: data.language || "en",
         website: socialLinks.website || null,
         socialLinks,
-        preferences: mergedPreferences,
+        preferences: finalPreferences,
         image: data.avatar || null,
         avatar: data.avatar || null,
       },
