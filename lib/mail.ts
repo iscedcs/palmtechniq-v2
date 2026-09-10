@@ -522,3 +522,41 @@ export async function sendTwoFactorOtpEmail(params: {
   }
 }
 
+// ============ PASSWORD CHANGED NOTIFICATION EMAIL ============
+export async function sendPasswordChangedEmail(params: {
+  email: string;
+  name?: string;
+  changedAt?: string;
+  ipAddress?: string;
+  userAgent?: string;
+}) {
+  try {
+    const { default: PasswordChangedEmail } = await import(
+      "./email-templates/password-changed"
+    );
+    const resend = new Resend(process.env.RESEND_API_KEY!);
+    const siteUrl = process.env.NEXT_PUBLIC_URL || "https://www.palmtechniq.com";
+
+    await resend.emails.send({
+      from:
+        process.env.FROM_EMAIL_ADDRESS ||
+        "PalmTechnIQ Security <security@palmtechniq.com>",
+      to: params.email,
+      subject: "Security Alert: Your PalmTechnIQ password was changed",
+      react: PasswordChangedEmail({
+        email: params.email,
+        name: params.name,
+        changedAt: params.changedAt,
+        ipAddress: params.ipAddress,
+        userAgent: params.userAgent,
+      }),
+      text: `Hello ${params.name || params.email},\n\nThe password for your PalmTechnIQ account was recently changed.\n\nIf you made this change, no further action is required.\n\nIf you DID NOT make this change, please reset your password immediately at ${siteUrl}/forgot-password or contact support at support@palmtechniq.com.\n\nPalmTechnIQ Security Team`,
+    });
+    return { success: true };
+  } catch (error) {
+    console.error("[sendPasswordChangedEmail] Failed to send email:", error);
+    return { error: "Failed to send password changed notification." };
+  }
+}
+
+
