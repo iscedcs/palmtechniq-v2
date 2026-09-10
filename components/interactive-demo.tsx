@@ -125,7 +125,7 @@ export function InteractiveDemo({ data }: InteractiveDemoProps) {
   return (
     <section id="demo-section" className="py-32 relative overflow-hidden">
       {/* Background Effects */}
-      <div className="absolute inset-0 cyber-grid opacity-20" />
+      <div className="absolute inset-0 cyber-grid " />
       <motion.div
         className="absolute top-1/2 left-1/2 transform -translate-x-1/2 -translate-y-1/2 w-[800px] h-[800px] bg-neon-blue/5 rounded-full blur-3xl"
         animate={{

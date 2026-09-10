@@ -20,16 +20,16 @@ export default async function TutorDashboardPage() {
   }
 
   return (
-    <div className="min-h-screen bg-background pt-24">
+    <div className="min-h-screen bg-background pt-20 sm:pt-24 pb-16">
       {/* Hero */}
       <TutorDashboardHeader />
-      <section className="py-8">
-        <div className="container mx-auto px-6">
+      <section className="py-6 sm:py-8">
+        <div className="container mx-auto px-4 sm:px-6">
           {/* Stats */}
           <TutorDashboardStatsGrid stats={dashboardData.stats} />
-          <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
+          <div className="grid grid-cols-1 lg:grid-cols-3 gap-6 sm:gap-8">
             {/* LEFT (Main Content) */}
-            <div className="lg:col-span-2 space-y-8">
+            <div className="lg:col-span-2 space-y-6 sm:space-y-8">
               <TutorDashboardEarnings
                 monthlyEarnings={dashboardData.stats.monthlyEarnings}
                 earningsHistory={dashboardData.stats.earningsHistory}
@@ -41,7 +41,7 @@ export default async function TutorDashboardPage() {
             </div>
 
             {/* RIGHT (Sidebar) */}
-            <div className="space-y-8">
+            <div className="space-y-6 sm:space-y-8">
               <TutorDashboardMentorships
                 mentorships={dashboardData.upcomingMentorships}
               />

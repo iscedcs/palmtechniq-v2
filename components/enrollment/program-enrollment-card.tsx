@@ -175,8 +175,12 @@ export default function ProgramEnrollmentCard({
           {/* Lead Instructor & Review Section */}
           {enrollment.leadInstructor && (
             <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 rounded-2xl border border-white/10 bg-white/[0.03] p-3.5">
-              <div className="flex items-center gap-3">
-                <Avatar className="h-10 w-10 border border-white/10">
+              <Link
+                href={`/tutors/${encodeURIComponent(
+                  enrollment.leadInstructor.tutorReviewId,
+                )}`}
+                className="group flex items-center gap-3 hover:opacity-95 transition-opacity">
+                <Avatar className="h-10 w-10 border border-white/10 ring-2 ring-transparent group-hover:ring-neon-blue transition-all">
                   <AvatarImage src={enrollment.leadInstructor.avatar || undefined} />
                   <AvatarFallback className="bg-neon-purple/20 text-neon-purple text-xs font-bold">
                     {enrollment.leadInstructor.name.slice(0, 2).toUpperCase()}
@@ -184,7 +188,7 @@ export default function ProgramEnrollmentCard({
                 </Avatar>
                 <div>
                   <div className="flex items-center gap-2">
-                    <span className="text-xs font-semibold text-white">
+                    <span className="text-xs font-semibold text-white group-hover:text-neon-blue transition-colors">
                       {enrollment.leadInstructor.name}
                     </span>
                     <Badge className="bg-neon-blue/10 text-neon-blue border-neon-blue/30 text-[10px] py-0 px-1.5">
@@ -195,7 +199,7 @@ export default function ProgramEnrollmentCard({
                     {enrollment.leadInstructor.title}
                   </p>
                 </div>
-              </div>
+              </Link>
 
               <Button
                 asChild

@@ -90,12 +90,12 @@ export function TutorDashboardEarnings({
       animate={{ opacity: 1, y: 0 }}
       transition={{ duration: 0.8, delay: 0.3 }}>
       <Card className="glass-card border-white/10 hover-glow">
-        <CardHeader>
-          <div className="flex items-center justify-between">
-            <h3 className="text-2xl font-bold text-white">Monthly Earnings</h3>
+        <CardHeader className="p-4 sm:p-6">
+          <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2">
+            <h3 className="text-xl sm:text-2xl font-bold text-white">Monthly Earnings</h3>
             <Badge
               className={cn(
-                "border-green-500/30",
+                "w-fit border-green-500/30 text-xs",
                 growth >= 0
                   ? "bg-green-500/20 text-green-400"
                   : "bg-red-500/20 text-red-400 border-red-500/30",
@@ -106,12 +106,12 @@ export function TutorDashboardEarnings({
           </div>
         </CardHeader>
 
-        <CardContent>
-          <div className="h-72">
+        <CardContent className="p-4 sm:p-6 pt-0 sm:pt-0">
+          <div className="h-64 sm:h-72 w-full">
             <ResponsiveContainer width="100%" height="100%">
               <BarChart
                 data={chartData}
-                margin={{ top: 20, right: 10, left: -10, bottom: 10 }}>
+                margin={{ top: 20, right: 10, left: -15, bottom: 5 }}>
                 <CartesianGrid
                   strokeDasharray="3 3"
                   stroke="rgba(255,255,255,0.1)"
@@ -127,30 +127,24 @@ export function TutorDashboardEarnings({
                   stroke="#aaa"
                   tickLine={false}
                   axisLine={false}
-                  fontSize={12}
-                  tickFormatter={(val) => `₦${val / 1000}k`}
+                  fontSize={11}
+                  tickFormatter={(val) => `₦${val >= 1000 ? `${Math.round(val / 1000)}k` : val}`}
                 />
                 <Tooltip
                   cursor={{ fill: "rgba(255,255,255,0.1)" }}
                   contentStyle={{
-                    backgroundColor: "rgba(20,20,30,0.85)",
+                    backgroundColor: "rgba(20,20,30,0.95)",
                     border: "1px solid rgba(255,255,255,0.1)",
                     borderRadius: "8px",
                     color: "white",
                   }}
                   formatter={(value, name, props) => [
-                    `₦${(value ?? 0).toLocaleString()}`,
+                    `₦${Number(value ?? 0).toLocaleString()}`,
                     props?.payload?.forecast ? "Projected" : "Earnings",
                   ]}
                 />
 
-                <Bar
-                  dataKey="amount"
-                  fill="url(#colorEarnings)"
-                  radius={[8, 8, 0, 0]}
-                  isAnimationActive={true}
-                />
-                <Bar dataKey="amount" radius={[8, 8, 0, 0]}>
+                <Bar dataKey="amount" radius={[6, 6, 0, 0]}>
                   {chartData.map((entry, index) => (
                     <Cell
                       key={`cell-${index}`}
@@ -172,19 +166,6 @@ export function TutorDashboardEarnings({
                   dot={false}
                   activeDot={{ r: 4 }}
                 />
-
-                <Badge
-                  className={cn(
-                    "border-green-500/30",
-                    growth > 0
-                      ? "bg-green-500/20 text-green-400"
-                      : growth < 0
-                        ? "bg-red-500/20 text-red-400 border-red-500/30"
-                        : "bg-gray-500/20 text-gray-300 border-gray-500/30",
-                  )}>
-                  {growth >= 0 ? "+" : ""}
-                  {growth}% from last month
-                </Badge>
 
                 <defs>
                   <linearGradient
@@ -211,7 +192,7 @@ export function TutorDashboardEarnings({
           </div>
 
           <div className="mt-4 text-center">
-            <p className="text-gray-300">
+            <p className="text-gray-300 text-sm sm:text-base">
               <TrendingUp className="inline-block w-4 h-4 text-green-400 mr-1" />
               You earned{" "}
               <span className="text-green-400 font-semibold">

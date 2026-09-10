@@ -81,6 +81,21 @@ const navigationItems: NavItem[] = [
   },
 ];
 
+const getProfileHref = (role: UserRole): string => {
+  switch (role) {
+    case "ADMIN":
+      return "/admin/profile";
+    case "TUTOR":
+      return "/tutor/profile";
+    case "MENTOR":
+      return "/mentor/profile";
+    case "STUDENT":
+      return "/student/profile";
+    default:
+      return "/profile";
+  }
+};
+
 export function MobileBottomNav() {
   const { data: session, status } = useSession();
   const pathname = usePathname();
@@ -116,20 +131,25 @@ export function MobileBottomNav() {
     item.roles.includes(userRole),
   );
 
-  // Handle unauthenticated state
-  if (status !== "authenticated") {
-    visibleItems = visibleItems.map((item) =>
-      item.id === "profile"
-        ? {
-            id: "login",
-            label: "Sign In",
-            icon: User,
-            href: "/login",
-            roles: ["USER"],
-          }
-        : item,
-    );
-  }
+  // Handle unauthenticated state & dynamic role-based profile link
+  visibleItems = visibleItems.map((item) => {
+    if (item.id === "profile") {
+      if (status !== "authenticated") {
+        return {
+          id: "login",
+          label: "Sign In",
+          icon: User,
+          href: "/login",
+          roles: ["USER"],
+        };
+      }
+      return {
+        ...item,
+        href: getProfileHref(userRole),
+      };
+    }
+    return item;
+  });
 
   const isActive = (href: string) => {
     if (href === "/") {

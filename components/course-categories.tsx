@@ -12,92 +12,66 @@ import {
   PenTool,
 } from "lucide-react";
 import { Card, CardContent } from "@/components/ui/card";
-import { Badge } from "@/components/ui/badge";
+import Link from "next/link";
 
 const categories = [
   {
     icon: Code,
     title: "Programming",
     courses: 450,
-    color: "from-blue-500 to-cyan-400",
-    bgImage:
-      "linear-gradient(135deg, rgba(59, 130, 246, 0.1) 0%, rgba(6, 182, 212, 0.1) 100%)",
+    slug: "programming",
   },
   {
     icon: Palette,
     title: "Design",
     courses: 320,
-    color: "from-purple-500 to-pink-400",
-    bgImage:
-      "linear-gradient(135deg, rgba(147, 51, 234, 0.1) 0%, rgba(244, 114, 182, 0.1) 100%)",
+    slug: "design",
   },
   {
     icon: TrendingUp,
     title: "Business",
     courses: 280,
-    color: "from-green-500 to-emerald-400",
-    bgImage:
-      "linear-gradient(135deg, rgba(34, 197, 94, 0.1) 0%, rgba(16, 185, 129, 0.1) 100%)",
+    slug: "business",
   },
   {
     icon: Camera,
     title: "Photography",
     courses: 180,
-    color: "from-orange-500 to-yellow-400",
-    bgImage:
-      "linear-gradient(135deg, rgba(249, 115, 22, 0.1) 0%, rgba(251, 191, 36, 0.1) 100%)",
+    slug: "photography",
   },
   {
     icon: Music,
     title: "Music",
     courses: 150,
-    color: "from-red-500 to-pink-400",
-    bgImage:
-      "linear-gradient(135deg, rgba(239, 68, 68, 0.1) 0%, rgba(244, 114, 182, 0.1) 100%)",
+    slug: "music",
   },
   {
     icon: Briefcase,
     title: "Marketing",
     courses: 220,
-    color: "from-indigo-500 to-purple-400",
-    bgImage:
-      "linear-gradient(135deg, rgba(99, 102, 241, 0.1) 0%, rgba(168, 85, 247, 0.1) 100%)",
+    slug: "marketing",
   },
   {
     icon: Cpu,
     title: "AI & ML",
     courses: 95,
-    color: "from-cyan-500 to-blue-400",
-    bgImage:
-      "linear-gradient(135deg, rgba(6, 182, 212, 0.1) 0%, rgba(59, 130, 246, 0.1) 100%)",
+    slug: "ai-ml",
   },
   {
     icon: PenTool,
     title: "Writing",
     courses: 130,
-    color: "from-teal-500 to-green-400",
-    bgImage:
-      "linear-gradient(135deg, rgba(20, 184, 166, 0.1) 0%, rgba(34, 197, 94, 0.1) 100%)",
+    slug: "writing",
   },
 ];
 
 export function CourseCategoriesSection() {
   return (
-    <section className="py-32 relative overflow-hidden">
-      {/* Background Effects */}
-      <div className="absolute inset-0">
-        <motion.div
-          className="absolute top-20 right-20 w-72 h-72 bg-neon-pink/10 rounded-full blur-3xl"
-          animate={{
-            scale: [1, 1.2, 1],
-            opacity: [0.3, 0.6, 0.3],
-          }}
-          transition={{
-            duration: 6,
-            repeat: Number.POSITIVE_INFINITY,
-            ease: "easeInOut",
-          }}
-        />
+    <section className="py-28 md:py-36 relative overflow-hidden cyber-grid border-t border-b border-white/5">
+      {/* Subtle ambient lighting */}
+      <div className="absolute inset-0 pointer-events-none">
+        <div className="absolute top-20 right-20 w-96 h-96 bg-primary/10 rounded-full blur-3xl" />
+        <div className="absolute bottom-20 left-20 w-96 h-96 bg-secondary/10 rounded-full blur-3xl" />
       </div>
 
       <div className="container mx-auto px-6 relative z-10">
@@ -108,54 +82,45 @@ export function CourseCategoriesSection() {
           transition={{ duration: 0.8 }}
           viewport={{ once: true }}
           className="text-center mb-20">
-          <h2 className="text-5xl md:text-6xl font-bold mb-6">
-            <span className="text-white">Explore</span>{" "}
-            <span className="text-gradient">Categories</span>
+          <h2 className="text-4xl sm:text-5xl md:text-6xl font-bold mb-6 text-white tracking-tight leading-tight">
+            Explore Categories
           </h2>
-          <p className="text-xl text-gray-300 max-w-3xl mx-auto">
+          <p className="text-lg md:text-xl text-gray-400 max-w-3xl mx-auto leading-relaxed">
             Discover courses across diverse fields, from cutting-edge technology
             to creative arts
           </p>
         </motion.div>
 
         {/* Categories Grid */}
-        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
+        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-6">
           {categories.map((category, index) => (
             <motion.div
               key={category.title}
-              initial={{ opacity: 0, y: 50 }}
+              initial={{ opacity: 0, y: 40 }}
               whileInView={{ opacity: 1, y: 0 }}
-              transition={{ duration: 0.6, delay: index * 0.1 }}
+              transition={{ duration: 0.5, delay: index * 0.08 }}
               viewport={{ once: true }}
-              whileHover={{ scale: 1.05, rotateY: 10 }}
-              className="group cursor-pointer">
-              <Card className="glass-card hover-glow h-full border-white/10 overflow-hidden relative">
-                <div
-                  className="absolute inset-0 opacity-50"
-                  style={{ background: category.bgImage }}
-                />
-                <CardContent className="p-8 relative z-10">
-                  {/* Icon */}
-                  <div
-                    className={`w-16 h-16 rounded-2xl bg-gradient-to-r ${category.color} p-4 mb-6 group-hover:scale-110 transition-transform duration-300`}>
-                    <category.icon className="w-full h-full text-white" />
-                  </div>
+              className="group cursor-pointer h-full">
+              <Link href={`/courses?category=${category.slug}`}>
+                <Card className="glass-card hover-glow h-full border border-white/10 hover:border-primary/40 overflow-hidden relative transition-all duration-300">
+                  <CardContent className="p-8 relative z-10 flex flex-col justify-between h-full">
+                    <div>
+                      {/* Icon */}
+                      <div className="w-14 h-14 rounded-2xl bg-white/[0.04] border border-white/10 flex items-center justify-center text-primary mb-6 group-hover:scale-105 group-hover:border-primary/40 group-hover:bg-primary/10 transition-all duration-300">
+                        <category.icon className="w-7 h-7" />
+                      </div>
 
-                  {/* Content */}
-                  <h3 className="text-2xl font-bold text-white mb-2 group-hover:text-gradient transition-all duration-300">
-                    {category.title}
-                  </h3>
+                      {/* Content */}
+                      <h3 className="text-xl md:text-2xl font-bold text-white mb-2 group-hover:text-primary transition-colors leading-snug">
+                        {category.title}
+                      </h3>
+                    </div>
+                  </CardContent>
 
-                  {/* <Badge className="bg-white/10 text-white border-white/20">
-                    {category.courses} courses
-                  </Badge> */}
-
-                  {/* Hover Gradient */}
-                  <motion.div
-                    className={`absolute inset-0 bg-gradient-to-r ${category.color} opacity-0 group-hover:opacity-10 transition-opacity duration-300 rounded-2xl`}
-                  />
-                </CardContent>
-              </Card>
+                  {/* Plain Subtle Hover Tint */}
+                  <div className="absolute inset-0 bg-primary/[0.02] opacity-0 group-hover:opacity-100 transition-opacity duration-300 pointer-events-none" />
+                </Card>
+              </Link>
             </motion.div>
           ))}
         </div>

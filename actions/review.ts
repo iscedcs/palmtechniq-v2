@@ -431,15 +431,22 @@ export async function getMyReview(courseId: string) {
 export async function getTutorPublicReviewProfile(tutorIdentifier: string) {
   const session = await auth();
 
+  const isMe =
+    (tutorIdentifier.toLowerCase() === "me" ||
+      tutorIdentifier.toLowerCase() === "self") &&
+    Boolean(session?.user?.id);
+
   const tutor = await db.tutor.findFirst({
-    where: {
-      OR: [
-        { id: tutorIdentifier },
-        { userId: tutorIdentifier },
-        { referralCode: tutorIdentifier },
-        { user: { username: tutorIdentifier } },
-      ],
-    },
+    where: isMe
+      ? { userId: session!.user!.id }
+      : {
+          OR: [
+            { id: tutorIdentifier },
+            { userId: tutorIdentifier },
+            { referralCode: tutorIdentifier },
+            { user: { username: tutorIdentifier } },
+          ],
+        },
     include: {
       user: {
         select: {
@@ -449,6 +456,10 @@ export async function getTutorPublicReviewProfile(tutorIdentifier: string) {
           image: true,
           avatar: true,
           role: true,
+          bio: true,
+          location: true,
+          timezone: true,
+          language: true,
         },
       },
       Course: {
@@ -457,8 +468,19 @@ export async function getTutorPublicReviewProfile(tutorIdentifier: string) {
           id: true,
           title: true,
           slug: true,
-          category: true,
+          category: { select: { name: true } },
           level: true,
+          thumbnail: true,
+          price: true,
+          salePrice: true,
+          currentPrice: true,
+          duration: true,
+          _count: {
+            select: {
+              enrollments: true,
+              reviews: true,
+            },
+          },
         },
       },
     },
@@ -588,13 +610,32 @@ export async function getTutorPublicReviewProfile(tutorIdentifier: string) {
       username: tutor.user.username || null,
       avatar: tutor.user.avatar || tutor.user.image || null,
       title: tutor.title,
-      expertise: tutor.expertise,
-      experience: tutor.experience,
+      expertise: tutor.expertise || [],
+      experience: tutor.experience || 0,
+      hourlyRate: tutor.hourlyRate || null,
+      course: tutor.course || null,
+      education: tutor.education || [],
+      certifications: tutor.certifications || [],
+      bio: tutor.user.bio || null,
+      location: tutor.user.location || null,
+      timezone: tutor.user.timezone || null,
+      language: tutor.user.language || null,
       totalReviews,
       averageRating,
       isVerified: tutor.isVerified,
       referralCode: tutor.referralCode,
-      courses: tutor.Course,
+      courses: tutor.Course.map((c: any) => ({
+        id: c.id,
+        title: c.title,
+        slug: c.slug || c.id,
+        category: c.category?.name || "Tech",
+        level: c.level,
+        thumbnail: c.thumbnail || null,
+        price: c.currentPrice ?? c.salePrice ?? c.price,
+        duration: c.duration,
+        studentsCount: c._count?.enrollments || 0,
+        reviewsCount: c._count?.reviews || 0,
+      })),
       programs: leadCohorts.map((c: any) => ({
         id: c.program.id,
         name: c.program.name,

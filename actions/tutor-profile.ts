@@ -132,6 +132,8 @@ type TutorProfileData = {
   };
   availability: TutorAvailability;
   preferences: UserPreferences;
+  publicSlug?: string;
+  tutorId?: string;
 };
 
 type TutorProfileResponse = { error: string } | TutorProfileData;
@@ -290,6 +292,12 @@ export async function getTutorProfileData(): Promise<TutorProfileResponse> {
     },
     availability: normalizeAvailability(resolvedTutor.availability),
     preferences: normalizePreferences(user.preferences),
+    publicSlug:
+      user.username ||
+      resolvedTutor.referralCode ||
+      resolvedTutor.id ||
+      session.user.id,
+    tutorId: resolvedTutor.id,
   };
 }
 

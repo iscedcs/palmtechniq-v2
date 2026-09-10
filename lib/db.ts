@@ -10,12 +10,16 @@ const globalForPrisma = globalThis as unknown as {
 
 function createPrismaClient() {
   const connectionString = process.env.DATABASE_URL;
+  const isPlaceholderUrl =
+    !connectionString ||
+    connectionString.includes("localhost:5432/postgres") ||
+    connectionString === "ci-placeholder";
   
-  // During build time, DATABASE_URL might not be available
+  // During build time or CI without real DB, DATABASE_URL might not be available
   // In this case, we return a lazy-loading client that will work at runtime
-  if (!connectionString) {
+  if (isPlaceholderUrl) {
     console.warn(
-      "DATABASE_URL not available during build. The app will use database at runtime."
+      "DATABASE_URL not available or set to placeholder during build. The app will use database at runtime."
     );
     
     // Create a lazy Prisma client that will work when DATABASE_URL is available
@@ -24,8 +28,8 @@ function createPrismaClient() {
       {
         get: () => {
           throw new Error(
-            "DATABASE_URL environment variable is not set. " +
-              "Make sure your .env file is loaded with DATABASE_URL."
+            "DATABASE_URL environment variable is not set or is a CI placeholder. " +
+              "Make sure your .env file is loaded with a valid DATABASE_URL."
           );
         },
       }
