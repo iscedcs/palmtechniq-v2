@@ -1,3 +1,4 @@
+import type { Metadata } from "next";
 import { notFound } from "next/navigation";
 import { auth } from "@/auth";
 import { getTutorPublicReviewProfile } from "@/actions/review";
@@ -7,7 +8,7 @@ interface TutorReviewPageProps {
   params: Promise<{ id: string }>;
 }
 
-export async function generateMetadata({ params }: TutorReviewPageProps) {
+export async function generateMetadata({ params }: TutorReviewPageProps): Promise<Metadata> {
   const { id } = await params;
   const data = await getTutorPublicReviewProfile(id);
 
@@ -18,9 +19,40 @@ export async function generateMetadata({ params }: TutorReviewPageProps) {
     };
   }
 
+  const tutor = data.tutor;
+  const siteUrl = "https://palmtechniq.com";
+  const canonicalPath = `/tutors/${id}/review`;
+  const fullUrl = `${siteUrl}${canonicalPath}`;
+  const shareImage = `${siteUrl}/tutors/${id}/opengraph-image`;
+  const pageTitle = `Reviews for ${tutor.name} | PalmTechnIQ Instructor`;
+  const pageDescription = `Read verified student reviews and leave feedback for ${tutor.name} (${tutor.title || "Instructor"}) on PalmTechnIQ.`;
+
   return {
-    title: `Review ${data.tutor.name} | PalmTechnIQ Tutor Reviews`,
-    description: `Leave a verified review for ${data.tutor.name} (${data.tutor.title}) on PalmTechnIQ.`,
+    title: pageTitle,
+    description: pageDescription,
+    alternates: { canonical: canonicalPath },
+    openGraph: {
+      title: pageTitle,
+      description: pageDescription,
+      url: fullUrl,
+      type: "profile",
+      siteName: "PalmTechnIQ",
+      images: [
+        {
+          url: shareImage,
+          width: 1200,
+          height: 630,
+          alt: `${tutor.name} Reviews - PalmTechnIQ`,
+        },
+      ],
+    },
+    twitter: {
+      card: "summary_large_image",
+      title: pageTitle,
+      description: pageDescription,
+      images: [shareImage],
+      creator: "@palmtechniq",
+    },
   };
 }
 
