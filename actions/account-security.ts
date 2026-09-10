@@ -1,11 +1,12 @@
 "use server";
 
 import crypto from "crypto";
+import { headers } from "next/headers";
 import { auth } from "@/auth";
 import { db } from "@/lib/db";
 import { hashPassword, verifyPassword } from "@/lib/password";
 import { generateTotpQrCode, generateTotpSecret, verifyTotpToken } from "@/lib/totp";
-import { sendTwoFactorOtpEmail } from "@/lib/mail";
+import { sendPasswordChangedEmail, sendTwoFactorOtpEmail } from "@/lib/mail";
 import { defaultUserPreferences, type UserPreferences } from "@/lib/user-preferences";
 
 export type TwoFactorMethod = "AUTHENTICATOR" | "EMAIL";
@@ -86,10 +87,10 @@ export async function updateAccountPassword(params: {
 
   const user = await db.user.findUnique({
     where: { id: session.user.id },
-    select: { id: true, password: true },
+    select: { id: true, email: true, name: true, password: true },
   });
 
-  if (!user) {
+  if (!user || !user.email) {
     return { success: false, error: "User not found" };
   }
 
@@ -115,7 +116,35 @@ export async function updateAccountPassword(params: {
     },
   });
 
-  return { success: true, message: "Password updated successfully." };
+  // Dispatch security alert email to user
+  try {
+    const headersList = await headers();
+    const forwarded = headersList.get("x-forwarded-for");
+    const ipAddress = forwarded
+      ? forwarded.split(",")[0].trim()
+      : headersList.get("x-real-ip") || undefined;
+    const userAgent = headersList.get("user-agent") || undefined;
+
+    const formattedDate =
+      new Intl.DateTimeFormat("en-US", {
+        dateStyle: "medium",
+        timeStyle: "short",
+        timeZone: "UTC",
+      }).format(new Date()) + " UTC";
+
+    await sendPasswordChangedEmail({
+      email: user.email,
+      name: user.name || undefined,
+      changedAt: formattedDate,
+      ipAddress,
+      userAgent,
+    });
+  } catch (emailError) {
+    console.error("[updateAccountPassword] Failed to send security email:", emailError);
+    // Non-blocking: password was updated successfully
+  }
+
+  return { success: true, message: "Password updated successfully. A security confirmation email has been sent." };
 }
 
 /**
