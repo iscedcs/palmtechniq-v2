@@ -20,10 +20,14 @@ export async function generateMetadata({ params }: TutorPageProps): Promise<Meta
   }
 
   const tutor = data.tutor;
-  const siteUrl = "https://palmtechniq.com";
+  const siteUrl = "https://www.palmtechniq.com";
   const canonicalPath = `/tutors/${id}`;
   const fullUrl = `${siteUrl}${canonicalPath}`;
-  const shareImage = `${fullUrl}/opengraph-image`;
+
+  const tutorPhoto = tutor.avatar;
+  const shareImage = tutorPhoto
+    ? encodeURI(tutorPhoto.trim())
+    : `${siteUrl}/opengraph-image`;
 
   const tutorTitle = tutor.title ? `${tutor.name} (${tutor.title})` : tutor.name;
   const pageTitle = `${tutorTitle} | PalmTechnIQ Instructor`;
@@ -33,10 +37,12 @@ export async function generateMetadata({ params }: TutorPageProps): Promise<Meta
       ? ` Expertise in ${tutor.expertise.slice(0, 4).join(", ")}.`
       : "";
 
-  const pageDescription =
-    tutor.bio?.trim()
-      ? `${tutor.bio.slice(0, 140)}... Learn with ${tutor.name} on PalmTechnIQ.`
-      : `Explore tech courses, live cohorts, and 1-on-1 mentorship with ${tutor.name} on PalmTechnIQ.${expertiseText}`;
+  const cleanBio = tutor.bio ? tutor.bio.replace(/\s+/g, " ").trim() : "";
+  const pageDescription = cleanBio
+    ? cleanBio.length > 155
+      ? `${cleanBio.slice(0, 152)}...`
+      : cleanBio
+    : `Explore practical tech courses, live cohorts, and 1-on-1 mentorship with ${tutor.name} on PalmTechnIQ.${expertiseText}`;
 
   return {
     title: pageTitle,
