@@ -7,6 +7,7 @@ import { Toaster } from "sonner";
 import { AnalyticsProvider } from "@/lib/analytics/analytics-provider";
 import { NotificationProvider } from "@/lib/notifications/notification-provider";
 import type { Metadata } from "next";
+import { SITE_URL } from "@/lib/site";
 import { SessionProvider } from "next-auth/react";
 import { Inter } from "next/font/google";
 import { Suspense } from "react";
@@ -58,7 +59,7 @@ export const metadata: Metadata = {
     address: false,
     telephone: false,
   },
-  metadataBase: new URL("https://palmtechniq.com"),
+  metadataBase: new URL(SITE_URL),
   alternates: {
     canonical: "/",
   },
@@ -66,7 +67,7 @@ export const metadata: Metadata = {
     title: "PalmTechnIQ - Advanced E-Learning Platform",
     description:
       "Learn in-demand technical skills with practical courses, expert guidance, and a modern learning experience.",
-    url: "https://palmtechniq.com",
+    url: SITE_URL,
     siteName: "PalmTechnIQ",
     images: [
       {
@@ -125,9 +126,9 @@ export default async function MainRootLayout({
     "@context": "https://schema.org",
     "@type": "Organization",
     name: "PalmTechnIQ",
-    url: "https://palmtechniq.com",
+    url: SITE_URL,
     email: "support@palmtechniq.com",
-    logo: "https://palmtechniq.com/opengraph-image",
+    logo: "https://www.palmtechniq.com/opengraph-image",
     sameAs: [
       "https://www.facebook.com/palmtechniq/",
       "https://www.instagram.com/palmtechniq",
@@ -141,10 +142,10 @@ export default async function MainRootLayout({
     "@context": "https://schema.org",
     "@type": "WebSite",
     name: "PalmTechnIQ",
-    url: "https://palmtechniq.com",
+    url: SITE_URL,
     potentialAction: {
       "@type": "SearchAction",
-      target: "https://palmtechniq.com/search?q={search_term_string}",
+      target: "https://www.palmtechniq.com/search?q={search_term_string}",
       "query-input": "required name=search_term_string",
     },
   };

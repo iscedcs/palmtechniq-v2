@@ -40,13 +40,16 @@ const PasswordReset = ({ email, token }: PasswordResetProps) => {
                 src={`https://www.palmtechniq.com/assets/palmtechniqlogo.png`}
                 width="200"
                 height="200"
+                alt="PalmTechnIQ Logo"
               />
             </Section>
             <Section>
-              <Text className="mt-[20px] text-[20px] font-bold">
+              <Text className="mt-[20px] text-[20px] font-bold mb-3">
                 Password Reset
               </Text>
-              <Text className="text-left">Hi, {email}</Text>
+              <Text className="text-left">
+                Hi, <strong>{email}</strong>
+              </Text>
               <Text>
                 Someone recently requested for a password change to your
                 PalmTechnIQ account. If this was you, tap the button below to

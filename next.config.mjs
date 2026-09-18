@@ -8,6 +8,18 @@ const nextConfig = {
   },
   async redirects() {
     return [
+      // Canonical host: www.
+      //
+      // Both spellings previously resolved, which split ranking signals and let
+      // the sitemap be served on www while listing non-www URLs inside it —
+      // Google discovered 11 of 75 URLs and stopped re-reading the file. A 301
+      // means there is exactly one spelling of every page.
+      {
+        source: "/:path*",
+        has: [{ type: "host", value: "palmtechniq.com" }],
+        destination: "https://www.palmtechniq.com/:path*",
+        permanent: true,
+      },
       {
         source: "/certificate/:id",
         destination: "/verify-certificate?code=:id",

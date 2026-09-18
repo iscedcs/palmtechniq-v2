@@ -22,7 +22,7 @@ export const metadata: Metadata = {
     title: "PalmTechnIQ — Learn Any Skill, from Tailoring to AI",
     description:
       "Practical courses, real projects and mentorship. Already skilled? Publish a course and get paid.",
-    url: "https://palmtechniq.com",
+    url: "https://www.palmtechniq.com",
     type: "website",
   },
 };
@@ -32,8 +32,8 @@ export default function HomePage() {
     "@context": "https://schema.org",
     "@type": "EducationalOrganization",
     name: "PalmTechnIQ",
-    url: "https://palmtechniq.com",
-    logo: "https://palmtechniq.com/opengraph-image",
+    url: "https://www.palmtechniq.com",
+    logo: "https://www.palmtechniq.com/opengraph-image",
     description:
       "PalmTechnIQ is a learning marketplace where anyone can learn a skill — from tailoring and auto repair to design, coding and AI — or teach what they know and earn from it.",
     email: "support@palmtechniq.com",

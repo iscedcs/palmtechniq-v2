@@ -126,7 +126,7 @@ const ApplicationStatusEmail = ({
   applicationType = "tutor",
   status = "UNDER_REVIEW",
   adminNote,
-  portalUrl = "https://palmtechniq.com",
+  portalUrl = "https://www.palmtechniq.com",
   supportEmail = "support@palmtechniq.com",
 }: ApplicationStatusEmailProps) => {
   const year = new Date().getFullYear();

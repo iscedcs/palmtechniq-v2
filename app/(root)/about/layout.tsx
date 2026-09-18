@@ -11,7 +11,7 @@ export const metadata: Metadata = {
     title: "About PalmTechnIQ",
     description:
       "Our mission is to make quality tech education accessible. Learn about our values, team, and vision.",
-    url: "https://palmtechniq.com/about",
+    url: "https://www.palmtechniq.com/about",
     type: "website",
   },
 };

@@ -11,7 +11,7 @@ export const metadata: Metadata = {
     title: "Become a Tutor | PalmTechnIQ",
     description:
       "Share your expertise, create courses, mentor students, and earn income teaching tech skills.",
-    url: "https://palmtechniq.com/become-a-tutor",
+    url: "https://www.palmtechniq.com/become-a-tutor",
     type: "website",
   },
 };

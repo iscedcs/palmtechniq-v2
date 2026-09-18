@@ -11,7 +11,7 @@ export const metadata: Metadata = {
     title: "Help Center | PalmTechnIQ",
     description:
       "FAQs and support for courses, enrollment, mentorship, payments, and platform features.",
-    url: "https://palmtechniq.com/help",
+    url: "https://www.palmtechniq.com/help",
     type: "website",
   },
 };

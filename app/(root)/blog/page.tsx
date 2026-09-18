@@ -6,7 +6,7 @@ import {
 import { BlogContent } from "@/components/pages/blog/blog-content";
 
 export const revalidate = 60;
-const siteUrl = "https://palmtechniq.com";
+const siteUrl = "https://www.palmtechniq.com";
 
 type BlogPageProps = {
   searchParams?: Promise<{

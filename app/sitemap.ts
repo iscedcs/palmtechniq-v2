@@ -1,4 +1,5 @@
 import type { MetadataRoute } from "next";
+import { SITE_URL } from "@/lib/site";
 import { db } from "@/lib/db";
 import { getPostSlugs } from "@/lib/sanity-queries";
 import { PROGRAMS } from "@/data/programs";
@@ -6,7 +7,7 @@ import { PROGRAMS } from "@/data/programs";
 export const dynamic = "force-dynamic";
 
 export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
-  const baseUrl = "https://palmtechniq.com";
+  const baseUrl = SITE_URL;
 
   // Static pages
   const staticPages: MetadataRoute.Sitemap = [

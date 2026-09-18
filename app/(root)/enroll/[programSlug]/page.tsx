@@ -31,7 +31,7 @@ export async function generateMetadata({
     openGraph: {
       title: `${program.name} (${program.durationLabel}) — Enroll`,
       description: `Start your ${program.durationLabel.toLowerCase()} ${program.name} journey with PalmTechnIQ.`,
-      url: `https://palmtechniq.com/enroll/${program.slug}`,
+      url: `https://www.palmtechniq.com/enroll/${program.slug}`,
       type: "website",
     },
   };

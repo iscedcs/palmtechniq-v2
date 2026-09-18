@@ -50,7 +50,7 @@ export async function generateMetadata({ params }: Props): Promise<Metadata> {
     openGraph: {
       title: `${title} | PalmTechnIQ`,
       description,
-      url: `https://palmtechniq.com/courses/category/${slug}`,
+      url: `https://www.palmtechniq.com/courses/category/${slug}`,
       type: "website",
       siteName: "PalmTechnIQ",
     },

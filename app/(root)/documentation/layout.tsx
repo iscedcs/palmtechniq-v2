@@ -18,7 +18,7 @@ export const metadata: Metadata = {
     title: "PalmTechnIQ Documentation",
     description:
       "Guides, API reference, and architecture documentation for the PalmTechnIQ e-learning platform.",
-    url: "https://palmtechniq.com/documentation",
+    url: "https://www.palmtechniq.com/documentation",
     type: "website",
   },
 };

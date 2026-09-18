@@ -11,7 +11,7 @@ export const metadata: Metadata = {
     title: "Verify Certificate | PalmTechnIQ",
     description:
       "Verify the authenticity of PalmTechnIQ course completion and volunteer certificates.",
-    url: "https://palmtechniq.com/verify-certificate",
+    url: "https://www.palmtechniq.com/verify-certificate",
     type: "website",
   },
 };

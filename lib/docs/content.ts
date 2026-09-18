@@ -1,6 +1,6 @@
 import type { DocPage, DocSection } from "./types";
 
-export const DOC_VERSION = "2026.08.16";
+export const DOC_VERSION = "2026.09.18";
 
 export const docSections: DocSection[] = [
   // ─── GETTING STARTED ─────────────────────────────────────
@@ -2455,7 +2455,7 @@ Server actions follow a consistent pattern:
         slug: "rest-api",
         description: "HTTP API endpoints for external integrations.",
         audience: "developer",
-        lastUpdated: "2026-08-14",
+        lastUpdated: "2026-09-18",
         content: `
 # REST API Endpoints
 
@@ -2653,7 +2653,7 @@ Keys are compared using **timing-safe equality** (constant-time) to prevent timi
 
 **Example Request**
 \`\`\`bash
-curl https://palmtechniq.com/api/integrations/mailing/users?limit=500 \\
+curl https://www.palmtechniq.com/api/integrations/mailing/users?limit=500 \\
   -H "x-integration-key: <your-key>"
 \`\`\`
 
@@ -3091,7 +3091,7 @@ Add the output values to your \`.env\` file. During a key rotation:
         slug: "seo",
         description: "Search engine optimization strategy and implementation.",
         audience: "developer",
-        lastUpdated: "2026-08-14",
+        lastUpdated: "2026-09-18",
         content: `
 # SEO Implementation
 
@@ -3148,7 +3148,7 @@ export async function generateMetadata({ params }) {
 export default function robots() {
   return {
     rules: { userAgent: '*', allow: '/' },
-    sitemap: 'https://palmtechniq.com/sitemap.xml',
+    sitemap: 'https://www.palmtechniq.com/sitemap.xml',
   };
 }
 \`\`\`

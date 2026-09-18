@@ -30,13 +30,13 @@ export async function generateMetadata(props: {
 
   const description =
     course.description?.slice(0, 160) || "Learn with PalmTechnIQ";
-  const courseUrl = `https://palmtechniq.com/courses/${course.slug || course.id}`;
+  const courseUrl = `https://www.palmtechniq.com/courses/${course.slug || course.id}`;
 
   // A share card with no image is weak, so fall back to the site image rather
   // than emitting an empty array. Note this cannot detect a thumbnail whose
   // URL is present but dead; scripts/audit-course-thumbnails.ts clears those.
   const shareImage =
-    course.thumbnail || "https://palmtechniq.com/opengraph-image";
+    course.thumbnail || "https://www.palmtechniq.com/opengraph-image";
 
   return {
     title: course.title,
@@ -146,7 +146,7 @@ export default async function CourseSlugPage(props: {
   }, 0);
 
   const avgRating = getAverageRating(course.reviews);
-  const courseUrl = `https://palmtechniq.com/courses/${course.slug || course.id}`;
+  const courseUrl = `https://www.palmtechniq.com/courses/${course.slug || course.id}`;
 
   // The price a student actually pays today, which is what the Offer must
   // state. A flash sale sets currentPrice below basePrice.
@@ -164,11 +164,11 @@ export default async function CourseSlugPage(props: {
     provider: {
       "@type": "Organization",
       name: "PalmTechnIQ",
-      url: "https://palmtechniq.com",
+      url: "https://www.palmtechniq.com",
     },
     // Always emit an image. Clearing the dead S3 thumbnails left most courses
     // with none at all, and Google treats a missing image as a weaker result.
-    image: course.thumbnail || "https://palmtechniq.com/opengraph-image",
+    image: course.thumbnail || "https://www.palmtechniq.com/opengraph-image",
     ...(course.tutor?.user?.name && {
       instructor: {
         "@type": "Person",
@@ -249,13 +249,13 @@ export default async function CourseSlugPage(props: {
         "@type": "ListItem",
         position: 1,
         name: "Home",
-        item: "https://palmtechniq.com",
+        item: "https://www.palmtechniq.com",
       },
       {
         "@type": "ListItem",
         position: 2,
         name: "Courses",
-        item: "https://palmtechniq.com/courses",
+        item: "https://www.palmtechniq.com/courses",
       },
       {
         "@type": "ListItem",

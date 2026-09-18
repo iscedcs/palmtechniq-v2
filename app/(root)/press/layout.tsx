@@ -11,7 +11,7 @@ export const metadata: Metadata = {
     title: "Press | PalmTechnIQ",
     description:
       "Latest news, press releases, and brand assets from PalmTechnIQ.",
-    url: "https://palmtechniq.com/press",
+    url: "https://www.palmtechniq.com/press",
     type: "website",
   },
 };
