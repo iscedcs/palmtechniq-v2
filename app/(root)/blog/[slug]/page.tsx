@@ -17,7 +17,7 @@ import { AuthorCard } from "@/components/pages/blog/author-card";
 import { RelatedPosts } from "@/components/pages/blog/related-posts";
 
 export const revalidate = 60;
-const siteUrl = "https://palmtechniq.com";
+const siteUrl = "https://www.palmtechniq.com";
 
 type Props = {
   params: Promise<{ slug: string }>;

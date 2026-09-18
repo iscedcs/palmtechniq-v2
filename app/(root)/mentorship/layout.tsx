@@ -11,7 +11,7 @@ export const metadata: Metadata = {
     title: "Mentorship Marketplace | PalmTechnIQ",
     description:
       "Book one-on-one mentorship sessions with experienced tech professionals for career growth.",
-    url: "https://palmtechniq.com/mentorship",
+    url: "https://www.palmtechniq.com/mentorship",
     type: "website",
   },
 };

@@ -13,7 +13,7 @@ export const metadata: Metadata = {
     title: "Enroll — PalmTechnIQ Professional Programs",
     description:
       "Reserve your spot in PalmTechnIQ's intensive professional programs. Choose your path, select a cohort, and start your career pipeline.",
-    url: "https://palmtechniq.com/enroll",
+    url: "https://www.palmtechniq.com/enroll",
     type: "website",
   },
 };

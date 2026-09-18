@@ -26,10 +26,10 @@
   "integrations": "3a4d917345e0e663",
   "project-structure": "be2f17ff3f6d93c4",
   "server-actions": "8ed7fbec6e5b6f36",
-  "rest-api": "f23df24fc3017d89",
+  "rest-api": "e1a534c8d92dde58",
   "analytics": "3c65206493b032ae",
   "background-jobs": "6f8114aa2f572bd3",
   "security": "c3e8b4eec38fd828",
-  "seo": "18aecbd0ff175d7d",
+  "seo": "99dbc37af7c66852",
   "deployment": "0f41d1e18149e28f"
 }

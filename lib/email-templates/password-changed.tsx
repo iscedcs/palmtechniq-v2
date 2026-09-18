@@ -47,10 +47,12 @@ export const PasswordChangedEmail = ({
     <Tailwind>
       <Html>
         <Head>
-          <Preview>Security Alert: Your PalmTechnIQ password was changed</Preview>
+          <Preview>
+            Security Alert: Your PalmTechnIQ password was changed
+          </Preview>
         </Head>
-        <Body className="w-full bg-gray-50 font-sans">
-          <Container className="w-full mx-auto max-w-2xl bg-white my-8 rounded-xl overflow-hidden shadow-sm">
+        <Body className="w-full">
+          <Container className="w-full">
             {/* Header with Logo */}
             <Section className="bg-[#021A1A] text-center py-6">
               <Img
@@ -64,14 +66,16 @@ export const PasswordChangedEmail = ({
 
             {/* Main Content */}
             <Section className="px-8 py-6">
-              <Text className="text-2xl font-bold text-[#021A1A] mb-3">
+              <Text className="mt-[20px] text-[20px] font-bold  mb-3">
                 Password Changed
               </Text>
               <Text className="text-gray-800 text-base leading-relaxed">
                 Hi, <strong>{displayName}</strong>
               </Text>
-              <Text className="text-gray-700 text-base leading-relaxed">
-                The password for your PalmTechnIQ account (<strong>{email}</strong>) was successfully updated on <strong>{formattedTime}</strong>.
+              <Text className=" text-base leading-relaxed">
+                The password for your PalmTechnIQ account (
+                <strong>{email}</strong>) was successfully updated on{" "}
+                <strong>{formattedTime}</strong>.
               </Text>
 
               {/* Activity Details Box */}
@@ -86,9 +90,13 @@ export const PasswordChangedEmail = ({
                     fontSize: "13px",
                     color: "#475569",
                     lineHeight: "1.6",
-                  }}
-                >
-                  <p style={{ margin: "0 0 6px 0", fontWeight: "bold", color: "#0f172a" }}>
+                  }}>
+                  <p
+                    style={{
+                      margin: "0 0 6px 0",
+                      fontWeight: "bold",
+                      color: "#0f172a",
+                    }}>
                     Activity Details:
                   </p>
                   {ipAddress && (
@@ -114,11 +122,11 @@ export const PasswordChangedEmail = ({
                   margin: "16px 0",
                   fontSize: "14px",
                   color: "#166534",
-                }}
-              >
+                }}>
                 <strong>✅ If you made this change:</strong>
                 <p style={{ margin: "4px 0 0 0" }}>
-                  No further action is required. Your account is now active with your new password.
+                  No further action is required. Your account is now active with
+                  your new password.
                 </p>
               </div>
 
@@ -132,11 +140,12 @@ export const PasswordChangedEmail = ({
                   margin: "16px 0 24px 0",
                   fontSize: "14px",
                   color: "#991b1b",
-                }}
-              >
+                }}>
                 <strong>⚠️ If you did NOT make this change:</strong>
                 <p style={{ margin: "4px 0 0 0" }}>
-                  Your account may have been accessed without your permission. Please secure your account immediately by resetting your password below.
+                  Your account may have been accessed without your permission.
+                  Please secure your account immediately by resetting your
+                  password below.
                 </p>
               </div>
 
@@ -152,18 +161,17 @@ export const PasswordChangedEmail = ({
                     display: "inline-block",
                     textDecoration: "none",
                     color: "#ffffff",
-                  }}
-                >
+                  }}>
                   Secure My Account / Reset Password
                 </Button>
               </Section>
 
               <Text className="text-xs text-gray-500 mt-6 leading-relaxed">
-                If you are locked out or need urgent help, contact our security team at{" "}
+                If you are locked out or need urgent help, contact our security
+                team at{" "}
                 <a
                   href={`mailto:${supportEmail}`}
-                  style={{ color: "#16a34a", textDecoration: "underline" }}
-                >
+                  style={{ color: "#16a34a", textDecoration: "underline" }}>
                   {supportEmail}
                 </a>
                 .
@@ -186,10 +194,12 @@ export const PasswordChangedEmail = ({
               <Text>
                 <p>Copyright © {year} PalmTechnIQ, All Rights Reserved.</p>
                 <p>
-                  You are receiving this security notification because an update was made to your PalmTechnIQ account.
+                  You are receiving this security notification because an update
+                  was made to your PalmTechnIQ account.
                 </p>
                 <p>
-                  Mailing Address: 1st Floor, (Festac Tower) Chicken Republic Building, 22Rd, Festac Town, Lagos, Nigeria.
+                  Mailing Address: 1st Floor, (Festac Tower) Chicken Republic
+                  Building, 22Rd, Festac Town, Lagos, Nigeria.
                 </p>
               </Text>
             </Section>

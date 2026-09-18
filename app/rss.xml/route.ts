@@ -1,6 +1,6 @@
 import { getFeedPosts } from "@/lib/sanity-queries";
 
-const siteUrl = "https://palmtechniq.com";
+const siteUrl = "https://www.palmtechniq.com";
 
 function escapeXml(value: string) {
   return value

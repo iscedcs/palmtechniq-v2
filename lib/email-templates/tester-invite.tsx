@@ -26,7 +26,7 @@ const TesterInvite = ({
   email = "",
   tempPassword = "",
 }: TesterInviteProps) => {
-  const domain = process.env.NEXT_PUBLIC_URL || "https://palmtechniq.com";
+  const domain = process.env.NEXT_PUBLIC_URL || "https://www.palmtechniq.com";
   const loginUrl = `${domain}/login`;
   const year = new Date().getFullYear();
 

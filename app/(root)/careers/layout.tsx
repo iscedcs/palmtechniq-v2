@@ -11,7 +11,7 @@ export const metadata: Metadata = {
     title: "Careers at PalmTechnIQ",
     description:
       "Join the PalmTechnIQ team. Explore open positions in engineering, education, design, and more.",
-    url: "https://palmtechniq.com/careers",
+    url: "https://www.palmtechniq.com/careers",
     type: "website",
   },
 };

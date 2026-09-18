@@ -54,7 +54,7 @@ const EnrollmentConfirmation = ({
   resetLink,
   loginUrl,
 }: EnrollmentConfirmationProps) => {
-  const domain = process.env.NEXT_PUBLIC_URL || "https://palmtechniq.com";
+  const domain = process.env.NEXT_PUBLIC_URL || "https://www.palmtechniq.com";
   const year = new Date().getFullYear();
   const isFullyPaid = status === "FULLY_PAID";
   const isInstallment = paymentPlan === "INSTALLMENT";

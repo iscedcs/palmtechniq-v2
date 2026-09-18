@@ -11,7 +11,7 @@ export const metadata: Metadata = {
     title: "PalmTechnIQ Blog",
     description:
       "Guides on learning skills, teaching online and earning from what you know — plus AI, technology and career insight.",
-    url: "https://palmtechniq.com/blog",
+    url: "https://www.palmtechniq.com/blog",
     type: "website",
   },
 };

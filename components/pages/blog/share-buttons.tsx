@@ -21,7 +21,7 @@ export function ShareButtons({ title, slug }: ShareButtonsProps) {
   const url =
     typeof window !== "undefined"
       ? `${window.location.origin}/blog/${slug}`
-      : `https://palmtechniq.com/blog/${slug}`;
+      : `https://www.palmtechniq.com/blog/${slug}`;
   const encoded = encodeURIComponent(url);
   const encodedTitle = encodeURIComponent(title);
 

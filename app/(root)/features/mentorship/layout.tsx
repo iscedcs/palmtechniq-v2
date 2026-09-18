@@ -11,7 +11,7 @@ export const metadata: Metadata = {
     title: "Mentorship Program | PalmTechnIQ",
     description:
       "One-on-one mentorship for interview prep, code reviews, career guidance, and personalized learning paths.",
-    url: "https://palmtechniq.com/features/mentorship",
+    url: "https://www.palmtechniq.com/features/mentorship",
     type: "website",
   },
 };

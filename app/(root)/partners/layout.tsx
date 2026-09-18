@@ -11,7 +11,7 @@ export const metadata: Metadata = {
     title: "Partner with PalmTechnIQ",
     description:
       "Explore partnership opportunities to deliver high-impact tech education.",
-    url: "https://palmtechniq.com/partners",
+    url: "https://www.palmtechniq.com/partners",
     type: "website",
   },
 };

@@ -17,7 +17,7 @@ export const metadata: Metadata = {
     title: "Browse Courses | PalmTechnIQ",
     description:
       "Browse courses across trades, crafts, business, AI, cybersecurity and technology, taught by people who do the work.",
-    url: "https://palmtechniq.com/courses",
+    url: "https://www.palmtechniq.com/courses",
     type: "website",
   },
 };

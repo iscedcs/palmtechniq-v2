@@ -20,7 +20,7 @@ interface WelcomeProps {
 }
 
 const Welcome = ({ fullName = "there" }: WelcomeProps) => {
-  const domain = process.env.NEXT_PUBLIC_URL || "https://palmtechniq.com";
+  const domain = process.env.NEXT_PUBLIC_URL || "https://www.palmtechniq.com";
   const year = new Date().getFullYear();
   return (
     <Tailwind>

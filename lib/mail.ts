@@ -220,7 +220,7 @@ export async function sendTutorMentorApplicationStatusNotification(params: {
   const resend = new Resend(process.env.RESEND_API_KEY!);
   const applicantName = params.firstName?.trim() || "there";
   const statusLabel = formatStatusLabel(params.status);
-  const portalUrl = `${process.env.NEXT_PUBLIC_URL || "https://palmtechniq.com"}/tutor/profile`;
+  const portalUrl = `${process.env.NEXT_PUBLIC_URL || "https://www.palmtechniq.com"}/tutor/profile`;
   const supportEmail =
     process.env.SUPPORT_EMAIL_ADDRESS ||
     process.env.TO_EMAIL_ADDRESS ||
@@ -329,7 +329,7 @@ export async function sendAdminEnrollmentNotification(params: {
     const resend = new Resend(process.env.RESEND_API_KEY!);
     const adminEmail =
       process.env.ADMIN_EMAIL_ADDRESS || "admin@palmtechniq.com";
-    const domain = process.env.NEXT_PUBLIC_URL || "https://palmtechniq.com";
+    const domain = process.env.NEXT_PUBLIC_URL || "https://www.palmtechniq.com";
 
     const balanceRemaining = params.totalAmount - params.amountPaid;
     const isFullyPaid = params.status === "FULLY_PAID";
@@ -391,7 +391,7 @@ export async function sendBalancePaymentConfirmation(params: {
 }) {
   try {
     const resend = new Resend(process.env.RESEND_API_KEY!);
-    const domain = process.env.NEXT_PUBLIC_URL || "https://palmtechniq.com";
+    const domain = process.env.NEXT_PUBLIC_URL || "https://www.palmtechniq.com";
 
     const subject = `Balance Payment Confirmed — ${params.programName} | PalmTechnIQ`;
     const text = [
@@ -434,7 +434,7 @@ export async function sendAdminBalancePaymentNotification(params: {
     const resend = new Resend(process.env.RESEND_API_KEY!);
     const adminEmail =
       process.env.ADMIN_EMAIL_ADDRESS || "admin@palmtechniq.com";
-    const domain = process.env.NEXT_PUBLIC_URL || "https://palmtechniq.com";
+    const domain = process.env.NEXT_PUBLIC_URL || "https://www.palmtechniq.com";
 
     const subject = `[Balance Payment] ${params.studentName} — ${params.programName}`;
     const text = [

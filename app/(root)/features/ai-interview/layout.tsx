@@ -11,7 +11,7 @@ export const metadata: Metadata = {
     title: "AI Interview Prep | PalmTechnIQ",
     description:
       "Practice interview skills with AI-powered mock interviews. Real-time feedback and progress tracking.",
-    url: "https://palmtechniq.com/features/ai-interview",
+    url: "https://www.palmtechniq.com/features/ai-interview",
     type: "website",
   },
 };
