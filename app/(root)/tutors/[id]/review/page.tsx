@@ -3,6 +3,7 @@ import { notFound } from "next/navigation";
 import { auth } from "@/auth";
 import { getTutorPublicReviewProfile } from "@/actions/review";
 import { TutorPublicProfileClient } from "@/components/pages/tutor/tutor-public-profile-client";
+import { SITE_URL } from "@/lib/site";
 
 interface TutorReviewPageProps {
   params: Promise<{ id: string }>;
@@ -14,13 +15,13 @@ export async function generateMetadata({ params }: TutorReviewPageProps): Promis
 
   if (!data?.tutor) {
     return {
-      title: "Tutor Reviews | PalmTechnIQ",
+      title: "Tutor Reviews",
       description: "Read verified student reviews for PalmTechnIQ tutors and instructors.",
     };
   }
 
   const tutor = data.tutor;
-  const siteUrl = "https://www.palmtechniq.com";
+  const siteUrl = SITE_URL;
   const canonicalPath = `/tutors/${id}/review`;
   const fullUrl = `${siteUrl}${canonicalPath}`;
 

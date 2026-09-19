@@ -8,12 +8,15 @@ import ReviewsTab from "@/components/pages/courses/courseId/review-tab";
 import StickyPurchaseCard from "@/components/pages/courses/courseId/stickyPurchaseCard";
 import { checkUserEnrollment, getCourseById } from "@/data/course";
 import { formatDurationMinutes, generateRandomAvatar } from "@/lib/utils";
-import CourseNotFoundSkeleton from "@/components/shared/skeleton/course-not-found-skeleton";
 import { GroupBuyingWidget } from "@/components/group-buying";
 import { getMyGroupPurchase } from "@/actions/group-purchase";
 import { getAverageRating } from "@/lib/reviews";
 import { ReferralTracker } from "@/components/shared/referral-tracker";
 import type { Metadata } from "next";
+import { notFound } from "next/navigation";
+import { absoluteUrl } from "@/lib/site";
+import { JsonLd } from "@/components/seo/json-ld";
+import { ORG_ID, breadcrumbJsonLd } from "@/lib/seo/structured-data";
 
 export async function generateMetadata(props: {
   params: Promise<{ courseId: string }>;
@@ -22,21 +25,24 @@ export async function generateMetadata(props: {
   const course = await getCourseById(courseId);
 
   if (!course) {
+    // No "| PalmTechnIQ" suffix here — the root layout's title template
+    // appends it, and spelling it out produced "... | PalmTechnIQ | PalmTechnIQ".
     return {
-      title: "Course Not Found | PalmTechnIQ",
+      title: "Course Not Found",
       description: "The course you're looking for doesn't exist.",
+      robots: { index: false, follow: false },
     };
   }
 
   const description =
     course.description?.slice(0, 160) || "Learn with PalmTechnIQ";
-  const courseUrl = `https://www.palmtechniq.com/courses/${course.slug || course.id}`;
+  const courseUrl = absoluteUrl(`/courses/${course.slug || course.id}`);
 
   // A share card with no image is weak, so fall back to the site image rather
   // than emitting an empty array. Note this cannot detect a thumbnail whose
   // URL is present but dead; scripts/audit-course-thumbnails.ts clears those.
   const shareImage =
-    course.thumbnail || "https://www.palmtechniq.com/opengraph-image";
+    course.thumbnail || absoluteUrl("/opengraph-image");
 
   return {
     title: course.title,
@@ -80,17 +86,17 @@ export default async function CourseSlugPage(props: {
       : undefined;
   const course = await getCourseById(courseId);
 
-  // Call the server action directly
-  const isEnrolled = await checkUserEnrollment(courseId);
-  const { group: activeGroup } = await getMyGroupPurchase(courseId);
-
   if (!course) {
-    return (
-      <div className="">
-        <CourseNotFoundSkeleton />
-      </div>
-    );
+    notFound();
   }
+
+  // Keyed on the resolved id, not the route param. The param may be a slug,
+  // and both of these match on id only — so arriving via a slug link used to
+  // show an already-enrolled student the "Enroll" card.
+  const [isEnrolled, { group: activeGroup }] = await Promise.all([
+    checkUserEnrollment(course.id),
+    getMyGroupPurchase(course.id),
+  ]);
 
   // ── Price resolution: active promotion wins over course's own pricing ──
   const activePromo = course.activePromotion;
@@ -146,7 +152,7 @@ export default async function CourseSlugPage(props: {
   }, 0);
 
   const avgRating = getAverageRating(course.reviews);
-  const courseUrl = `https://www.palmtechniq.com/courses/${course.slug || course.id}`;
+  const courseUrl = absoluteUrl(`/courses/${course.slug || course.id}`);
 
   // The price a student actually pays today, which is what the Offer must
   // state. A flash sale sets currentPrice below basePrice.
@@ -161,14 +167,10 @@ export default async function CourseSlugPage(props: {
     name: course.title,
     description: course.description?.slice(0, 300) || "Learn with PalmTechnIQ",
     url: courseUrl,
-    provider: {
-      "@type": "Organization",
-      name: "PalmTechnIQ",
-      url: "https://www.palmtechniq.com",
-    },
+    provider: { "@id": ORG_ID },
     // Always emit an image. Clearing the dead S3 thumbnails left most courses
     // with none at all, and Google treats a missing image as a weaker result.
-    image: course.thumbnail || "https://www.palmtechniq.com/opengraph-image",
+    image: course.thumbnail || absoluteUrl("/opengraph-image"),
     ...(course.tutor?.user?.name && {
       instructor: {
         "@type": "Person",
@@ -241,38 +243,15 @@ export default async function CourseSlugPage(props: {
     },
   };
 
-  const breadcrumbJsonLd = {
-    "@context": "https://schema.org",
-    "@type": "BreadcrumbList",
-    itemListElement: [
-      {
-        "@type": "ListItem",
-        position: 1,
-        name: "Home",
-        item: "https://www.palmtechniq.com",
-      },
-      {
-        "@type": "ListItem",
-        position: 2,
-        name: "Courses",
-        item: "https://www.palmtechniq.com/courses",
-      },
-      {
-        "@type": "ListItem",
-        position: 3,
-        name: course.title,
-        item: courseUrl,
-      },
-    ],
-  };
+  const breadcrumb = breadcrumbJsonLd([
+    { name: "Courses", path: "/courses" },
+    { name: course.title, path: `/courses/${course.slug || course.id}` },
+  ]);
 
   return (
     <div className="min-h-screen bg-background">
       {refCode && <ReferralTracker refCode={refCode} />}
-      <script type="application/ld+json">{JSON.stringify(courseJsonLd)}</script>
-      <script type="application/ld+json">
-        {JSON.stringify(breadcrumbJsonLd)}
-      </script>
+      <JsonLd data={[courseJsonLd, breadcrumb]} />
       <div className="pt-20">
         <div className="container mx-auto py-8 grid grid-cols-1 lg:grid-cols-3 gap-8">
           <div className="lg:col-span-2 space-y-6">

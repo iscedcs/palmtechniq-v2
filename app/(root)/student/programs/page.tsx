@@ -3,7 +3,7 @@ import { Metadata } from "next";
 import StudentProgramEnrollments from "@/components/enrollment/student-program-enrollments";
 
 export const metadata: Metadata = {
-  title: "My Program Enrollments | PalmTechnIQ",
+  title: "My Program Enrollments",
   description: "View and manage your professional program enrollments",
 };
 

@@ -5,6 +5,9 @@ import { getCategories } from "@/actions/tutor-actions";
 import { getPublicBundles } from "@/actions/bundles";
 import { getPublicCourses } from "@/data/course";
 import CoursesGrid from "@/components/pages/courses/course-grid";
+import { absoluteUrl } from "@/lib/site";
+import { JsonLd } from "@/components/seo/json-ld";
+import { breadcrumbJsonLd, courseListJsonLd } from "@/lib/seo/structured-data";
 
 /**
  * A real page per category.
@@ -50,7 +53,7 @@ export async function generateMetadata({ params }: Props): Promise<Metadata> {
     openGraph: {
       title: `${title} | PalmTechnIQ`,
       description,
-      url: `https://www.palmtechniq.com/courses/category/${slug}`,
+      url: absoluteUrl(`/courses/category/${slug}`),
       type: "website",
       siteName: "PalmTechnIQ",
     },
@@ -68,12 +71,37 @@ export default async function CategoryPage({ params }: Props) {
 
   if (!category) notFound();
 
+  // The grid filters client-side, so mark up the same subset the visitor sees
+  // — an ItemList naming courses that are not on the page is a mismatch Google
+  // treats as untrustworthy markup.
+  const coursesInCategory = (courses || []).filter(
+    (course: CourseItem) => course.category === category.name,
+  );
+
+  const structuredData = [
+    courseListJsonLd(
+      coursesInCategory.map((course: CourseItem) => ({
+        name: course.title,
+        path: `/courses/${course.slug || course.id}`,
+        description: course.description,
+      })),
+      `${category.name} Courses`,
+    ),
+    breadcrumbJsonLd([
+      { name: "Courses", path: "/courses" },
+      { name: category.name, path: `/courses/category/${slug}` },
+    ]),
+  ];
+
   return (
-    <CoursesGrid
-      courses={courses || []}
-      categories={categories || []}
-      bundles={bundles || []}
-      initialCategory={category.name}
-    />
+    <>
+      <JsonLd data={structuredData} />
+      <CoursesGrid
+        courses={courses || []}
+        categories={categories || []}
+        bundles={bundles || []}
+        initialCategory={category.name}
+      />
+    </>
   );
 }

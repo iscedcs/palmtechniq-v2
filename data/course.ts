@@ -42,6 +42,9 @@ export async function getPublicCourses() {
 
     return {
       id: course.id,
+      // Needed so listing pages can link and mark up the canonical URL rather
+      // than the id form, which the canonical tag points away from.
+      slug: course.slug,
       title: course.title,
       description: course.description,
       category: course.category?.name ?? null,
@@ -67,13 +70,28 @@ export async function getPublicCourses() {
   });
 }
 
+/**
+ * Look a course up by id *or* slug.
+ *
+ * Both spellings are in the wild and both must resolve. The sitemap lists
+ * `/courses/<slug>`, the course page sets its canonical to `/courses/<slug>`,
+ * and share links use the slug — but this function only ever matched on `id`,
+ * so every one of those URLs rendered the "Course Not Found" screen with a 200
+ * status. A soft 404 on the canonical URL is the worst possible combination:
+ * Google follows the sitemap, is told the page is fine, finds no content, and
+ * drops it. Every course in the sitemap was in that state.
+ */
+const byIdOrSlug = (identifier: string) => ({
+  OR: [{ id: identifier }, { slug: identifier }],
+});
+
 export async function getCourseById(courseId: string) {
   try {
     const now = new Date();
 
     const [course, activePromotion] = await Promise.all([
-      db.course.findUnique({
-        where: { id: courseId },
+      db.course.findFirst({
+        where: byIdOrSlug(courseId),
         include: {
           tutor: {
             include: {
@@ -109,7 +127,9 @@ export async function getCourseById(courseId: string) {
       // Fetch the currently active promotion for this course (if any)
       db.coursePromotion.findFirst({
         where: {
-          courseId,
+          // Filtered through the relation so this can still run in parallel
+          // with the course query rather than waiting to learn the real id.
+          course: byIdOrSlug(courseId),
           status: "ACTIVE",
           startDate: { lte: now },
           endDate: { gte: now },

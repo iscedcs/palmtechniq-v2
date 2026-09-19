@@ -1,6 +1,7 @@
 import type { Metadata } from "next";
 import { auth } from "@/auth";
 import { redirect } from "next/navigation";
+import { absoluteUrl } from "@/lib/site";
 
 export const dynamic = "force-dynamic";
 
@@ -18,7 +19,7 @@ export const metadata: Metadata = {
     title: "PalmTechnIQ Documentation",
     description:
       "Guides, API reference, and architecture documentation for the PalmTechnIQ e-learning platform.",
-    url: "https://www.palmtechniq.com/documentation",
+    url: absoluteUrl("/documentation"),
     type: "website",
   },
 };

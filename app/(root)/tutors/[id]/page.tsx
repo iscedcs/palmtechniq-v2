@@ -3,6 +3,9 @@ import { notFound } from "next/navigation";
 import { auth } from "@/auth";
 import { getTutorPublicReviewProfile } from "@/actions/review";
 import { TutorPublicProfileClient } from "@/components/pages/tutor/tutor-public-profile-client";
+import { SITE_URL, absoluteUrl } from "@/lib/site";
+import { JsonLd } from "@/components/seo/json-ld";
+import { ORG_ID, breadcrumbJsonLd } from "@/lib/seo/structured-data";
 
 interface TutorPageProps {
   params: Promise<{ id: string }>;
@@ -14,13 +17,13 @@ export async function generateMetadata({ params }: TutorPageProps): Promise<Meta
 
   if (!data?.tutor) {
     return {
-      title: "Instructor Not Found | PalmTechnIQ",
+      title: "Instructor Not Found",
       description: "The instructor profile you are looking for does not exist.",
     };
   }
 
   const tutor = data.tutor;
-  const siteUrl = "https://www.palmtechniq.com";
+  const siteUrl = SITE_URL;
   const canonicalPath = `/tutors/${id}`;
   const fullUrl = `${siteUrl}${canonicalPath}`;
 
@@ -85,8 +88,33 @@ export default async function TutorPage({ params }: TutorPageProps) {
     notFound();
   }
 
+  const tutor = data.tutor;
+
+  // A tutor page with no Person markup is just prose to a crawler. `worksFor`
+  // ties the instructor to the organisation, which is what lets a search for
+  // the tutor's name surface the platform alongside them.
+  const personJsonLd = {
+    "@context": "https://schema.org",
+    "@type": "Person",
+    name: tutor.name,
+    url: absoluteUrl(`/tutors/${id}`),
+    ...(tutor.title && { jobTitle: tutor.title }),
+    ...(tutor.bio && { description: tutor.bio.slice(0, 300) }),
+    ...(tutor.avatar && { image: encodeURI(tutor.avatar.trim()) }),
+    worksFor: { "@id": ORG_ID },
+  };
+
+  const structuredData = [
+    personJsonLd,
+    // No "/tutors" crumb: there is no instructor index page, and a breadcrumb
+    // item pointing at a 404 devalues the whole trail.
+    breadcrumbJsonLd([{ name: tutor.name, path: `/tutors/${id}` }]),
+  ];
+
   return (
-    <TutorPublicProfileClient
+    <>
+      <JsonLd data={structuredData} />
+      <TutorPublicProfileClient
       tutor={data.tutor}
       reviews={data.reviews as any}
       userReview={data.userReview as any}
@@ -97,6 +125,7 @@ export default async function TutorPage({ params }: TutorPageProps) {
       currentUserRole={session?.user?.role}
       currentPath={`/tutors/${id}`}
       initialTab="courses"
-    />
+      />
+    </>
   );
 }

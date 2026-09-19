@@ -5,6 +5,9 @@ import CoursePromotionPopup from "@/components/promotions/course-promotion-popup
 import { getPublicCourses } from "@/data/course";
 import { getPublicBundles } from "@/actions/bundles";
 import type { Metadata } from "next";
+import { absoluteUrl } from "@/lib/site";
+import { JsonLd } from "@/components/seo/json-ld";
+import { breadcrumbJsonLd, courseListJsonLd } from "@/lib/seo/structured-data";
 
 export const metadata: Metadata = {
   title: "Courses",
@@ -17,7 +20,7 @@ export const metadata: Metadata = {
     title: "Browse Courses | PalmTechnIQ",
     description:
       "Browse courses across trades, crafts, business, AI, cybersecurity and technology, taught by people who do the work.",
-    url: "https://www.palmtechniq.com/courses",
+    url: absoluteUrl("/courses"),
     type: "website",
   },
 };
@@ -50,8 +53,21 @@ export default async function CoursesPage() {
     ? categoriesResponse.categories
     : [];
 
+  const structuredData = [
+    courseListJsonLd(
+      (courses || []).map((course: CourseItem) => ({
+        name: course.title,
+        path: `/courses/${course.slug || course.id}`,
+        description: course.description,
+      })),
+      "PalmTechnIQ Courses",
+    ),
+    breadcrumbJsonLd([{ name: "Courses", path: "/courses" }]),
+  ];
+
   return (
     <div>
+      <JsonLd data={structuredData} />
       <CoursesGrid
         courses={courses || []}
         categories={categories || []}

@@ -8,6 +8,11 @@ import { AnalyticsProvider } from "@/lib/analytics/analytics-provider";
 import { NotificationProvider } from "@/lib/notifications/notification-provider";
 import type { Metadata } from "next";
 import { SITE_URL } from "@/lib/site";
+import { JsonLd } from "@/components/seo/json-ld";
+import {
+  organizationJsonLd,
+  websiteJsonLd,
+} from "@/lib/seo/structured-data";
 import { SessionProvider } from "next-auth/react";
 import { Inter } from "next/font/google";
 import { Suspense } from "react";
@@ -122,50 +127,11 @@ export default async function MainRootLayout({
   } catch {
     // During build (e.g. DATABASE_URL unset), auth() can throw; use null session so build completes.
   }
-  const organizationJsonLd = {
-    "@context": "https://schema.org",
-    "@type": "Organization",
-    name: "PalmTechnIQ",
-    url: SITE_URL,
-    email: "support@palmtechniq.com",
-    logo: "https://www.palmtechniq.com/opengraph-image",
-    sameAs: [
-      "https://www.facebook.com/palmtechniq/",
-      "https://www.instagram.com/palmtechniq",
-      "https://www.linkedin.com/company/palmtechniq/",
-      "https://www.youtube.com/@palmtechniq_official",
-      "https://x.com/palmtechniq/",
-    ],
-  };
-
-  const websiteJsonLd = {
-    "@context": "https://schema.org",
-    "@type": "WebSite",
-    name: "PalmTechnIQ",
-    url: SITE_URL,
-    potentialAction: {
-      "@type": "SearchAction",
-      target: "https://www.palmtechniq.com/search?q={search_term_string}",
-      "query-input": "required name=search_term_string",
-    },
-  };
-
   return (
     <SessionProvider session={session}>
       <html lang="en" suppressHydrationWarning>
         <head>
-          <script
-            type="application/ld+json"
-            dangerouslySetInnerHTML={{
-              __html: JSON.stringify(organizationJsonLd),
-            }}
-          />
-          <script
-            type="application/ld+json"
-            dangerouslySetInnerHTML={{
-              __html: JSON.stringify(websiteJsonLd),
-            }}
-          />
+          <JsonLd data={[organizationJsonLd(), websiteJsonLd()]} />
 
           {/* Google Analytics */}
           <script

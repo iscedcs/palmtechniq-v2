@@ -1,4 +1,5 @@
 import type { Metadata } from "next";
+import { absoluteUrl } from "@/lib/site";
 
 export const metadata: Metadata = {
   title: "AI Interview Prep",
@@ -11,7 +12,7 @@ export const metadata: Metadata = {
     title: "AI Interview Prep | PalmTechnIQ",
     description:
       "Practice interview skills with AI-powered mock interviews. Real-time feedback and progress tracking.",
-    url: "https://www.palmtechniq.com/features/ai-interview",
+    url: absoluteUrl("/features/ai-interview"),
     type: "website",
   },
 };

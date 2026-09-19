@@ -42,6 +42,7 @@ import {
 import { toast } from "sonner";
 import { createTutorDirectReview, deleteReview, updateReview } from "@/actions/review";
 import { CertificateQrModal } from "@/components/certificate/qr-code-modal";
+import { SITE_URL } from "@/lib/site";
 
 interface TutorReviewProfileData {
   id: string;
@@ -171,7 +172,7 @@ export function TutorReviewClient({
   const fullShareUrl =
     typeof window !== "undefined"
       ? `${window.location.origin}${currentPath}`
-      : `https://www.palmtechniq.com${currentPath}`;
+      : `${SITE_URL}${currentPath}`;
 
   const handleCopyShareLink = () => {
     navigator.clipboard.writeText(fullShareUrl);
