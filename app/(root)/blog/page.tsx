@@ -4,9 +4,12 @@ import {
   getFeaturedPosts,
 } from "@/lib/sanity-queries";
 import { BlogContent } from "@/components/pages/blog/blog-content";
+import { SITE_URL } from "@/lib/site";
+import { JsonLd } from "@/components/seo/json-ld";
+import { breadcrumbJsonLd } from "@/lib/seo/structured-data";
 
 export const revalidate = 60;
-const siteUrl = "https://www.palmtechniq.com";
+const siteUrl = SITE_URL;
 
 type BlogPageProps = {
   searchParams?: Promise<{
@@ -53,11 +56,11 @@ export default async function BlogPage({ searchParams }: BlogPageProps) {
       ),
   };
 
+  const breadcrumb = breadcrumbJsonLd([{ name: "Blog", path: "/blog" }]);
+
   return (
     <>
-      <script type="application/ld+json">
-        {JSON.stringify(blogListJsonLd)}
-      </script>
+      <JsonLd data={[blogListJsonLd, breadcrumb]} />
       <BlogContent
         posts={posts}
         categories={categories}

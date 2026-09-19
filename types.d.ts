@@ -29,6 +29,8 @@ type IUndoToastOptions = {
 
 type CourseItem = {
   id: string;
+  /** Canonical URL segment. Falls back to `id` where a course has none. */
+  slug?: string | null;
   title: string;
   description: string;
   category?: string | null;

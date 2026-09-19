@@ -1,6 +1,7 @@
+import { SITE_URL } from "@/lib/site";
 import { getFeedPosts } from "@/lib/sanity-queries";
 
-const siteUrl = "https://www.palmtechniq.com";
+const siteUrl = SITE_URL;
 
 function escapeXml(value: string) {
   return value

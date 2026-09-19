@@ -53,7 +53,7 @@ export function HeroSection() {
           />
         </div>
 
-        <div className="container mx-auto px-6 py-20 relative z-10">
+        <div className="container mx-auto px-6 py-24 relative z-10">
           <div className="text-center max-w-5xl mx-auto">
             <motion.div
               initial={{ opacity: 0, y: 20 }}
@@ -110,7 +110,6 @@ export function HeroSection() {
               animate={{ opacity: 1, y: 0 }}
               transition={{ duration: 0.8, delay: 0.8 }}
               className="max-w-7xl mx-auto text-left">
-              
               {/* Row 1: The Foundation (3 columns) */}
               <div className="grid grid-cols-1 md:grid-cols-3 gap-6 mb-6">
                 {[
@@ -124,13 +123,13 @@ export function HeroSection() {
                     icon: UserCheck,
                     title: "A real person reviews your code",
                     description:
-                      "Weekly 1-on-1 sessions with mentors currently working in the field — not automated grading.",
+                      "Weekly 1-on-1 sessions with mentors currently working in the field, not automated grading.",
                   },
                   {
                     icon: Briefcase,
                     title: "Leave with proof, not just a PDF",
                     description:
-                      "Every track ends in a real project for your portfolio, built to show an employer — not a multiple-choice quiz.",
+                      "Every track ends in a real project for your portfolio, built to show an employer, not a multiple-choice quiz.",
                   },
                 ].map((feature, index) => (
                   <motion.div
@@ -157,9 +156,10 @@ export function HeroSection() {
                 {[
                   {
                     icon: MessageSquare,
-                    title: "Fail the interview here first, not in front of a recruiter",
+                    title:
+                      "Fail the interview here first, not in front of a recruiter",
                     description:
-                      "Practice with an AI coach that adjusts to your track, then get scored feedback right after — not a week later.",
+                      "Practice with an AI coach that adjusts to your track, then get scored feedback right after, not a week later.",
                   },
                   {
                     icon: Search,

@@ -64,6 +64,7 @@ import {
 import { beginMentorshipCheckout } from "@/actions/mentorship-revenue";
 import { CertificateQrModal } from "@/components/certificate/qr-code-modal";
 import { formatDurationMinutes } from "@/lib/utils";
+import { SITE_URL } from "@/lib/site";
 
 export interface TutorCourseItem {
   id: string;
@@ -229,7 +230,7 @@ export function TutorPublicProfileClient({
   const fullShareUrl =
     typeof window !== "undefined"
       ? `${window.location.origin}/tutors/${tutor.referralCode || tutor.username || tutor.id}`
-      : `https://www.palmtechniq.com/tutors/${tutor.referralCode || tutor.username || tutor.id}`;
+      : `${SITE_URL}/tutors/${tutor.referralCode || tutor.username || tutor.id}`;
 
   const handleCopyShareLink = () => {
     navigator.clipboard.writeText(fullShareUrl);

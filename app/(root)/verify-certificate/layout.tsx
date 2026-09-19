@@ -1,4 +1,5 @@
 import type { Metadata } from "next";
+import { absoluteUrl } from "@/lib/site";
 
 export const metadata: Metadata = {
   title: "Verify Certificate",
@@ -11,7 +12,7 @@ export const metadata: Metadata = {
     title: "Verify Certificate | PalmTechnIQ",
     description:
       "Verify the authenticity of PalmTechnIQ course completion and volunteer certificates.",
-    url: "https://www.palmtechniq.com/verify-certificate",
+    url: absoluteUrl("/verify-certificate"),
     type: "website",
   },
 };

@@ -15,9 +15,12 @@ import { ViewTracker } from "@/components/pages/blog/view-tracker";
 import { BookmarkButton } from "@/components/pages/blog/bookmark-button";
 import { AuthorCard } from "@/components/pages/blog/author-card";
 import { RelatedPosts } from "@/components/pages/blog/related-posts";
+import { SITE_URL } from "@/lib/site";
+import { JsonLd } from "@/components/seo/json-ld";
+import { ORG_ID, breadcrumbJsonLd } from "@/lib/seo/structured-data";
 
 export const revalidate = 60;
-const siteUrl = "https://www.palmtechniq.com";
+const siteUrl = SITE_URL;
 
 type Props = {
   params: Promise<{ slug: string }>;
@@ -275,52 +278,20 @@ export default async function BlogPostPage({ params }: Props) {
           "@type": "Person",
           name: post.author.name,
         }
-      : {
-          "@type": "Organization",
-          name: "PalmTechnIQ",
-        },
-    publisher: {
-      "@type": "Organization",
-      name: "PalmTechnIQ",
-      logo: {
-        "@type": "ImageObject",
-        url: `${siteUrl}/images/logo.webp`,
-      },
-    },
+      : { "@id": ORG_ID },
+    // Reference the organisation node rather than restating it. The restated
+    // copy pointed its logo at /images/logo.webp, a different image from the
+    // one every other block uses.
+    publisher: { "@id": ORG_ID },
   };
-  const breadcrumbJsonLd = {
-    "@context": "https://schema.org",
-    "@type": "BreadcrumbList",
-    itemListElement: [
-      {
-        "@type": "ListItem",
-        position: 1,
-        name: "Home",
-        item: siteUrl,
-      },
-      {
-        "@type": "ListItem",
-        position: 2,
-        name: "Blog",
-        item: `${siteUrl}/blog`,
-      },
-      {
-        "@type": "ListItem",
-        position: 3,
-        name: post.title,
-        item: postUrl,
-      },
-    ],
-  };
+  const breadcrumb = breadcrumbJsonLd([
+    { name: "Blog", path: "/blog" },
+    { name: post.title, path: `/blog/${post.slug.current}` },
+  ]);
 
   return (
     <div className="min-h-screen bg-background">
-      <script type="application/ld+json">
-        {JSON.stringify(articleJsonLd)}
-      </script>
-      <script type="application/ld+json">
-        {JSON.stringify(breadcrumbJsonLd)}
-      </script>
+      <JsonLd data={[articleJsonLd, breadcrumb]} />
       <ReadingProgressBar />
       <ViewTracker postId={post._id} />
 

@@ -1,4 +1,5 @@
 import type { Metadata } from "next";
+import { absoluteUrl } from "@/lib/site";
 
 export const metadata: Metadata = {
   title: "Partners",
@@ -11,7 +12,7 @@ export const metadata: Metadata = {
     title: "Partner with PalmTechnIQ",
     description:
       "Explore partnership opportunities to deliver high-impact tech education.",
-    url: "https://www.palmtechniq.com/partners",
+    url: absoluteUrl("/partners"),
     type: "website",
   },
 };

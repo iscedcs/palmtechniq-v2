@@ -2,6 +2,7 @@ import type { Metadata } from "next";
 import { notFound } from "next/navigation";
 import { EnrollmentWizard } from "@/components/enrollment/enrollment-wizard";
 import { getProgramBySlug } from "@/data/programs";
+import { absoluteUrl } from "@/lib/site";
 
 type RouteParams = {
   programSlug: string;
@@ -17,13 +18,13 @@ export async function generateMetadata({
 
   if (!program) {
     return {
-      title: "Program Not Found — PalmTechnIQ",
+      title: "Program Not Found",
       robots: { index: false, follow: false },
     };
   }
 
   return {
-    title: `${program.name} (${program.durationLabel}) — Enroll | PalmTechnIQ`,
+    title: `${program.name} (${program.durationLabel}) — Enroll`,
     description: `Enroll directly into ${program.name} (${program.durationLabel}) at PalmTechnIQ. Complete your details and payment in minutes.`,
     alternates: {
       canonical: `/enroll/${program.slug}`,
@@ -31,7 +32,7 @@ export async function generateMetadata({
     openGraph: {
       title: `${program.name} (${program.durationLabel}) — Enroll`,
       description: `Start your ${program.durationLabel.toLowerCase()} ${program.name} journey with PalmTechnIQ.`,
-      url: `https://www.palmtechniq.com/enroll/${program.slug}`,
+      url: absoluteUrl(`/enroll/${program.slug}`),
       type: "website",
     },
   };

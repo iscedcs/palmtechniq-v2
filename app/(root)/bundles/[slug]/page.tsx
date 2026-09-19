@@ -7,6 +7,8 @@ import { getPublicBundle } from "@/actions/bundles";
 import { ReferralTracker } from "@/components/shared/referral-tracker";
 import { REFERRAL_COOKIE_NAME, getTutorReferralCode } from "@/lib/referral";
 import BundleLanding from "./bundle-landing";
+import { JsonLd } from "@/components/seo/json-ld";
+import { breadcrumbJsonLd } from "@/lib/seo/structured-data";
 
 export const dynamic = "force-dynamic";
 
@@ -92,6 +94,13 @@ export default async function BundlePage({
 
   return (
     <>
+      <JsonLd
+        data={breadcrumbJsonLd([
+          // "/bundles" has no index page, so it is not a crumb.
+          { name: "Courses", path: "/courses" },
+          { name: bundle.title, path: `/bundles/${slug}` },
+        ])}
+      />
       {ref && <ReferralTracker refCode={ref} />}
       <BundleLanding
         bundle={bundle}

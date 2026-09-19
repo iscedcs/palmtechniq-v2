@@ -1,4 +1,5 @@
 import type { Metadata } from "next";
+import { absoluteUrl } from "@/lib/site";
 
 export const metadata: Metadata = {
   title: "Mentorship Program",
@@ -11,7 +12,7 @@ export const metadata: Metadata = {
     title: "Mentorship Program | PalmTechnIQ",
     description:
       "One-on-one mentorship for interview prep, code reviews, career guidance, and personalized learning paths.",
-    url: "https://www.palmtechniq.com/features/mentorship",
+    url: absoluteUrl("/features/mentorship"),
     type: "website",
   },
 };

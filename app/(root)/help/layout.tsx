@@ -1,4 +1,7 @@
 import type { Metadata } from "next";
+import { absoluteUrl } from "@/lib/site";
+import { JsonLd } from "@/components/seo/json-ld";
+import { breadcrumbJsonLd } from "@/lib/seo/structured-data";
 
 export const metadata: Metadata = {
   title: "Help Center",
@@ -11,7 +14,7 @@ export const metadata: Metadata = {
     title: "Help Center | PalmTechnIQ",
     description:
       "FAQs and support for courses, enrollment, mentorship, payments, and platform features.",
-    url: "https://www.palmtechniq.com/help",
+    url: absoluteUrl("/help"),
     type: "website",
   },
 };
@@ -78,7 +81,12 @@ export default function HelpLayout({
 }) {
   return (
     <>
-      <script type="application/ld+json">{JSON.stringify(faqJsonLd)}</script>
+      <JsonLd
+        data={[
+          faqJsonLd,
+          breadcrumbJsonLd([{ name: "Help Center", path: "/help" }]),
+        ]}
+      />
       {children}
     </>
   );

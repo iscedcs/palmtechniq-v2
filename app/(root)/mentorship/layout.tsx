@@ -1,4 +1,5 @@
 import type { Metadata } from "next";
+import { absoluteUrl } from "@/lib/site";
 
 export const metadata: Metadata = {
   title: "Mentorship Marketplace",
@@ -11,7 +12,7 @@ export const metadata: Metadata = {
     title: "Mentorship Marketplace | PalmTechnIQ",
     description:
       "Book one-on-one mentorship sessions with experienced tech professionals for career growth.",
-    url: "https://www.palmtechniq.com/mentorship",
+    url: absoluteUrl("/mentorship"),
     type: "website",
   },
 };

@@ -10,6 +10,7 @@ import {
   Check,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
+import { SITE_URL } from "@/lib/site";
 
 interface ShareButtonsProps {
   title: string;
@@ -21,7 +22,7 @@ export function ShareButtons({ title, slug }: ShareButtonsProps) {
   const url =
     typeof window !== "undefined"
       ? `${window.location.origin}/blog/${slug}`
-      : `https://www.palmtechniq.com/blog/${slug}`;
+      : `${SITE_URL}/blog/${slug}`;
   const encoded = encodeURIComponent(url);
   const encodedTitle = encodeURIComponent(title);
 

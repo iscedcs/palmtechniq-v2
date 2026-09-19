@@ -1,6 +1,7 @@
 import type { Metadata } from "next";
 import { EnrollmentWizard } from "@/components/enrollment/enrollment-wizard";
 import { getProgramBySlug } from "@/data/programs";
+import { absoluteUrl } from "@/lib/site";
 
 export const metadata: Metadata = {
   title: "Enroll — PalmTechnIQ Professional Programs",
@@ -13,7 +14,7 @@ export const metadata: Metadata = {
     title: "Enroll — PalmTechnIQ Professional Programs",
     description:
       "Reserve your spot in PalmTechnIQ's intensive professional programs. Choose your path, select a cohort, and start your career pipeline.",
-    url: "https://www.palmtechniq.com/enroll",
+    url: absoluteUrl("/enroll"),
     type: "website",
   },
 };
