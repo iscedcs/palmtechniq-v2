@@ -1,6 +1,7 @@
 import db from "@/lib/db";
 import { NextRequest, NextResponse } from "next/server";
 import { OpenAI } from "openai";
+import { coursePath } from "@/lib/site";
 
 interface SearchResult {
   id: string;
@@ -104,7 +105,7 @@ async function searchCourses(
         students: course.enrollments.length,
         price: course.salePrice || course.price,
         level: course.level,
-        url: `/courses/${course.id}`,
+        url: coursePath(course),
       };
     });
   } catch (error) {

@@ -41,8 +41,7 @@ export async function generateMetadata(props: {
   // A share card with no image is weak, so fall back to the site image rather
   // than emitting an empty array. Note this cannot detect a thumbnail whose
   // URL is present but dead; scripts/audit-course-thumbnails.ts clears those.
-  const shareImage =
-    course.thumbnail || absoluteUrl("/opengraph-image");
+  const shareImage = course.thumbnail || absoluteUrl("/opengraph-image");
 
   return {
     title: course.title,
@@ -252,7 +251,7 @@ export default async function CourseSlugPage(props: {
     <div className="min-h-screen bg-background">
       {refCode && <ReferralTracker refCode={refCode} />}
       <JsonLd data={[courseJsonLd, breadcrumb]} />
-      <div className="pt-20">
+      <div className="pt-28">
         <div className="container mx-auto py-8 grid grid-cols-1 lg:grid-cols-3 gap-8">
           <div className="lg:col-span-2 space-y-6">
             <CourseHero
@@ -366,6 +365,7 @@ export default async function CourseSlugPage(props: {
               isEnrolled={isEnrolled}
               isInCart={false}
               courseId={course.id}
+              courseSlug={course.slug}
               courseTitle={course.title}
               courseDescription={course.description}
               courseThumbnail={course.thumbnail ?? undefined}

@@ -55,7 +55,7 @@ const outcomes = [
 export default function AiInterviewPage() {
   return (
     <div className="min-h-screen bg-background">
-      <section className="relative overflow-hidden py-24">
+      <section className="relative overflow-hidden py-32">
         <div className="absolute inset-0 cyber-grid opacity-10" />
         <motion.div
           className="absolute top-0 left-1/4 h-96 w-96 rounded-full bg-neon-blue/10 blur-3xl"
@@ -68,11 +68,7 @@ export default function AiInterviewPage() {
             initial={{ opacity: 0, y: 24 }}
             animate={{ opacity: 1, y: 0 }}
             transition={{ duration: 0.8 }}
-            className="mx-auto max-w-4xl text-center"
-          >
-            <Badge className="mb-6 border-neon-blue/30 bg-neon-blue/20 text-neon-blue">
-              AI Interview Coach
-            </Badge>
+            className="mx-auto max-w-4xl text-center">
             <h1 className="mb-6 text-5xl font-bold md:text-6xl">
               <span className="text-white">Prepare Smarter with</span>{" "}
               <span className="text-gradient">AI Interview Practice</span>
@@ -85,8 +81,7 @@ export default function AiInterviewPage() {
               <Button
                 asChild
                 size="lg"
-                className="bg-gradient-to-r from-neon-blue to-neon-purple text-white hover:from-neon-blue/80 hover:to-neon-purple/80"
-              >
+                className="bg-gradient-to-r from-neon-blue to-neon-purple text-white hover:from-neon-blue/80 hover:to-neon-purple/80">
                 <Link href="/courses">
                   Start Preparing
                   <ArrowRight className="ml-2 h-4 w-4" />
@@ -96,8 +91,7 @@ export default function AiInterviewPage() {
                 asChild
                 size="lg"
                 variant="outline"
-                className="border-white/20 bg-transparent text-white hover:bg-white/10"
-              >
+                className="border-white/20 bg-transparent text-white hover:bg-white/10">
                 <Link href="/mentorship">Talk to a Mentor</Link>
               </Button>
             </div>
@@ -112,8 +106,7 @@ export default function AiInterviewPage() {
             whileInView={{ opacity: 1, y: 0 }}
             transition={{ duration: 0.8 }}
             viewport={{ once: true }}
-            className="mb-14 text-center"
-          >
+            className="mb-14 text-center">
             <h2 className="mb-4 text-4xl font-bold md:text-5xl">
               <span className="text-white">Built for real</span>{" "}
               <span className="text-gradient">interview scenarios</span>
@@ -131,8 +124,7 @@ export default function AiInterviewPage() {
                 initial={{ opacity: 0, y: 20 }}
                 whileInView={{ opacity: 1, y: 0 }}
                 transition={{ duration: 0.5, delay: index * 0.1 }}
-                viewport={{ once: true }}
-              >
+                viewport={{ once: true }}>
                 <Card className="glass-card h-full border-white/10">
                   <CardContent className="p-6">
                     <track.icon className="mb-4 h-10 w-10 text-neon-blue" />
@@ -155,8 +147,7 @@ export default function AiInterviewPage() {
               initial={{ opacity: 0, x: -20 }}
               whileInView={{ opacity: 1, x: 0 }}
               transition={{ duration: 0.7 }}
-              viewport={{ once: true }}
-            >
+              viewport={{ once: true }}>
               <Card className="glass-card h-full border-white/10">
                 <CardContent className="p-8">
                   <div className="mb-4 flex items-center gap-3">
@@ -183,8 +174,7 @@ export default function AiInterviewPage() {
               initial={{ opacity: 0, x: 20 }}
               whileInView={{ opacity: 1, x: 0 }}
               transition={{ duration: 0.7 }}
-              viewport={{ once: true }}
-            >
+              viewport={{ once: true }}>
               <Card className="glass-card h-full border-white/10">
                 <CardContent className="p-8">
                   <div className="mb-4 flex items-center gap-3">
@@ -205,8 +195,9 @@ export default function AiInterviewPage() {
                     <div className="flex items-start gap-3">
                       <Clock3 className="mt-0.5 h-5 w-5 text-neon-blue" />
                       <p className="text-sm text-gray-300">
-                        Consistent practice with fast feedback creates measurable
-                        gains in interview confidence and response quality.
+                        Consistent practice with fast feedback creates
+                        measurable gains in interview confidence and response
+                        quality.
                       </p>
                     </div>
                   </div>
@@ -224,8 +215,7 @@ export default function AiInterviewPage() {
             whileInView={{ opacity: 1, y: 0 }}
             transition={{ duration: 0.8 }}
             viewport={{ once: true }}
-            className="mx-auto max-w-4xl rounded-2xl border border-white/10 bg-white/5 p-10 text-center"
-          >
+            className="mx-auto max-w-4xl rounded-2xl border border-white/10 bg-white/5 p-10 text-center">
             <h2 className="mb-4 text-4xl font-bold text-white">
               Ready for your next interview round?
             </h2>
@@ -237,8 +227,7 @@ export default function AiInterviewPage() {
               <Button
                 asChild
                 size="lg"
-                className="bg-gradient-to-r from-neon-green to-emerald-400 text-white"
-              >
+                className="bg-gradient-to-r from-neon-green to-emerald-400 text-white">
                 <Link href="/courses">
                   Explore Interview Prep Courses
                   <ArrowRight className="ml-2 h-4 w-4" />
@@ -248,8 +237,7 @@ export default function AiInterviewPage() {
                 asChild
                 size="lg"
                 variant="outline"
-                className="border-white/20 bg-transparent text-white hover:bg-white/10"
-              >
+                className="border-white/20 bg-transparent text-white hover:bg-white/10">
                 <Link href="/apply">Become a Mentor</Link>
               </Button>
             </div>
