@@ -46,3 +46,19 @@ export function absoluteUrl(path = "/"): string {
   if (/^https?:\/\//i.test(path)) return path;
   return `${SITE_URL}${path.startsWith("/") ? path : `/${path}`}`;
 }
+
+/**
+ * The canonical path to a course's public page.
+ *
+ * `/courses/<id>` and `/courses/<slug>` both resolve, but the page declares the
+ * slug form canonical. Linking to the id form means every internal link a
+ * crawler follows lands on a URL that immediately points somewhere else — a
+ * wasted hop on each one, and link signals split across two addresses. Build
+ * course links through this so they always agree with the canonical tag.
+ */
+export function coursePath(course: {
+  id: string;
+  slug?: string | null;
+}): string {
+  return `/courses/${course.slug || course.id}`;
+}

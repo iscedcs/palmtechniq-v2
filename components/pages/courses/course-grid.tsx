@@ -40,6 +40,7 @@ import { useState } from "react";
 import { toast } from "sonner";
 import { BundleStrip } from "@/components/pages/courses/bundle-strip";
 import { CourseThumbnail } from "@/components/shared/course-thumbnail";
+import { coursePath } from "@/lib/site";
 
 export default function CoursesGrid({
   courses,
@@ -320,8 +321,11 @@ export default function CoursesGrid({
                       </div>
                     </div>
                     <CardContent className="p-6">
+                      {/* The title is the link a crawler weighs most. With only the
+                          "Enroll Now" button linked, every course in the catalogue
+                          was described to Google by the same two words. */}
                       <h3 className="text-xl font-bold text-white mb-2 group-hover:text-gradient transition-all duration-300">
-                        {course.title}
+                        <Link href={coursePath(course)}>{course.title}</Link>
                       </h3>
 
                       <div className="flex items-center mb-4">
@@ -416,7 +420,7 @@ export default function CoursesGrid({
                         <Button
                           asChild
                           className="flex-1 bg-gradient-to-r from-neon-blue to-neon-purple text-white mr-2">
-                          <Link href={`/courses/${course.id}`}>Enroll Now</Link>
+                          <Link href={coursePath(course)}>Enroll Now</Link>
                         </Button>
                         {course.groupBuyingEnabled && (
                           <Button

@@ -11,6 +11,7 @@ import Link from "next/link";
 import { formatDurationMinutes } from "@/lib/utils";
 import { useEffect, useState, useTransition } from "react";
 import { toast } from "sonner";
+import { SITE_URL, coursePath } from "@/lib/site";
 
 export default function StickyPurchaseCard({
   currentPrice,
@@ -24,6 +25,7 @@ export default function StickyPurchaseCard({
   isEnrolled,
   isInCart,
   courseId,
+  courseSlug,
   courseTitle,
   courseDescription,
   courseThumbnail,
@@ -40,7 +42,10 @@ export default function StickyPurchaseCard({
   certificate: boolean;
   isEnrolled: boolean;
   isInCart: boolean;
+  /** Still required: wishlist and enrolment are keyed on the id. */
   courseId: string;
+  /** Used for every public-facing URL, so links match the canonical tag. */
+  courseSlug?: string | null;
   courseTitle?: string;
   courseDescription?: string;
   courseThumbnail?: string;
@@ -116,7 +121,9 @@ export default function StickyPurchaseCard({
   };
 
   const handleShare = async () => {
-    const shareUrl = `${window.location.origin}/courses/${courseId}`;
+    // SITE_URL, not window.location.origin: a link shared from a preview
+    // deploy or the bare domain would otherwise spread a non-canonical host.
+    const shareUrl = `${SITE_URL}${coursePath({ id: courseId, slug: courseSlug })}`;
     const shareTitle = courseTitle || "Check out this course!";
     const shareText = courseDescription
       ? `${courseTitle} - ${courseDescription.slice(0, 100)}${courseDescription.length > 100 ? "..." : ""}`
@@ -210,7 +217,7 @@ export default function StickyPurchaseCard({
                 </>
               ) : (
                 <Link
-                  href={`/courses/${courseId}/checkout`}
+                  href={`${coursePath({ id: courseId, slug: courseSlug })}/checkout`}
                   className="flex mx-auto items-center justify-center">
                   <CheckCircle className="w-4 h-4 mr-2" />
                   Enroll Now

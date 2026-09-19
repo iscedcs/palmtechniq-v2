@@ -23,7 +23,7 @@ export function AuthLayout({
   showBackButton = false,
 }: AuthLayoutProps) {
   return (
-    <div className="min-h-screen my-20  max-w-7xl mx-auto flex">
+    <div className="min-h-screen  pt-40 pb-20  max-w-7xl mx-auto flex">
       {/* Left Side - Branding */}
       <div className="hidden lg:flex lg:w-1/2 relative overflow-hidden">
         <div className="absolute inset-0" />

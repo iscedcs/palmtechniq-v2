@@ -385,7 +385,7 @@ export function TutorPublicProfileClient({
   };
 
   return (
-    <div className="min-h-screen bg-background text-white pt-24 pb-20 px-4 sm:px-6 lg:px-8">
+    <div className="min-h-screen bg-background text-white pt-32 pb-20 px-4 sm:px-6 lg:px-8">
       <div className="max-w-6xl mx-auto space-y-8">
         {/* ============================================================ */}
         {/* 1. TUTOR PROFILE HERO BANNER */}

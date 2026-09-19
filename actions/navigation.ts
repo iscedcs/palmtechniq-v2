@@ -2,6 +2,7 @@
 
 import { db } from "@/lib/db";
 import { Prisma } from "@prisma/client";
+import { coursePath } from "@/lib/site";
 
 export interface CourseNavItem {
   id: string;
@@ -66,7 +67,7 @@ export async function getNavigationData() {
         }
         acc[level].push({
           label: course.title,
-          href: `/courses/${course.id}`,
+          href: coursePath(course),
         });
         return acc;
       },
@@ -82,7 +83,7 @@ export async function getNavigationData() {
         }
         acc[categoryName].push({
           label: course.title,
-          href: `/courses/${course.id}`,
+          href: coursePath(course),
         });
         return acc;
       },
