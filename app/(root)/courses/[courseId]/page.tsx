@@ -278,6 +278,7 @@ export default async function CourseSlugPage(props: {
             <CoursePreview
               thumbnail={course.thumbnail!}
               previewVideo={course.previewVideo!}
+              title={course.title}
             />
 
             <Tabs defaultValue="overview" className="mt-6 w-full">
