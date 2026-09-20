@@ -932,9 +932,6 @@ export function TutorPublicProfileClient({
               <div>
                 {!isLoggedIn ? (
                   <Card className="glass-card border-white/10 bg-white/[0.02] p-8 text-center rounded-3xl space-y-4">
-                    <div className="w-14 h-14 mx-auto rounded-2xl bg-neon-blue/10 border border-neon-blue/30 flex items-center justify-center text-neon-blue">
-                      <Star className="w-7 h-7 fill-neon-blue" />
-                    </div>
                     <div className="space-y-1 max-w-md mx-auto">
                       <h3 className="text-xl font-bold text-white">
                         Share Your Feedback for {tutor.name}

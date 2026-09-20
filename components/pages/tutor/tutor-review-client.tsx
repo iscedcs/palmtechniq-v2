@@ -40,7 +40,11 @@ import {
   SelectValue,
 } from "@/components/ui/select";
 import { toast } from "sonner";
-import { createTutorDirectReview, deleteReview, updateReview } from "@/actions/review";
+import {
+  createTutorDirectReview,
+  deleteReview,
+  updateReview,
+} from "@/actions/review";
 import { CertificateQrModal } from "@/components/certificate/qr-code-modal";
 import { SITE_URL } from "@/lib/site";
 
@@ -194,7 +198,9 @@ export function TutorReviewClient({
     }
 
     if (comment.trim().length < 3) {
-      toast.error("Please provide a short feedback comment (at least 3 characters).");
+      toast.error(
+        "Please provide a short feedback comment (at least 3 characters).",
+      );
       return;
     }
 
@@ -277,7 +283,10 @@ export function TutorReviewClient({
             <div className="flex flex-col sm:flex-row items-start sm:items-center gap-5">
               <div className="relative">
                 <Avatar className="w-24 h-24 sm:w-28 sm:h-28 rounded-2xl border-2 border-neon-blue/40 shadow-xl shadow-neon-blue/10">
-                  <AvatarImage src={tutor.avatar || undefined} alt={tutor.name} />
+                  <AvatarImage
+                    src={tutor.avatar || undefined}
+                    alt={tutor.name}
+                  />
                   <AvatarFallback className="text-2xl font-bold bg-gradient-to-br from-neon-blue to-neon-purple text-white">
                     {tutor.name.slice(0, 2).toUpperCase()}
                   </AvatarFallback>
@@ -398,7 +407,8 @@ export function TutorReviewClient({
                   You are viewing your public review page
                 </p>
                 <p className="text-xs text-gray-300">
-                  Share this page URL or download your QR code to collect verified feedback from your students.
+                  Share this page URL or download your QR code to collect
+                  verified feedback from your students.
                 </p>
               </div>
             </div>
@@ -421,15 +431,13 @@ export function TutorReviewClient({
             {!isLoggedIn ? (
               // SIGN-IN REQUIRED CARD
               <Card className="glass-card border-white/10 bg-white/[0.02] p-8 text-center rounded-3xl space-y-4">
-                <div className="w-14 h-14 mx-auto rounded-2xl bg-neon-blue/10 border border-neon-blue/30 flex items-center justify-center text-neon-blue">
-                  <Star className="w-7 h-7 fill-neon-blue" />
-                </div>
                 <div className="space-y-1 max-w-md mx-auto">
                   <h3 className="text-xl font-bold text-white">
                     Share Your Feedback for {tutor.name}
                   </h3>
                   <p className="text-gray-400 text-xs sm:text-sm">
-                    Sign in as a student to rate your learning experience, course delivery, and mentorship.
+                    Sign in as a student to rate your learning experience,
+                    course delivery, and mentorship.
                   </p>
                 </div>
                 <div className="pt-2 flex justify-center">
@@ -458,7 +466,8 @@ export function TutorReviewClient({
                           Your Review is Published
                         </CardTitle>
                         <p className="text-xs text-gray-400">
-                          Thank you for sharing your experience with {tutor.name}.
+                          Thank you for sharing your experience with{" "}
+                          {tutor.name}.
                         </p>
                       </div>
                     </div>
@@ -528,7 +537,8 @@ export function TutorReviewClient({
                           : `Leave a Review for ${tutor.name}`}
                       </CardTitle>
                       <p className="text-xs text-gray-400 mt-0.5">
-                        Your honest feedback helps fellow students and allows instructors to continuously improve.
+                        Your honest feedback helps fellow students and allows
+                        instructors to continuously improve.
                       </p>
                     </div>
                     {isEditing && (
@@ -584,7 +594,8 @@ export function TutorReviewClient({
                           Overall Rating
                         </label>
                         <span className="text-xs font-bold text-amber-400">
-                          {RATING_LABELS[hoverRating || rating] || "Select Rating"}
+                          {RATING_LABELS[hoverRating || rating] ||
+                            "Select Rating"}
                         </span>
                       </div>
 
@@ -780,7 +791,9 @@ export function TutorReviewClient({
                   <div className="flex items-start justify-between gap-3">
                     <div className="flex items-center gap-3">
                       <Avatar className="w-10 h-10 border border-white/10">
-                        <AvatarImage src={rev.user?.avatar || rev.user?.image || undefined} />
+                        <AvatarImage
+                          src={rev.user?.avatar || rev.user?.image || undefined}
+                        />
                         <AvatarFallback className="bg-white/10 text-white text-xs font-bold">
                           {rev.user?.name?.slice(0, 2).toUpperCase() || "ST"}
                         </AvatarFallback>

@@ -10,9 +10,12 @@ import { isYoutubeUrl, toYoutubeEmbedUrl } from "@/lib/youtube";
 export default function CoursePreview({
   thumbnail,
   previewVideo,
+  title,
 }: {
   thumbnail: string;
   previewVideo?: string;
+  /** Used as the alt text, which image search reads as the image's subject. */
+  title?: string;
 }) {
   const [isOpen, setIsOpen] = useState(false);
   const isYoutube = previewVideo ? isYoutubeUrl(previewVideo) : false;
@@ -20,13 +23,19 @@ export default function CoursePreview({
 
   return (
     <div className="relative w-full  h-[70vh] rounded-lg overflow-hidden">
-      {/* Thumbnail */}
+      {/* Thumbnail — the page's Largest Contentful Paint element.
+          It was lazy-loaded (next/image's default), so the browser deferred
+          the most important image on the page, and declared as 100×100 when
+          it fills a 70vh box. Eager + high priority starts the fetch at once;
+          `fill` with real `sizes` states the size it is actually drawn at. */}
       <Image
         src={thumbnail}
-        alt="Course Thumbnail"
-        width={100}
-        height={100}
-        className="w-full h-full object-cover"
+        alt={title ? `${title} — course preview` : "Course preview"}
+        fill
+        sizes="(min-width: 1024px) 66vw, 100vw"
+        loading="eager"
+        fetchPriority="high"
+        className="object-cover"
       />
 
       {/* Play Button if video exists */}
