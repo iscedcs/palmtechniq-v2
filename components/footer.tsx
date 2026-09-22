@@ -24,6 +24,10 @@ import Link from "next/link";
 const footerLinks = {
   platform: [
     { name: "Courses", href: "/courses" },
+    // Also in the Resources dropdown, but that menu only renders its contents
+    // on hover, so a crawler never sees those links. The footer is server
+    // rendered on every page, which is where the internal-link value is.
+    { name: "Learn Cybersecurity", href: "/learn/cybersecurity" },
     { name: "Become a Tutor", href: "/become-a-tutor" },
     { name: "Mentor And Earn", href: "/become-a-tutor" },
     // { name: "Pricing", href: "/pricing" },
