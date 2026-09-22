@@ -25,6 +25,11 @@ export const publicRoutes = [
   "/api/cron/payment-sweep",
   "/blog",
   "/blog/[slug]",
+  // Topic hubs. These are the pages written to be found by search, so they
+  // must render for signed-out visitors — an unregistered route is redirected
+  // to /login by the proxy, which a crawler reads as the page not existing.
+  "/learn/cybersecurity",
+  "/learn/cybersecurity/[slug]",
   "/docs",
   "/faq",
   "/podcast",

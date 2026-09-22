@@ -3,6 +3,7 @@ import { SITE_URL } from "@/lib/site";
 import { db } from "@/lib/db";
 import { getPostSlugs } from "@/lib/sanity-queries";
 import { PROGRAMS } from "@/data/programs";
+import { publishedGuides } from "@/data/learn/cybersecurity";
 
 export const dynamic = "force-dynamic";
 
@@ -103,6 +104,24 @@ export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
     },
   ];
 
+  // Topic hubs and their guides. Static content, so like the programs above
+  // this needs no database. Only published guides are listed — submitting a
+  // half-written page invites a crawl of something we do not want indexed.
+  const learnPages: MetadataRoute.Sitemap = [
+    {
+      url: `${baseUrl}/learn/cybersecurity`,
+      lastModified: new Date(),
+      changeFrequency: "weekly" as const,
+      priority: 0.8,
+    },
+    ...publishedGuides().map((guide) => ({
+      url: `${baseUrl}/learn/cybersecurity/${guide.slug}`,
+      lastModified: new Date(guide.updated),
+      changeFrequency: "monthly" as const,
+      priority: 0.7,
+    })),
+  ];
+
   // Professional programs. The catalogue is static, so unlike the sections
   // below this needs no database and cannot silently produce nothing.
   const programPages: MetadataRoute.Sitemap = PROGRAMS.map((program) => ({
@@ -201,6 +220,7 @@ export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
 
   return [
     ...staticPages,
+    ...learnPages,
     ...programPages,
     ...coursePages,
     ...bundlePages,
