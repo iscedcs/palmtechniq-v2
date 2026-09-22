@@ -14,6 +14,7 @@ import {
   Menu,
   X,
   MessageSquare,
+  ShieldCheck,
 } from "lucide-react";
 import Image from "next/image";
 import Link from "next/link";
@@ -58,6 +59,14 @@ const resources = [
   // { icon: FileText, label: "Blog", href: "/blog" },
   // { icon: Lightbulb, label: "Insights", href: "/insights" },
   // { icon: TrendingUp, label: "Case Studies", href: "/case-studies" },
+  // The nav is on every page, so it is the strongest internal link the site
+  // has. The topic hub is the page written to be found by search, and it needs
+  // that link more than anything else in this menu.
+  {
+    icon: ShieldCheck,
+    label: "Learn Cybersecurity",
+    href: "/learn/cybersecurity",
+  },
   { icon: MessageSquare, label: "Help Center", href: "/help" },
 ];
 
@@ -396,6 +405,15 @@ export function PublicNavigationClient({
                     variant="ghost"
                     className="w-full justify-start text-gray-300 hover:text-white">
                     Resources
+                  </Button>
+                </Link>
+                <Link
+                  href="/learn/cybersecurity"
+                  onClick={() => setIsMobileOpen(false)}>
+                  <Button
+                    variant="ghost"
+                    className="w-full justify-start text-gray-300 hover:text-white">
+                    Learn Cybersecurity
                   </Button>
                 </Link>
                 <Link href="/about" onClick={() => setIsMobileOpen(false)}>

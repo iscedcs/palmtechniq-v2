@@ -26,8 +26,8 @@ export function ProblemSolutionSection() {
           {/* First Paragraph */}
           <p className="text-lg sm:text-xl text-gray-300 leading-relaxed font-normal mb-6">
             Watched the intro modules. Maybe even finished one. But when
-            it&apos;s time to actually build something on your own &mdash; no
-            tutorial open in another tab &mdash; you freeze.
+            it&apos;s time to actually build something on your own; no tutorial
+            open in another tab; you freeze.
           </p>
 
           {/* Second Paragraph */}
