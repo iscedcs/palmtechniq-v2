@@ -7,6 +7,38 @@ import { publishedGuides } from "@/data/learn/cybersecurity";
 
 export const dynamic = "force-dynamic";
 
+/**
+ * Build one section of the sitemap, loudly.
+ *
+ * Every section used to swallow its own failure with `catch {}` and a comment
+ * about the database maybe being unavailable during build. That is a real
+ * case, but the silence cost us: a `select` naming a column that does not
+ * exist threw on every single request, and the section just came out empty —
+ * indistinguishable from "this site has no tutors". The sitemap looked fine.
+ *
+ * A build with no database still produces a sitemap, because a failed section
+ * returns []. The difference is that now it says so. The empty-but-no-error
+ * case is warned about separately: a query that succeeds and returns nothing
+ * is usually a filter that has drifted, and it reads identically in the XML.
+ */
+async function buildSection(
+  name: string,
+  build: () => Promise<MetadataRoute.Sitemap>,
+): Promise<MetadataRoute.Sitemap> {
+  try {
+    const entries = await build();
+    if (entries.length === 0) {
+      console.warn(
+        `sitemap: "${name}" produced no URLs. If that is unexpected, the query succeeded but its filter matched nothing.`,
+      );
+    }
+    return entries;
+  } catch (error) {
+    console.error(`sitemap: "${name}" failed and was left out`, error);
+    return [];
+  }
+}
+
 export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
   const baseUrl = SITE_URL;
 
@@ -132,8 +164,7 @@ export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
   }));
 
   // Dynamic course pages
-  let coursePages: MetadataRoute.Sitemap = [];
-  try {
+  const coursePages = await buildSection("course pages", async () => {
     const courses = await db.course.findMany({
       where: { status: "PUBLISHED" },
       select: {
@@ -143,7 +174,7 @@ export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
       },
     });
 
-    coursePages = courses.map(
+    return courses.map(
       (course: { id: string; slug: string | null; updatedAt: Date }) => ({
         url: `${baseUrl}/courses/${course.slug || course.id}`,
         lastModified: course.updatedAt,
@@ -151,15 +182,12 @@ export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
         priority: 0.8,
       }),
     );
-  } catch {
-    // DB may not be available during build
-  }
+  });
 
   // Category pages. Real paths, not ?category= query strings: nothing linked
   // to those, the courses page never read them, and all 26 rendered the same
   // unfiltered list.
-  let categoryPages: MetadataRoute.Sitemap = [];
-  try {
+  const categoryPages = await buildSection("category pages", async () => {
     const categories = await db.category.findMany({
       where: { isActive: true },
       select: {
@@ -168,7 +196,7 @@ export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
       },
     });
 
-    categoryPages = categories.map(
+    return categories.map(
       (category: { slug: string; updatedAt: Date }) => ({
         url: `${baseUrl}/courses/category/${category.slug}`,
         lastModified: category.updatedAt,
@@ -176,9 +204,7 @@ export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
         priority: 0.7,
       }),
     );
-  } catch {
-    // DB may not be available during build
-  }
+  });
 
   // Tutor profiles. Nothing pointed Google at these — they were indexable but
   // absent from the sitemap and linked only from a couple of pages, so they sat
@@ -189,8 +215,7 @@ export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
   // publicProfile to false gets the "set to private" screen, and submitting
   // that earns a crawl of a page a visitor cannot read. The URL is the
   // canonical username form, matching the page's own canonical tag.
-  let tutorPages: MetadataRoute.Sitemap = [];
-  try {
+  const tutorPages = await buildSection("tutor profiles", async () => {
     const tutors = await db.tutor.findMany({
       select: {
         id: true,
@@ -201,7 +226,7 @@ export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
       },
     });
 
-    tutorPages = tutors
+    return tutors
       .filter((tutor: { user: { preferences: unknown } }) => {
         const prefs =
           (tutor.user.preferences as Record<string, unknown> | null) || {};
@@ -218,24 +243,18 @@ export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
           priority: 0.6,
         }),
       );
-  } catch (error) {
-    // Logged, not swallowed. A silent catch here hid a bad `select` — the
-    // query threw on every request and the section simply came out empty,
-    // which is indistinguishable from "this site has no tutors".
-    console.error("sitemap: failed to build tutor pages", error);
-  }
+  });
 
   // Course bundles. Only ones the platform has approved and the tutor has left
   // live, matching exactly what beginBundleCheckout will accept. Submitting a
   // bundle that refuses to sell would earn a crawl and a bounce.
-  let bundlePages: MetadataRoute.Sitemap = [];
-  try {
+  const bundlePages = await buildSection("course bundles", async () => {
     const bundles = await db.courseBundle.findMany({
       where: { reviewStatus: "APPROVED", isActive: true },
       select: { slug: true, updatedAt: true },
     });
 
-    bundlePages = bundles.map(
+    return bundles.map(
       (bundle: { slug: string; updatedAt: Date }) => ({
         url: `${baseUrl}/bundles/${bundle.slug}`,
         lastModified: bundle.updatedAt,
@@ -243,15 +262,12 @@ export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
         priority: 0.8,
       }),
     );
-  } catch {
-    // DB may not be available during build
-  }
+  });
 
   // Dynamic blog post pages from Sanity
-  let blogPages: MetadataRoute.Sitemap = [];
-  try {
+  const blogPages = await buildSection("blog posts", async () => {
     const posts = await getPostSlugs();
-    blogPages = posts.map(
+    return posts.map(
       (post: { slug: string; publishedAt?: string; _updatedAt?: string }) => ({
         url: `${baseUrl}/blog/${post.slug}`,
         lastModified: new Date(post._updatedAt || post.publishedAt || Date.now()),
@@ -259,9 +275,7 @@ export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
         priority: 0.75,
       }),
     );
-  } catch {
-    // CMS may not be available during build
-  }
+  });
 
   return [
     ...staticPages,

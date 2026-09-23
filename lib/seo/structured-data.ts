@@ -23,10 +23,16 @@ import { SITE_NAME, SITE_URL, absoluteUrl } from "@/lib/site";
  * listing being trusted.
  */
 export const ORG_ADDRESS = {
+  // Worded to match the Google Business Profile listing as closely as the
+  // schema.org fields allow, including the LGA and postcode. Google checks the
+  // address in this markup against the one on the Business Profile; the closer
+  // they agree, the more confidently it ties the site to the listing, and the
+  // listing is what puts a call button in the local results.
   streetAddress:
-    "1st Floor, Festac Tower, Chicken Republic Building, 22 Road, Festac Town",
-  addressLocality: "Lagos",
+    "22 Rd 1st Floor, Chicken Republic Building (FESTAC Tower), Amuwo Odofin",
+  addressLocality: "Festac Town",
   addressRegion: "Lagos",
+  postalCode: "102102",
   addressCountry: "NG",
 } as const;
 
