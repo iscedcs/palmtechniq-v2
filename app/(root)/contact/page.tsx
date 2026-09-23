@@ -1,4 +1,5 @@
 "use client";
+import { ORG_ADDRESS_LINE } from "@/lib/seo/structured-data";
 
 import { motion } from "framer-motion";
 import { Footer } from "@/components/footer";
@@ -33,8 +34,7 @@ export default function ContactPage() {
       icon: MapPin,
       title: "Office",
       value: "Lagos, NG",
-      description:
-        "1st Floor, (Festac Tower) Chicken Republic Building, 22Rd ,Festac Town, Lagos, Nigeria.",
+      description: ORG_ADDRESS_LINE,
     },
   ];
 

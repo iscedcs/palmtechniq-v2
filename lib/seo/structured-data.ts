@@ -36,6 +36,22 @@ export const ORG_ADDRESS = {
   addressCountry: "NG",
 } as const;
 
+/**
+ * The same address as one line, for display.
+ *
+ * Derived, never retyped. The address was previously written out by hand on
+ * /contact, /terms and /privacy, and all three had drifted from each other and
+ * from the Business Profile — no postcode, no LGA, a stray "22Rd ,". Google
+ * reads the visible text as well as the markup, and a listing it cannot
+ * corroborate is a listing it trusts less.
+ */
+export const ORG_ADDRESS_LINE = [
+  ORG_ADDRESS.streetAddress,
+  `${ORG_ADDRESS.addressLocality} ${ORG_ADDRESS.postalCode}`,
+  ORG_ADDRESS.addressRegion,
+  "Nigeria",
+].join(", ");
+
 export const ORG_EMAIL = "support@palmtechniq.com";
 export const ORG_PHONE = "+2348079568910";
 
