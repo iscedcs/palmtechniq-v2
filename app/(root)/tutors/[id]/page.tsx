@@ -3,7 +3,7 @@ import { notFound } from "next/navigation";
 import { auth } from "@/auth";
 import { getTutorPublicReviewProfile } from "@/actions/review";
 import { TutorPublicProfileClient } from "@/components/pages/tutor/tutor-public-profile-client";
-import { SITE_URL, absoluteUrl } from "@/lib/site";
+import { SITE_URL, absoluteUrl, tutorPath } from "@/lib/site";
 import { JsonLd } from "@/components/seo/json-ld";
 import { ORG_ID, breadcrumbJsonLd } from "@/lib/seo/structured-data";
 
@@ -24,7 +24,11 @@ export async function generateMetadata({ params }: TutorPageProps): Promise<Meta
 
   const tutor = data.tutor;
   const siteUrl = SITE_URL;
-  const canonicalPath = `/tutors/${id}`;
+  // Built from the resolved tutor, never from the route param. A profile
+  // answers to four identifiers (tutor id, user id, referral code, username),
+  // and echoing the param back made each alias declare itself canonical —
+  // four URLs competing instead of one page accumulating signals.
+  const canonicalPath = tutorPath(tutor);
   const fullUrl = `${siteUrl}${canonicalPath}`;
 
   const tutorPhoto = tutor.avatar;
@@ -33,7 +37,9 @@ export async function generateMetadata({ params }: TutorPageProps): Promise<Meta
     : `${siteUrl}/opengraph-image`;
 
   const tutorTitle = tutor.title ? `${tutor.name} (${tutor.title})` : tutor.name;
-  const pageTitle = `${tutorTitle} | PalmTechnIQ Instructor`;
+  // No "| PalmTechnIQ" here — the root layout's title template appends it, and
+  // spelling it out produced "... | PalmTechnIQ Instructor | PalmTechnIQ".
+  const pageTitle = `${tutorTitle} — Instructor`;
 
   const expertiseText =
     Array.isArray(tutor.expertise) && tutor.expertise.length > 0
@@ -97,7 +103,7 @@ export default async function TutorPage({ params }: TutorPageProps) {
     "@context": "https://schema.org",
     "@type": "Person",
     name: tutor.name,
-    url: absoluteUrl(`/tutors/${id}`),
+    url: absoluteUrl(tutorPath(tutor)),
     ...(tutor.title && { jobTitle: tutor.title }),
     ...(tutor.bio && { description: tutor.bio.slice(0, 300) }),
     ...(tutor.avatar && { image: encodeURI(tutor.avatar.trim()) }),
@@ -108,7 +114,7 @@ export default async function TutorPage({ params }: TutorPageProps) {
     personJsonLd,
     // No "/tutors" crumb: there is no instructor index page, and a breadcrumb
     // item pointing at a 404 devalues the whole trail.
-    breadcrumbJsonLd([{ name: tutor.name, path: `/tutors/${id}` }]),
+    breadcrumbJsonLd([{ name: tutor.name, path: tutorPath(tutor) }]),
   ];
 
   return (

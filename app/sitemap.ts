@@ -1,5 +1,5 @@
 import type { MetadataRoute } from "next";
-import { SITE_URL } from "@/lib/site";
+import { SITE_URL, tutorPath } from "@/lib/site";
 import { db } from "@/lib/db";
 import { getPostSlugs } from "@/lib/sanity-queries";
 import { PROGRAMS } from "@/data/programs";
@@ -180,6 +180,51 @@ export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
     // DB may not be available during build
   }
 
+  // Tutor profiles. Nothing pointed Google at these — they were indexable but
+  // absent from the sitemap and linked only from a couple of pages, so they sat
+  // undiscovered. Instructor-name searches are worth having, so they belong
+  // here.
+  //
+  // Only profiles the page will actually render: a tutor whose user has set
+  // publicProfile to false gets the "set to private" screen, and submitting
+  // that earns a crawl of a page a visitor cannot read. The URL is the
+  // canonical username form, matching the page's own canonical tag.
+  let tutorPages: MetadataRoute.Sitemap = [];
+  try {
+    const tutors = await db.tutor.findMany({
+      select: {
+        id: true,
+        // Tutor has no updatedAt of its own; the user row carries it.
+        user: {
+          select: { username: true, preferences: true, updatedAt: true },
+        },
+      },
+    });
+
+    tutorPages = tutors
+      .filter((tutor: { user: { preferences: unknown } }) => {
+        const prefs =
+          (tutor.user.preferences as Record<string, unknown> | null) || {};
+        return prefs.publicProfile !== false;
+      })
+      .map(
+        (tutor: {
+          id: string;
+          user: { username: string | null; updatedAt: Date };
+        }) => ({
+          url: `${baseUrl}${tutorPath({ id: tutor.id, username: tutor.user.username })}`,
+          lastModified: tutor.user.updatedAt,
+          changeFrequency: "weekly" as const,
+          priority: 0.6,
+        }),
+      );
+  } catch (error) {
+    // Logged, not swallowed. A silent catch here hid a bad `select` — the
+    // query threw on every request and the section simply came out empty,
+    // which is indistinguishable from "this site has no tutors".
+    console.error("sitemap: failed to build tutor pages", error);
+  }
+
   // Course bundles. Only ones the platform has approved and the tutor has left
   // live, matching exactly what beginBundleCheckout will accept. Submitting a
   // bundle that refuses to sell would earn a crawl and a bounce.
@@ -224,6 +269,7 @@ export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
     ...programPages,
     ...coursePages,
     ...bundlePages,
+    ...tutorPages,
     ...categoryPages,
     ...blogPages,
   ];
