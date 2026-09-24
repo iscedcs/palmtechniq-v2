@@ -14,6 +14,7 @@ import {
   paystackResolveAccount,
   paystackTransfer,
 } from "@/actions/paystack";
+import { enforceRateLimit } from "@/lib/rate-limit-guard";
 
 type DashboardTransaction = {
   id: string;
@@ -531,6 +532,17 @@ export async function sendWithdrawalAuthorizationOtp(amount: number) {
     return { success: false, error: "Unauthorized" };
   }
 
+  // Each call emails a fresh code and invalidates the last one, so an
+  // unthrottled endpoint both spams the tutor's inbox and lets an attacker
+  // keep a code in flight indefinitely.
+  const otpLimited = await enforceRateLimit({
+    name: "withdrawal-otp-send",
+    limit: 3,
+    windowSeconds: 15 * 60,
+    subject: session.user.id,
+  });
+  if (otpLimited) return { success: false, error: otpLimited };
+
   const user = await db.user.findUnique({
     where: { id: session.user.id },
     select: {
@@ -598,6 +610,16 @@ export async function requestWithdrawal(amount: number, twoFactorCode?: string) 
   if (!session?.user?.id) {
     return { error: "Unauthorized" };
   }
+
+  // The code is six digits. Without a cap on attempts it can simply be
+  // guessed, and this is the action that moves money out of the wallet.
+  const attemptLimited = await enforceRateLimit({
+    name: "withdrawal-request",
+    limit: 5,
+    windowSeconds: 15 * 60,
+    subject: session.user.id,
+  });
+  if (attemptLimited) return { error: attemptLimited };
 
   if (!amount || amount <= 0) {
     return { error: "Invalid amount" };
