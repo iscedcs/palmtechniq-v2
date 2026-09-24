@@ -1,4 +1,5 @@
 "use client";
+import { ORG_ADDRESS_LINE } from "@/lib/seo/structured-data";
 
 import { motion } from "framer-motion";
 import {
@@ -488,15 +489,12 @@ export default function PrivacyPolicy() {
                           </div>
                         </div>
                         <div className="mt-4 pt-4 border-t border-white/10">
-                          <p className="text-gray-300rayacklack text-sm">
+                          <p className="text-gray-300 text-sm">
                             <strong>Mailing Address:</strong>
                             <br />
                             PalmTechnIQ Privacy Team
                             <br />
-                            1st Floor, (Festac Tower) Chicken Republic Building,
-                            22Rd ,Festac Town, Lagos, Nigeria.
-                            <br />
-                            Lagos, NG
+                            {ORG_ADDRESS_LINE}
                           </p>
                         </div>
                       </div>

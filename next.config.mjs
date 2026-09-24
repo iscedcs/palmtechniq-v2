@@ -28,26 +28,15 @@ const nextConfig = {
     ];
   },
   async headers() {
-    const csp = [
-      "default-src 'self'",
-      "script-src 'self' 'unsafe-eval' 'unsafe-inline' https://vercel.live https://connect.facebook.net https://isce-image.fra1.digitaloceanspaces.com https://isce-image.fra1.digitaloceanspaces.com https://www.googletagmanager.com https://cdn.mxpnl.com https://www.youtube.com https://localhost:* http://localhost:* ",
-      "style-src 'self' 'unsafe-inline' https:",
-      "media-src 'self' blob: https:",
-      "img-src 'self' data: blob: https://connect.facebook.net https://isce-image.fra1.digitaloceanspaces.com https://www.googletagmanager.com https://www.facebook.com https://cdn.sanity.io https: http://localhost:*",
-      "font-src 'self' data: https:",
-      "connect-src 'self' https: wss: https://www.facebook.com https://connect.facebook.net https://isce-image.fra1.digitaloceanspaces.com  https://www.google-analytics.com https://www.googletagmanager.com   https://api.mixpanel.com https://api-js.mixpanel.com http://localhost:* https://localhost:*",
-      "frame-src 'self' https://www.youtube.com https://www.youtube-nocookie.com https://isce-image.fra1.digitaloceanspaces.com https://www.facebook.com https://www.googletagmanager.com",
-      "form-action 'self' https://www.facebook.com",
-      "object-src 'none'",
-      "frame-ancestors 'none'",
-      "base-uri 'self'",
-    ].join("; ");
-
+    // The Content-Security-Policy is NOT set here. It is built per request in
+    // proxy.ts, because a nonce has to be generated per request and a static
+    // header cannot carry one. Two CSP headers would both be enforced — the
+    // browser takes the intersection — so the policy lives in exactly one
+    // place. The headers below are static and safe to set here.
     return [
       {
         source: "/:path*",
         headers: [
-          { key: "Content-Security-Policy", value: csp },
           { key: "Referrer-Policy", value: "strict-origin-when-cross-origin" },
           { key: "X-Frame-Options", value: "DENY" },
           { key: "X-Content-Type-Options", value: "nosniff" },

@@ -23,12 +23,34 @@ import { SITE_NAME, SITE_URL, absoluteUrl } from "@/lib/site";
  * listing being trusted.
  */
 export const ORG_ADDRESS = {
+  // Worded to match the Google Business Profile listing as closely as the
+  // schema.org fields allow, including the LGA and postcode. Google checks the
+  // address in this markup against the one on the Business Profile; the closer
+  // they agree, the more confidently it ties the site to the listing, and the
+  // listing is what puts a call button in the local results.
   streetAddress:
-    "1st Floor, Festac Tower, Chicken Republic Building, 22 Road, Festac Town",
-  addressLocality: "Lagos",
+    "22 Rd 1st Floor, Chicken Republic Building (FESTAC Tower), Amuwo Odofin",
+  addressLocality: "Festac Town",
   addressRegion: "Lagos",
+  postalCode: "102102",
   addressCountry: "NG",
 } as const;
+
+/**
+ * The same address as one line, for display.
+ *
+ * Derived, never retyped. The address was previously written out by hand on
+ * /contact, /terms and /privacy, and all three had drifted from each other and
+ * from the Business Profile — no postcode, no LGA, a stray "22Rd ,". Google
+ * reads the visible text as well as the markup, and a listing it cannot
+ * corroborate is a listing it trusts less.
+ */
+export const ORG_ADDRESS_LINE = [
+  ORG_ADDRESS.streetAddress,
+  `${ORG_ADDRESS.addressLocality} ${ORG_ADDRESS.postalCode}`,
+  ORG_ADDRESS.addressRegion,
+  "Nigeria",
+].join(", ");
 
 export const ORG_EMAIL = "support@palmtechniq.com";
 export const ORG_PHONE = "+2348079568910";

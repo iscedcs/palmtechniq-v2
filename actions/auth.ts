@@ -19,7 +19,8 @@ import { trackEvent, PLATFORM_EVENTS } from "@/lib/analytics/track";
 
 import { getPasswordResetTokenByToken } from "@/data/password-reset-token";
 import { getVerificationTokenByToken } from "@/data/verification-token";
-import { rateLimiter, RateLimitError } from "@/lib/rate-limit";
+import { RateLimitError } from "@/lib/rate-limit";
+import { enforceRateLimit } from "@/lib/rate-limit-guard";
 import {
   generatePasswordResetToken,
   generateverificationToken,
@@ -126,6 +127,16 @@ export async function signup(data: z.infer<typeof signupSchema>) {
     if (!validated.success) {
       return { error: "Invalid fields!" };
     }
+
+    // Every signup sends a verification email, so an unthrottled endpoint is a
+    // way to bill us for spam and to flood arbitrary inboxes.
+    const signupLimited = await enforceRateLimit({
+      name: "signup",
+      limit: 3,
+      windowSeconds: 60 * 60,
+      subject: validated.data.email,
+    });
+    if (signupLimited) return { error: signupLimited };
 
     const { name, email, phone, password, confirmPassword, terms } =
       validated.data;
@@ -443,6 +454,17 @@ export async function forgotPassword(
 
     const { email } = validated.data;
 
+    // The classic email-bombing target: unauthenticated, sends mail to an
+    // address the caller chooses. Checked before the user lookup so a flood
+    // costs us nothing, and kept deliberately tight.
+    const resetLimited = await enforceRateLimit({
+      name: "forgot-password",
+      limit: 3,
+      windowSeconds: 60 * 60,
+      subject: email,
+    });
+    if (resetLimited) return { error: resetLimited };
+
     const existingUser = await getUserByEmail(email);
     if (!existingUser) {
       return { error: "You'll receive a token if email exist!" };
@@ -481,6 +503,15 @@ export async function resetPassword(
     }
     const { password } = validated.data;
 
+    // Guards the reset token against being guessed: without a limit an
+    // attacker can try tokens as fast as the network allows.
+    const attemptLimited = await enforceRateLimit({
+      name: "reset-password",
+      limit: 10,
+      windowSeconds: 15 * 60,
+    });
+    if (attemptLimited) return { error: attemptLimited };
+
     const existingToken = await getPasswordResetTokenByToken(token);
 
     const hasExpired = new Date(existingToken?.expires!) < new Date();
@@ -516,6 +547,15 @@ export async function resetPassword(
 // Email Verification Action
 export async function verifyEmail(token: string) {
   try {
+    // Same reasoning as resetPassword: a guessable token with unlimited
+    // attempts is not much of a token.
+    const attemptLimited = await enforceRateLimit({
+      name: "verify-email",
+      limit: 10,
+      windowSeconds: 15 * 60,
+    });
+    if (attemptLimited) return { error: attemptLimited };
+
     const existingToken = await getVerificationTokenByToken(token);
 
     if (!existingToken) {

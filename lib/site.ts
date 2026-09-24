@@ -62,3 +62,24 @@ export function coursePath(course: {
 }): string {
   return `/courses/${course.slug || course.id}`;
 }
+
+/**
+ * The canonical path to a tutor's public profile.
+ *
+ * A profile resolves by four identifiers — tutor id, user id, referral code
+ * and username — and the page used to build its canonical tag from whichever
+ * one the visitor arrived with. So the same profile existed at four URLs, each
+ * declaring *itself* the original: textbook duplicate content, with the
+ * ranking signals split four ways instead of accumulating on one page.
+ *
+ * The username is canonical where set — it is the form a human would share and
+ * the one that reads well in a result — falling back to the tutor id, which
+ * always exists. Every alias keeps resolving; they just agree now on which one
+ * is the real address.
+ */
+export function tutorPath(tutor: {
+  id: string;
+  username?: string | null;
+}): string {
+  return `/tutors/${tutor.username || tutor.id}`;
+}
