@@ -996,12 +996,21 @@ export async function updateCourseStatus({
   // silent.
   const before = await db.course.findUnique({
     where: { id: courseId },
-    select: { status: true },
+    select: { status: true, publishedAt: true },
   });
 
   await db.course.update({
     where: { id: courseId },
-    data: { status },
+    data: {
+      status,
+      // The other two publish paths stamp this; this one — the one the admin
+      // Courses page and dashboard actually use — never did, so courses
+      // approved here had no publish date and no datePublished in their
+      // structured data. Keeps the FIRST publish date, like the others now do.
+      ...(status === "PUBLISHED"
+        ? { publishedAt: before?.publishedAt ?? new Date() }
+        : {}),
+    },
   });
 
   // This is the admin approval, and the path the Courses page and dashboard

@@ -1,6 +1,8 @@
 import { NextRequest, NextResponse } from "next/server";
 import { auth } from "@/auth";
 import { db } from "@/lib/db";
+import { enforceRateLimit } from "@/lib/rate-limit-guard";
+import { parseUserAgent } from "@/lib/analytics/user-agent";
 
 const ALLOWED_EVENTS = new Set([
   "page_viewed",
@@ -29,29 +31,34 @@ const ACTION_MAP: Record<string, string> = {
   promotion_viewed: "User viewed a promotion",
 };
 
-function parseUserAgent(ua: string | null): { device: string; browser: string; os: string } {
-  if (!ua) return { device: "unknown", browser: "unknown", os: "unknown" };
+/**
+ * This endpoint is public and unauthenticated by design — page views come from
+ * anonymous visitors — and it writes to the database. That was harmless while
+ * the PlatformEvent table did not exist and every insert failed; now that it
+ * does, it is a way for anyone to fill the table. So every field is bounded,
+ * and each IP is limited.
+ *
+ * The limit is generous because many Nigerian mobile users share one IP
+ * (carrier-grade NAT), and dropping some of a busy network's page views costs
+ * a little analytics accuracy, not a broken page.
+ */
+const MAX_FIELD_LENGTH = 512;
+const MAX_METADATA_CHARS = 4000;
+const EVENTS_PER_IP_PER_MINUTE = 300;
 
-  let device = "desktop";
-  if (/mobile|android|iphone|ipad/i.test(ua)) {
-    device = /ipad|tablet/i.test(ua) ? "tablet" : "mobile";
+const bounded = (value: unknown): string | undefined =>
+  typeof value === "string" ? value.slice(0, MAX_FIELD_LENGTH) : undefined;
+
+const boundedMetadata = (value: unknown): object | undefined => {
+  if (!value || typeof value !== "object") return undefined;
+  try {
+    return JSON.stringify(value).length <= MAX_METADATA_CHARS
+      ? (value as object)
+      : undefined;
+  } catch {
+    return undefined;
   }
-
-  let browser = "unknown";
-  if (/edg/i.test(ua)) browser = "Edge";
-  else if (/chrome/i.test(ua)) browser = "Chrome";
-  else if (/firefox/i.test(ua)) browser = "Firefox";
-  else if (/safari/i.test(ua)) browser = "Safari";
-
-  let os = "unknown";
-  if (/windows/i.test(ua)) os = "Windows";
-  else if (/mac os/i.test(ua)) os = "macOS";
-  else if (/linux/i.test(ua)) os = "Linux";
-  else if (/android/i.test(ua)) os = "Android";
-  else if (/iphone|ipad/i.test(ua)) os = "iOS";
-
-  return { device, browser, os };
-}
+};
 
 export async function POST(req: NextRequest) {
   try {
@@ -61,6 +68,16 @@ export async function POST(req: NextRequest) {
     if (!event || typeof event !== "string" || !ALLOWED_EVENTS.has(event)) {
       return NextResponse.json({ error: "Invalid event" }, { status: 400 });
     }
+
+    // Over the limit: pretend it worked. Telling a flooder they were throttled
+    // only teaches them the threshold.
+    const throttled = await enforceRateLimit({
+      name: "analytics-track",
+      limit: EVENTS_PER_IP_PER_MINUTE,
+      ipLimit: EVENTS_PER_IP_PER_MINUTE,
+      windowSeconds: 60,
+    });
+    if (throttled) return NextResponse.json({ ok: true });
 
     const session = await auth();
     const userId = session?.user?.id || null;
@@ -78,13 +95,13 @@ export async function POST(req: NextRequest) {
         category: CATEGORY_MAP[event] || "content",
         action: ACTION_MAP[event] || event,
         userId,
-        sessionId: typeof sessionId === "string" ? sessionId : undefined,
-        entityType: typeof entityType === "string" ? entityType : undefined,
-        entityId: typeof entityId === "string" ? entityId : undefined,
-        metadata: metadata && typeof metadata === "object" ? metadata : undefined,
-        path: typeof path === "string" ? path : undefined,
-        referrer: referer,
-        userAgent,
+        sessionId: bounded(sessionId),
+        entityType: bounded(entityType),
+        entityId: bounded(entityId),
+        metadata: boundedMetadata(metadata),
+        path: bounded(path),
+        referrer: referer?.slice(0, MAX_FIELD_LENGTH),
+        userAgent: userAgent?.slice(0, MAX_FIELD_LENGTH),
         ipAddress,
         device,
         browser,

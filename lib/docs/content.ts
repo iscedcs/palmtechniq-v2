@@ -1,6 +1,6 @@
 import type { DocPage, DocSection } from "./types";
 
-export const DOC_VERSION = "2026.09.18";
+export const DOC_VERSION = "2026.09.25";
 
 export const docSections: DocSection[] = [
   // ─── GETTING STARTED ─────────────────────────────────────
@@ -573,7 +573,7 @@ The \`MentorshipSession\` model tracks:
         slug: "payments",
         description: "Paystack integration, pricing, splits, and promo codes.",
         audience: "all",
-        lastUpdated: "2026-08-14",
+        lastUpdated: "2026-09-25",
         content: `
 # Payment System
 
@@ -651,10 +651,27 @@ See **Revenue Sharing** for the full reference, including bundles and programs.
 > constant is survivable; duplicated arithmetic is not — a rate change once
 > moved money at one number while recording another.
 
-### Settlement is idempotent
-\`finalizePaystackByReference\` returns early on an already-completed
-transaction and re-verifies with Paystack otherwise, so it is safe to call
-repeatedly. That is what makes the payment sweep safe to run every 15 minutes.
+### Settlement is idempotent — and safe under concurrency
+\`finalizePaystackByReference\` is safe to call repeatedly, and safe to call
+**at the same moment** from more than one place. That matters: the Paystack
+webhook, \`/api/paystack/finalize\` (the return page) and the payment sweep can
+all reach it for the same payment.
+
+Returning early on an already-completed transaction is not enough on its own —
+that check reads the status *before* any work, so callers that overlap all pass
+it. What makes it safe is a **conditional claim** as the first write inside the
+settlement transaction: \`updateMany\` where the status is not yet COMPLETED. The
+first caller matches; the others match nothing, write nothing, and return
+\`alreadyDone\`. Only the caller that won sends the notifications.
+
+This is not theoretical. Before the claim existed, three overlapping calls for
+one sale wrote three earning rows and three wallet credits (balance 7,500
+against a share of 2,500). \`pnpm verify:tutor-notifications\` keeps that
+scenario under test.
+
+Nothing after the claim is idempotent by itself — \`creditWallet\` is a plain
+increment and course-sale \`TutorEarning\` rows have no uniqueness rule — so do
+not add a new write to this function above the claim.
 
 ### Webhook
 - Endpoint: \`/api/webhook\`
@@ -1992,7 +2009,7 @@ always be zero. If it is not, a balance moved without a ledger entry — run
         slug: "database-schema",
         description: "Complete database model overview and relationships.",
         audience: "developer",
-        lastUpdated: "2026-08-14",
+        lastUpdated: "2026-09-25",
         content: `
 # Database Schema
 
@@ -2124,8 +2141,9 @@ enum UserRole {
 | **Credentials** | \`Certificate\`, \`VolunteerCertificate\` |
 | **Ops** | \`Notification\`, \`UserAnalytics\`, \`CourseAnalytics\`, \`PlatformSettings\`, \`Registration\` |
 
-> \`PlatformEvent\` is referenced by \`lib/analytics/track.ts\` but **does not
-> exist** in the schema. See **Analytics & Tracking**.
+> \`PlatformEvent\` (product analytics events) was added on 2026-09-25 — before
+> that it was referenced by \`lib/analytics/track.ts\` but did not exist. See
+> **Analytics & Tracking**.
 
 ## Money Columns
 
@@ -2820,28 +2838,39 @@ user, **secret** = bearer token, **public** = no auth.
         title: "Analytics & Tracking",
         slug: "analytics",
         description:
-          "Product events, web analytics, and a tracking table that does not exist.",
+          "Product events, web analytics, and the PlatformEvent tracking table.",
         audience: "developer",
-        lastUpdated: "2026-08-14",
+        lastUpdated: "2026-09-25",
         content: `
 # Analytics & Tracking
 
-## Known defect — read first
+## \`PlatformEvent\` — added 2026-09-25
 
-\`trackEvent\` writes to \`db.platformEvent\`, but **there is no
-\`PlatformEvent\` model in the schema**. Every call fails:
+\`trackEvent\` and \`/api/analytics/track\` write to \`db.platformEvent\`, and the
+admin analytics dashboard reads it. For a long time **the model did not exist**:
+every write failed inside a try/catch (\`TypeError: Cannot read properties of
+undefined (reading 'create')\`), so nothing broke and nothing was recorded. It
+now exists (\`platform_events\`).
 
-\`\`\`
-[Analytics] Failed to track event: checkout_started
-TypeError: Cannot read properties of undefined (reading 'create')
-\`\`\`
+**Events recorded before that date do not exist and cannot be recovered.** Any
+funnel or revenue figure has a start date of 2026-09-25, not the launch date.
 
-The failure is caught and logged, so nothing breaks — which is precisely why it
-went unnoticed. **No product event has ever been recorded.** Any funnel
-analysis based on \`PlatformEvent\` is analysing an empty table.
+What it stores, per event: the event name, a user id when signed in, the path,
+referrer, user agent, **IP address**, parsed device/browser/OS, and — for
+purchases — a copy of the amount in \`value\`. That is consistent with the
+privacy policy ("Device information and IP address", "usage patterns and
+learning analytics"). \`value\` is a reporting copy, not a ledger: money lives in
+\`Transaction\` and \`WalletEntry\`.
 
-Fixing it means adding the model and pushing the schema. Until then, treat
-in-app event data as absent rather than sparse.
+Things to know:
+
+- **The table grows with traffic** — one row per tracked page view. There is no
+  retention job yet; add one before it becomes large.
+- **\`/api/analytics/track\` is public and now writes to the database.** Each IP
+  is limited to 300 events a minute, and every field and the \`metadata\` blob
+  are size-capped. Over the limit it answers \`{ ok: true }\` and stores nothing,
+  so a flooder learns nothing about the threshold.
+- Deleting a user keeps their events, detached (\`userId\` becomes null).
 
 ## What does work
 

@@ -3,6 +3,19 @@ import React from "react";
 
 import { EmailButton, EmailLayout, EmailSignOff } from "./email-layout";
 
+/**
+ * Which approval this is.
+ *
+ *   first   — the tutor's first approved course: the celebration, plus the
+ *             getting-started steps.
+ *   later   — a further new course: short, because the fifth "congratulations
+ *             on your first course" would be absurd.
+ *   updated — an edit to a course that was already live, now re-approved.
+ *             Every edit is reviewed before it goes back live, so this is the
+ *             tutor's confirmation that the review is done.
+ */
+export type CourseApprovalKind = "first" | "later" | "updated";
+
 interface CourseApprovedEmailProps {
   name?: string;
   courseTitle: string;
@@ -10,12 +23,7 @@ interface CourseApprovedEmailProps {
   courseUrl: string;
   /** Where the tutor manages things. */
   dashboardUrl: string;
-  /**
-   * The tutor's first approved course. Gets the celebratory copy and the
-   * getting-started steps; later approvals get the short version, because
-   * the fifth "congratulations on your first course" would be absurd.
-   */
-  isFirstCourse: boolean;
+  kind: CourseApprovalKind;
 }
 
 export const CourseApprovedEmail = ({
@@ -23,36 +31,73 @@ export const CourseApprovedEmail = ({
   courseTitle,
   courseUrl,
   dashboardUrl,
-  isFirstCourse,
+  kind,
 }: CourseApprovedEmailProps) => {
   const displayName = name?.trim() || "there";
 
+  const preview =
+    kind === "first"
+      ? "Congratulations — your first course is live on PalmTechnIQ"
+      : kind === "updated"
+        ? `Your changes to "${courseTitle}" are now live`
+        : `Your course "${courseTitle}" is now live on PalmTechnIQ`;
+
+  const heading =
+    kind === "first"
+      ? "🎉 Congratulations — your first course is live!"
+      : kind === "updated"
+        ? "✅ Your changes are now live"
+        : "✅ Your course has been approved";
+
   return (
     <EmailLayout
-      preview={
-        isFirstCourse
-          ? "Congratulations — your first course is live on PalmTechnIQ"
-          : `Your course "${courseTitle}" is now live on PalmTechnIQ`
-      }
-      footerReason="You are receiving this email because a course you created on PalmTechnIQ was approved.">
-      <Text className="mt-[20px] text-[20px] font-bold mb-3">
-        {isFirstCourse
-          ? "🎉 Congratulations — your first course is live!"
-          : "✅ Your course has been approved"}
-      </Text>
+      preview={preview}
+      footerReason={
+        kind === "updated"
+          ? "You are receiving this email because changes you made to a course on PalmTechnIQ were approved."
+          : "You are receiving this email because a course you created on PalmTechnIQ was approved."
+      }>
+      <Text className="mt-[20px] text-[20px] font-bold mb-3">{heading}</Text>
 
       <Text className="text-gray-800 text-base leading-relaxed">
         Hi, <strong>{displayName}</strong>
       </Text>
 
-      <Text className="text-base leading-relaxed">
-        Great news — our team has reviewed{" "}
-        <strong>&ldquo;{courseTitle}&rdquo;</strong> and approved it. It is now
-        live on PalmTechnIQ, and students can find it, enrol and start learning
-        from you today.
-      </Text>
+      {kind === "updated" ? (
+        <>
+          <Text className="text-base leading-relaxed">
+            Good news — our team has reviewed the changes you made to{" "}
+            <strong>&ldquo;{courseTitle}&rdquo;</strong> and approved them. The
+            updated course is live on PalmTechnIQ again.
+          </Text>
 
-      {isFirstCourse ? (
+          <div
+            style={{
+              backgroundColor: "#f8fafc",
+              border: "1px solid #e2e8f0",
+              borderRadius: "8px",
+              padding: "14px 18px",
+              margin: "18px 0",
+              fontSize: "14px",
+              color: "#475569",
+              lineHeight: "1.6",
+            }}>
+            Changes to a published course are reviewed by our team before they
+            go live. That&apos;s what keeps every course on PalmTechnIQ up to
+            standard for the students who buy it — thank you for your patience
+            while we checked yours.
+          </div>
+        </>
+      ) : (
+        <Text className="text-base leading-relaxed">
+          Great news — our team has reviewed{" "}
+          <strong>&ldquo;{courseTitle}&rdquo;</strong> and approved it. It is
+          now live on PalmTechnIQ, and students can find it, enrol and start
+          learning from you today.
+        </Text>
+      )}
+
+      {kind === "first" ? (
         <>
           {/* Milestone callout */}
           <div
@@ -110,12 +155,14 @@ export const CourseApprovedEmail = ({
             </p>
           </div>
         </>
-      ) : (
+      ) : null}
+
+      {kind === "later" ? (
         <Text className="text-base leading-relaxed">
           Share the link with your network to start bringing students in, and
           we&apos;ll email you as soon as someone enrols.
         </Text>
-      )}
+      ) : null}
 
       <EmailButton href={courseUrl}>View your live course</EmailButton>
 
@@ -130,7 +177,7 @@ export const CourseApprovedEmail = ({
       </Text>
 
       <Text className="text-base leading-relaxed">
-        {isFirstCourse
+        {kind === "first"
           ? "We're really glad to have you teaching on PalmTechnIQ."
           : "Thank you for continuing to teach on PalmTechnIQ."}
       </Text>

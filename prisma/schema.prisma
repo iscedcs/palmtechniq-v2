@@ -86,6 +86,7 @@ model User {
   reviewedBundles         CourseBundle[]           @relation("BundleReviewer")
   tutorProfile            Tutor?
   analytics               UserAnalytics[]
+  platformEvents          PlatformEvent[]
   UserSkill               UserSkill[]
   wishlist                Wishlist[]
   approvedWithdrawals     WithdrawalRequest[]      @relation("WithdrawalApprover")
@@ -216,6 +217,13 @@ model Course {
   // approval email exactly-once no matter which of the three admin paths
   // publishes the course, or how many times it flips back to draft.
   approvalNotifiedAt     DateTime?
+  // Set when a tutor's save takes a LIVE course back to DRAFT for review, and
+  // cleared when the admin re-approves it and the tutor is told the changes are
+  // live. That save-to-draft rule is deliberate policy: an edit must not go
+  // public without a review. This marker is what lets the re-approval be told
+  // apart from the first approval (approvalNotifiedAt) and announced exactly
+  // once per edit cycle.
+  reapprovalPendingSince DateTime?
   createdAt              DateTime                @default(now())
   updatedAt              DateTime                @updatedAt
   virtualPrice           Float?
@@ -1206,6 +1214,49 @@ model Certificate {
   @@index([cohortId])
   @@index([certificateId])
   @@map("certificates")
+}
+
+/// One row per product event: a page view, a checkout, a course published.
+///
+/// The code has written to this for as long as it has existed (lib/analytics/
+/// track.ts and /api/analytics/track) and the admin analytics dashboard reads
+/// it, but the model was never added, so every write failed inside a try/catch
+/// and the dashboard analysed an empty table. It is documented as a known
+/// defect in the developer docs; this is the fix that note describes.
+///
+/// Fields mirror exactly what the writers and the dashboard use. `value` is a
+/// denormalised copy of a transaction amount for revenue reporting, not a
+/// ledger — Transaction and WalletEntry remain the source of truth for money,
+/// which is why it is a Float here despite the "no new Float money columns"
+/// rule for real balances.
+model PlatformEvent {
+  id         String   @id @default(cuid())
+  event      String
+  category   String
+  action     String
+  userId     String?
+  sessionId  String?
+  entityType String?
+  entityId   String?
+  metadata   Json?
+  path       String?
+  referrer   String?
+  userAgent  String?
+  ipAddress  String?
+  device     String?
+  browser    String?
+  os         String?
+  duration   Int?
+  value      Float?
+  createdAt  DateTime @default(now())
+  user       User?    @relation(fields: [userId], references: [id], onDelete: SetNull)
+
+  @@index([event, createdAt])
+  @@index([category, createdAt])
+  @@index([userId, createdAt])
+  @@index([entityType, entityId])
+  @@index([createdAt])
+  @@map("platform_events")
 }
 
 model UserAnalytics {

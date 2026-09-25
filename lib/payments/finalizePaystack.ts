@@ -12,7 +12,10 @@ import { createZoomMeeting } from "@/lib/zoom-integration";
 import { resolveTutorReferralCode } from "@/lib/referral";
 import { sendCRMPurchaseEvent } from "@/lib/meta-conversions";
 import { trackEvent, PLATFORM_EVENTS } from "@/lib/analytics/track";
-import { emailTutorsAboutSale } from "@/lib/tutor-notifications";
+import {
+  emailTutorsAboutSale,
+  notifyTutorOfGroupStart,
+} from "@/lib/tutor-notifications";
 
 export async function finalizePaystackByReference(reference: string) {
   const tx = await db.transaction.findFirst({
@@ -486,6 +489,15 @@ export async function finalizePaystackByReference(reference: string) {
       actionLabel: "View Group",
       metadata: { category: "group_purchase_started", courseId: tx.courseId },
     });
+
+    // The tutor is credited at this moment and, if the group fills, debited
+    // its cashback later. They were told about neither. Sent only by the caller
+    // that won the settlement claim above, so once per group purchase.
+    await notifyTutorOfGroupStart({
+      transactionId: tx.id,
+      groupPurchaseId,
+    });
+
     return { ok: true, courseId: tx.courseId, groupPurchaseId };
   }
 
