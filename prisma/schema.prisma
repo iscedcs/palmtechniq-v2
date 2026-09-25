@@ -209,6 +209,13 @@ model Course {
   metaTitle              String?
   metaDescription        String?
   publishedAt            DateTime?
+  // Set once, the first time the tutor is told this course was approved, and
+  // never cleared. publishedAt cannot do this job: updateCourse resets it to
+  // null whenever a tutor edits a live course, so it says nothing about whether
+  // the course has ever been approved. This is the claim that makes the
+  // approval email exactly-once no matter which of the three admin paths
+  // publishes the course, or how many times it flips back to draft.
+  approvalNotifiedAt     DateTime?
   createdAt              DateTime                @default(now())
   updatedAt              DateTime                @updatedAt
   virtualPrice           Float?

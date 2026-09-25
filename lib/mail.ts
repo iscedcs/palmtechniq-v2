@@ -607,3 +607,149 @@ export async function sendWithdrawalOtpEmail(params: {
 
 
 
+
+// ============ TUTOR COURSE EMAILS ============
+
+/**
+ * Dry run for the tutor emails: log what would be sent and report success
+ * without contacting Resend. It exists so the "exactly once" and "respects the
+ * tutor's settings" rules can be tested against a real database without
+ * mailing real tutors — the same approach the exam-center emails use.
+ */
+function tutorEmailDryRun(kind: string, to: string, subject: string): boolean {
+  if (process.env.TUTOR_EMAILS_DRY_RUN !== "1") return false;
+  console.log(`[tutor-emails] DRY RUN — would send ${kind} to ${to}: ${subject}`);
+  return true;
+}
+
+export async function sendCourseApprovedEmail(params: {
+  email: string;
+  name?: string;
+  courseTitle: string;
+  courseUrl: string;
+  dashboardUrl: string;
+  isFirstCourse: boolean;
+}) {
+  const subject = params.isFirstCourse
+    ? "🎉 Congratulations! Your first course is live on PalmTechnIQ"
+    : `✅ Your course "${params.courseTitle}" has been approved`;
+
+  try {
+    if (tutorEmailDryRun("course-approved", params.email, subject)) {
+      return { success: true as const };
+    }
+
+    const { default: CourseApprovedEmail } = await import(
+      "./email-templates/course-approved"
+    );
+    const resend = new Resend(process.env.RESEND_API_KEY!);
+
+    const { error } = await resend.emails.send({
+      from:
+        process.env.FROM_EMAIL_ADDRESS ||
+        "PalmTechnIQ <support@palmtechniq.com>",
+      to: params.email,
+      subject,
+      react: CourseApprovedEmail({
+        name: params.name,
+        courseTitle: params.courseTitle,
+        courseUrl: params.courseUrl,
+        dashboardUrl: params.dashboardUrl,
+        isFirstCourse: params.isFirstCourse,
+      }),
+      text: [
+        `Hi ${params.name?.trim() || "there"},`,
+        "",
+        `Great news — our team has reviewed "${params.courseTitle}" and approved it. It is now live on PalmTechnIQ.`,
+        params.isFirstCourse
+          ? "\nCongratulations on publishing your first course — that is a real milestone.\n\nA few things that help a new course get going:\n1. Share your course link with your network.\n2. Keep your profile sharp — a clear photo and a short bio.\n3. Watch your dashboard — we'll email you as soon as someone enrols."
+          : "\nShare the link with your network to start bringing students in.",
+        "",
+        `View your course: ${params.courseUrl}`,
+        `Your dashboard: ${params.dashboardUrl}`,
+        "",
+        "Thanks,",
+        "PalmTechnIQ Team",
+      ].join("\n"),
+    });
+
+    // Resend reports most failures in its return value rather than by
+    // throwing, so a bad key or an unverified domain would otherwise look
+    // exactly like a delivered email.
+    if (error) {
+      console.error("[sendCourseApprovedEmail] Resend rejected the email:", error);
+      return { error: error.message ?? "Resend rejected the email." };
+    }
+    return { success: true as const };
+  } catch (error) {
+    console.error("[sendCourseApprovedEmail] Failed to send email:", error);
+    return { error: "Failed to send course approval email." };
+  }
+}
+
+export async function sendTutorCourseSaleEmail(params: {
+  email: string;
+  name?: string;
+  courseTitles: string[];
+  earned: number;
+  walletUrl: string;
+}) {
+  const many = params.courseTitles.length > 1;
+  const subject = many
+    ? `🎉 ${params.courseTitles.length} of your courses were purchased`
+    : `🎉 New enrolment: ${params.courseTitles[0]}`;
+
+  try {
+    if (tutorEmailDryRun("course-sale", params.email, subject)) {
+      return { success: true as const };
+    }
+
+    const { default: TutorCourseSaleEmail } = await import(
+      "./email-templates/tutor-course-sale"
+    );
+    const resend = new Resend(process.env.RESEND_API_KEY!);
+    const earned = new Intl.NumberFormat("en-NG", {
+      style: "currency",
+      currency: "NGN",
+      minimumFractionDigits: 2,
+    }).format(params.earned);
+
+    const { error } = await resend.emails.send({
+      from:
+        process.env.FROM_EMAIL_ADDRESS ||
+        "PalmTechnIQ <support@palmtechniq.com>",
+      to: params.email,
+      subject,
+      react: TutorCourseSaleEmail({
+        name: params.name,
+        courseTitles: params.courseTitles,
+        earned: params.earned,
+        walletUrl: params.walletUrl,
+      }),
+      text: [
+        `Hi ${params.name?.trim() || "there"},`,
+        "",
+        many
+          ? `Someone just bought ${params.courseTitles.length} of your courses together: ${params.courseTitles.join(", ")}.`
+          : `Someone just enrolled in "${params.courseTitles[0]}".`,
+        "",
+        `Your earnings from this sale: ${earned}`,
+        "This has been added to your wallet balance.",
+        "",
+        `Check your wallet: ${params.walletUrl}`,
+        "",
+        "Thanks,",
+        "PalmTechnIQ Team",
+      ].join("\n"),
+    });
+
+    if (error) {
+      console.error("[sendTutorCourseSaleEmail] Resend rejected the email:", error);
+      return { error: error.message ?? "Resend rejected the email." };
+    }
+    return { success: true as const };
+  } catch (error) {
+    console.error("[sendTutorCourseSaleEmail] Failed to send email:", error);
+    return { error: "Failed to send course sale notification." };
+  }
+}
