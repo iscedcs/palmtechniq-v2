@@ -14,6 +14,7 @@
     "fix-missing-student-profiles": "tsx scripts/fix-missing-student-profiles.ts",
     "seed-volunteer-certificates": "tsx scripts/seed-volunteer-certificates.ts",
     "verify:exam": "pnpm verify:exam-publish && pnpm verify:exam-attempt && pnpm verify:exam-results && pnpm verify:exam-monitor && pnpm verify:exam-notifications && pnpm verify:exam-import",
+    "backfill:course-published-at": "tsx scripts/backfill-course-published-at.ts",
     "verify:tutor-notifications": "tsx --require ./scripts/_exam-test-bootstrap.cjs scripts/verify-tutor-notifications.ts",
     "verify:exam-publish": "tsx --require ./scripts/_exam-test-bootstrap.cjs scripts/verify-exam-publish.ts",
     "verify:exam-attempt": "tsx --require ./scripts/_exam-test-bootstrap.cjs scripts/verify-exam-attempt.ts",

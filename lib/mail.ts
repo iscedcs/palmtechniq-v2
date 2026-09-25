@@ -628,11 +628,15 @@ export async function sendCourseApprovedEmail(params: {
   courseTitle: string;
   courseUrl: string;
   dashboardUrl: string;
-  isFirstCourse: boolean;
+  /** first: congratulations · later: a further new course · updated: an edit re-approved. */
+  kind: "first" | "later" | "updated";
 }) {
-  const subject = params.isFirstCourse
-    ? "🎉 Congratulations! Your first course is live on PalmTechnIQ"
-    : `✅ Your course "${params.courseTitle}" has been approved`;
+  const subject =
+    params.kind === "first"
+      ? "🎉 Congratulations! Your first course is live on PalmTechnIQ"
+      : params.kind === "updated"
+        ? `✅ Your changes to "${params.courseTitle}" are now live`
+        : `✅ Your course "${params.courseTitle}" has been approved`;
 
   try {
     if (tutorEmailDryRun("course-approved", params.email, subject)) {
@@ -655,15 +659,19 @@ export async function sendCourseApprovedEmail(params: {
         courseTitle: params.courseTitle,
         courseUrl: params.courseUrl,
         dashboardUrl: params.dashboardUrl,
-        isFirstCourse: params.isFirstCourse,
+        kind: params.kind,
       }),
       text: [
         `Hi ${params.name?.trim() || "there"},`,
         "",
-        `Great news — our team has reviewed "${params.courseTitle}" and approved it. It is now live on PalmTechnIQ.`,
-        params.isFirstCourse
+        params.kind === "updated"
+          ? `Good news — our team has reviewed the changes you made to "${params.courseTitle}" and approved them. The updated course is live on PalmTechnIQ again.\n\nChanges to a published course are reviewed before they go live, which keeps every course up to standard for the students who buy it. Thank you for your patience.`
+          : `Great news — our team has reviewed "${params.courseTitle}" and approved it. It is now live on PalmTechnIQ.`,
+        params.kind === "first"
           ? "\nCongratulations on publishing your first course — that is a real milestone.\n\nA few things that help a new course get going:\n1. Share your course link with your network.\n2. Keep your profile sharp — a clear photo and a short bio.\n3. Watch your dashboard — we'll email you as soon as someone enrols."
-          : "\nShare the link with your network to start bringing students in.",
+          : params.kind === "later"
+            ? "\nShare the link with your network to start bringing students in."
+            : "",
         "",
         `View your course: ${params.courseUrl}`,
         `Your dashboard: ${params.dashboardUrl}`,
@@ -751,5 +759,93 @@ export async function sendTutorCourseSaleEmail(params: {
   } catch (error) {
     console.error("[sendTutorCourseSaleEmail] Failed to send email:", error);
     return { error: "Failed to send course sale notification." };
+  }
+}
+
+export async function sendTutorGroupPurchaseEmail(params: {
+  email: string;
+  name?: string;
+  variant: "STARTED" | "COMPLETED";
+  courseTitle: string;
+  memberLimit: number;
+  /** STARTED only: what this payment added to the tutor's wallet. */
+  earned?: number;
+  cashbackTotal: number;
+  walletUrl: string;
+}) {
+  const started = params.variant === "STARTED";
+  const subject = started
+    ? `🎉 A group purchase started for "${params.courseTitle}"`
+    : `✅ Your group for "${params.courseTitle}" is complete`;
+
+  try {
+    if (tutorEmailDryRun(`group-${params.variant.toLowerCase()}`, params.email, subject)) {
+      return { success: true as const };
+    }
+
+    const { default: TutorGroupPurchaseEmail } = await import(
+      "./email-templates/tutor-group-purchase"
+    );
+    const resend = new Resend(process.env.RESEND_API_KEY!);
+    const money = (n: number) =>
+      new Intl.NumberFormat("en-NG", {
+        style: "currency",
+        currency: "NGN",
+        minimumFractionDigits: 2,
+      }).format(n);
+
+    const lines = [`Hi ${params.name?.trim() || "there"},`, ""];
+    if (started) {
+      lines.push(
+        `Someone just started a group purchase for "${params.courseTitle}". The group has ${params.memberLimit} seats.`,
+      );
+      if (typeof params.earned === "number") {
+        lines.push("", `Your earnings from this purchase: ${money(params.earned)}`, "This has been added to your wallet balance.");
+      }
+      if (params.cashbackTotal > 0) {
+        lines.push(
+          "",
+          `About the group cashback: if all ${params.memberLimit} seats fill, ${money(params.cashbackTotal)} cashback is paid to the student who started the group, funded from your wallet. Please keep at least that much in your wallet until the group completes.`,
+        );
+      }
+    } else {
+      lines.push(
+        `All ${params.memberLimit} seats for "${params.courseTitle}" are filled, and every member now has access.`,
+      );
+      if (params.cashbackTotal > 0) {
+        lines.push(
+          "",
+          `${money(params.cashbackTotal)} was deducted from your wallet as the group's cashback, paid to the student who started the group.`,
+        );
+      }
+    }
+    lines.push("", `Check your wallet: ${params.walletUrl}`, "", "Thanks,", "PalmTechnIQ Team");
+
+    const { error } = await resend.emails.send({
+      from:
+        process.env.FROM_EMAIL_ADDRESS ||
+        "PalmTechnIQ <support@palmtechniq.com>",
+      to: params.email,
+      subject,
+      react: TutorGroupPurchaseEmail({
+        variant: params.variant,
+        name: params.name,
+        courseTitle: params.courseTitle,
+        memberLimit: params.memberLimit,
+        earned: params.earned,
+        cashbackTotal: params.cashbackTotal,
+        walletUrl: params.walletUrl,
+      }),
+      text: lines.join("\n"),
+    });
+
+    if (error) {
+      console.error("[sendTutorGroupPurchaseEmail] Resend rejected the email:", error);
+      return { error: error.message ?? "Resend rejected the email." };
+    }
+    return { success: true as const };
+  } catch (error) {
+    console.error("[sendTutorGroupPurchaseEmail] Failed to send email:", error);
+    return { error: "Failed to send group purchase notification." };
   }
 }

@@ -9,6 +9,7 @@ import { notify } from "@/lib/notify";
 import { recomputeCourseDurations } from "@/lib/course-duration";
 import { trackEvent, PLATFORM_EVENTS } from "@/lib/analytics/track";
 import { notifyCourseApproved } from "@/lib/tutor-notifications";
+import { reviewFieldsForSave } from "@/lib/course-review";
 
 export async function updateCourse(
   courseId: string,
@@ -98,8 +99,14 @@ export async function updateCourse(
         targetAudience: targetAudience ?? undefined, // Convert null to undefined for Prisma
         certificate: validatedCourse.data.certificate ?? false,
         allowDiscussions: allowDiscussions ?? false,
-        status: shouldPublish ? "PUBLISHED" : "DRAFT",
-        publishedAt: shouldPublish ? new Date() : null,
+        // The review gate: see lib/course-review.ts for why a tutor's save
+        // takes a live course back to DRAFT, and what else it records.
+        ...reviewFieldsForSave({
+          currentStatus: course.status,
+          currentPublishedAt: course.publishedAt,
+          publish: shouldPublish,
+          actorIsAdmin: session.user.role === "ADMIN",
+        }),
         updatedAt: new Date(),
         category: {
           connect: { id: validatedCourse.data.category },
@@ -359,6 +366,7 @@ export async function publishCourse(courseId: string) {
         id: true,
         title: true,
         status: true,
+        publishedAt: true,
         description: true,
         thumbnail: true,
         basePrice: true,
@@ -492,10 +500,12 @@ export async function publishCourse(courseId: string) {
     const shouldPublish = session.user.role === "ADMIN";
     const updatedCourse = await db.course.update({
       where: { id: courseId },
-      data: {
-        status: shouldPublish ? "PUBLISHED" : "DRAFT",
-        publishedAt: shouldPublish ? new Date() : null,
-      },
+      data: reviewFieldsForSave({
+        currentStatus: courseOwner.status,
+        currentPublishedAt: courseOwner.publishedAt,
+        publish: shouldPublish,
+        actorIsAdmin: shouldPublish,
+      }),
     });
 
     if (shouldPublish) {

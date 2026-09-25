@@ -1,6 +1,6 @@
 "use server";
 
-import { creditWallet, debitWallet } from "@/lib/payments/wallet";
+import { executeJoinGroup } from "@/lib/group-purchase/join";
 import { auth } from "@/auth";
 import { db } from "@/lib/db";
 import { paystackInitialize } from "./paystack";
@@ -9,7 +9,6 @@ import { redirect } from "next/navigation";
 import {
   computeCheckoutTotals,
   computeGroupCashback,
-  computeGroupCashbackEarned,
   REVENUE,
 } from "@/lib/payments/revenue";
 
@@ -242,172 +241,12 @@ export async function joinGroupPurchase(inviteCode: string) {
     return { error: "Unauthorized" };
   }
 
-  const group = await db.groupPurchase.findUnique({
-    where: { inviteCode },
-    include: {
-      tier: true,
-      members: true,
-    },
+  // The logic lives in lib/group-purchase/join.ts so it can be tested without
+  // a session, and so the completion race is fixed in exactly one place.
+  const result = await executeJoinGroup({
+    userId: session.user.id,
+    inviteCode,
   });
 
-  if (!group) return { error: "Group not found" };
-  if (group.status !== "ACTIVE") {
-    return { error: "This group is not open for joining yet" };
-  }
-  if (group.memberCount >= group.memberLimit) {
-    return { error: "This group is already full" };
-  }
-
-  const alreadyMember = group.members.some(
-    (member: any) => member.userId === session.user.id
-  );
-  if (alreadyMember) return { success: true };
-
-  const alreadyEnrolled = await db.enrollment.findFirst({
-    where: {
-      userId: session.user.id,
-      courseId: group.courseId,
-      status: { in: ["ACTIVE", "COMPLETED"] },
-    },
-    select: { id: true },
-  });
-  if (alreadyEnrolled) {
-    return { error: "You are already enrolled in this course" };
-  }
-
-  const { shouldComplete } = await db.$transaction(async (tx: any) => {
-    await tx.groupMember.create({
-      data: {
-        groupPurchaseId: group.id,
-        userId: session.user.id,
-        role: "MEMBER",
-      },
-    });
-
-    const nextMemberCount = group.memberCount + 1;
-    const nextCashbackEarned = computeGroupCashbackEarned({
-      cashbackTotal: group.cashbackTotal,
-      cashbackPerMember: group.cashbackPerMember,
-      memberCount: nextMemberCount,
-    });
-
-    const shouldComplete = nextMemberCount >= group.memberLimit;
-
-    await tx.groupPurchase.update({
-      where: { id: group.id },
-      data: {
-        memberCount: nextMemberCount,
-        cashbackEarned: nextCashbackEarned,
-        status: shouldComplete ? "COMPLETED" : group.status,
-        completedAt: shouldComplete ? new Date() : null,
-        cashbackReleased: shouldComplete ? true : group.cashbackReleased,
-      },
-    });
-
-    if (shouldComplete && group.cashbackTotal > 0) {
-      // Cashback is funded by the tutor, so the credit and the debit are two
-      // halves of one movement. Resolve the funder FIRST: if we cannot, the
-      // credit must not happen either. Previously the credit ran
-      // unconditionally and the debit was skipped when the tutor could not be
-      // resolved, which created money out of nothing.
-      const course = await tx.course.findUnique({
-        where: { id: group.courseId },
-        select: { tutor: { select: { userId: true } } },
-      });
-      const funderId = course?.tutor?.userId;
-
-      if (!funderId) {
-        throw new Error(
-          `Group ${group.id}: cannot release cashback, course ${group.courseId} has no tutor to fund it`,
-        );
-      }
-
-      // The tutor must actually have the money. Without this the debit can
-      // drive a wallet negative, letting the platform pay out cashback the
-      // tutor never earned.
-      const funder = await tx.user.findUnique({
-        where: { id: funderId },
-        select: { walletBalance: true },
-      });
-      if (!funder || funder.walletBalance < group.cashbackTotal) {
-        throw new Error(
-          `Group ${group.id}: tutor ${funderId} has ${funder?.walletBalance ?? 0} but cashback needs ${group.cashbackTotal}`,
-        );
-      }
-
-      await debitWallet(tx, {
-        userId: funderId,
-        amount: group.cashbackTotal,
-        type: "GROUP_CASHBACK_DEBIT",
-        groupPurchaseId: group.id,
-        description: "Funded group cashback",
-      });
-
-      await creditWallet(tx, {
-        userId: group.creatorId,
-        amount: group.cashbackTotal,
-        type: "GROUP_CASHBACK_CREDIT",
-        groupPurchaseId: group.id,
-        description: "Group purchase cashback",
-      });
-    }
-
-    return { shouldComplete };
-  });
-
-  if (shouldComplete) {
-    const members = await db.groupMember.findMany({
-      where: { groupPurchaseId: group.id },
-      select: { userId: true },
-    });
-    const memberIds = members.map((m: any) => m.userId);
-
-    const enrollmentOps = memberIds.map((userId: any) =>
-      db.enrollment.upsert({
-        where: {
-          userId_courseId: { userId, courseId: group.courseId },
-        },
-        update: {},
-        create: {
-          userId,
-          courseId: group.courseId,
-          status: "ACTIVE",
-          groupPurchaseId: group.id,
-          enrolledAt: new Date(),
-        },
-      })
-    );
-
-    const users = await db.user.findMany({
-      where: { id: { in: memberIds } },
-      select: { id: true, role: true },
-    });
-    const userIdsToUpgrade = users
-      .filter((user: any) => user.role === "USER")
-      .map((user: any) => user.id);
-
-    const upgradeOps =
-      userIdsToUpgrade.length > 0
-        ? [
-            db.user.updateMany({
-              where: { id: { in: userIdsToUpgrade } },
-              data: { role: "STUDENT" },
-            }),
-            ...userIdsToUpgrade.map((userId: any) =>
-              db.student.upsert({
-                where: { userId },
-                update: {},
-                create: { userId, interests: [], goals: [] },
-              })
-            ),
-          ]
-        : [];
-
-    const completionOps = [...enrollmentOps, ...upgradeOps];
-    if (completionOps.length > 0) {
-      await db.$transaction(completionOps);
-    }
-  }
-
-  return { success: true };
+  return result.ok ? { success: true } : { error: result.error };
 }
