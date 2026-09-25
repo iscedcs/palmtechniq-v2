@@ -12,6 +12,7 @@ import { createZoomMeeting } from "@/lib/zoom-integration";
 import { resolveTutorReferralCode } from "@/lib/referral";
 import { sendCRMPurchaseEvent } from "@/lib/meta-conversions";
 import { trackEvent, PLATFORM_EVENTS } from "@/lib/analytics/track";
+import { emailTutorsAboutSale } from "@/lib/tutor-notifications";
 
 export async function finalizePaystackByReference(reference: string) {
   const tx = await db.transaction.findFirst({
@@ -80,9 +81,20 @@ export async function finalizePaystackByReference(reference: string) {
     value: tx.amount,
   });
 
-  await db.$transaction(async (px: any) => {
-    await px.transaction.update({
-      where: { id: tx.id },
+  const settlement = await db.$transaction(async (px: any) => {
+    // Claim the settlement. The "already COMPLETED" check at the top of this
+    // function reads `tx` BEFORE any of this runs, so it cannot stop two
+    // callers that overlap — and three things call this for the same payment:
+    // Paystack's webhook, /api/paystack/finalize on the return page, and the
+    // payment sweep. Nothing below is idempotent (creditWallet is a plain
+    // increment, TutorEarning has no uniqueness on course sales), so if both
+    // got through, the tutor would be credited twice.
+    //
+    // A conditional update is the fix: Postgres makes the second caller wait
+    // on the row lock, then re-checks the WHERE against the committed row, so
+    // it matches nothing and backs out having written nothing.
+    const claimed = await px.transaction.updateMany({
+      where: { id: tx.id, status: { not: "COMPLETED" } },
       data: {
         status: "COMPLETED",
         paymentId: v.reference,
@@ -90,6 +102,7 @@ export async function finalizePaystackByReference(reference: string) {
         metadata: { ...((tx.metadata as any) || {}), verify: v },
       },
     });
+    if (claimed.count === 0) return { alreadySettled: true as const };
 
     const metadata = (v.metadata || tx.metadata || {}) as any;
     const isMentorshipPayment = metadata?.productType === "MENTORSHIP";
@@ -424,6 +437,13 @@ export async function finalizePaystackByReference(reference: string) {
     maxWait: 15_000,
   });
 
+  // Another caller settled this payment while we were verifying it. It has
+  // done everything, including the notifications, so there is nothing left
+  // for us to do — and doing it again is how tutors get paid twice.
+  if (settlement?.alreadySettled) {
+    return { ok: true, alreadyDone: true, courseId: tx.courseId };
+  }
+
   const metadata = (v.metadata || tx.metadata || {}) as any;
   if (metadata?.productType === "MENTORSHIP") {
     await notify.user(tx.userId, {
@@ -562,6 +582,11 @@ export async function finalizePaystackByReference(reference: string) {
       },
     });
   }
+
+  // The email that goes with the in-app notice above. Sent only here — by the
+  // caller that won the claim — so a tutor gets one per sale, not one per
+  // request that happened to reach this point.
+  await emailTutorsAboutSale(tx.id, coursesByTutor);
 
   return { ok: true, courseId: tx.courseId, courseIds: purchasedCourseIds };
 }

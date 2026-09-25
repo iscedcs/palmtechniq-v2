@@ -8,6 +8,7 @@ import { z } from "zod";
 import { notify } from "@/lib/notify";
 import { recomputeCourseDurations } from "@/lib/course-duration";
 import { trackEvent, PLATFORM_EVENTS } from "@/lib/analytics/track";
+import { notifyCourseApproved } from "@/lib/tutor-notifications";
 
 export async function updateCourse(
   courseId: string,
@@ -305,6 +306,15 @@ export async function updateCourse(
 
     await recomputeCourseDurations(db, courseId);
 
+    // Tell the tutor it was approved — but only when this save is what took the
+    // course live. This action also runs for an admin merely editing a course
+    // that has been published for months, and that must not read as a fresh
+    // approval. `course` was loaded before the update, so its status is the
+    // state we started from.
+    if (shouldPublish && course.status !== "PUBLISHED") {
+      await notifyCourseApproved(courseId);
+    }
+
     // Send update notifications
     // Notify only students enrolled in THIS course
     await notify.course(courseId, {
@@ -348,6 +358,7 @@ export async function publishCourse(courseId: string) {
       select: {
         id: true,
         title: true,
+        status: true,
         description: true,
         thumbnail: true,
         basePrice: true,
@@ -496,6 +507,12 @@ export async function publishCourse(courseId: string) {
         actionUrl: `/courses/${updatedCourse.id}`,
         actionLabel: "View Course",
       });
+
+      // Only a transition counts as an approval; re-publishing a live course
+      // must not re-announce it.
+      if (courseOwner.status !== "PUBLISHED") {
+        await notifyCourseApproved(courseId);
+      }
     }
 
     if (shouldPublish) {

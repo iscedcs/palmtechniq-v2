@@ -5,6 +5,7 @@ import { db } from "@/lib/db";
 import { hashPassword } from "@/lib/password";
 import { generatePasswordResetToken } from "@/lib/token";
 import { Prisma, UserRole } from "@prisma/client";
+import { notifyCourseApproved } from "@/lib/tutor-notifications";
 
 const formatCurrency = (amount: number) =>
   new Intl.NumberFormat("en-NG", {
@@ -990,10 +991,24 @@ export async function updateCourseStatus({
     }
   }
 
+  // The state we are leaving. Approval means the course goes live *from*
+  // something else — setting PUBLISHED on a course that already is must stay
+  // silent.
+  const before = await db.course.findUnique({
+    where: { id: courseId },
+    select: { status: true },
+  });
+
   await db.course.update({
     where: { id: courseId },
     data: { status },
   });
+
+  // This is the admin approval, and the path the Courses page and dashboard
+  // both use. The tutor gets their congratulations here.
+  if (status === "PUBLISHED" && before?.status !== "PUBLISHED") {
+    await notifyCourseApproved(courseId);
+  }
 
   return { success: true };
 }
