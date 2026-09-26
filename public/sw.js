@@ -46,7 +46,7 @@
  * running the old copy until they are given a new one that says to stop.
  */
 
-const VERSION = "v1";
+const VERSION = "v2";
 const CACHE = "ptq-offline-" + VERSION;
 const OFFLINE_URL = "/offline.html";
 const LOGO_URL = "/assets/palmtechniqlogo.png";

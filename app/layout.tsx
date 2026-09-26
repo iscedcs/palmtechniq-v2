@@ -22,6 +22,7 @@ import "./globals.css";
 import { ToploaderProvider } from "@/components/shared/toploader-provider";
 import { SmoothScrollProvider } from "@/components/providers/smooth-scroll-provider";
 import { RegisterServiceWorker } from "@/components/pwa/register-service-worker";
+import { InstallPrompt } from "@/components/pwa/install-prompt";
 
 const inter = Inter({ subsets: ["latin"] });
 
@@ -59,8 +60,11 @@ export const metadata: Metadata = {
   publisher: "PalmTechnIQ",
   category: "education",
   icons: {
-    icon: "/assets/standalone.png",
-    apple: "/assets/standalone.png",
+    icon: [
+      { url: "/assets/standalone.png" },
+      { url: "/assets/pwa-192.png", sizes: "192x192", type: "image/png" },
+    ],
+    apple: "/assets/apple-touch-icon.png",
   },
   formatDetection: {
     email: false,
@@ -144,6 +148,7 @@ export default async function MainRootLayout({
         <body
           className={`${inter.className} bg-gray-900 text-white min-h-screen`}>
           <RegisterServiceWorker />
+          <InstallPrompt />
           <ThemeProvider
             attribute="class"
             defaultTheme="dark"

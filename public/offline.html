@@ -53,12 +53,15 @@
           radial-gradient(circle at 40% 40%, hsl(84 61% 45% / 0.08) 0%, transparent 50%);
       }
 
-      /* ---- top banner ------------------------------------------------- */
+      /* ---- toast ------------------------------------------------------ */
       .banner {
         position: fixed;
         top: 16px;
         left: 50%;
-        transform: translateX(-50%);
+        transform: translate(-50%, -160%);
+        opacity: 0;
+        pointer-events: none;
+        z-index: 10;
         width: min(92vw, 520px);
         display: flex;
         gap: 14px;
@@ -69,8 +72,10 @@
         background: hsl(0 60% 12% / 0.92);
         color: hsl(0 100% 86%);
         box-shadow: 0 10px 30px rgba(0, 0, 0, 0.35);
-        transition: border-color 0.3s, background 0.3s, color 0.3s;
+        transition: transform 0.45s cubic-bezier(0.22, 1, 0.36, 1), opacity 0.3s, border-color 0.3s, background 0.3s, color 0.3s;
       }
+      /* A toast: it slides in when something changes, then leaves again. */
+      .banner.show { transform: translate(-50%, 0); opacity: 1; }
       .banner svg { flex: none; margin-top: 2px; }
       .banner strong { display: block; font-size: 15px; }
       .banner span { font-size: 14px; opacity: 0.9; }
@@ -84,14 +89,14 @@
       main {
         width: min(100%, 560px);
         text-align: center;
-        /* Clears the fixed banner, which is taller when its text wraps. */
-        margin-top: 104px;
+        /* The toast floats above the page, so it needs no room reserved. */
+        margin-top: 24px;
       }
-      .logo { height: 34px; width: auto; margin: 0 auto 34px; display: block; opacity: 0.95; }
+      .logo { height: 34px; width: auto; margin: 0 auto 64px; display: block; opacity: 0.95; }
 
       .orb {
         width: 116px; height: 116px;
-        margin: 0 auto 26px;
+        margin: 0 auto 48px;
         border-radius: 50%;
         display: grid; place-items: center;
         color: var(--danger);
@@ -100,6 +105,18 @@
         box-shadow: 0 0 60px hsl(0 84% 62% / 0.22);
         transition: color 0.3s, border-color 0.3s, box-shadow 0.3s, background 0.3s;
       }
+      .orb { position: relative; }
+      /* Signal waves: rings that leave the icon and fade as they spread, in the
+         colour of the current state (red disconnected, amber reconnecting). */
+      .orb::before, .orb::after {
+        content: ""; position: absolute; inset: -1px; border-radius: 50%;
+        border: 2px solid currentColor; opacity: 0; pointer-events: none;
+        animation: wave 2.8s ease-out infinite;
+      }
+      .orb::after { animation-delay: 1.4s; }
+      .orb.checking::before, .orb.checking::after { animation-duration: 1.4s; }
+      .orb.checking::after { animation-delay: 0.7s; }
+      .orb.online::before, .orb.online::after { animation: none; }
       .orb.checking { color: var(--amber); border-color: hsl(38 92% 58% / 0.45); box-shadow: 0 0 60px hsl(38 92% 58% / 0.2); background: hsl(38 60% 10% / 0.7); }
       .orb.online   { color: var(--primary); border-color: hsl(152 65% 48% / 0.5); box-shadow: 0 0 60px hsl(152 65% 48% / 0.25); background: hsl(152 60% 9% / 0.7); }
 
@@ -154,8 +171,10 @@
       .spin { animation: spin 0.9s linear infinite; }
       @keyframes spin { to { transform: rotate(360deg); } }
       @keyframes pulse { 50% { opacity: 0.25; } }
+      @keyframes wave { 0% { transform: scale(1); opacity: 0.55; } 100% { transform: scale(1.9); opacity: 0; } }
       @media (prefers-reduced-motion: reduce) {
-        .spin, .pill.checking i { animation: none; }
+        .spin, .pill.checking i, .orb::before, .orb::after { animation: none; }
+        .banner { transition: opacity 0.3s; }
         * { transition: none !important; }
       }
     </style>
@@ -225,11 +244,20 @@
         var done = false;
         var attempt = 0;
         var timer = null;
+        var toastTimer = null;
+
+        // Show the toast, then take it away again. `stay` keeps it up (used once
+        // the connection is back, when the page is about to reload anyway).
+        function toast(stay) {
+          el.banner.classList.add("show");
+          clearTimeout(toastTimer);
+          if (!stay) toastTimer = setTimeout(function () { el.banner.classList.remove("show"); }, 4500);
+        }
 
         function setState(state) {
           el.orb.className = "orb" + (state === "offline" ? "" : " " + state);
           el.pill.className = "pill" + (state === "offline" ? "" : " " + state);
-          el.banner.className = "banner" + (state === "online" ? " online" : "");
+          el.banner.className = "banner" + (state === "online" ? " online" : "") + (el.banner.classList.contains("show") ? " show" : "");
           if (state === "offline") {
             el.pillText.textContent = "Disconnected";
             el.bannerTitle.textContent = "You are offline";
@@ -292,6 +320,7 @@
           done = true;
           clearTimeout(timer);
           setState("online");
+          toast(true);
 
           if (recentReloads().length >= 3) {
             el.pillText.textContent = "Connected";
@@ -320,6 +349,7 @@
             el.hint.textContent = "";
           }
           setState("checking");
+          if (manual) toast(false);
 
           return reachable().then(function (ok) {
             busy = false;
@@ -331,6 +361,7 @@
               el.retryText.textContent = "Try Reconnecting";
               el.retryIcon.removeAttribute("class");
               el.hint.textContent = "Still offline. We’ll keep trying automatically.";
+              toast(false);
             }
             schedule();
           });
@@ -359,6 +390,8 @@
         });
 
         setState("offline");
+        // Let the page settle first, so the toast is seen arriving.
+        setTimeout(function () { toast(false); }, 350);
         schedule();
       })();
     </script>
