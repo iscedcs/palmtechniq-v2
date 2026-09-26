@@ -11,6 +11,7 @@ import {
   sendAdminBalancePaymentNotification,
 } from "@/lib/mail";
 import { trackEvent, PLATFORM_EVENTS } from "@/lib/analytics/track";
+import { buildInstallmentReceipt, sendReceipt } from "@/lib/receipts";
 
 const SITE_URL = process.env.NEXT_PUBLIC_URL || "http://localhost:2026";
 
@@ -187,9 +188,16 @@ export async function verifyAndCompleteBalancePayment(
       return { success: false, error: "Balance record not found" };
     }
 
-    // Update installment as paid
-    const updatedInstallment = await db.installmentPayment.update({
-      where: { id: secondInstallment.id },
+    // Update installment as paid.
+    //
+    // This function is documented as "called from webhook or client after
+    // redirect", i.e. it is meant to be callable more than once — but it had no
+    // guard at all, so every call re-ran the update, re-accrued, and re-sent both
+    // confirmation emails: refreshing the return page emailed the student again.
+    // The write is now the claim, matching only while the instalment is not yet
+    // PAID, so the work and the emails happen once.
+    const claimed = await db.installmentPayment.updateMany({
+      where: { id: secondInstallment.id, status: { not: "PAID" } },
       data: {
         status: "PAID",
         paidAt: new Date(),
@@ -202,6 +210,14 @@ export async function verifyAndCompleteBalancePayment(
         },
       },
     });
+    if (claimed.count === 0) {
+      return {
+        success: true,
+        message: "Balance payment already completed",
+        enrollmentId: effectiveEnrollmentId,
+        allInstallmentsPaid: true,
+      };
+    }
 
     // Accrue the lead instructor's share of this installment. Non-fatal:
     // if the cohort has no instructor yet, assignment back-fills it.
@@ -237,7 +253,7 @@ export async function verifyAndCompleteBalancePayment(
     await Promise.all([
       sendBalancePaymentConfirmation({
         enrollmentId: enrollment.id,
-        programName: enrollment.program.name,
+        programName: updatedEnrollment.program.name,
         fullName: enrollment.fullName,
         email: enrollment.email,
         amount: secondInstallment.amount,
@@ -245,13 +261,30 @@ export async function verifyAndCompleteBalancePayment(
       }),
       sendAdminBalancePaymentNotification({
         enrollmentId: enrollment.id,
-        programName: enrollment.program.name,
+        programName: updatedEnrollment.program.name,
         studentName: enrollment.fullName,
         studentEmail: enrollment.email,
         amount: secondInstallment.amount,
         reference: data.reference,
       }),
     ]);
+
+    // Our receipt, in place of the one Paystack emails. The balance is settled,
+    // so there is nothing remaining.
+    await sendReceipt(
+      buildInstallmentReceipt({
+        email: enrollment.email,
+        name: enrollment.fullName,
+        programName: updatedEnrollment.program.name,
+        installmentNo: 2,
+        planLabel: "Balance payment",
+        installmentAmount: secondInstallment.amount,
+        paidToDate: enrollment.totalAmount,
+        programTotal: enrollment.totalAmount,
+        reference: data.reference,
+        verification: data,
+      }),
+    );
 
     // Track event after payment completion
     await trackEvent(PLATFORM_EVENTS.INSTALLMENT_PAID, {

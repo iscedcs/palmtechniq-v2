@@ -34,6 +34,15 @@
  *       tutor is debited the cashback once, and told once;
  *     - a tutor who cannot fund the cashback blocks completion cleanly.
  *
+ *   Receipts (PalmTechnIQ's own, replacing Paystack's)
+ *     - every kind of payment gets one: course, cart, bundle-style multi-course,
+ *       group place, mentorship session, tutor promotion fee, program instalment
+ *       and program balance;
+ *     - exactly one even when the webhook, the return page and a refresh race;
+ *     - the figures add up: lines - discount = subtotal, subtotal + VAT = total,
+ *       total - wallet credit = amount paid, and a program's balance is right;
+ *     - the two program flows no longer double-count or re-email on a repeat call.
+ *
  *   Analytics
  *     - PlatformEvent accepts the exact field set both writers use and answers
  *       the query shapes the admin dashboard uses.
@@ -57,6 +66,16 @@ import {
   REVENUE,
 } from "@/lib/payments/revenue";
 import { notifyCourseApproved } from "@/lib/tutor-notifications";
+import {
+  buildInstallmentReceipt,
+  buildPromotionReceipt,
+  buildTransactionReceipt,
+  describePaymentMethod,
+  receiptNumber,
+} from "@/lib/receipts";
+import { settlePromotionFee } from "@/lib/promotions/settle";
+import { verifyEnrollmentPayment } from "@/actions/enrollment";
+import { verifyAndCompleteBalancePayment } from "@/actions/program-balance-payment";
 
 const RUN = Date.now().toString(36);
 const tag = (s: string) => `tn-verify-${RUN}-${s}`;
@@ -75,13 +94,20 @@ function check(name: string, ok: boolean, detail = "") {
 // Instrumentation: capture the emails that WOULD be sent, and fake the two
 // outside services the settlement path talks to.
 // ---------------------------------------------------------------------------
-const sentEmails: { kind: string; to: string; subject: string }[] = [];
+const sentEmails: { kind: string; to: string; subject: string; detail?: Record<string, any> }[] = [];
 const outbound: string[] = [];
 const realLog = console.log;
 console.log = (...args: unknown[]) => {
   const line = args.map(String).join(" ");
-  const m = line.match(/^\[tutor-emails\] DRY RUN — would send (\S+) to (\S+): (.*)$/);
-  if (m) sentEmails.push({ kind: m[1], to: m[2], subject: m[3] });
+  const m = line.match(/^\[emails\] DRY RUN — would send (\S+) to (\S+): (.*)$/);
+  if (m) {
+    // Receipts append their key figures after " ⟂ " so a test can check what
+    // would actually have been sent, not merely that something was.
+    const [subject, json] = m[3].split(" ⟂ ");
+    let detail: Record<string, any> | undefined;
+    try { detail = json ? JSON.parse(json) : undefined; } catch { detail = undefined; }
+    sentEmails.push({ kind: m[1], to: m[2], subject, detail });
+  }
   else realLog(...args);
 };
 const emailsTo = (address: string, kind?: string) =>
@@ -96,6 +122,12 @@ console.error = (...args: unknown[]) => {
   if (first.startsWith("[Analytics] Failed to track event")) return;
   if (first.startsWith("[sendCourseApprovedEmail] Failed to send email")) return;
   if (first.startsWith("[group-purchase] cannot complete group")) return;
+  // The mentorship settlement logs a failed Zoom call by design; it is stubbed.
+  if (first.startsWith("[Zoom")) return;
+  // The older program confirmation emails call Resend directly, with no dry-run
+  // mode. The program tests run with no API key, so they fail quietly by design.
+  if (/^\[(sendEnrollmentConfirmation|sendBalancePaymentConfirmation|sendAdmin[A-Za-z]+)\]/.test(first)) return;
+  if (first.startsWith("[verifyEnrollmentPayment]") || first.startsWith("[verifyAndCompleteBalancePayment]")) return;
   realError(...args);
 };
 
@@ -127,6 +159,14 @@ globalThis.fetch = (async (input: any, init?: any) => {
     return { ok: true, status: 200, json: async () => body } as Response;
   }
 
+  if (url.includes("zoom.us")) {
+    // The mentorship branch creates a Zoom meeting. Refuse it: the settlement
+    // treats that as "add the link manually" and carries on, and nothing real is
+    // created on the company account.
+    outbound.push("stubbed:zoom");
+    return { ok: false, status: 500, json: async () => ({ message: "stubbed" }), text: async () => "stubbed" } as Response;
+  }
+
   if (url.includes("facebook.com") || url.includes("paystack.co")) {
     // Meta Conversions API, or anything else that would leave the building.
     outbound.push(`stubbed:${new URL(url).host}`);
@@ -146,6 +186,11 @@ const created = {
   categoryIds: [] as string[],
   transactionIds: [] as string[],
   groupIds: [] as string[],
+  mentorshipIds: [] as string[],
+  promotionIds: [] as string[],
+  programIds: [] as string[],
+  cohortIds: [] as string[],
+  enrollmentIds: [] as string[],
 };
 
 type TutorFx = { user: { id: string }; tutor: { id: string }; categoryId: string };
@@ -270,14 +315,190 @@ function transactionData(opts: {
   };
 }
 
-async function makeSale(t: TutorFx, label: string) {
+async function makeSale(t: TutorFx, label: string, opts: { studentPreferences?: object } = {}) {
   const course = await makeCourse(t, label, "PUBLISHED", 10000);
-  const student = await makeUser(`${label}-student`, "USER");
+  const student = await makeUser(`${label}-student`, "USER", opts.studentPreferences);
   const reference = `ps_${tag(label)}`;
   const { totals, data } = transactionData({ studentId: student.id, course, tutorUserId: t.user.id, price: 10000, reference });
   const tx = await db.transaction.create({ data });
   created.transactionIds.push(tx.id);
   return { reference, tx, course, student, tutorShare: totals.tutorShareAmount as number };
+}
+
+/**
+ * A cart of two courses, one on sale, part-paid with wallet credit: the shape
+ * that makes a receipt earn its keep. Course A lists at 10,000 but is selling
+ * for 8,000; course B is 5,000; 1,500 of the payer's wallet covers part of it.
+ */
+async function makeCart(t: TutorFx, label: string, creditApplied: number) {
+  const a = await makeCourse(t, `${label}-a`, "PUBLISHED", 10000, { currentPrice: 8000 });
+  const b = await makeCourse(t, `${label}-b`, "PUBLISHED", 5000);
+  const student = await makeUser(`${label}-student`, "USER");
+
+  const totals = computeCheckoutTotals({
+    courses: [
+      { id: a.id, tutorId: t.user.id, basePrice: 10000, currentPrice: 8000, price: 10000 },
+      { id: b.id, tutorId: t.user.id, basePrice: 5000, currentPrice: 5000, price: 5000 },
+    ],
+    promo: null,
+    vatRate: REVENUE.vatRate,
+    referralTutorId: null,
+  });
+  // What checkout actually charges: the total, less any wallet credit spent.
+  const charged = totals.totalAmount - creditApplied;
+
+  const reference = `ps_${tag(label)}`;
+  paystackAmounts.set(reference, charged);
+  const tx = await db.transaction.create({
+    data: {
+      userId: student.id,
+      courseId: a.id,
+      amount: charged,
+      currency: "NGN",
+      status: "PENDING",
+      paymentMethod: "PAYSTACK",
+      transactionId: reference,
+      description: "Purchase of 2 courses",
+      subtotalAmount: totals.subtotalAmount,
+      discountAmount: totals.discountAmount,
+      vatAmount: totals.vatAmount,
+      tutorShareAmount: totals.tutorShareAmount,
+      platformShareAmount: totals.platformShareAmount,
+      metadata: { courseIds: [a.id, b.id], primaryCourseId: a.id, count: 2, creditApplied, listTotal: totals.totalAmount },
+      lineItems: {
+        create: totals.lineItems.map((item: any) => ({
+          courseId: item.courseId,
+          tutorId: item.tutorId,
+          basePrice: item.basePrice,
+          discountedPrice: item.discountedPrice,
+          discountAmount: item.discountAmount,
+          vatAmount: item.vatAmount,
+          totalAmount: item.totalAmount,
+          tutorShareAmount: item.tutorShareAmount,
+          platformShareAmount: item.platformShareAmount,
+          isReferralPurchase: item.isReferralPurchase,
+        })),
+      },
+    },
+  });
+  created.transactionIds.push(tx.id);
+  return { reference, tx, student, totals, charged, creditApplied };
+}
+
+/** A paid mentorship booking, awaiting settlement. */
+async function makeMentorship(t: TutorFx, label: string, price: number) {
+  const student = await makeUser(`${label}-student`, "USER");
+  const session = await db.mentorshipSession.create({
+    data: {
+      title: tag(`${label}-session`),
+      duration: 60,
+      price,
+      scheduledAt: new Date(Date.now() + 2 * 24 * 60 * 60 * 1000),
+      studentId: student.id,
+      tutorId: t.user.id,
+    },
+  });
+  created.mentorshipIds.push(session.id);
+
+  const reference = `ps_${tag(label)}`;
+  paystackAmounts.set(reference, price);
+  const tx = await db.transaction.create({
+    data: {
+      userId: student.id,
+      amount: price,
+      currency: "NGN",
+      status: "PENDING",
+      paymentMethod: "PAYSTACK",
+      transactionId: reference,
+      description: `Mentorship session: ${session.title}`,
+      metadata: { productType: "MENTORSHIP", mentorshipSessionId: session.id, tutorUserId: t.user.id },
+    },
+  });
+  created.transactionIds.push(tx.id);
+  return { reference, tx, student, session, price };
+}
+
+/** A tutor's course promotion, fee unpaid. */
+async function makePromotion(t: TutorFx, label: string, fee: number, days: number) {
+  const course = await makeCourse(t, `${label}-course`, "PUBLISHED", 10000);
+  const reference = `promo_${tag(label)}`;
+  const start = new Date(Date.now() + 24 * 60 * 60 * 1000);
+  const promotion = await db.coursePromotion.create({
+    data: {
+      courseId: course.id,
+      promotedBy: t.user.id,
+      type: "TUTOR",
+      status: "PENDING_PAYMENT",
+      headline: tag(`${label}-headline`),
+      startDate: start,
+      endDate: new Date(start.getTime() + days * 24 * 60 * 60 * 1000),
+      fee,
+      feePaid: false,
+      paystackReference: reference,
+    },
+  });
+  created.promotionIds.push(promotion.id);
+  return { promotion, course, reference, fee, days };
+}
+
+/** A professional-program enrolment on the 70/30 plan, both instalments unpaid. */
+async function makeProgramEnrollment(label: string) {
+  const first = 231000;
+  const second = 99000;
+  const program = await db.professionalProgram.create({
+    data: {
+      name: tag(`${label}-program`),
+      slug: tag(`${label}-program`),
+      duration: "THREE_MONTHS",
+      fullPrice: 300000,
+      installTotal: first + second,
+      firstInstall: first,
+      secondInstall: second,
+      careerOutcomes: [],
+      curriculum: [],
+    },
+  });
+  created.programIds.push(program.id);
+  const cohort = await db.programCohort.create({
+    data: {
+      cycleNumber: 100000 + Math.floor(Math.random() * 800000),
+      year: 2026,
+      month: 10,
+      quarterLabel: "Q4",
+      phoneticLabel: "Delta",
+      displayName: tag(`${label}-cohort`),
+      startDate: new Date(Date.now() + 10 * 24 * 60 * 60 * 1000),
+      programId: program.id,
+    },
+  });
+  created.cohortIds.push(cohort.id);
+
+  const enrollment = await db.programEnrollment.create({
+    data: {
+      fullName: tag(`${label}-learner`),
+      email: email(`${label}-learner`),
+      phone: "08000000000",
+      totalAmount: first + second,
+      paymentPlan: "INSTALLMENT",
+      learningMode: "VIRTUAL",
+      status: "PENDING_PAYMENT",
+      programId: program.id,
+      cohortId: cohort.id,
+    },
+  });
+  created.enrollmentIds.push(enrollment.id);
+
+  const ref1 = `ps_${tag(`${label}-i1`)}`;
+  const ref2 = `ps_${tag(`${label}-i2`)}`;
+  paystackAmounts.set(ref1, first);
+  paystackAmounts.set(ref2, second);
+  await db.installmentPayment.create({
+    data: { enrollmentId: enrollment.id, installmentNo: 1, amount: first, dueDate: new Date(), paystackRef: ref1, status: "PENDING" },
+  });
+  await db.installmentPayment.create({
+    data: { enrollmentId: enrollment.id, installmentNo: 2, amount: second, dueDate: new Date(Date.now() + 30 * 24 * 60 * 60 * 1000), paystackRef: ref2, status: "PENDING" },
+  });
+  return { program, cohort, enrollment, ref1, ref2, first, second, total: first + second, learnerEmail: enrollment.email };
 }
 
 /** A group whose creator has started checkout but not yet paid. */
@@ -347,6 +568,16 @@ async function cleanup() {
     try { await fn(); } catch (e) { realLog(`  cleanup: ${label} failed: ${(e as Error).message}`); }
   };
   await step("platform events", () => db.platformEvent.deleteMany({ where: { sessionId: { startsWith: tag("") } } }));
+  await step("installments", () => db.installmentPayment.deleteMany({ where: { enrollmentId: { in: created.enrollmentIds } } }));
+  await step("program enrolments", () => db.programEnrollment.deleteMany({ where: { id: { in: created.enrollmentIds } } }));
+  await step("program cohorts", () => db.programCohort.deleteMany({ where: { id: { in: created.cohortIds } } }));
+  await step("programs", () => db.professionalProgram.deleteMany({ where: { id: { in: created.programIds } } }));
+  await step("promotions", () => db.coursePromotion.deleteMany({ where: { id: { in: created.promotionIds } } }));
+  await step("mentorship sessions", () => db.mentorshipSession.deleteMany({ where: { id: { in: created.mentorshipIds } } }));
+  // Program enrolment provisions a real account for the enrolment's email, plus a
+  // password-reset token, neither of which we created directly.
+  await step("reset tokens", () => db.passwordResetToken.deleteMany({ where: { email: { startsWith: `tn-verify-${RUN}-` } } }));
+  await step("provisioned accounts", () => db.user.deleteMany({ where: { email: { startsWith: `tn-verify-${RUN}-`, endsWith: "-learner@example.invalid" } } }));
   await step("notifications", () => db.notification.deleteMany({ where: { userId: { in: ids } } }));
   await step("wallet entries", () => db.walletEntry.deleteMany({ where: { userId: { in: ids } } }));
   await step("tutor earnings", () => db.tutorEarning.deleteMany({ where: { tutorId: { in: ids } } }));
@@ -373,7 +604,12 @@ async function main() {
     process.exit(2);
   }
 
-  process.env.TUTOR_EMAILS_DRY_RUN = "1";
+  process.env.TUTOR_EMAILS_DRY_RUN = "1"; process.env.EMAILS_DRY_RUN = "1";
+  process.env.EMAILS_DRY_RUN = "1";
+  // Belt and braces: even if the stub were bypassed, these could not authenticate.
+  delete process.env.ZOOM_ACCOUNT_ID;
+  delete process.env.ZOOM_CLIENT_ID;
+  delete process.env.ZOOM_CLIENT_SECRET;
   const category = await makeCategory();
 
   try {
@@ -424,14 +660,14 @@ async function main() {
     check("...but they still get the in-app notice", (await inApp(tOff.user.id, "course_approved")) === 1);
 
     // A failed send hands the claim back.
-    process.env.TUTOR_EMAILS_DRY_RUN = "0";
+    process.env.TUTOR_EMAILS_DRY_RUN = "0"; process.env.EMAILS_DRY_RUN = "0";
     const savedKey = process.env.RESEND_API_KEY;
     delete process.env.RESEND_API_KEY;
     const tFail = await makeTutor("fail", category.id);
     const failCourse = await makeCourse(tFail, "fail-course", "PUBLISHED");
     const rFail = await notifyCourseApproved(failCourse.id);
     if (savedKey) process.env.RESEND_API_KEY = savedKey;
-    process.env.TUTOR_EMAILS_DRY_RUN = "1";
+    process.env.TUTOR_EMAILS_DRY_RUN = "1"; process.env.EMAILS_DRY_RUN = "1";
     check("a failed send is reported", rFail.sent && !rFail.emailed && /email_failed/.test(rFail.reason ?? ""), rFail.reason);
     const released = await db.course.findUnique({ where: { id: failCourse.id }, select: { approvalNotifiedAt: true } });
     check("...and the claim is released so a retry can succeed", released?.approvalNotifiedAt == null);
@@ -534,12 +770,12 @@ async function main() {
     await notifyCourseApproved(failLive.id);
     await db.course.update({ where: { id: failLive.id }, data: reviewFieldsForSave({ currentStatus: "PUBLISHED", currentPublishedAt: null, publish: false, actorIsAdmin: false }) });
     await db.course.update({ where: { id: failLive.id }, data: { status: "PUBLISHED" } });
-    process.env.TUTOR_EMAILS_DRY_RUN = "0";
+    process.env.TUTOR_EMAILS_DRY_RUN = "0"; process.env.EMAILS_DRY_RUN = "0";
     const key2 = process.env.RESEND_API_KEY;
     delete process.env.RESEND_API_KEY;
     const rEditFail = await notifyCourseApproved(failLive.id);
     if (key2) process.env.RESEND_API_KEY = key2;
-    process.env.TUTOR_EMAILS_DRY_RUN = "1";
+    process.env.TUTOR_EMAILS_DRY_RUN = "1"; process.env.EMAILS_DRY_RUN = "1";
     check("a failed 'changes live' send is reported", rEditFail.sent && !rEditFail.emailed && /email_failed/.test(rEditFail.reason ?? ""), rEditFail.reason);
     check("...and the pending marker is restored", (await db.course.findUnique({ where: { id: failLive.id }, select: { reapprovalPendingSince: true } }))?.reapprovalPendingSince != null);
     const rEditRetry = await notifyCourseApproved(failLive.id);
@@ -677,6 +913,118 @@ async function main() {
     check("...the member's join is rolled back", (await db.groupMember.count({ where: { groupPurchaseId: Gb.group.id, userId: jb.id } })) === 0);
     check("...the group is still open", (await db.groupPurchase.findUnique({ where: { id: Gb.group.id }, select: { status: true } }))?.status === "ACTIVE");
     check("...and nothing was debited or announced", (await db.walletEntry.count({ where: { groupPurchaseId: Gb.group.id, type: "GROUP_CASHBACK_DEBIT" } })) === 0 && emailsTo(email("grpb"), "group-completed").length === 0);
+
+    // ======================= RECEIPTS =======================
+    realLog("\nReceipts — course sale, three simultaneous settlements");
+    verifyDelayMs = 400;
+    const tR = await makeTutor("rcpt", category.id);
+    const sR = await makeSale(tR, "rcpt-sale");
+    await Promise.all([1, 2, 3].map(() => finalizePaystackByReference(sR.reference)));
+    const rMail = emailsTo(email("rcpt-sale-student"), "payment-receipt");
+    check("the payer got exactly one receipt", rMail.length === 1, `${rMail.length}`);
+    const rd = rMail[0]?.detail ?? {};
+    check("...with the receipt subject", /^Your PalmTechnIQ receipt — /.test(rMail[0]?.subject ?? ""), rMail[0]?.subject);
+    const rTx = await db.transaction.findUnique({ where: { id: sR.tx.id }, select: { amount: true, vatAmount: true, subtotalAmount: true } });
+    check("...the amount paid is what was charged", rd.amountPaid === rTx?.amount, `${rd.amountPaid} vs ${rTx?.amount}`);
+    check("...and 10,000 + 7.5% VAT adds up to 10,750", rd.subtotal === 10000 && rd.vat === 750 && rd.total === 10750, JSON.stringify(rd));
+    check("...no discount and no wallet credit", rd.discount === 0 && rd.walletCredit === 0);
+    check("...the receipt number is in the PTQ-date-reference form", /^PTQ-\d{8}-[A-Z0-9]{1,8}$/.test(rd.receiptNumber ?? ""), rd.receiptNumber)
+    check("...paid by card", rd.paymentMethod === "Card", rd.paymentMethod);
+    await finalizePaystackByReference(sR.reference);
+    check("a later call sends no second receipt", emailsTo(email("rcpt-sale-student"), "payment-receipt").length === 1);
+    check("the tutor's sale email is unaffected", emailsTo(email("rcpt"), "course-sale").length === 1);
+    check("the tutor got no receipt (it is the payer's)", emailsTo(email("rcpt"), "payment-receipt").length === 0);
+
+    verifyDelayMs = 0;
+    realLog("\nReceipts — two-course cart, one on sale, with wallet credit");
+    const cart = await makeCart(tR, "rcpt-cart", 1500);
+    await finalizePaystackByReference(cart.reference);
+    const cMail = emailsTo(email("rcpt-cart-student"), "payment-receipt");
+    check("one receipt for the whole cart", cMail.length === 1, `${cMail.length}`);
+    const cd = cMail[0]?.detail ?? {};
+    check("...listing both courses", cd.lines === 2, `${cd.lines}`);
+    check("...titled as a multi-course purchase", /2 courses/.test(cd.title ?? ""), cd.title);
+    check("...showing the 2,000 saving", cd.discount === 2000, `${cd.discount}`);
+    check("...subtotal 13,000, VAT 975, total 13,975", cd.subtotal === 13000 && cd.vat === 975 && cd.total === 13975, JSON.stringify(cd));
+    check("...wallet credit 1,500 shown", cd.walletCredit === 1500, `${cd.walletCredit}`);
+    check("...and the amount paid is total less credit", cd.amountPaid === 12475 && cd.amountPaid === cart.charged, `${cd.amountPaid}`);
+    check("...arithmetic: total − credit = amount paid", Math.abs(cd.total - cd.walletCredit - cd.amountPaid) < 0.01);
+
+    realLog("\nReceipts — group purchase (creator)");
+    const tRg = await makeTutor("rcptg", category.id);
+    const Rg = await makeGroup(tRg, "rcptg", { size: 3, cashbackPercent: 0.1 });
+    await finalizePaystackByReference(Rg.reference);
+    const gMail = emailsTo(email("rcptg-creator"), "payment-receipt");
+    check("the creator got one receipt", gMail.length === 1, `${gMail.length}`);
+    check("...titled as a group purchase", gMail[0]?.detail?.title === "Group purchase", gMail[0]?.detail?.title);
+    check("...for the group price plus VAT", gMail[0]?.detail?.subtotal === 20000 && gMail[0]?.detail?.total === 21500, JSON.stringify(gMail[0]?.detail));
+    const jr = await makeUser("rcptg-j", "USER");
+    await executeJoinGroup({ userId: jr.id, inviteCode: Rg.inviteCode });
+    check("a member who joins for free is sent no receipt (nothing was paid)", emailsTo(email("rcptg-j"), "payment-receipt").length === 0);
+
+    realLog("\nReceipts — mentorship");
+    const tRm = await makeTutor("rcptm", category.id);
+    const M = await makeMentorship(tRm, "rcptm", 15000);
+    verifyDelayMs = 300;
+    await Promise.all([1, 2].map(() => finalizePaystackByReference(M.reference)));
+    verifyDelayMs = 0;
+    const mMail = emailsTo(email("rcptm-student"), "payment-receipt");
+    check("the booker got exactly one receipt", mMail.length === 1, `${mMail.length}`);
+    check("...titled as a mentorship session for the amount charged", mMail[0]?.detail?.title === "Mentorship session" && mMail[0]?.detail?.amountPaid === 15000, JSON.stringify(mMail[0]?.detail));
+
+    realLog("\nReceipts — tutor promotion fee, three simultaneous verifications");
+    const tRp = await makeTutor("rcptp", category.id);
+    const P = await makePromotion(tRp, "rcptp", 5000, 7);
+    const settles = await Promise.all([1, 2, 3].map(() => settlePromotionFee({ promotionId: P.promotion.id, reference: P.reference, verification: { channel: "bank_transfer" } })));
+    check("exactly one caller settled the fee", settles.filter((x) => x.settled).length === 1, `${settles.filter((x) => x.settled).length}`);
+    const pMail = emailsTo(email("rcptp"), "payment-receipt");
+    check("the tutor got exactly one promotion receipt", pMail.length === 1, `${pMail.length}`);
+    check("...for the fee, with no VAT", pMail[0]?.detail?.amountPaid === 5000 && pMail[0]?.detail?.vat === 0, JSON.stringify(pMail[0]?.detail));
+    check("...titled as a promotion fee", pMail[0]?.detail?.title === "Promotion fee");
+    check("the promotion is marked paid", (await db.coursePromotion.findUnique({ where: { id: P.promotion.id }, select: { feePaid: true } }))?.feePaid === true);
+
+    realLog("\nReceipts — program instalments");
+    // The older program emails call Resend directly, with no dry-run mode: with no
+    // key they fail quietly, which is all these tests need from them.
+    const savedResendKey = process.env.RESEND_API_KEY;
+    delete process.env.RESEND_API_KEY;
+    const E = await makeProgramEnrollment("rcptprog");
+    verifyDelayMs = 300;
+    await Promise.all([1, 2, 3].map(() => verifyEnrollmentPayment(E.ref1)));
+    verifyDelayMs = 0;
+    const eRow = await db.programEnrollment.findUnique({ where: { id: E.enrollment.id }, select: { amountPaid: true, status: true } });
+    const seats = (await db.programCohort.findUnique({ where: { id: E.cohort.id }, select: { seatsTaken: true } }))?.seatsTaken;
+    check("first instalment counted once, not three times", eRow?.amountPaid === E.first, `${eRow?.amountPaid} vs ${E.first}`);
+    check("...one seat taken", seats === 1, `${seats}`);
+    const eMail = emailsTo(E.learnerEmail, "payment-receipt");
+    check("...one receipt", eMail.length === 1, `${eMail.length}`);
+    check("...for the instalment amount", eMail[0]?.detail?.amountPaid === E.first && eMail[0]?.detail?.vat === 0, JSON.stringify(eMail[0]?.detail));
+    check("...and the balance still owed", eMail[0]?.detail?.balanceRemaining === E.second, `${eMail[0]?.detail?.balanceRemaining}`);
+    await verifyEnrollmentPayment(E.ref1);
+    check("a refreshed return page sends nothing more", emailsTo(E.learnerEmail, "payment-receipt").length === 1);
+
+    verifyDelayMs = 300;
+    const bal = await Promise.all([1, 2, 3].map(() => verifyAndCompleteBalancePayment(E.ref2, E.enrollment.id)));
+    verifyDelayMs = 0;
+    check("the balance payment succeeds for every caller", bal.every((r: any) => r.success), JSON.stringify(bal.map((r: any) => r.error ?? "ok")));
+    const eRow2 = await db.programEnrollment.findUnique({ where: { id: E.enrollment.id }, select: { amountPaid: true } });
+    check("...amount paid is the full total once", eRow2?.amountPaid === E.total, `${eRow2?.amountPaid} vs ${E.total}`);
+    const eMail2 = emailsTo(E.learnerEmail, "payment-receipt");
+    check("...a second receipt, exactly one", eMail2.length === 2, `${eMail2.length}`);
+    check("...for the balance, with nothing left owing", eMail2[1]?.detail?.amountPaid === E.second && (eMail2[1]?.detail?.balanceRemaining ?? 0) === 0, JSON.stringify(eMail2[1]?.detail));
+    if (savedResendKey !== undefined) process.env.RESEND_API_KEY = savedResendKey;
+
+    realLog("\nReceipts — independent of notification settings");
+    const sQuiet = await makeSale(await makeTutor("rcptq", category.id), "rcptq-sale", { studentPreferences: { emailNotifications: false } });
+    await finalizePaystackByReference(sQuiet.reference);
+    check("a payer with email notifications off still gets the receipt", emailsTo(email("rcptq-sale-student"), "payment-receipt").length === 1);
+
+    realLog("\nReceipts — builders");
+    check("receipt numbers are stable and readable", receiptNumber("ps_abc-123XYZ9", new Date("2026-09-25T10:00:00Z")) === "PTQ-20260925-C123XYZ9", receiptNumber("ps_abc-123XYZ9", new Date("2026-09-25T10:00:00Z")));
+    check("card payments are described with brand and last four", describePaymentMethod({ channel: "card", authorization: { card_type: "visa ", last4: "4081" } }) === "Visa card ending 4081", describePaymentMethod({ channel: "card", authorization: { card_type: "visa ", last4: "4081" } }));
+    check("bank transfers read plainly", describePaymentMethod({ channel: "bank_transfer" }) === "Bank transfer");
+    check("an unknown method falls back gracefully", describePaymentMethod(null) === "Paystack");
+    check("a receipt for a missing transaction is null, not a crash", (await buildTransactionReceipt("does-not-exist")) === null);
 
     // ======================= ANALYTICS =======================
     realLog("\nAnalytics table (PlatformEvent)");

@@ -21,6 +21,7 @@ import Script from "next/script";
 import "./globals.css";
 import { ToploaderProvider } from "@/components/shared/toploader-provider";
 import { SmoothScrollProvider } from "@/components/providers/smooth-scroll-provider";
+import { RegisterServiceWorker } from "@/components/pwa/register-service-worker";
 
 const inter = Inter({ subsets: ["latin"] });
 
@@ -142,6 +143,7 @@ export default async function MainRootLayout({
         </head>
         <body
           className={`${inter.className} bg-gray-900 text-white min-h-screen`}>
+          <RegisterServiceWorker />
           <ThemeProvider
             attribute="class"
             defaultTheme="dark"

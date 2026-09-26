@@ -57,6 +57,10 @@ function buildCsp(nonce: string): string {
     "connect-src 'self' https: wss: http://localhost:* https://localhost:*",
     "frame-src 'self' https://www.youtube.com https://www.youtube-nocookie.com https://isce-image.fra1.digitaloceanspaces.com https://www.facebook.com https://www.googletagmanager.com",
     "form-action 'self' https://www.facebook.com",
+    // Workers fall back to script-src when this is absent, and 'strict-dynamic'
+    // there makes browsers ignore 'self' — which would silently stop the offline
+    // service worker from registering. Stated explicitly so it cannot.
+    "worker-src 'self'",
     "object-src 'none'",
     "frame-ancestors 'none'",
     "base-uri 'self'",

@@ -1,0 +1,366 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <meta name="robots" content="noindex, nofollow" />
+    <meta name="theme-color" content="#10b981" />
+    <title>You&rsquo;re offline | PalmTechnIQ</title>
+    <!--
+      The page shown when the browser cannot reach PalmTechnIQ.
+
+      It is deliberately ONE self-contained file — inline CSS, inline script, no
+      framework — because it has to work when nothing else can be fetched. A
+      normal Next.js page would depend on hashed JS and CSS bundles that are not
+      cached, so offline it would render as unstyled, non-interactive HTML. This
+      cannot fail that way.
+
+      It is served by public/sw.js when a page load fails, and it takes care of
+      its own recovery: it watches for the connection to return and reloads the
+      page the visitor was trying to reach.
+
+      Colours mirror the design tokens in app/globals.css.
+    -->
+    <style>
+      :root {
+        --bg: hsl(192 100% 8%);
+        --card: hsl(192 100% 10%);
+        --primary: hsl(152 65% 48%);
+        --secondary: hsl(190 49% 67%);
+        --danger: hsl(0 84% 62%);
+        --amber: hsl(38 92% 58%);
+        --text: #ffffff;
+        --muted: rgba(255, 255, 255, 0.66);
+        --line: rgba(255, 255, 255, 0.12);
+      }
+      * { box-sizing: border-box; }
+      html, body { height: 100%; }
+      body {
+        margin: 0;
+        min-height: 100vh;
+        display: flex;
+        flex-direction: column;
+        align-items: center;
+        justify-content: center;
+        padding: 24px 20px 40px;
+        color: var(--text);
+        font-family: Inter, ui-sans-serif, system-ui, -apple-system, "Segoe UI",
+          Roboto, "Helvetica Neue", Arial, sans-serif;
+        background-color: var(--bg);
+        background-image:
+          radial-gradient(circle at 20% 80%, hsl(190 49% 67% / 0.12) 0%, transparent 50%),
+          radial-gradient(circle at 80% 20%, hsl(152 65% 48% / 0.12) 0%, transparent 50%),
+          radial-gradient(circle at 40% 40%, hsl(84 61% 45% / 0.08) 0%, transparent 50%);
+      }
+
+      /* ---- top banner ------------------------------------------------- */
+      .banner {
+        position: fixed;
+        top: 16px;
+        left: 50%;
+        transform: translateX(-50%);
+        width: min(92vw, 520px);
+        display: flex;
+        gap: 14px;
+        align-items: flex-start;
+        padding: 14px 18px;
+        border-radius: 12px;
+        border: 1px solid hsl(0 84% 62% / 0.35);
+        background: hsl(0 60% 12% / 0.92);
+        color: hsl(0 100% 86%);
+        box-shadow: 0 10px 30px rgba(0, 0, 0, 0.35);
+        transition: border-color 0.3s, background 0.3s, color 0.3s;
+      }
+      .banner svg { flex: none; margin-top: 2px; }
+      .banner strong { display: block; font-size: 15px; }
+      .banner span { font-size: 14px; opacity: 0.9; }
+      .banner.online {
+        border-color: hsl(152 65% 48% / 0.45);
+        background: hsl(152 60% 10% / 0.94);
+        color: hsl(152 80% 84%);
+      }
+
+      /* ---- card ------------------------------------------------------- */
+      main {
+        width: min(100%, 560px);
+        text-align: center;
+        /* Clears the fixed banner, which is taller when its text wraps. */
+        margin-top: 104px;
+      }
+      .logo { height: 34px; width: auto; margin: 0 auto 34px; display: block; opacity: 0.95; }
+
+      .orb {
+        width: 116px; height: 116px;
+        margin: 0 auto 26px;
+        border-radius: 50%;
+        display: grid; place-items: center;
+        color: var(--danger);
+        background: hsl(0 60% 10% / 0.7);
+        border: 1px solid hsl(0 84% 62% / 0.4);
+        box-shadow: 0 0 60px hsl(0 84% 62% / 0.22);
+        transition: color 0.3s, border-color 0.3s, box-shadow 0.3s, background 0.3s;
+      }
+      .orb.checking { color: var(--amber); border-color: hsl(38 92% 58% / 0.45); box-shadow: 0 0 60px hsl(38 92% 58% / 0.2); background: hsl(38 60% 10% / 0.7); }
+      .orb.online   { color: var(--primary); border-color: hsl(152 65% 48% / 0.5); box-shadow: 0 0 60px hsl(152 65% 48% / 0.25); background: hsl(152 60% 9% / 0.7); }
+
+      .pill {
+        display: inline-flex; align-items: center; gap: 8px;
+        padding: 7px 16px;
+        border-radius: 999px;
+        font-size: 13px; font-weight: 600; letter-spacing: 0.06em; text-transform: uppercase;
+        color: var(--danger);
+        border: 1px solid hsl(0 84% 62% / 0.4);
+        background: hsl(0 84% 62% / 0.1);
+        transition: color 0.3s, border-color 0.3s, background 0.3s;
+      }
+      .pill i { width: 9px; height: 9px; border-radius: 50%; background: currentColor; display: block; }
+      .pill.checking { color: var(--amber); border-color: hsl(38 92% 58% / 0.45); background: hsl(38 92% 58% / 0.1); }
+      .pill.checking i { animation: pulse 1s ease-in-out infinite; }
+      .pill.online { color: var(--primary); border-color: hsl(152 65% 48% / 0.45); background: hsl(152 65% 48% / 0.1); }
+
+      h1 { margin: 22px 0 12px; font-size: clamp(28px, 6vw, 38px); line-height: 1.15; letter-spacing: -0.02em; }
+      p.lead { margin: 0 auto; max-width: 470px; font-size: 17px; line-height: 1.6; color: var(--muted); }
+      .target {
+        display: inline-block; margin-top: 18px; max-width: 100%;
+        padding: 6px 12px; border-radius: 8px;
+        font: 13px ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
+        color: var(--secondary); background: rgba(255, 255, 255, 0.05); border: 1px solid var(--line);
+        overflow: hidden; text-overflow: ellipsis; white-space: nowrap;
+      }
+      .target:empty { display: none; }
+
+      /* ---- actions ---------------------------------------------------- */
+      .actions { margin-top: 34px; display: grid; gap: 12px; }
+      button {
+        font: inherit; cursor: pointer; border-radius: 14px;
+        display: inline-flex; align-items: center; justify-content: center; gap: 10px;
+        min-height: 56px; padding: 0 22px; font-weight: 600; font-size: 16px;
+        transition: transform 0.15s, opacity 0.2s, background 0.2s, box-shadow 0.2s;
+      }
+      button:focus-visible { outline: 3px solid hsl(190 49% 67% / 0.7); outline-offset: 3px; }
+      button:active { transform: scale(0.985); }
+      button[disabled] { opacity: 0.7; cursor: progress; }
+      .primary {
+        border: 0; color: #04241d;
+        background: linear-gradient(90deg, var(--primary), var(--secondary));
+        box-shadow: 0 10px 30px hsl(152 65% 48% / 0.28);
+      }
+      .primary:hover { box-shadow: 0 12px 36px hsl(152 65% 48% / 0.4); }
+      .ghost { color: var(--text); background: rgba(255, 255, 255, 0.04); border: 1px solid var(--line); }
+      .ghost:hover { background: rgba(255, 255, 255, 0.09); }
+
+      .hint { margin-top: 18px; min-height: 22px; font-size: 14px; color: var(--muted); }
+
+      .spin { animation: spin 0.9s linear infinite; }
+      @keyframes spin { to { transform: rotate(360deg); } }
+      @keyframes pulse { 50% { opacity: 0.25; } }
+      @media (prefers-reduced-motion: reduce) {
+        .spin, .pill.checking i { animation: none; }
+        * { transition: none !important; }
+      }
+    </style>
+  </head>
+  <body>
+    <div class="banner" id="banner" role="status" aria-live="polite">
+      <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+        <circle cx="12" cy="12" r="10"></circle><line x1="12" y1="8" x2="12" y2="12"></line><line x1="12" y1="16" x2="12.01" y2="16"></line>
+      </svg>
+      <div>
+        <strong id="banner-title">You are offline</strong>
+        <span id="banner-text">Please check your internet connection.</span>
+      </div>
+    </div>
+
+    <main>
+      <img class="logo" src="/assets/palmtechniqlogo.png" alt="PalmTechnIQ" />
+
+      <div class="orb" id="orb" aria-hidden="true">
+        <svg id="orb-icon" width="52" height="52" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round">
+          <path d="M12 20h.01"></path><path d="M8.5 16.429a5 5 0 0 1 7 0"></path><path d="M5 12.859a10 10 0 0 1 5.17-2.69"></path>
+          <path d="M19 12.859a10 10 0 0 0-2.007-1.523"></path><path d="M2 8.82a15 15 0 0 1 4.177-2.643"></path>
+          <path d="M22 8.82a15 15 0 0 0-11.288-3.764"></path><path d="m2 2 20 20"></path>
+        </svg>
+      </div>
+
+      <div class="pill" id="pill" role="status" aria-live="polite"><i></i><span id="pill-text">Disconnected</span></div>
+
+      <h1 id="title">No Internet Connection</h1>
+      <p class="lead" id="lead">
+        We couldn&rsquo;t connect to the internet. Please check your Wi-Fi or mobile data.
+        PalmTechnIQ will automatically reconnect once your connection is restored.
+      </p>
+      <div class="target" id="target" title="The page you were trying to open"></div>
+
+      <div class="actions">
+        <button class="primary" id="retry" type="button">
+          <svg id="retry-icon" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+            <path d="M3 12a9 9 0 0 1 9-9 9.75 9.75 0 0 1 6.74 2.74L21 8"></path><path d="M21 3v5h-5"></path>
+            <path d="M21 12a9 9 0 0 1-9 9 9.75 9.75 0 0 1-6.74-2.74L3 16"></path><path d="M8 16H3v5"></path>
+          </svg>
+          <span id="retry-text">Try Reconnecting</span>
+        </button>
+        <button class="ghost" id="reload" type="button">Reload Page</button>
+      </div>
+      <div class="hint" id="hint" role="status" aria-live="polite"></div>
+    </main>
+
+    <script>
+      (function () {
+        var $ = function (id) { return document.getElementById(id); };
+        var el = {
+          banner: $("banner"), bannerTitle: $("banner-title"), bannerText: $("banner-text"),
+          orb: $("orb"), pill: $("pill"), pillText: $("pill-text"),
+          title: $("title"), lead: $("lead"), target: $("target"),
+          retry: $("retry"), retryText: $("retry-text"), retryIcon: $("retry-icon"),
+          reload: $("reload"), hint: $("hint")
+        };
+
+        // The service worker serves this page in place of whatever the visitor
+        // asked for, so the address bar still shows the page they wanted.
+        // Show it, and reload it once the connection is back.
+        var wanted = location.pathname + location.search;
+        if (wanted && wanted !== "/offline.html") el.target.textContent = wanted;
+
+        var busy = false;
+        var done = false;
+        var attempt = 0;
+        var timer = null;
+
+        function setState(state) {
+          el.orb.className = "orb" + (state === "offline" ? "" : " " + state);
+          el.pill.className = "pill" + (state === "offline" ? "" : " " + state);
+          el.banner.className = "banner" + (state === "online" ? " online" : "");
+          if (state === "offline") {
+            el.pillText.textContent = "Disconnected";
+            el.bannerTitle.textContent = "You are offline";
+            el.bannerText.textContent = "Please check your internet connection.";
+          } else if (state === "checking") {
+            el.pillText.textContent = "Reconnecting";
+            el.bannerTitle.textContent = "Checking your connection";
+            el.bannerText.textContent = "One moment.";
+          } else {
+            el.pillText.textContent = "Back online";
+            el.bannerTitle.textContent = "You are back online";
+            el.bannerText.textContent = "Loading the page.";
+            el.title.textContent = "You’re back online";
+            el.lead.textContent = "Connection restored. Taking you back now…";
+          }
+        }
+
+        // Is the site actually reachable?
+        //
+        // navigator.onLine cannot answer this: it reports "online" for a phone
+        // on Wi-Fi with no internet behind it, which is exactly the state this
+        // page exists for. So ask the server. /ping.txt is a tiny static file;
+        // the timestamp and no-store defeat every cache, and requiring its
+        // exact contents defeats a captive portal that answers 200 to anything.
+        function reachable() {
+          var controller = typeof AbortController === "function" ? new AbortController() : null;
+          var abort = setTimeout(function () { if (controller) controller.abort(); }, 6000);
+          return fetch("/ping.txt?t=" + Date.now(), {
+            cache: "no-store",
+            signal: controller ? controller.signal : undefined
+          })
+            .then(function (res) { return res.ok ? res.text() : ""; })
+            .then(function (body) { return body.trim() === "ok"; })
+            .catch(function () { return false; })
+            .then(function (ok) { clearTimeout(abort); return ok; });
+        }
+
+        // Guard against a reload loop. The probe file can be reachable while the
+        // page itself still fails to load (a partly-down site, a proxy that lets
+        // small static files through). Each reload would then land back here and
+        // try again, forever. After three automatic reloads in a minute, stop and
+        // hand the decision back to the visitor.
+        var RELOADS_KEY = "ptq-offline-reloads";
+        function recentReloads() {
+          try {
+            var now = Date.now();
+            return JSON.parse(sessionStorage.getItem(RELOADS_KEY) || "[]").filter(function (t) { return now - t < 60000; });
+          } catch (e) { return []; }
+        }
+        function noteReload() {
+          try {
+            var list = recentReloads();
+            list.push(Date.now());
+            sessionStorage.setItem(RELOADS_KEY, JSON.stringify(list));
+          } catch (e) {}
+        }
+
+        function goBack() {
+          if (done) return;
+          done = true;
+          clearTimeout(timer);
+          setState("online");
+
+          if (recentReloads().length >= 3) {
+            el.pillText.textContent = "Connected";
+            el.bannerTitle.textContent = "Connected";
+            el.bannerText.textContent = "But this page is not opening yet.";
+            el.title.textContent = "Connected, but the page won’t load";
+            el.lead.textContent = "We can reach PalmTechnIQ, but this page still isn’t opening. Give it a moment, then reload.";
+            el.retry.disabled = true;
+            return;
+          }
+
+          noteReload();
+          el.retry.disabled = true;
+          // Reload rather than navigate: the address bar already holds the page
+          // they wanted, and the service worker now lets it through.
+          setTimeout(function () { location.reload(); }, 700);
+        }
+
+        function check(manual) {
+          if (busy || done) return Promise.resolve();
+          busy = true;
+          if (manual) {
+            el.retry.disabled = true;
+            el.retryText.textContent = "Checking…";
+            el.retryIcon.setAttribute("class", "spin");
+            el.hint.textContent = "";
+          }
+          setState("checking");
+
+          return reachable().then(function (ok) {
+            busy = false;
+            if (ok) return goBack();
+
+            setState("offline");
+            if (manual) {
+              el.retry.disabled = false;
+              el.retryText.textContent = "Try Reconnecting";
+              el.retryIcon.removeAttribute("class");
+              el.hint.textContent = "Still offline. We’ll keep trying automatically.";
+            }
+            schedule();
+          });
+        }
+
+        // Keep trying without hammering a weak connection: quick at first, then
+        // settling at ten seconds.
+        function schedule() {
+          clearTimeout(timer);
+          if (done) return;
+          var delays = [2500, 4000, 6000, 8000, 10000];
+          var wait = delays[Math.min(attempt, delays.length - 1)];
+          attempt += 1;
+          timer = setTimeout(function () { check(false); }, wait);
+        }
+
+        el.retry.addEventListener("click", function () { check(true); });
+        el.reload.addEventListener("click", function () { location.reload(); });
+
+        // The browser often knows first. Check straight away rather than waiting
+        // for the next tick when it says the network is back, or when the visitor
+        // returns to this tab.
+        window.addEventListener("online", function () { check(false); });
+        document.addEventListener("visibilitychange", function () {
+          if (document.visibilityState === "visible") check(false);
+        });
+
+        setState("offline");
+        schedule();
+      })();
+    </script>
+  </body>
+</html>
