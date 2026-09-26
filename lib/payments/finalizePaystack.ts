@@ -85,361 +85,368 @@ export async function finalizePaystackByReference(reference: string) {
     value: tx.amount,
   });
 
-  const settlement = await db.$transaction(async (px: any) => {
-    // Claim the settlement. The "already COMPLETED" check at the top of this
-    // function reads `tx` BEFORE any of this runs, so it cannot stop two
-    // callers that overlap — and three things call this for the same payment:
-    // Paystack's webhook, /api/paystack/finalize on the return page, and the
-    // payment sweep. Nothing below is idempotent (creditWallet is a plain
-    // increment, TutorEarning has no uniqueness on course sales), so if both
-    // got through, the tutor would be credited twice.
-    //
-    // A conditional update is the fix: Postgres makes the second caller wait
-    // on the row lock, then re-checks the WHERE against the committed row, so
-    // it matches nothing and backs out having written nothing.
-    const claimed = await px.transaction.updateMany({
-      where: { id: tx.id, status: { not: "COMPLETED" } },
-      data: {
-        status: "COMPLETED",
-        paymentId: v.reference,
-        paymentDate: new Date(v.paid_at),
-        metadata: { ...((tx.metadata as any) || {}), verify: v },
-      },
-    });
-    if (claimed.count === 0) return { alreadySettled: true as const };
+  const settlement = await db.$transaction(
+    async (px: any) => {
+      // Claim the settlement. The "already COMPLETED" check at the top of this
+      // function reads `tx` BEFORE any of this runs, so it cannot stop two
+      // callers that overlap — and three things call this for the same payment:
+      // Paystack's webhook, /api/paystack/finalize on the return page, and the
+      // payment sweep. Nothing below is idempotent (creditWallet is a plain
+      // increment, TutorEarning has no uniqueness on course sales), so if both
+      // got through, the tutor would be credited twice.
+      //
+      // A conditional update is the fix: Postgres makes the second caller wait
+      // on the row lock, then re-checks the WHERE against the committed row, so
+      // it matches nothing and backs out having written nothing.
+      const claimed = await px.transaction.updateMany({
+        where: { id: tx.id, status: { not: "COMPLETED" } },
+        data: {
+          status: "COMPLETED",
+          paymentId: v.reference,
+          paymentDate: new Date(v.paid_at),
+          metadata: { ...((tx.metadata as any) || {}), verify: v },
+        },
+      });
+      if (claimed.count === 0) return { alreadySettled: true as const };
 
-    const metadata = (v.metadata || tx.metadata || {}) as any;
-    const isMentorshipPayment = metadata?.productType === "MENTORSHIP";
-    if (isMentorshipPayment) {
-      const mentorshipSessionId = metadata?.mentorshipSessionId as
-        | string
-        | undefined;
-      if (mentorshipSessionId) {
-        const session = await px.mentorshipSession.findUnique({
-          where: { id: mentorshipSessionId },
-          include: {
-            student: { select: { email: true, name: true } },
-            tutor: { select: { email: true, name: true } },
-          },
-        });
-
-        if (session) {
-          let meetingUrl = session.meetingUrl;
-
-          // Create Zoom meeting if not already created
-          if (!meetingUrl) {
-            try {
-              const zoomMeeting = await createZoomMeeting({
-                topic: session.title,
-                startTime: session.scheduledAt.toISOString(),
-                duration: session.duration,
-                mentorEmail: session.tutor.email,
-                studentEmail: session.student.email,
-                description: session.description || undefined,
-              });
-              meetingUrl = zoomMeeting.joinUrl;
-
-              // Log Zoom creation for troubleshooting
-              console.log(
-                `[Zoom Meeting Created] Session: ${mentorshipSessionId}, Meeting ID: ${zoomMeeting.meetingId}`,
-              );
-            } catch (error) {
-              // Fallback to manual meeting URL - log error but don't fail the payment
-              console.error(
-                `[Zoom Meeting Creation Failed] Session: ${mentorshipSessionId}, Error: ${error}`,
-              );
-              meetingUrl = null; // Will prompt tutor to add manually
-            }
-          }
-
-          await px.mentorshipSession.update({
+      const metadata = (v.metadata || tx.metadata || {}) as any;
+      const isMentorshipPayment = metadata?.productType === "MENTORSHIP";
+      if (isMentorshipPayment) {
+        const mentorshipSessionId = metadata?.mentorshipSessionId as
+          | string
+          | undefined;
+        if (mentorshipSessionId) {
+          const session = await px.mentorshipSession.findUnique({
             where: { id: mentorshipSessionId },
-            data: {
-              status: "SCHEDULED",
-              meetingUrl: meetingUrl || undefined,
-              paymentStatus: "PAID",
-              notes: `PAYMENT_CONFIRMED | ${new Date(v.paid_at).toISOString()}`,
+            include: {
+              student: { select: { email: true, name: true } },
+              tutor: { select: { email: true, name: true } },
             },
           });
 
-          // Emit notifications to both student and tutor
-          const tutorShare =
-            tx.tutorShareAmount ?? computeMentorshipSplit(tx.amount || 0).tutorShareAmount;
+          if (session) {
+            let meetingUrl = session.meetingUrl;
 
-          await notify.user(session.studentId, {
-            type: "payment",
-            title: "Mentorship Booking Confirmed",
-            message: `Your mentorship session "${session.title}" has been paid. The meeting will start at the scheduled time.`,
-            actionUrl: `/mentorship/session/${mentorshipSessionId}`,
-            actionLabel: "View Session",
+            // Create Zoom meeting if not already created
+            if (!meetingUrl) {
+              try {
+                const zoomMeeting = await createZoomMeeting({
+                  topic: session.title,
+                  startTime: session.scheduledAt.toISOString(),
+                  duration: session.duration,
+                  mentorEmail: session.tutor.email,
+                  studentEmail: session.student.email,
+                  description: session.description || undefined,
+                });
+                meetingUrl = zoomMeeting.joinUrl;
+
+                // Log Zoom creation for troubleshooting
+                console.log(
+                  `[Zoom Meeting Created] Session: ${mentorshipSessionId}, Meeting ID: ${zoomMeeting.meetingId}`,
+                );
+              } catch (error) {
+                // Fallback to manual meeting URL - log error but don't fail the payment
+                console.error(
+                  `[Zoom Meeting Creation Failed] Session: ${mentorshipSessionId}, Error: ${error}`,
+                );
+                meetingUrl = null; // Will prompt tutor to add manually
+              }
+            }
+
+            await px.mentorshipSession.update({
+              where: { id: mentorshipSessionId },
+              data: {
+                status: "SCHEDULED",
+                meetingUrl: meetingUrl || undefined,
+                paymentStatus: "PAID",
+                notes: `PAYMENT_CONFIRMED | ${new Date(v.paid_at).toISOString()}`,
+              },
+            });
+
+            // Emit notifications to both student and tutor
+            const tutorShare =
+              tx.tutorShareAmount ??
+              computeMentorshipSplit(tx.amount || 0).tutorShareAmount;
+
+            await notify.user(session.studentId, {
+              type: "payment",
+              title: "Mentorship Booking Confirmed",
+              message: `Your mentorship session "${session.title}" has been paid. The meeting will start at the scheduled time.`,
+              actionUrl: `/mentorship/session/${mentorshipSessionId}`,
+              actionLabel: "View Session",
+            });
+
+            await notify.user(session.tutorId, {
+              type: "payment",
+              title: "Mentorship Payment Received",
+              message: `Payment received for "${session.title}". You've earned ₦${tutorShare.toLocaleString()}.`,
+              actionUrl: `/tutor/mentorship`,
+              actionLabel: "View Sessions",
+            });
+          }
+        }
+
+        const tutorId = metadata?.tutorUserId as string | undefined;
+        const tutorShare =
+          tx.tutorShareAmount ??
+          computeMentorshipSplit(tx.amount || 0).tutorShareAmount;
+        if (tutorId && tutorShare > 0) {
+          // Record the earning in the same transaction as the wallet credit.
+          // Without this the money is spendable but invisible to the ledger, and
+          // wallet balance can never be reconciled against TutorEarning.
+          const sessionId = metadata?.mentorshipSessionId as string | undefined;
+          const earning = await px.tutorEarning.create({
+            data: {
+              tutorId,
+              source: "MENTORSHIP",
+              amount: tutorShare,
+              splitPercent: deriveSplitPercent({
+                discountedPrice: tx.amount || 0,
+                tutorShareAmount: tutorShare,
+              }),
+              status: "AVAILABLE",
+              transactionId: tx.id,
+              mentorshipSessionId: sessionId ?? null,
+            },
           });
 
-          await notify.user(session.tutorId, {
-            type: "payment",
-            title: "Mentorship Payment Received",
-            message: `Payment received for "${session.title}". You've earned ₦${tutorShare.toLocaleString()}.`,
-            actionUrl: `/tutor/mentorship`,
-            actionLabel: "View Sessions",
+          await creditWallet(px, {
+            userId: tutorId,
+            amount: tutorShare,
+            type: "MENTORSHIP_EARNING",
+            transactionId: tx.id,
+            tutorEarningId: earning.id,
+            description: "Mentorship session",
+          });
+        }
+        return;
+      }
+
+      const groupPurchaseId = metadata.groupPurchaseId ?? tx.groupPurchaseId;
+
+      const isGroupPurchase = Boolean(groupPurchaseId);
+      if (isGroupPurchase) {
+        await px.groupPurchase.update({
+          where: { id: groupPurchaseId },
+          data: {
+            status: "ACTIVE",
+            paidAt: new Date(v.paid_at),
+          },
+        });
+      }
+
+      const courseIds = Array.isArray(metadata.courseIds)
+        ? metadata.courseIds
+        : tx.courseId
+          ? [tx.courseId]
+          : [];
+
+      let lineItems = tx.lineItems;
+      if (!lineItems || lineItems.length === 0) {
+        const courses = await px.course.findMany({
+          where: { id: { in: courseIds } },
+          select: {
+            id: true,
+            basePrice: true,
+            currentPrice: true,
+            price: true,
+            tutor: { select: { userId: true } },
+          },
+        });
+        const promo =
+          tx.promoCode &&
+          tx.promoType &&
+          tx.promoDiscountType &&
+          tx.promoDiscountValue !== null &&
+          tx.promoDiscountValue !== undefined
+            ? {
+                id: tx.promoCode.id,
+                code: tx.promoCode.code,
+                promoType: tx.promoType,
+                discountType: tx.promoDiscountType,
+                discountValue: tx.promoDiscountValue,
+                isGlobal: tx.promoCode.isGlobal,
+                courseId: tx.promoCode.courseId,
+                creatorId: tx.promoCode.creatorId,
+              }
+            : null;
+
+        // Resolve referral if present on the transaction
+        const referralTutorId = tx.referralCode
+          ? await resolveTutorReferralCode(tx.referralCode)
+          : null;
+
+        const totals = computeCheckoutTotals({
+          courses: courses.map((course: any) => ({
+            id: course.id,
+            tutorId: course.tutor.userId,
+            basePrice: course.basePrice,
+            currentPrice: course.currentPrice,
+            price: course.price,
+          })),
+          promo,
+          vatRate: REVENUE.vatRate,
+          referralTutorId,
+        });
+
+        await px.transaction.update({
+          where: { id: tx.id },
+          data: {
+            subtotalAmount: totals.subtotalAmount,
+            discountAmount: totals.discountAmount,
+            vatAmount: totals.vatAmount,
+            tutorShareAmount: totals.tutorShareAmount,
+            platformShareAmount: totals.platformShareAmount,
+          },
+        });
+
+        await px.transactionLineItem.createMany({
+          data: totals.lineItems.map((item) => ({
+            transactionId: tx.id,
+            courseId: item.courseId,
+            tutorId: item.tutorId,
+            basePrice: item.basePrice,
+            discountedPrice: item.discountedPrice,
+            discountAmount: item.discountAmount,
+            vatAmount: item.vatAmount,
+            totalAmount: item.totalAmount,
+            tutorShareAmount: item.tutorShareAmount,
+            platformShareAmount: item.platformShareAmount,
+            isReferralPurchase: item.isReferralPurchase,
+            promoCodeId: item.promoCodeId ?? undefined,
+            promoType: item.promoType,
+            promoDiscountType: item.promoDiscountType,
+            promoDiscountValue: item.promoDiscountValue ?? undefined,
+          })),
+        });
+
+        // createMany does not return rows, and the earnings below need the
+        // generated line item ids.
+        lineItems = await px.transactionLineItem.findMany({
+          where: { transactionId: tx.id },
+        });
+      }
+
+      if (!isGroupPurchase && courseIds.length > 0) {
+        // One round-trip instead of one per course. skipDuplicates matches the
+        // previous upsert-with-empty-update: create if missing, leave existing
+        // enrollments untouched.
+        await px.enrollment.createMany({
+          data: courseIds.map((courseId: string) => ({
+            userId: tx.userId,
+            courseId,
+            status: "ACTIVE",
+            enrolledAt: new Date(),
+          })),
+          skipDuplicates: true,
+        });
+
+        await px.cartItem.deleteMany({
+          where: {
+            userId: tx.userId,
+            courseId: { in: courseIds },
+          },
+        });
+      }
+
+      if (tx.vatAmount && tx.vatAmount > 0) {
+        await px.vatLedger.upsert({
+          where: { transactionId: tx.id },
+          create: {
+            transactionId: tx.id,
+            amount: tx.vatAmount,
+            currency: tx.currency,
+          },
+          update: {},
+        });
+      }
+
+      if (tx.promoCodeId) {
+        const existingRedemption = await px.promoRedemption.findFirst({
+          where: { promoCodeId: tx.promoCodeId, transactionId: tx.id },
+          select: { id: true },
+        });
+        if (!existingRedemption) {
+          await px.promoRedemption.create({
+            data: {
+              promoCodeId: tx.promoCodeId,
+              userId: tx.userId,
+              transactionId: tx.id,
+              courseId: tx.courseId ?? undefined,
+            },
           });
         }
       }
 
-      const tutorId = metadata?.tutorUserId as string | undefined;
-      const tutorShare =
-        tx.tutorShareAmount ?? computeMentorshipSplit(tx.amount || 0).tutorShareAmount;
-      if (tutorId && tutorShare > 0) {
-        // Record the earning in the same transaction as the wallet credit.
-        // Without this the money is spendable but invisible to the ledger, and
-        // wallet balance can never be reconciled against TutorEarning.
-        const sessionId = metadata?.mentorshipSessionId as string | undefined;
-        const earning = await px.tutorEarning.create({
-          data: {
-            tutorId,
-            source: "MENTORSHIP",
-            amount: tutorShare,
-            splitPercent: deriveSplitPercent({
-              discountedPrice: tx.amount || 0,
-              tutorShareAmount: tutorShare,
-            }),
+      if (lineItems && lineItems.length > 0) {
+        // One insert for every earning rather than one per line item. A bundle
+        // multiplies these by the number of courses, which is what pushed this
+        // transaction past its timeout.
+        await px.tutorEarning.createMany({
+          data: lineItems.map((item: any) => ({
+            tutorId: item.tutorId,
+            transactionId: tx.id,
+            transactionLineItemId: item.id,
+            courseId: item.courseId,
+            amount: item.tutorShareAmount,
+            // Derived from the amounts that actually moved, not re-decided
+            // from the scenario — the ledger cannot disagree with the money.
+            splitPercent: deriveSplitPercent(item),
             status: "AVAILABLE",
+          })),
+        });
+
+        // Credit each tutor once for the whole transaction. Every course in a
+        // bundle belongs to the same tutor, so this collapses N updates to one
+        // while moving exactly the same total.
+        const creditByTutor = new Map<string, number>();
+        for (const item of lineItems) {
+          creditByTutor.set(
+            item.tutorId,
+            (creditByTutor.get(item.tutorId) ?? 0) + item.tutorShareAmount,
+          );
+        }
+
+        for (const [tutorId, amount] of creditByTutor) {
+          await creditWallet(px, {
+            userId: tutorId,
+            amount,
+            type: "COURSE_EARNING",
             transactionId: tx.id,
-            mentorshipSessionId: sessionId ?? null,
-          },
-        });
-
-        await creditWallet(px, {
-          userId: tutorId,
-          amount: tutorShare,
-          type: "MENTORSHIP_EARNING",
-          transactionId: tx.id,
-          tutorEarningId: earning.id,
-          description: "Mentorship session",
-        });
-      }
-      return;
-    }
-
-    const groupPurchaseId = metadata.groupPurchaseId ?? tx.groupPurchaseId;
-
-    const isGroupPurchase = Boolean(groupPurchaseId);
-    if (isGroupPurchase) {
-      await px.groupPurchase.update({
-        where: { id: groupPurchaseId },
-        data: {
-          status: "ACTIVE",
-          paidAt: new Date(v.paid_at),
-        },
-      });
-    }
-
-    const courseIds = Array.isArray(metadata.courseIds)
-      ? metadata.courseIds
-      : tx.courseId
-        ? [tx.courseId]
-        : [];
-
-    let lineItems = tx.lineItems;
-    if (!lineItems || lineItems.length === 0) {
-      const courses = await px.course.findMany({
-        where: { id: { in: courseIds } },
-        select: {
-          id: true,
-          basePrice: true,
-          currentPrice: true,
-          price: true,
-          tutor: { select: { userId: true } },
-        },
-      });
-      const promo =
-        tx.promoCode &&
-        tx.promoType &&
-        tx.promoDiscountType &&
-        tx.promoDiscountValue !== null &&
-        tx.promoDiscountValue !== undefined
-          ? {
-              id: tx.promoCode.id,
-              code: tx.promoCode.code,
-              promoType: tx.promoType,
-              discountType: tx.promoDiscountType,
-              discountValue: tx.promoDiscountValue,
-              isGlobal: tx.promoCode.isGlobal,
-              courseId: tx.promoCode.courseId,
-              creatorId: tx.promoCode.creatorId,
-            }
-          : null;
-
-      // Resolve referral if present on the transaction
-      const referralTutorId = tx.referralCode
-        ? await resolveTutorReferralCode(tx.referralCode)
-        : null;
-
-      const totals = computeCheckoutTotals({
-        courses: courses.map((course: any) => ({
-          id: course.id,
-          tutorId: course.tutor.userId,
-          basePrice: course.basePrice,
-          currentPrice: course.currentPrice,
-          price: course.price,
-        })),
-        promo,
-        vatRate: REVENUE.vatRate,
-        referralTutorId,
-      });
-
-      await px.transaction.update({
-        where: { id: tx.id },
-        data: {
-          subtotalAmount: totals.subtotalAmount,
-          discountAmount: totals.discountAmount,
-          vatAmount: totals.vatAmount,
-          tutorShareAmount: totals.tutorShareAmount,
-          platformShareAmount: totals.platformShareAmount,
-        },
-      });
-
-      await px.transactionLineItem.createMany({
-        data: totals.lineItems.map((item) => ({
-          transactionId: tx.id,
-          courseId: item.courseId,
-          tutorId: item.tutorId,
-          basePrice: item.basePrice,
-          discountedPrice: item.discountedPrice,
-          discountAmount: item.discountAmount,
-          vatAmount: item.vatAmount,
-          totalAmount: item.totalAmount,
-          tutorShareAmount: item.tutorShareAmount,
-          platformShareAmount: item.platformShareAmount,
-          isReferralPurchase: item.isReferralPurchase,
-          promoCodeId: item.promoCodeId ?? undefined,
-          promoType: item.promoType,
-          promoDiscountType: item.promoDiscountType,
-          promoDiscountValue: item.promoDiscountValue ?? undefined,
-        })),
-      });
-
-      // createMany does not return rows, and the earnings below need the
-      // generated line item ids.
-      lineItems = await px.transactionLineItem.findMany({
-        where: { transactionId: tx.id },
-      });
-    }
-
-    if (!isGroupPurchase && courseIds.length > 0) {
-      // One round-trip instead of one per course. skipDuplicates matches the
-      // previous upsert-with-empty-update: create if missing, leave existing
-      // enrollments untouched.
-      await px.enrollment.createMany({
-        data: courseIds.map((courseId: string) => ({
-          userId: tx.userId,
-          courseId,
-          status: "ACTIVE",
-          enrolledAt: new Date(),
-        })),
-        skipDuplicates: true,
-      });
-
-      await px.cartItem.deleteMany({
-        where: {
-          userId: tx.userId,
-          courseId: { in: courseIds },
-        },
-      });
-    }
-
-    if (tx.vatAmount && tx.vatAmount > 0) {
-      await px.vatLedger.upsert({
-        where: { transactionId: tx.id },
-        create: {
-          transactionId: tx.id,
-          amount: tx.vatAmount,
-          currency: tx.currency,
-        },
-        update: {},
-      });
-    }
-
-    if (tx.promoCodeId) {
-      const existingRedemption = await px.promoRedemption.findFirst({
-        where: { promoCodeId: tx.promoCodeId, transactionId: tx.id },
-        select: { id: true },
-      });
-      if (!existingRedemption) {
-        await px.promoRedemption.create({
-          data: {
-            promoCodeId: tx.promoCodeId,
-            userId: tx.userId,
-            transactionId: tx.id,
-            courseId: tx.courseId ?? undefined,
-          },
-        });
-      }
-    }
-
-    if (lineItems && lineItems.length > 0) {
-      // One insert for every earning rather than one per line item. A bundle
-      // multiplies these by the number of courses, which is what pushed this
-      // transaction past its timeout.
-      await px.tutorEarning.createMany({
-        data: lineItems.map((item: any) => ({
-          tutorId: item.tutorId,
-          transactionId: tx.id,
-          transactionLineItemId: item.id,
-          courseId: item.courseId,
-          amount: item.tutorShareAmount,
-          // Derived from the amounts that actually moved, not re-decided
-          // from the scenario — the ledger cannot disagree with the money.
-          splitPercent: deriveSplitPercent(item),
-          status: "AVAILABLE",
-        })),
-      });
-
-      // Credit each tutor once for the whole transaction. Every course in a
-      // bundle belongs to the same tutor, so this collapses N updates to one
-      // while moving exactly the same total.
-      const creditByTutor = new Map<string, number>();
-      for (const item of lineItems) {
-        creditByTutor.set(
-          item.tutorId,
-          (creditByTutor.get(item.tutorId) ?? 0) + item.tutorShareAmount,
-        );
+            description:
+              metadata.type === "bundle"
+                ? "Bundle purchase"
+                : "Course purchase",
+          });
+        }
       }
 
-      for (const [tutorId, amount] of creditByTutor) {
-        await creditWallet(px, {
-          userId: tutorId,
-          amount,
-          type: "COURSE_EARNING",
-          transactionId: tx.id,
-          description:
-            metadata.type === "bundle" ? "Bundle purchase" : "Course purchase",
-        });
-      }
-    }
-
-    if (!isGroupPurchase) {
-      const user = await px.user.findUnique({
-        where: { id: tx.userId },
-        select: { role: true },
-      });
-      if (user && user.role === "USER") {
-        await px.user.update({
+      if (!isGroupPurchase) {
+        const user = await px.user.findUnique({
           where: { id: tx.userId },
-          data: { role: "STUDENT" },
+          select: { role: true },
         });
-        await px.student.upsert({
-          where: { userId: tx.userId },
-          update: {},
-          create: { userId: tx.userId, interests: [], goals: [] },
-        });
+        if (user && user.role === "USER") {
+          await px.user.update({
+            where: { id: tx.userId },
+            data: { role: "STUDENT" },
+          });
+          await px.student.upsert({
+            where: { userId: tx.userId },
+            update: {},
+            create: { userId: tx.userId, interests: [], goals: [] },
+          });
+        }
       }
-    }
-  }, {
-    // A bundle settles several courses at once, so this does proportionally
-    // more work than a single-course sale. The 5s default was not enough and
-    // left payments taken but unsettled.
-    timeout: 30_000,
-    maxWait: 15_000,
-  });
+    },
+    {
+      // A bundle settles several courses at once, so this does proportionally
+      // more work than a single-course sale. The 5s default was not enough and
+      // left payments taken but unsettled.
+      timeout: 30_000,
+      maxWait: 15_000,
+    },
+  );
 
   // Another caller settled this payment while we were verifying it. It has
   // done everything, including the notifications, so there is nothing left
