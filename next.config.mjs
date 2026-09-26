@@ -50,6 +50,27 @@ const nextConfig = {
           },
         ],
       },
+      // The service worker must never be cached by the browser or a CDN: the
+      // browser re-checks it on each visit, and a stale copy would keep serving
+      // an old offline page. The CSP is the one Next's PWA guide recommends for
+      // the worker script itself.
+      {
+        source: "/sw.js",
+        headers: [
+          {
+            key: "Content-Type",
+            value: "application/javascript; charset=utf-8",
+          },
+          {
+            key: "Cache-Control",
+            value: "no-cache, no-store, must-revalidate",
+          },
+          {
+            key: "Content-Security-Policy",
+            value: "default-src 'self'; script-src 'self'",
+          },
+        ],
+      },
     ];
   },
 };

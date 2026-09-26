@@ -611,14 +611,32 @@ export async function sendWithdrawalOtpEmail(params: {
 // ============ TUTOR COURSE EMAILS ============
 
 /**
- * Dry run for the tutor emails: log what would be sent and report success
- * without contacting Resend. It exists so the "exactly once" and "respects the
- * tutor's settings" rules can be tested against a real database without
- * mailing real tutors — the same approach the exam-center emails use.
+ * Dry run for the transactional emails added since the exam center: log what
+ * would be sent and report success without contacting Resend. It exists so
+ * "exactly once" and "respects the recipient's settings" can be tested against a
+ * real database without mailing real people — the same approach the exam-center
+ * emails use.
+ *
+ * EMAILS_DRY_RUN=1 is the switch. TUTOR_EMAILS_DRY_RUN=1 still works, because
+ * that is the name it was introduced under.
  */
-function tutorEmailDryRun(kind: string, to: string, subject: string): boolean {
-  if (process.env.TUTOR_EMAILS_DRY_RUN !== "1") return false;
-  console.log(`[tutor-emails] DRY RUN — would send ${kind} to ${to}: ${subject}`);
+function emailDryRun(
+  kind: string,
+  to: string,
+  subject: string,
+  /** Key figures, logged after the subject so a test can check what would be sent. */
+  detail?: Record<string, unknown>,
+): boolean {
+  if (
+    process.env.EMAILS_DRY_RUN !== "1" &&
+    process.env.TUTOR_EMAILS_DRY_RUN !== "1"
+  ) {
+    return false;
+  }
+  console.log(
+    `[emails] DRY RUN — would send ${kind} to ${to}: ${subject}` +
+      (detail ? ` ⟂ ${JSON.stringify(detail)}` : ""),
+  );
   return true;
 }
 
@@ -639,7 +657,7 @@ export async function sendCourseApprovedEmail(params: {
         : `✅ Your course "${params.courseTitle}" has been approved`;
 
   try {
-    if (tutorEmailDryRun("course-approved", params.email, subject)) {
+    if (emailDryRun("course-approved", params.email, subject)) {
       return { success: true as const };
     }
 
@@ -708,7 +726,7 @@ export async function sendTutorCourseSaleEmail(params: {
     : `🎉 New enrolment: ${params.courseTitles[0]}`;
 
   try {
-    if (tutorEmailDryRun("course-sale", params.email, subject)) {
+    if (emailDryRun("course-sale", params.email, subject)) {
       return { success: true as const };
     }
 
@@ -779,7 +797,7 @@ export async function sendTutorGroupPurchaseEmail(params: {
     : `✅ Your group for "${params.courseTitle}" is complete`;
 
   try {
-    if (tutorEmailDryRun(`group-${params.variant.toLowerCase()}`, params.email, subject)) {
+    if (emailDryRun(`group-${params.variant.toLowerCase()}`, params.email, subject)) {
       return { success: true as const };
     }
 
@@ -847,5 +865,150 @@ export async function sendTutorGroupPurchaseEmail(params: {
   } catch (error) {
     console.error("[sendTutorGroupPurchaseEmail] Failed to send email:", error);
     return { error: "Failed to send group purchase notification." };
+  }
+}
+
+// ============ PAYMENT RECEIPT ============
+
+/**
+ * PalmTechnIQ's own receipt, sent in place of the one Paystack emails.
+ *
+ * Deliberately NOT subject to a recipient's notification settings. A receipt is a
+ * record of a payment, like a password reset or a withdrawal code, not a
+ * marketing or activity email: someone who has switched off "email
+ * notifications" still needs proof they paid.
+ */
+export async function sendPaymentReceiptEmail(params: {
+  email: string;
+  name?: string;
+  receiptNumber: string;
+  reference: string;
+  paidAt: Date;
+  paymentMethod: string;
+  title: string;
+  lines: { label: string; detail?: string; amount: number }[];
+  discount: number;
+  subtotal: number;
+  vatRateLabel?: string;
+  vat: number;
+  total: number;
+  walletCredit: number;
+  amountPaid: number;
+  balanceRemaining?: number;
+  note?: string;
+  cta: { label: string; href: string };
+}) {
+  const money = (n: number) =>
+    new Intl.NumberFormat("en-NG", {
+      style: "currency",
+      currency: "NGN",
+      minimumFractionDigits: 2,
+    }).format(n);
+
+  const subject = `Your PalmTechnIQ receipt — ${money(params.amountPaid)}`;
+
+  try {
+    if (
+      emailDryRun("payment-receipt", params.email, subject, {
+        receiptNumber: params.receiptNumber,
+        title: params.title,
+        lines: params.lines.length,
+        discount: params.discount,
+        subtotal: params.subtotal,
+        vat: params.vat,
+        total: params.total,
+        walletCredit: params.walletCredit,
+        amountPaid: params.amountPaid,
+        balanceRemaining: params.balanceRemaining ?? 0,
+        paymentMethod: params.paymentMethod,
+      })
+    ) {
+      return { success: true as const };
+    }
+
+    // Shown in Lagos time: the payers are overwhelmingly in Nigeria, and a
+    // receipt timestamp in UTC reads as the wrong hour.
+    const paidAt = `${new Intl.DateTimeFormat("en-GB", {
+      dateStyle: "long",
+      timeStyle: "short",
+      timeZone: "Africa/Lagos",
+    }).format(params.paidAt)} (WAT)`;
+
+    const { default: PaymentReceiptEmail } = await import(
+      "./email-templates/payment-receipt"
+    );
+    const resend = new Resend(process.env.RESEND_API_KEY!);
+
+    const text = [
+      `Hi ${params.name?.trim() || "there"},`,
+      "",
+      `Thank you — we've received your payment for ${params.title.toLowerCase()}.`,
+      "",
+      `Receipt no.: ${params.receiptNumber}`,
+      `Date: ${paidAt}`,
+      `Paid with: ${params.paymentMethod}`,
+      `Payment reference: ${params.reference}`,
+      "",
+      ...params.lines.map(
+        (l) => `${l.label}${l.detail ? ` (${l.detail})` : ""}: ${money(l.amount)}`,
+      ),
+      ...(params.discount > 0.005 ? [`Discount applied: -${money(params.discount)}`] : []),
+      ...(params.vat > 0.005
+        ? [
+            `Subtotal: ${money(params.subtotal)}`,
+            `VAT${params.vatRateLabel ? ` (${params.vatRateLabel})` : ""}: ${money(params.vat)}`,
+          ]
+        : []),
+      `Total: ${money(params.total)}`,
+      ...(params.walletCredit > 0.005
+        ? [`Wallet credit applied: -${money(params.walletCredit)}`]
+        : []),
+      `Amount paid: ${money(params.amountPaid)}`,
+      ...(typeof params.balanceRemaining === "number" && params.balanceRemaining > 0.005
+        ? ["", `Balance remaining: ${money(params.balanceRemaining)}`]
+        : []),
+      "",
+      `${params.cta.label}: ${params.cta.href}`,
+      "",
+      "Thanks,",
+      "PalmTechnIQ Team",
+    ].join("\n");
+
+    const { error } = await resend.emails.send({
+      from:
+        process.env.FROM_EMAIL_ADDRESS ||
+        "PalmTechnIQ <support@palmtechniq.com>",
+      to: params.email,
+      subject,
+      react: PaymentReceiptEmail({
+        name: params.name,
+        receiptNumber: params.receiptNumber,
+        reference: params.reference,
+        paidAt,
+        paymentMethod: params.paymentMethod,
+        title: params.title,
+        lines: params.lines,
+        discount: params.discount,
+        subtotal: params.subtotal,
+        vatRateLabel: params.vatRateLabel,
+        vat: params.vat,
+        total: params.total,
+        walletCredit: params.walletCredit,
+        amountPaid: params.amountPaid,
+        balanceRemaining: params.balanceRemaining,
+        note: params.note,
+        cta: params.cta,
+      }),
+      text,
+    });
+
+    if (error) {
+      console.error("[sendPaymentReceiptEmail] Resend rejected the email:", error);
+      return { error: error.message ?? "Resend rejected the email." };
+    }
+    return { success: true as const };
+  } catch (error) {
+    console.error("[sendPaymentReceiptEmail] Failed to send email:", error);
+    return { error: "Failed to send payment receipt." };
   }
 }

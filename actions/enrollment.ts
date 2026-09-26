@@ -23,6 +23,7 @@ import {
 } from "@/lib/cohort";
 import { sendCRMLeadEvent, sendCRMPurchaseEvent } from "@/lib/meta-conversions";
 import { trackEvent, PLATFORM_EVENTS } from "@/lib/analytics/track";
+import { buildInstallmentReceipt, sendReceipt } from "@/lib/receipts";
 
 const SITE_URL = process.env.NEXT_PUBLIC_URL || "http://localhost:2026";
 
@@ -418,14 +419,26 @@ export async function verifyEnrollmentPayment(reference: string) {
     }
 
     // ── Mark installment as paid ──
-    await db.installmentPayment.update({
-      where: { id: installment.id },
+    // The write is the claim. The status check above reads before any of this
+    // runs, so it cannot stop two overlapping calls (a refreshed return page);
+    // both would then add the instalment to amountPaid, take a seat, and email
+    // the payer. This matches only while the instalment is not yet PAID, so
+    // exactly one call carries on.
+    const claimed = await db.installmentPayment.updateMany({
+      where: { id: installment.id, status: { not: "PAID" } },
       data: {
         status: "PAID",
         paidAt: new Date(),
         transactionData: verification as any,
       },
     });
+    if (claimed.count === 0) {
+      return {
+        success: true,
+        alreadyVerified: true,
+        enrollment: installment.enrollment,
+      };
+    }
 
     // ── Accrue the lead instructor's share of this installment ──
     // Non-fatal: if the cohort has no instructor yet, assignment back-fills it.
@@ -518,6 +531,26 @@ export async function verifyEnrollmentPayment(reference: string) {
       loginUrl: `${SITE_URL}/login`,
     }).catch((err) =>
       console.error("[verifyEnrollmentPayment] Email send failed:", err),
+    );
+
+    // ── Our receipt, in place of the one Paystack emails ──
+    await sendReceipt(
+      buildInstallmentReceipt({
+        email: enrollment.email,
+        name: enrollment.fullName,
+        programName: enrollment.program.name,
+        cohortName: enrollment.cohort.displayName,
+        installmentNo: installment.installmentNo,
+        planLabel:
+          enrollment.paymentPlan === "INSTALLMENT"
+            ? `Instalment ${installment.installmentNo} of 2`
+            : "Full payment",
+        installmentAmount: installment.amount,
+        paidToDate: newAmountPaid,
+        programTotal: enrollment.totalAmount,
+        reference,
+        verification,
+      }),
     );
 
     // ── Notify admin (non-blocking) ──

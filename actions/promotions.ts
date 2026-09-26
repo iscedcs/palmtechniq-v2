@@ -5,6 +5,7 @@ import { db } from "@/lib/db";
 import { PromotionStatus, PromotionType } from "@prisma/client";
 import { randomUUID } from "crypto";
 import { paystackInitialize } from "./paystack";
+import { settlePromotionFee } from "@/lib/promotions/settle";
 
 // ─── Flash Sale Sync Helpers ─────────────────────────────────────────────────
 
@@ -663,14 +664,13 @@ export async function verifyPromotionPayment(reference: string) {
   const result = await paystackVerify(reference);
 
   if (result.status === "success") {
-    await db.coursePromotion.update({
-      where: { id: promotion.id },
-      data: {
-        feePaid: true,
-        status: PromotionStatus.PENDING,
-      },
+    // The write is the claim, and the receipt goes with it: see settle.ts.
+    const { settled } = await settlePromotionFee({
+      promotionId: promotion.id,
+      reference,
+      verification: result,
     });
-    return { success: true };
+    return settled ? { success: true } : { success: true, alreadyPaid: true };
   }
 
   return { error: "Payment not confirmed yet. Please try again." };

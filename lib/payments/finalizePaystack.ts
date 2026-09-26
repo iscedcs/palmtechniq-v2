@@ -16,6 +16,7 @@ import {
   emailTutorsAboutSale,
   notifyTutorOfGroupStart,
 } from "@/lib/tutor-notifications";
+import { emailTransactionReceipt } from "@/lib/receipts";
 
 export async function finalizePaystackByReference(reference: string) {
   const tx = await db.transaction.findFirst({
@@ -468,6 +469,10 @@ export async function finalizePaystackByReference(reference: string) {
         metadata: { category: "mentorship_booking_paid", reference },
       });
     }
+    // Our receipt, in place of the one Paystack emails. Reached only by the
+    // caller that won the settlement claim, so once per payment.
+    await emailTransactionReceipt(tx.id, v);
+
     return { ok: true, mentorshipSessionId: metadata?.mentorshipSessionId };
   }
 
@@ -497,6 +502,9 @@ export async function finalizePaystackByReference(reference: string) {
       transactionId: tx.id,
       groupPurchaseId,
     });
+
+    // The creator paid for the whole group, so the receipt goes to them.
+    await emailTransactionReceipt(tx.id, v);
 
     return { ok: true, courseId: tx.courseId, groupPurchaseId };
   }
@@ -598,6 +606,9 @@ export async function finalizePaystackByReference(reference: string) {
   // The email that goes with the in-app notice above. Sent only here — by the
   // caller that won the claim — so a tutor gets one per sale, not one per
   // request that happened to reach this point.
+  // The payer's receipt: ours, in place of the one Paystack emails.
+  await emailTransactionReceipt(tx.id, v);
+
   await emailTutorsAboutSale(tx.id, coursesByTutor);
 
   return { ok: true, courseId: tx.courseId, courseIds: purchasedCourseIds };
