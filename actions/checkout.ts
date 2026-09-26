@@ -4,6 +4,7 @@ import { debitWallet } from "@/lib/payments/wallet";
 import { auth } from "@/auth";
 import { db } from "@/lib/db";
 import { redirect } from "next/navigation";
+import { cookies } from "next/headers";
 import { randomUUID } from "crypto";
 import { paystackInitialize } from "./paystack";
 import {
@@ -12,14 +13,24 @@ import {
   roundCurrency,
 } from "@/lib/payments/pricing";
 import { validatePromoCode } from "@/lib/payments/promo";
-import { resolveTutorReferralCode } from "@/lib/referral";
+import { REFERRAL_COOKIE_NAME, resolveTutorReferralCode } from "@/lib/referral";
 import { trackEvent, PLATFORM_EVENTS } from "@/lib/analytics/track";
 
 export async function beginCheckout(
   courseIds: string[] | string,
   promoCode?: string,
-  referralCode?: string,
+  explicitReferralCode?: string,
 ) {
+  // The referral lives in a cookie set when the visitor landed on a tutor's
+  // link, so it has to be read HERE, where every checkout passes through. It
+  // used to be read only by the single-course checkout page and handed in,
+  // which meant the cart's "Checkout with Paystack" button (which calls this
+  // directly) never carried it, and the tutor lost the referral bonus.
+  const referralCode =
+    explicitReferralCode ||
+    (await cookies()).get(REFERRAL_COOKIE_NAME)?.value ||
+    undefined;
+
   const session = await auth();
   if (!session?.user?.id || !session.user.email) {
     throw new Error("Unauthorized");
