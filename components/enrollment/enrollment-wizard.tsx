@@ -78,7 +78,9 @@ function getMinFirstPayment(installTotal: number) {
   return Math.ceil(installTotal * 0.5);
 }
 
-function getSecondInstallmentTimingLabel(duration: ProgramDefinition["duration"]) {
+function getSecondInstallmentTimingLabel(
+  duration: ProgramDefinition["duration"],
+) {
   switch (duration) {
     case "ONE_MONTH":
       return "15 days after your first payment";
@@ -193,7 +195,9 @@ export function EnrollmentWizard({
         fieldsToValidate = ["paymentPlan"];
         // Also validate custom amount when installment is chosen
         if (form.getValues("paymentPlan") === "INSTALLMENT") {
-          const prog = PROGRAMS.find((p) => p.slug === form.getValues("programSlug"));
+          const prog = PROGRAMS.find(
+            (p) => p.slug === form.getValues("programSlug"),
+          );
           const floor = prog ? getMinFirstPayment(prog.installTotal) : 0;
           const custom = form.getValues("customFirstPayment");
           if (custom !== undefined && custom < floor) {
@@ -238,13 +242,9 @@ export function EnrollmentWizard({
   }
 
   return (
-    <div className="mx-auto max-w-4xl px-4 sm:px-6">
+    <div className="mx-auto max-w-4xl px-4 sm:px-6 mt-32">
       {/* ── Header ── */}
       <div className="text-center mb-10">
-        <Badge className="mb-4 bg-neon-blue/20 text-neon-blue border-neon-blue/30">
-          <Sparkles className="w-3 h-3 mr-1" />
-          Career Launchpad
-        </Badge>
         <h1 className="text-3xl sm:text-4xl font-bold text-white mb-3">
           Professional Program Enrollment
         </h1>
@@ -267,9 +267,7 @@ export function EnrollmentWizard({
               <button
                 key={s.label}
                 type="button"
-                onClick={() =>
-                  absoluteIndex < step && setStep(absoluteIndex)
-                }
+                onClick={() => absoluteIndex < step && setStep(absoluteIndex)}
                 className={`flex flex-col items-center gap-1.5 text-xs transition-all ${
                   isActive
                     ? "text-neon-blue"
@@ -479,8 +477,12 @@ function StepProgramSelection({
                           </span>
                           {program.installTotal > program.fullPrice && (
                             <span className="text-xs text-gray-500">
-                              or from {formatNaira(getMinFirstPayment(program.installTotal))} now
-                              (installment total {formatNaira(program.installTotal)})
+                              or from{" "}
+                              {formatNaira(
+                                getMinFirstPayment(program.installTotal),
+                              )}{" "}
+                              now (installment total{" "}
+                              {formatNaira(program.installTotal)})
                             </span>
                           )}
                         </div>
@@ -900,7 +902,8 @@ function StepPaymentPlan({
                           Flexible Installment
                         </p>
                         <p className="text-sm text-gray-400 mt-0.5">
-                          Pay any amount now (min {formatNaira(minFirstPayment)}), balance due {secondInstallmentTiming}
+                          Pay any amount now (min {formatNaira(minFirstPayment)}
+                          ), balance due {secondInstallmentTiming}
                         </p>
                       </div>
                     </div>
@@ -914,7 +917,6 @@ function StepPaymentPlan({
                       initial={{ opacity: 0, height: 0 }}
                       animate={{ opacity: 1, height: "auto" }}
                       className="mt-4 ml-7 space-y-4 border-t border-gray-800 pt-4">
-
                       {/* Custom first payment input */}
                       <FormField
                         control={form.control}
@@ -944,7 +946,9 @@ function StepPaymentPlan({
                                   onChange={(e) => {
                                     const val = e.target.value;
                                     amtField.onChange(
-                                      val === "" ? undefined : parseInt(val, 10),
+                                      val === ""
+                                        ? undefined
+                                        : parseInt(val, 10),
                                     );
                                   }}
                                   className="w-full pl-7 pr-4 py-2.5 rounded-lg bg-gray-800 border border-gray-700 text-white text-sm focus:outline-none focus:border-neon-blue focus:ring-1 focus:ring-neon-blue/40 [appearance:textfield] [&::-webkit-outer-spin-button]:appearance-none [&::-webkit-inner-spin-button]:appearance-none"
@@ -962,17 +966,28 @@ function StepPaymentPlan({
                           <span className="text-gray-400">You pay now</span>
                           <span
                             className={`font-semibold ${isCustomValid ? "text-white" : "text-red-400"}`}>
-                            {customFirstPayment !== undefined && customFirstPayment > 0
-                              ? formatNaira(effectiveFirst)
-                              : <span className="text-gray-500 italic">enter amount above</span>}
+                            {customFirstPayment !== undefined &&
+                            customFirstPayment > 0 ? (
+                              formatNaira(effectiveFirst)
+                            ) : (
+                              <span className="text-gray-500 italic">
+                                enter amount above
+                              </span>
+                            )}
                           </span>
                         </div>
                         <div className="flex justify-between text-sm">
-                          <span className="text-gray-400">Balance ({secondInstallmentTiming})</span>
+                          <span className="text-gray-400">
+                            Balance ({secondInstallmentTiming})
+                          </span>
                           <span className="font-semibold text-white">
-                            {customFirstPayment !== undefined && customFirstPayment > 0
+                            {customFirstPayment !== undefined &&
+                            customFirstPayment > 0
                               ? formatNaira(effectiveSecond)
-                              : formatNaira(selectedProgram.installTotal - selectedProgram.firstInstall)}
+                              : formatNaira(
+                                  selectedProgram.installTotal -
+                                    selectedProgram.firstInstall,
+                                )}
                           </span>
                         </div>
                         <div className="flex justify-between text-sm border-t border-gray-700 pt-2 mt-1">
@@ -989,7 +1004,8 @@ function StepPaymentPlan({
                         customFirstPayment < minFirstPayment && (
                           <p className="text-xs text-red-400 flex items-center gap-1">
                             <span>⚠</span>
-                            Minimum first payment is {formatNaira(minFirstPayment)}
+                            Minimum first payment is{" "}
+                            {formatNaira(minFirstPayment)}
                           </p>
                         )}
                     </motion.div>
@@ -1033,13 +1049,11 @@ function StepReview({
   );
   const customFirst: number | undefined = values.customFirstPayment;
   const payNow = isInstallment
-    ? (customFirst !== undefined && customFirst > 0
-        ? customFirst
-        : selectedProgram.firstInstall)
+    ? customFirst !== undefined && customFirst > 0
+      ? customFirst
+      : selectedProgram.firstInstall
     : selectedProgram.fullPrice;
-  const payLater = isInstallment
-    ? selectedProgram.installTotal - payNow
-    : 0;
+  const payLater = isInstallment ? selectedProgram.installTotal - payNow : 0;
 
   return (
     <div className="space-y-6">
@@ -1140,9 +1154,7 @@ function StepReview({
                   <span className="text-gray-400">
                     Balance ({secondInstallmentTiming})
                   </span>
-                  <span className="text-white">
-                    {formatNaira(payLater)}
-                  </span>
+                  <span className="text-white">{formatNaira(payLater)}</span>
                 </div>
               </>
             )}

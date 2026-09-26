@@ -176,7 +176,7 @@ export async function generateCourseAdvisorReply(
 
   try {
     const response = await client.responses.create({
-      model: process.env.OPENAI_ADVISOR_MODEL || "gpt-4o-mini",
+      model: process.env.OPENAI_API_KEY || "gpt-5.5",
       input: [
         {
           role: "system",
