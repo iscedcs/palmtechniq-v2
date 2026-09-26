@@ -94,14 +94,23 @@ export function HeroSection() {
                   Start Learning Now
                 </Button>
               </Link>
+              <Link href="/enroll">
+                <Button
+                  size="lg"
+                  type="button"
+                  variant="outline"
+                  className="border-2 border-neon-blue/50 hover:border-neon-blue text-white hover:bg-neon-blue/10 px-8 py-4 text-lg font-semibold rounded-2xl transition-all duration-300 group">
+                  Join Next Cohort Now
+                </Button>
+              </Link>
 
-              <Button
+              {/* <Button
                 size="lg"
                 variant="outline"
                 onClick={scrollToDemo}
                 className="border-2 border-neon-blue/50 hover:border-neon-blue text-white hover:bg-neon-blue/10 px-8 py-4 text-lg font-semibold rounded-2xl transition-all duration-300 group">
                 Watch Demo
-              </Button>
+              </Button> */}
             </motion.div>
 
             {/* Feature Highlights Bento Grid */}

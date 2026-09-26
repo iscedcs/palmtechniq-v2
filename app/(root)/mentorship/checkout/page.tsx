@@ -230,7 +230,7 @@ export default function MentorshipCheckoutPage() {
                 <CalendarClock className="h-4 w-4" />
                 Select Your Session Time
               </CardTitle>
-              <CardDescription>
+              <CardDescription className="text-white">
                 Choose when you'd like to start this {offering.duration}-minute
                 session
               </CardDescription>

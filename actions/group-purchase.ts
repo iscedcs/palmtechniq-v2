@@ -6,6 +6,8 @@ import { db } from "@/lib/db";
 import { paystackInitialize } from "./paystack";
 import { randomUUID } from "crypto";
 import { redirect } from "next/navigation";
+import { cookies } from "next/headers";
+import { REFERRAL_COOKIE_NAME, resolveTutorReferralCode } from "@/lib/referral";
 import {
   computeCheckoutTotals,
   computeGroupCashback,
@@ -91,6 +93,15 @@ export async function beginGroupCheckout(courseId: string, tierId: string) {
     size: tier.size,
   });
 
+  // A tutor's referral link earns them the referral share on the group's
+  // payment too. Only the creator pays (members join free), so it is the
+  // creator's cookie that counts. Read here, where the order is built, so it
+  // does not depend on which page started the checkout.
+  const referralCode = (await cookies()).get(REFERRAL_COOKIE_NAME)?.value;
+  const referralTutorId = referralCode
+    ? await resolveTutorReferralCode(referralCode)
+    : null;
+
   const reference = `ps_${randomUUID()}`;
   const totals = computeCheckoutTotals({
     courses: [
@@ -104,6 +115,7 @@ export async function beginGroupCheckout(courseId: string, tierId: string) {
     ],
     promo: null,
     vatRate: REVENUE.vatRate,
+    referralTutorId,
   });
 
   const { groupPurchaseId } = await db.$transaction(async (tx: any) => {
@@ -147,6 +159,8 @@ export async function beginGroupCheckout(courseId: string, tierId: string) {
         vatAmount: totals.vatAmount,
         tutorShareAmount: totals.tutorShareAmount,
         platformShareAmount: totals.platformShareAmount,
+        referralCode: referralTutorId ? referralCode : undefined,
+        isReferralPurchase: !!referralTutorId,
         metadata: {
           groupPurchaseId: groupPurchase.id,
           courseId,
@@ -164,6 +178,7 @@ export async function beginGroupCheckout(courseId: string, tierId: string) {
             totalAmount: item.totalAmount,
             tutorShareAmount: item.tutorShareAmount,
             platformShareAmount: item.platformShareAmount,
+            isReferralPurchase: item.isReferralPurchase,
           })),
         },
       },
