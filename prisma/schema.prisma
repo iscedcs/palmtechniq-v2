@@ -668,6 +668,7 @@ model AdvisorFollowUp {
   userId           String?
   name             String
   email            String
+  phone            String?
   note             String?
   status           AdvisorFollowUpStatus @default(NEW)
   createdAt        DateTime              @default(now())

@@ -270,6 +270,15 @@ export default async function AdminAdvisorPage() {
                             {row.name}
                           </p>
                           <p className="text-gray-400 text-xs">{row.email}</p>
+                          {row.phone ? (
+                            <a
+                              href={`https://wa.me/${row.phone.replace(/[^0-9]/g, "")}`}
+                              target="_blank"
+                              rel="noopener noreferrer"
+                              className="text-emerald-400 text-xs hover:underline">
+                              {row.phone} · WhatsApp
+                            </a>
+                          ) : null}
                           {row.user?.name ? (
                             <p className="text-gray-500 text-xs mt-1">
                               User: {row.user.name}

@@ -7,6 +7,14 @@ import { sendCourseAdvisorLeadNotification } from "@/lib/mail";
 const leadSchema = z.object({
   name: z.string().trim().min(2).max(100),
   email: z.string().trim().email().max(150),
+  // Digits, with an optional leading +. Loose on purpose: this is
+  // international-facing (WhatsApp), and callers should confirm the number
+  // with the prospect, not have it rejected here on formatting.
+  phone: z
+    .string()
+    .trim()
+    .regex(/^\+?[0-9 ()-]{7,20}$/, "Enter a valid phone number")
+    .optional(),
   note: z.string().trim().max(600).optional(),
   sessionToken: z.string().trim().min(8).max(120),
   advisorTurnId: z.string().trim().min(8).max(40).optional(),
@@ -92,6 +100,7 @@ export async function POST(req: NextRequest) {
         userId,
         name: parsed.data.name,
         email: parsed.data.email,
+        phone: parsed.data.phone,
         note: parsed.data.note,
       },
     });
