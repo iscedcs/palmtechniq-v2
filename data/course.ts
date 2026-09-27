@@ -227,6 +227,37 @@ export async function getCourseWithModules(courseId: string) {
     });
 
     if (!course) return null;
+
+    // Whether this viewer has paid/earned their way into the FULL course, as
+    // opposed to only whatever preview lessons are marked open. Without this,
+    // getCourseWithModules (used only by the learn page) handed every
+    // lesson's written notes and resource links to any signed-in visitor who
+    // knew or guessed a course id — the video itself was already withheld
+    // below, but the notes and downloadable files were not.
+    const userId = session?.user.id;
+    let hasFullCourseAccess = false;
+    if (userId) {
+      if (
+        course.creatorId === userId ||
+        course.tutor?.userId === userId
+      ) {
+        hasFullCourseAccess = true;
+      } else {
+        const [user, enrollment] = await Promise.all([
+          db.user.findUnique({ where: { id: userId }, select: { role: true } }),
+          db.enrollment.findFirst({
+            where: {
+              userId,
+              courseId: course.id,
+              status: { in: ["ACTIVE", "COMPLETED"] },
+            },
+            select: { id: true },
+          }),
+        ]);
+        hasFullCourseAccess = user?.role === "ADMIN" || Boolean(enrollment);
+      }
+    }
+
     const allLessons = course.modules.flatMap((m: any) => m.lessons);
     const lessonQuizIds = allLessons
       .map((lesson: any) => lesson.quiz?.id)
@@ -348,10 +379,20 @@ export async function getCourseWithModules(courseId: string) {
                   !previousLessonQuizPassed));
 
             const { videoUrl: _videoUrl, ...lessonWithoutVideo } = lesson;
+            const lessonAccessible = hasFullCourseAccess || lesson.isPreview;
+            const gatedLesson = lessonAccessible
+              ? lessonWithoutVideo
+              : {
+                  ...lessonWithoutVideo,
+                  content: null,
+                  description: null,
+                  resources: lesson.resources.filter((r: any) => r.isPublic),
+                };
             return {
-              ...lessonWithoutVideo,
+              ...gatedLesson,
               isCompleted: lesson.progress?.[0]?.isCompleted ?? false,
               isLocked: isLessonLocked,
+              isAccessible: lessonAccessible,
               quizPassed: lesson.quiz
                 ? passedQuizIds.has(lesson.quiz.id)
                 : true,
@@ -359,10 +400,18 @@ export async function getCourseWithModules(courseId: string) {
           },
         );
 
+        // Module-level shared resources (not tied to one lesson) require full
+        // course access — a lesson being a free preview doesn't extend to
+        // material meant for the whole module.
+        const moduleResources = hasFullCourseAccess
+          ? module.resources
+          : module.resources.filter((r: any) => r.isPublic);
+
         return {
           ...module,
           isLocked,
           lessons: lessonsWithLocking,
+          resources: moduleResources,
           task: moduleTaskMap.get(module.id) || {
             hasTask: false,
             taskId: null,
