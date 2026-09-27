@@ -161,7 +161,7 @@ export function LessonAIAssistant({
         }}
         exit={{ opacity: 0, scale: 0.9, y: 20 }}
         transition={{ duration: 0.3, ease: "easeOut" }}
-        className={`fixed bottom-6 right-6 z-50 w-96 ₦{isMinimized ? "h-16" : "h-[600px]"} transition-all duration-300`}>
+        className={`fixed bottom-6 right-6 z-50 w-96 ${isMinimized ? "h-16" : "h-[600px]"} transition-all duration-300`}>
         <Card className="glass-card border-neon-blue/30 shadow-2xl shadow-neon-blue/20 h-full">
           {/* Header */}
           <CardHeader className="pb-3 border-b border-white/10">
@@ -220,9 +220,9 @@ export function LessonAIAssistant({
                       initial={{ opacity: 0, y: 10 }}
                       animate={{ opacity: 1, y: 0 }}
                       transition={{ duration: 0.3 }}
-                      className={`flex ₦{message.type === "user" ? "justify-end" : "justify-start"}`}>
+                      className={`flex ${message.type === "user" ? "justify-end" : "justify-start"}`}>
                       <div
-                        className={`max-w-[80%] p-3 rounded-2xl ₦{
+                        className={`max-w-[80%] p-3 rounded-2xl ${
                           message.type === "user"
                             ? "bg-gradient-to-r from-neon-blue to-neon-purple text-white"
                             : "bg-white/10 text-gray-100 border border-white/20"

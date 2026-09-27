@@ -31,7 +31,7 @@ export function AILessonTrigger({
         onClick={onActivate}
         onMouseEnter={() => setIsHovered(true)}
         onMouseLeave={() => setIsHovered(false)}
-        className={`relative overflow-hidden bg-gradient-to-r from-neon-blue/20 to-neon-purple/20 border border-neon-blue/30 text-neon-blue hover:from-neon-blue/30 hover:to-neon-purple/30 hover:border-neon-blue/50 transition-all duration-300 ₦{
+        className={`relative overflow-hidden bg-gradient-to-r from-neon-blue/20 to-neon-purple/20 border border-neon-blue/30 text-neon-blue hover:from-neon-blue/30 hover:to-neon-purple/30 hover:border-neon-blue/50 transition-all duration-300 ${
           isActive ? "ring-2 ring-neon-blue/50" : ""
         }`}
         size="sm">

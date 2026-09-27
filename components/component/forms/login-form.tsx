@@ -62,7 +62,7 @@ export function LoginForm() {
     setIsLoading(true);
 
     startTransition(async () => {
-      const result = await login(data, callbackUrl);
+      const result = await login(data, callbackUrl, rememberMe);
       console.log({ data: result });
       if (result?.error) {
         setError(result.error);
