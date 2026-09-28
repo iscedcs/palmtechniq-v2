@@ -107,6 +107,7 @@ export async function sendVerificationEmail(email: string, token: string) {
 export async function sendCourseAdvisorLeadNotification(params: {
   name: string;
   email: string;
+  phone?: string;
   note?: string;
 }) {
   const resend = new Resend(process.env.RESEND_API_KEY!);
@@ -121,6 +122,7 @@ export async function sendCourseAdvisorLeadNotification(params: {
     "",
     `Name: ${params.name}`,
     `Email: ${params.email}`,
+    `Phone: ${params.phone || "N/A"}`,
     `Note: ${params.note || "N/A"}`,
   ].join("\n");
 

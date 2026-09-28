@@ -1,7 +1,8 @@
 export const runtime = "nodejs";
 
 import NextAuth, { type NextAuthConfig } from "next-auth";
-import baseConfig from "./auth.config";
+import { encode as defaultEncodeJwt } from "next-auth/jwt";
+import baseConfig, { DEFAULT_SESSION_MAX_AGE, REMEMBER_ME_MAX_AGE } from "./auth.config";
 
 import { db } from "./lib/db";
 import { PrismaAdapter } from "@auth/prisma-adapter";
@@ -38,7 +39,13 @@ const nodeConfig: NextAuthConfig = {
         if (!user || !user.password) return null;
 
         const ok = await verifyPassword(password, user.password);
-        return ok ? user : null;
+        if (!ok) return null;
+
+        // Carried through to the jwt callback below via `user`, so it can size
+        // the token's lifetime by whether "Remember me" was checked. signIn()
+        // serializes credentials through URLSearchParams, so this arrives as
+        // the string "true", never a real boolean.
+        return { ...user, rememberMe: credentials?.rememberMe === "true" };
       },
     }),
   ],
@@ -106,6 +113,7 @@ const nodeConfig: NextAuthConfig = {
         token.sub = user.id as string;
         token.email = user.email as string;
         token.role = (user as any).role;
+        token.rememberMe = Boolean(user.rememberMe);
       }
 
       if (token.sub) {
@@ -139,12 +147,25 @@ const nodeConfig: NextAuthConfig = {
         }
       }
 
-      // refresh exp
-      const now = Math.floor(Date.now() / 1000);
-      const maxAge = 86400;
-      if (!token.exp || token.exp < now) token.exp = now + maxAge;
-
       return token;
+    },
+  },
+
+  // The JWT's real, cryptographically-enforced expiry is set here, not by any
+  // `exp` field returned from the `jwt` callback above — Auth.js's default
+  // encode() always stamps `exp` itself from a fixed maxAge, ignoring
+  // whatever the callback's token object contains. This override reads
+  // `token.rememberMe` (set above) to size that maxAge per sign-in: 30 days
+  // when "Remember me" was checked, the usual 24h otherwise. The physical
+  // cookie's own ceiling (session.maxAge, in auth.config.ts) stays fixed at
+  // 30 days regardless, so it never truncates a remembered token early — an
+  // unremembered token still self-expires at 24h on decode either way.
+  jwt: {
+    async encode(params) {
+      const maxAge = params.token?.rememberMe
+        ? REMEMBER_ME_MAX_AGE
+        : DEFAULT_SESSION_MAX_AGE;
+      return defaultEncodeJwt({ ...params, maxAge });
     },
   },
 };

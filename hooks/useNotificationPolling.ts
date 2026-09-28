@@ -1,6 +1,7 @@
 "use client";
 
 import { useCallback, useEffect, useRef, useState } from "react";
+import { useSession } from "next-auth/react";
 import {
   useNotificationsStore,
   type Notification,
@@ -19,9 +20,17 @@ interface UseNotificationPollingOptions {
 export function useNotificationPolling(
   options: UseNotificationPollingOptions = {},
 ) {
-  const { enabled = true, interval = POLL_INTERVAL } = options;
+  const { interval = POLL_INTERVAL } = options;
+
+  const { data: session, status: sessionStatus } = useSession();
+  const userId = session?.user?.id ?? null;
+  // Only actually poll once we know who's asking — and only when someone is
+  // signed in. `options.enabled` can still force it off (e.g. tests).
+  const enabled =
+    (options.enabled ?? true) && sessionStatus !== "loading" && !!userId;
 
   const addNotification = useNotificationsStore((s) => s.addNotification);
+  const syncOwner = useNotificationsStore((s) => s.syncOwner);
   const [isPolling, setIsPolling] = useState(false);
   const [lastPollTime, setLastPollTime] = useState<string | null>(null);
   const [preferences, setPreferences] = useState(defaultUserPreferences);
@@ -33,6 +42,20 @@ export function useNotificationPolling(
   useEffect(() => {
     preferencesRef.current = preferences;
   }, [preferences]);
+
+  // The store persists to one shared localStorage key for the whole browser.
+  // Whenever the signed-in identity here doesn't match who the store
+  // currently belongs to — a different account signed in, or this one
+  // signed out — hand ownership over and wipe whatever was left, so no one
+  // ever sees a notification meant for someone else. Also resets this
+  // instance's own polling state so the next poll re-fetches recent history
+  // fresh rather than treating the previous owner's "seen" ids as ours.
+  useEffect(() => {
+    if (sessionStatus === "loading") return;
+    syncOwner(userId);
+    seenIdsRef.current = new Set();
+    setLastPollTime(null);
+  }, [userId, sessionStatus, syncOwner]);
 
   // Load user preferences on mount
   useEffect(() => {

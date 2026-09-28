@@ -198,6 +198,7 @@ export async function signup(data: z.infer<typeof signupSchema>) {
 export async function login(
   values: z.infer<typeof loginSchema>,
   callbackUrl?: string | null,
+  rememberMe?: boolean,
 ) {
   try {
     // Get client IP address
@@ -334,6 +335,7 @@ export async function login(
       await signIn("credentials", {
         email,
         password,
+        rememberMe: Boolean(rememberMe),
         redirect: false,
       });
 

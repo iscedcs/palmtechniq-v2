@@ -36,6 +36,21 @@ export default function VideoPlayer({
   const youtubeContainerRef = useRef<HTMLDivElement>(null);
   const youtubePlayerRef = useRef<any>(null);
 
+  // The parent re-creates these callback props on every render of its own
+  // (e.g. opening the AI assistant just toggles unrelated state there). Kept
+  // in refs so the YouTube-init effect below can call whatever the latest
+  // version is without listing them as dependencies — otherwise that effect
+  // re-runs on every unrelated parent render, destroying and recreating the
+  // YouTube player and restarting the video from 0.
+  const markLessonCompleteRef = useRef(markLessonComplete);
+  const goToNextLessonRef = useRef(goToNextLesson);
+  const onDurationChangeRef = useRef(onDurationChange);
+  useEffect(() => {
+    markLessonCompleteRef.current = markLessonComplete;
+    goToNextLessonRef.current = goToNextLesson;
+    onDurationChangeRef.current = onDurationChange;
+  });
+
   const [src, setSrc] = useState<string | null>(null);
   const [videoError, setVideoError] = useState<string | null>(null);
   const [isLoadingUrl, setIsLoadingUrl] = useState(true);
@@ -274,9 +289,7 @@ export default function VideoPlayer({
             onReady: (event: any) => {
               const total = event?.target?.getDuration?.() ?? 0;
               setDuration(total);
-              if (onDurationChange) {
-                onDurationChange(Math.floor(total));
-              }
+              onDurationChangeRef.current?.(Math.floor(total));
             },
             onStateChange: (event: any) => {
               const YT = (window as any).YT;
@@ -290,8 +303,8 @@ export default function VideoPlayer({
               }
               if (event?.data === YT?.PlayerState?.ENDED) {
                 setYtPlaying(false);
-                markLessonComplete();
-                goToNextLesson?.();
+                markLessonCompleteRef.current();
+                goToNextLessonRef.current?.();
               }
             },
           },
@@ -327,14 +340,7 @@ export default function VideoPlayer({
         youtubePlayerRef.current = null;
       }
     };
-  }, [
-    isYoutube,
-    youtubeVideoId,
-    autoPlay,
-    markLessonComplete,
-    goToNextLesson,
-    onDurationChange,
-  ]);
+  }, [isYoutube, youtubeVideoId, autoPlay]);
 
   if (isLoadingUrl) {
     return (

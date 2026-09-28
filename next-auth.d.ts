@@ -9,6 +9,7 @@ declare module "next-auth/jwt" {
     email?: string;
     exp?: number;
     mustChangePassword?: boolean;
+    rememberMe?: boolean;
   }
 }
 
@@ -21,6 +22,7 @@ declare module "next-auth" {
     image?: string | null;
     avatar?: string | null;
     mustChangePassword?: boolean;
+    rememberMe?: boolean;
   }
 
   interface Session {

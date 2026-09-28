@@ -289,6 +289,7 @@ export function LiveChatWidget() {
   const [showLeadCapture, setShowLeadCapture] = useState(false);
   const [leadName, setLeadName] = useState("");
   const [leadEmail, setLeadEmail] = useState("");
+  const [leadPhone, setLeadPhone] = useState("");
   const [leadNote, setLeadNote] = useState("");
   const [isSubmittingLead, setIsSubmittingLead] = useState(false);
   const [leadSubmitted, setLeadSubmitted] = useState(false);
@@ -440,6 +441,7 @@ export function LiveChatWidget() {
         body: JSON.stringify({
           name: leadName.trim(),
           email: leadEmail.trim(),
+          phone: leadPhone.trim() || undefined,
           note: leadNote.trim(),
           sessionToken: advisorSessionToken || createBrowserSessionToken(),
           advisorTurnId: latestAdvisorTurnId || undefined,
@@ -454,6 +456,7 @@ export function LiveChatWidget() {
       setShowLeadCapture(false);
       setLeadName("");
       setLeadEmail("");
+      setLeadPhone("");
       setLeadNote("");
     } catch (error) {
       console.error("Course advisor lead submission failed:", error);
@@ -578,6 +581,13 @@ export function LiveChatWidget() {
                         onChange={(e) => setLeadEmail(e.target.value)}
                         placeholder="Your email"
                         type="email"
+                        className="w-full rounded-md bg-black/20 border border-white/15 px-3 py-2 text-sm text-white outline-none focus:border-neon-blue/50"
+                      />
+                      <input
+                        value={leadPhone}
+                        onChange={(e) => setLeadPhone(e.target.value)}
+                        placeholder="Phone number (WhatsApp or call)"
+                        type="tel"
                         className="w-full rounded-md bg-black/20 border border-white/15 px-3 py-2 text-sm text-white outline-none focus:border-neon-blue/50"
                       />
                       <textarea
