@@ -26,11 +26,26 @@ export interface Notification {
 interface NotificationsState {
   notifications: Notification[];
   isOpen: boolean;
+  // Whose notifications are currently held (persisted to localStorage, so it
+  // survives reloads). Compared against the live session on every mount —
+  // see syncOwner.
+  ownerUserId: string | null;
 
   // Actions
   addNotification: (
     notification: Omit<Notification, "id" | "createdAt" | "isRead">
   ) => void;
+  /**
+   * Call with the current session's user id (or null when signed out) as
+   * soon as it's known. This store persists to a single, un-namespaced
+   * localStorage key shared by every account that ever signs in on this
+   * browser — without this check, switching accounts on a shared device
+   * left the previous account's notifications (including admin- or
+   * tutor-only ones) visible to whoever signs in next. When the id differs
+   * from who the store currently belongs to, it wipes the list and takes
+   * ownership; same id is a no-op.
+   */
+  syncOwner: (userId: string | null) => void;
   markAsRead: (id: string) => void;
   markAllAsRead: () => void;
   removeNotification: (id: string) => void;
@@ -68,6 +83,12 @@ export const useNotificationsStore = create<NotificationsState>()(
     (set, get) => ({
       notifications: [],
       isOpen: false,
+      ownerUserId: null,
+
+      syncOwner: (userId) => {
+        if (get().ownerUserId === userId) return;
+        set({ ownerUserId: userId, notifications: [] });
+      },
 
       addNotification: (data) => {
         const state = get();
@@ -174,6 +195,7 @@ export const useNotificationsStore = create<NotificationsState>()(
       name: "notifications-storage",
       partialize: (state) => ({
         notifications: state.notifications,
+        ownerUserId: state.ownerUserId,
       }),
       onRehydrateStorage: () => (state) => {
         if (!state) return;
