@@ -4,6 +4,9 @@ import { creditWallet } from "@/lib/payments/wallet";
 import { auth } from "@/auth";
 import { db } from "@/lib/db";
 import { notify } from "@/lib/notify";
+import { sendWalletCreditEmail } from "@/lib/mail";
+import { allowsEmail } from "@/lib/user-preferences";
+import { SITE_URL } from "@/lib/site";
 import {
   REVENUE,
   allocateShareAcrossInstallments,
@@ -219,6 +222,11 @@ export async function releaseProgramEarnings(cohortId: string) {
   const released = await db.$transaction(async (tx: any) => {
     let total = 0;
     let count = 0;
+    // Per-tutor totals and final balance — a cohort's eligible earnings can
+    // span more than one tutor across a mid-cohort handover, and each one
+    // needs their OWN notice for their OWN amount, not a copy of the whole
+    // release's total addressed to whoever happened to be first in the list.
+    const byTutor = new Map<string, { amount: number; balanceAfter?: number }>();
 
     for (const earning of eligible) {
       // Re-check status inside the transaction: this is what makes a
@@ -233,7 +241,7 @@ export async function releaseProgramEarnings(cohortId: string) {
       });
       if (claimed.count === 0) continue;
 
-      await creditWallet(tx, {
+      const entry = await creditWallet(tx, {
         userId: earning.tutorId,
         amount: earning.amount,
         type: "PROGRAM_EARNING_RELEASE",
@@ -241,22 +249,71 @@ export async function releaseProgramEarnings(cohortId: string) {
         description: "Program cohort earnings released",
       });
 
+      const existing = byTutor.get(earning.tutorId);
+      byTutor.set(earning.tutorId, {
+        amount: (existing?.amount ?? 0) + earning.amount,
+        balanceAfter: entry?.balanceAfter,
+      });
+
       total += earning.amount;
       count += 1;
     }
 
-    return { count, total };
+    return { count, total, byTutor };
   });
 
   if (released.count > 0) {
-    const tutorId = eligible[0].tutorId;
-    await notify.user(tutorId, {
-      type: "payment",
-      title: "Program Earnings Released",
-      message: `₦${released.total.toLocaleString()} from your cohort has been added to your wallet.`,
-      actionUrl: "/tutor/wallet",
-      actionLabel: "View Wallet",
+    const cohort = await db.programCohort.findUnique({
+      where: { id: cohortId },
+      select: { displayName: true, program: { select: { name: true } } },
     });
+    const description = cohort
+      ? `Program cohort earnings released — ${cohort.program?.name ?? "Program"}${cohort.displayName ? ` · ${cohort.displayName}` : ""}`
+      : "Program cohort earnings released";
+    const walletUrl = `${SITE_URL}/tutor/wallet`;
+
+    const tutors = await db.user.findMany({
+      where: { id: { in: [...released.byTutor.keys()] } },
+      select: { id: true, email: true, name: true, preferences: true },
+    });
+
+    await Promise.all(
+      tutors.map(async (tutor: any) => {
+        const share = released.byTutor.get(tutor.id);
+        if (!share) return;
+
+        await notify
+          .user(tutor.id, {
+            type: "payment",
+            title: "Program Earnings Released",
+            message: `₦${share.amount.toLocaleString()} from your cohort has been added to your wallet.`,
+            actionUrl: "/tutor/wallet",
+            actionLabel: "View Wallet",
+          })
+          .catch((error: unknown) =>
+            console.error("[program-earnings] in-app release notice failed:", error),
+          );
+
+        if (!tutor.email || !allowsEmail(tutor.preferences)) return;
+        if (typeof share.balanceAfter !== "number") return;
+
+        const result = await sendWalletCreditEmail({
+          email: tutor.email,
+          name: tutor.name ?? undefined,
+          amount: share.amount,
+          description,
+          newBalance: share.balanceAfter,
+          walletUrl,
+        }).catch((error: unknown) => {
+          console.error("[program-earnings] release email threw:", error);
+          return { error: "threw" };
+        });
+
+        if (result && "error" in result) {
+          console.error("[program-earnings] release email failed:", result.error);
+        }
+      }),
+    );
   }
 
   return { ok: true, released: released.count, total: released.total };
