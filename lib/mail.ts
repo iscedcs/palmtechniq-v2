@@ -1014,3 +1014,183 @@ export async function sendPaymentReceiptEmail(params: {
     return { error: "Failed to send payment receipt." };
   }
 }
+
+// ============ PAYOUT STATUS EMAILS ============
+
+const PAYOUT_SUBJECTS: Record<string, (amount: string) => string> = {
+  REQUESTED: (amount) => `Withdrawal request received — ${amount}`,
+  PROCESSING: (amount) => `Your payout is on its way — ${amount}`,
+  PAID: (amount) => `Your payout has been sent — ${amount}`,
+  REJECTED: (amount) => `Your withdrawal request was declined — ${amount}`,
+};
+
+/**
+ * The four withdrawal-lifecycle emails: requested, approved and processing,
+ * paid, or declined. One function, matching the template's `status` prop —
+ * see lib/email-templates/payout-status.tsx for why.
+ */
+export async function sendPayoutStatusEmail(params: {
+  email: string;
+  name?: string;
+  amount: number;
+  status: "REQUESTED" | "PROCESSING" | "PAID" | "REJECTED";
+  reference: string;
+  bankName?: string;
+  accountNumber?: string;
+  reason?: string;
+  newBalance?: number;
+  walletUrl: string;
+}) {
+  const formattedAmount = new Intl.NumberFormat("en-NG", {
+    style: "currency",
+    currency: "NGN",
+    minimumFractionDigits: 2,
+  }).format(params.amount);
+  const subject = PAYOUT_SUBJECTS[params.status](formattedAmount);
+  const walletUrl = params.walletUrl;
+
+  try {
+    if (
+      emailDryRun("payout-status", params.email, subject, {
+        status: params.status,
+        amount: params.amount,
+        reference: params.reference,
+        newBalance: params.newBalance ?? null,
+      })
+    ) {
+      return { success: true as const };
+    }
+
+    const { default: PayoutStatusEmail } = await import(
+      "./email-templates/payout-status"
+    );
+    const resend = new Resend(process.env.RESEND_API_KEY!);
+
+    const textByStatus: Record<string, string> = {
+      REQUESTED: `We've received your request to withdraw ${formattedAmount} from your wallet. It's now awaiting review, and ${formattedAmount} has been held aside from your available balance while we process it.`,
+      PROCESSING: `Your request to withdraw ${formattedAmount} has been approved, and the transfer to your bank account is being processed.`,
+      PAID: `${formattedAmount} has been sent to your bank account${params.bankName ? ` at ${params.bankName}` : ""}${params.accountNumber ? ` ending in ${params.accountNumber.slice(-4)}` : ""}.`,
+      REJECTED: `Your request to withdraw ${formattedAmount} could not be processed. The full amount has been returned to your wallet.`,
+    };
+
+    const { error } = await resend.emails.send({
+      from:
+        process.env.FROM_EMAIL_ADDRESS ||
+        "PalmTechnIQ <support@palmtechniq.com>",
+      to: params.email,
+      subject,
+      react: PayoutStatusEmail({
+        name: params.name,
+        amount: params.amount,
+        status: params.status,
+        reference: params.reference,
+        bankName: params.bankName,
+        accountNumber: params.accountNumber,
+        reason: params.reason,
+        newBalance: params.newBalance,
+        walletUrl,
+      }),
+      text: [
+        `Hi ${params.name?.trim() || "there"},`,
+        "",
+        textByStatus[params.status],
+        "",
+        `Reference: ${params.reference}`,
+        params.reason ? `Reason given: ${params.reason}` : undefined,
+        "",
+        `View your wallet: ${walletUrl}`,
+        "",
+        "Thanks,",
+        "PalmTechnIQ Team",
+      ]
+        .filter((line): line is string => line !== undefined)
+        .join("\n"),
+    });
+
+    if (error) {
+      console.error("[sendPayoutStatusEmail] Resend rejected the email:", error);
+      return { error: error.message ?? "Resend rejected the email." };
+    }
+    return { success: true as const };
+  } catch (error) {
+    console.error("[sendPayoutStatusEmail] Failed to send email:", error);
+    return { error: "Failed to send payout status email." };
+  }
+}
+
+// ============ WALLET CREDIT EMAIL ============
+
+/**
+ * A generic "money landed in your wallet" notice for credits that are not a
+ * course sale — currently just a program cohort's earnings being released.
+ */
+export async function sendWalletCreditEmail(params: {
+  email: string;
+  name?: string;
+  amount: number;
+  description: string;
+  newBalance: number;
+  walletUrl: string;
+}) {
+  const formattedAmount = new Intl.NumberFormat("en-NG", {
+    style: "currency",
+    currency: "NGN",
+    minimumFractionDigits: 2,
+  }).format(params.amount);
+  const subject = `${formattedAmount} added to your wallet`;
+  const walletUrl = params.walletUrl;
+
+  try {
+    if (
+      emailDryRun("wallet-credit", params.email, subject, {
+        amount: params.amount,
+        description: params.description,
+        newBalance: params.newBalance,
+      })
+    ) {
+      return { success: true as const };
+    }
+
+    const { default: WalletCreditEmail } = await import(
+      "./email-templates/wallet-credit"
+    );
+    const resend = new Resend(process.env.RESEND_API_KEY!);
+
+    const { error } = await resend.emails.send({
+      from:
+        process.env.FROM_EMAIL_ADDRESS ||
+        "PalmTechnIQ <support@palmtechniq.com>",
+      to: params.email,
+      subject,
+      react: WalletCreditEmail({
+        name: params.name,
+        amount: params.amount,
+        description: params.description,
+        newBalance: params.newBalance,
+        walletUrl,
+      }),
+      text: [
+        `Hi ${params.name?.trim() || "there"},`,
+        "",
+        params.description,
+        "",
+        `Amount added: ${formattedAmount}`,
+        `Wallet balance now: ${new Intl.NumberFormat("en-NG", { style: "currency", currency: "NGN", minimumFractionDigits: 2 }).format(params.newBalance)}`,
+        "",
+        `View your wallet: ${walletUrl}`,
+        "",
+        "Thanks,",
+        "PalmTechnIQ Team",
+      ].join("\n"),
+    });
+
+    if (error) {
+      console.error("[sendWalletCreditEmail] Resend rejected the email:", error);
+      return { error: error.message ?? "Resend rejected the email." };
+    }
+    return { success: true as const };
+  } catch (error) {
+    console.error("[sendWalletCreditEmail] Failed to send email:", error);
+    return { error: "Failed to send wallet credit email." };
+  }
+}

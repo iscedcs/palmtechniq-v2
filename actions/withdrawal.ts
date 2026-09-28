@@ -5,7 +5,10 @@ import { creditWallet, debitWallet } from "@/lib/payments/wallet";
 import { auth } from "@/auth";
 import { db } from "@/lib/db";
 import { verifyTotpToken } from "@/lib/totp";
-import { sendWithdrawalOtpEmail } from "@/lib/mail";
+import { sendWithdrawalOtpEmail, sendPayoutStatusEmail } from "@/lib/mail";
+import { allowsEmail } from "@/lib/user-preferences";
+import { notify } from "@/lib/notify";
+import { SITE_URL } from "@/lib/site";
 import { type TwoFactorMethod } from "@/actions/account-security";
 import {
   paystackCreateSubaccount,
@@ -15,6 +18,77 @@ import {
   paystackTransfer,
 } from "@/actions/paystack";
 import { enforceRateLimit } from "@/lib/rate-limit-guard";
+
+const WALLET_URL = `${SITE_URL}/tutor/wallet`;
+
+/**
+ * Tell a tutor/mentor about a withdrawal, in-app and — if they allow it — by
+ * email. In-app is unconditional: it is the channel that still works when
+ * email is off, bounces, or Resend is down. Never throws: a payout must stay
+ * settled whether or not the notice reaches them.
+ */
+async function announcePayout(params: {
+  userId: string;
+  email: string | null;
+  name: string | null;
+  preferences: unknown;
+  amount: number;
+  status: "REQUESTED" | "PROCESSING" | "PAID" | "REJECTED";
+  reference: string;
+  bankName?: string | null;
+  accountNumber?: string | null;
+  reason?: string | null;
+  newBalance?: number;
+}) {
+  const title: Record<typeof params.status, string> = {
+    REQUESTED: "Withdrawal request received",
+    PROCESSING: "Your payout is on its way",
+    PAID: "Your payout has been sent",
+    REJECTED: "Withdrawal request declined",
+  } as const;
+
+  const message: Record<typeof params.status, string> = {
+    REQUESTED: `Your withdrawal request has been received and is awaiting review.`,
+    PROCESSING: `Your withdrawal has been approved and is being sent to your bank.`,
+    PAID: `Your withdrawal has been sent to your bank account.`,
+    REJECTED: `Your withdrawal request was declined. The funds are back in your wallet.`,
+  } as const;
+
+  await notify
+    .user(params.userId, {
+      type: params.status === "REJECTED" ? "warning" : "payment",
+      title: title[params.status],
+      message: message[params.status],
+      actionUrl: "/tutor/wallet",
+      actionLabel: "View Wallet",
+      metadata: { category: "payout_status", status: params.status },
+    })
+    .catch((error: unknown) =>
+      console.error("[withdrawal] in-app payout notice failed:", error),
+    );
+
+  if (!params.email || !allowsEmail(params.preferences)) return;
+
+  const result = await sendPayoutStatusEmail({
+    email: params.email,
+    name: params.name ?? undefined,
+    amount: params.amount,
+    status: params.status,
+    reference: params.reference,
+    bankName: params.bankName ?? undefined,
+    accountNumber: params.accountNumber ?? undefined,
+    reason: params.reason ?? undefined,
+    newBalance: params.newBalance,
+    walletUrl: WALLET_URL,
+  }).catch((error: unknown) => {
+    console.error("[withdrawal] payout status email threw:", error);
+    return { error: "threw" };
+  });
+
+  if (result && "error" in result) {
+    console.error("[withdrawal] payout status email failed:", result.error);
+  }
+}
 
 type DashboardTransaction = {
   id: string;
@@ -633,6 +707,9 @@ export async function requestWithdrawal(amount: number, twoFactorCode?: string) 
       role: true,
       preferences: true,
       email: true,
+      name: true,
+      bankName: true,
+      accountNumber: true,
     },
   });
 
@@ -731,21 +808,36 @@ export async function requestWithdrawal(amount: number, twoFactorCode?: string) 
     });
   }
 
-  await db.$transaction(async (tx: any) => {
-    await debitWallet(tx, {
+  const { requestId, newBalance } = await db.$transaction(async (tx: any) => {
+    const entry = await debitWallet(tx, {
       userId: session.user.id,
       amount,
       type: "WITHDRAWAL_REQUESTED",
       description: "Withdrawal requested",
     });
 
-    await tx.withdrawalRequest.create({
+    const request = await tx.withdrawalRequest.create({
       data: {
         userId: session.user.id,
         amount,
         status: "PENDING",
       },
     });
+
+    return { requestId: request.id, newBalance: entry?.balanceAfter };
+  });
+
+  await announcePayout({
+    userId: session.user.id,
+    email: user.email,
+    name: user.name,
+    preferences: user.preferences,
+    amount,
+    status: "REQUESTED",
+    reference: requestId,
+    bankName: user.bankName,
+    accountNumber: user.accountNumber,
+    newBalance,
   });
 
   return { success: true };
@@ -761,7 +853,18 @@ export async function approveWithdrawalRequest(
 
   const withdrawal = await db.withdrawalRequest.findUnique({
     where: { id: withdrawalRequestId },
-    include: { user: { select: { recipientCode: true } } },
+    include: {
+      user: {
+        select: {
+          recipientCode: true,
+          email: true,
+          name: true,
+          preferences: true,
+          bankName: true,
+          accountNumber: true,
+        },
+      },
+    },
   });
 
   if (!withdrawal) return { error: "Withdrawal not found" };
@@ -846,6 +949,18 @@ export async function approveWithdrawalRequest(
     }
   });
 
+  await announcePayout({
+    userId: withdrawal.userId,
+    email: withdrawal.user.email,
+    name: withdrawal.user.name,
+    preferences: withdrawal.user.preferences,
+    amount: withdrawal.amount,
+    status: transfer.status === "success" ? "PAID" : "PROCESSING",
+    reference: withdrawalRequestId,
+    bankName: withdrawal.user.bankName,
+    accountNumber: withdrawal.user.accountNumber,
+  });
+
   return { success: true };
 }
 
@@ -859,7 +974,13 @@ export async function rejectWithdrawalRequest(
 
   const withdrawal = await db.withdrawalRequest.findUnique({
     where: { id: withdrawalRequestId },
-    select: { id: true, userId: true, amount: true, status: true },
+    select: {
+      id: true,
+      userId: true,
+      amount: true,
+      status: true,
+      user: { select: { email: true, name: true, preferences: true } },
+    },
   });
 
   if (!withdrawal) return { error: "Withdrawal not found" };
@@ -867,7 +988,7 @@ export async function rejectWithdrawalRequest(
     return { error: "Withdrawal already processed" };
   }
 
-  await db.$transaction(async (tx: any) => {
+  const newBalance = await db.$transaction(async (tx: any) => {
     await tx.withdrawalRequest.update({
       where: { id: withdrawalRequestId },
       data: {
@@ -878,13 +999,27 @@ export async function rejectWithdrawalRequest(
       },
     });
 
-    await creditWallet(tx, {
+    const entry = await creditWallet(tx, {
       userId: withdrawal.userId,
       amount: withdrawal.amount,
       type: "WITHDRAWAL_REVERSED",
       withdrawalRequestId: withdrawal.id,
       description: "Withdrawal rejected, funds returned",
     });
+
+    return entry?.balanceAfter;
+  });
+
+  await announcePayout({
+    userId: withdrawal.userId,
+    email: withdrawal.user.email,
+    name: withdrawal.user.name,
+    preferences: withdrawal.user.preferences,
+    amount: withdrawal.amount,
+    status: "REJECTED",
+    reference: withdrawalRequestId,
+    reason: adminNote,
+    newBalance,
   });
 
   return { success: true };
