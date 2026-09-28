@@ -106,7 +106,7 @@ export default function LessonSidebar({
                     </div>
 
                     {/* Lessons inside module */}
-                    <div className="ml-7 space-y-2">
+                    <div className="ml-2 space-y-1.5">
                       {module.lessons.map((lesson) => {
                         const isActive = lesson.id === currentLessonId;
 
@@ -114,7 +114,7 @@ export default function LessonSidebar({
                           <Button
                             key={lesson.id}
                             variant="ghost"
-                            className={`w-full justify-start p-3 rounded-lg transition-colors text-left h-auto whitespace-normal ${
+                            className={`w-full justify-start p-2.5 rounded-lg transition-colors text-left h-auto whitespace-normal ${
                               lesson.isLocked && !lesson.isCompleted
                                 ? "cursor-not-allowed opacity-40"
                                 : isActive
@@ -136,35 +136,27 @@ export default function LessonSidebar({
                               }
                             }}
                             disabled={lesson.isLocked && !lesson.isCompleted}>
-                            <div className="flex flex-col items-start w-full">
-                              <div className="flex gap-2 w-full items-start">
-                                {lesson.isCompleted ? (
-                                  <CheckCircle className="w-4 h-4 text-green-400" />
-                                ) : (
-                                  <Circle className="w-4 h-4 text-gray-400" />
-                                )}
-                                <span
-                                  className={`text-sm leading-snug break-words ${
+                            <div className="flex gap-2 w-full items-start min-w-0">
+                              {lesson.isCompleted ? (
+                                <CheckCircle className="w-4 h-4 mt-0.5 shrink-0 text-green-400" />
+                              ) : (
+                                <Circle className="w-4 h-4 mt-0.5 shrink-0 text-gray-400" />
+                              )}
+                              <div className="min-w-0 flex-1">
+                                <p
+                                  className={`text-sm font-medium leading-snug break-words ${
                                     isActive
                                       ? "text-white"
                                       : lesson.isLocked && !lesson.isCompleted
                                         ? "text-gray-500"
                                         : "text-gray-300"
                                   }`}>
-                                  <span className="font-medium">
-                                    {lesson.title}
-                                  </span>
-                                  {lesson.description && (
-                                    <span className="text-gray-400">
-                                      {" "}
-                                      — {lesson.description}
-                                    </span>
-                                  )}
-                                </span>
+                                  {lesson.title}
+                                </p>
+                                <p className="text-xs text-gray-400 mt-0.5">
+                                  {Math.floor(lesson.duration)} min
+                                </p>
                               </div>
-                              <p className="text-xs text-gray-400 ml-6 mt-1">
-                                {Math.floor(lesson.duration)} min
-                              </p>
                             </div>
                           </Button>
                         );
