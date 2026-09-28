@@ -881,12 +881,30 @@ export async function approveWithdrawalRequest(
 
   const reference = `wd_${randomUUID()}`;
 
-  const transfer = await paystackTransfer({
-    amountKobo: Math.round(withdrawal.amount * 100),
-    recipientCode: withdrawal.user.recipientCode,
-    reference,
-    reason: "Tutor withdrawal",
-  });
+  // Paystack throws on anything from "insufficient balance" to a stale
+  // recipient code. Left uncaught, that becomes an unhandled server-action
+  // rejection — a 500 with no message the admin ever sees, visible only in
+  // whoever's terminal happens to be running the server. The request stays
+  // PENDING either way (nothing below this has run yet), so it's safe to
+  // just report the failure and let the admin retry once it's fixed.
+  let transfer: Awaited<ReturnType<typeof paystackTransfer>>;
+  try {
+    transfer = await paystackTransfer({
+      amountKobo: Math.round(withdrawal.amount * 100),
+      recipientCode: withdrawal.user.recipientCode,
+      reference,
+      reason: "Tutor withdrawal",
+    });
+  } catch (error) {
+    console.error("[withdrawal] Paystack transfer failed:", error);
+    const message = error instanceof Error ? error.message : "Paystack transfer failed";
+    return {
+      error:
+        message === "Your balance is not enough to fulfil this request"
+          ? "Paystack balance is too low to fund this transfer. Top up the Paystack account balance, then try again."
+          : message,
+    };
+  }
 
   await db.$transaction(async (tx: any) => {
     await tx.withdrawalRequest.update({
