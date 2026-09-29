@@ -443,6 +443,8 @@ export async function addLessonToModule(
       content: lessonData.content ?? "",
       description: lessonData.description ?? "",
       videoUrl: lessonData.videoUrl ?? "",
+      captionsUrl: lessonData.captionsUrl ?? "",
+      previewVideoUrl: lessonData.previewVideoUrl ?? "",
       sortOrder:
         typeof lessonData.sortOrder === "number" ? lessonData.sortOrder : 0,
       isPreview: Boolean(lessonData.isPreview),
@@ -455,6 +457,8 @@ export async function addLessonToModule(
         duration: lessonPayload.duration ?? 0,
         content: lessonPayload.content,
         videoUrl: lessonPayload.videoUrl,
+        captionsUrl: lessonPayload.captionsUrl,
+        previewVideoUrl: lessonPayload.previewVideoUrl,
         sortOrder: lessonPayload.sortOrder,
         description: lessonPayload.description,
         isPreview: lessonPayload.isPreview,
@@ -519,6 +523,72 @@ export async function updateLessonVideo(
   });
 
   await recomputeCourseDurations(db, lesson.module.courseId);
+
+  return { success: true };
+}
+
+export async function updateLessonCaptions(
+  lessonId: string,
+  captionsUrl: string,
+) {
+  const session = await auth();
+  if (!session?.user?.id) {
+    return { error: "Unauthorized" };
+  }
+
+  if (!lessonId) {
+    return { error: "Lesson ID is required" };
+  }
+
+  const lesson = await db.lesson.findUnique({
+    where: { id: lessonId },
+    include: {
+      module: { include: { course: { include: { tutor: true } } } },
+    },
+  });
+
+  if (!lesson) return { error: "Lesson not found" };
+  if (lesson.module.course.tutor?.userId !== session.user.id) {
+    return { error: "Unauthorized" };
+  }
+
+  await db.lesson.update({
+    where: { id: lessonId },
+    data: { captionsUrl: captionsUrl || null },
+  });
+
+  return { success: true };
+}
+
+export async function updateLessonPreviewVideo(
+  lessonId: string,
+  previewVideoUrl: string,
+) {
+  const session = await auth();
+  if (!session?.user?.id) {
+    return { error: "Unauthorized" };
+  }
+
+  if (!lessonId) {
+    return { error: "Lesson ID is required" };
+  }
+
+  const lesson = await db.lesson.findUnique({
+    where: { id: lessonId },
+    include: {
+      module: { include: { course: { include: { tutor: true } } } },
+    },
+  });
+
+  if (!lesson) return { error: "Lesson not found" };
+  if (lesson.module.course.tutor?.userId !== session.user.id) {
+    return { error: "Unauthorized" };
+  }
+
+  await db.lesson.update({
+    where: { id: lessonId },
+    data: { previewVideoUrl: previewVideoUrl || null },
+  });
 
   return { success: true };
 }

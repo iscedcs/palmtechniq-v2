@@ -19,6 +19,7 @@ export async function GET(
     select: {
       id: true,
       videoUrl: true,
+      captionsUrl: true,
       isPreview: true,
       module: {
         select: {
@@ -50,5 +51,8 @@ export async function GET(
     }
   }
 
-  return NextResponse.json({ videoUrl: lesson.videoUrl });
+  return NextResponse.json({
+    videoUrl: lesson.videoUrl,
+    captionsUrl: lesson.captionsUrl,
+  });
 }

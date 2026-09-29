@@ -156,6 +156,8 @@ export const lessonSchema = z.object({
   content: z.string().optional(),
   description: z.string().optional(),
   videoUrl: z.string().optional(),
+  captionsUrl: z.string().optional(),
+  previewVideoUrl: z.string().optional(),
   sortOrder: z.number().min(0, "Order must be non-negative"),
   isPreview: z.boolean().default(false),
 });
