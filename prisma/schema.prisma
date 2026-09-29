@@ -333,6 +333,10 @@ model Lesson {
   description String?
   content     String?
   videoUrl    String?
+  /** A WebVTT file URL — drives both the CC caption overlay and the
+   * searchable transcript panel in the lesson player. Optional; set from the
+   * course editor (planned separately). */
+  captionsUrl String?
   duration    Int
   sortOrder   Int
   isPreview   Boolean          @default(false)
