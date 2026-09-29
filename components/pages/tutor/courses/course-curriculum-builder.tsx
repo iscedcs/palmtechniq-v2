@@ -21,6 +21,7 @@ import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
 import { X, Plus, ChevronDown, ChevronUp, Clock } from "lucide-react";
 import LessonUploadFile from "@/components/shared/lesson-uploader";
+import CaptionsUploadField from "@/components/shared/captions-uploader";
 import { toast } from "sonner";
 import { SortableItem } from "../shared/sortable-item";
 import { SortableLessonItem } from "../shared/sortable-lesson-item";
@@ -62,6 +63,8 @@ interface CourseLesson {
   content?: string;
   description?: string;
   videoUrl?: string;
+  captionsUrl?: string;
+  previewVideoUrl?: string;
   sortOrder: number;
   isPreview: boolean;
 }
@@ -141,6 +144,8 @@ export default function CourseCurriculumBuilder({
       content: "",
       isPreview: false,
       videoUrl: "",
+      captionsUrl: "",
+      previewVideoUrl: "",
     };
 
     if (courseId) {
@@ -582,6 +587,79 @@ export default function CourseCurriculumBuilder({
                                                 );
                                               }}
                                             />
+
+                                            <div className="pt-3 border-t border-white/10">
+                                              <CaptionsUploadField
+                                                value={lesson.captionsUrl}
+                                                onChange={(url) =>
+                                                  updateLesson(
+                                                    module.id,
+                                                    lesson.id,
+                                                    { captionsUrl: url },
+                                                  )
+                                                }
+                                              />
+                                            </div>
+
+                                            <div className="pt-3 border-t border-white/10 space-y-2">
+                                              <p className="text-xs text-gray-400">
+                                                Preview video (optional) — a
+                                                short trailer clip shown to
+                                                prospective students, separate
+                                                from the main lesson video.
+                                              </p>
+                                              {lesson.previewVideoUrl ? (
+                                                <div className="space-y-2">
+                                                  {isYoutubeUrl(
+                                                    lesson.previewVideoUrl,
+                                                  ) ? (
+                                                    <iframe
+                                                      src={toYoutubeEmbedUrl(
+                                                        lesson.previewVideoUrl,
+                                                      )}
+                                                      title="Lesson preview video"
+                                                      allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture"
+                                                      allowFullScreen
+                                                      className="w-full max-h-56 sm:max-h-64 rounded-lg border border-white/20"
+                                                    />
+                                                  ) : (
+                                                    <video
+                                                      src={
+                                                        lesson.previewVideoUrl
+                                                      }
+                                                      controls
+                                                      className="w-full max-h-56 sm:max-h-64 rounded-lg border border-white/20"
+                                                    />
+                                                  )}
+                                                  <Input
+                                                    readOnly
+                                                    value={
+                                                      lesson.previewVideoUrl
+                                                    }
+                                                    className="bg-white/10 border-white/20 text-xs sm:text-sm text-white"
+                                                  />
+                                                </div>
+                                              ) : (
+                                                <p className="text-sm text-gray-400 italic">
+                                                  No preview video uploaded
+                                                  yet
+                                                </p>
+                                              )}
+                                              <LessonUploadFile
+                                                onUploadSuccess={(url) => {
+                                                  updateLesson(
+                                                    module.id,
+                                                    lesson.id,
+                                                    {
+                                                      previewVideoUrl: url,
+                                                    },
+                                                  );
+                                                  toast.success(
+                                                    "Preview video uploaded",
+                                                  );
+                                                }}
+                                              />
+                                            </div>
                                           </div>
                                         )}
                                         {/* <LessonUploadFile

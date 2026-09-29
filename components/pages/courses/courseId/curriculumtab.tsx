@@ -27,7 +27,7 @@ export default function CurriculumTab({
       duration?: number | string;
       sortOrder?: number | null;
       isPreview?: boolean;
-      previewVideo?: string | null;
+      previewVideoUrl?: string | null;
     }[];
   }[];
   isEnrolled: boolean;
@@ -53,16 +53,16 @@ export default function CurriculumTab({
   const handleLessonClick = (
     lessonId: string,
     isPreview?: boolean,
-    previewUrl?: string | null,
+    previewVideoUrl?: string | null,
     title?: string,
   ) => {
-    if (isEnrolled) {
+    if (isEnrolled || isPreview) {
       router.push(`/courses/${courseId}/learn?lesson=${lessonId}`);
-    } else if (isPreview && previewUrl) {
+    } else if (previewVideoUrl) {
       setPreviewModal({
         isOpen: true,
         title: title || "Lesson Preview",
-        previewUrl,
+        previewUrl: previewVideoUrl,
       });
     } else {
       toast("Purchase this course to unlock full content.", {
@@ -138,19 +138,23 @@ export default function CurriculumTab({
                       className="space-y-3 pt-2">
                       {sortedLessons.map((lesson, lessonIndex) => {
                         const locked = !isEnrolled && !lesson.isPreview;
+                        const hasPreviewVideo = Boolean(
+                          lesson.previewVideoUrl,
+                        );
+                        const clickable = !locked || hasPreviewVideo;
                         return (
                           <div
                             key={lesson.id}
                             className={`flex flex-col sm:flex-row sm:items-center justify-between p-3 rounded-lg gap-2 transition-colors group ${
-                              locked
-                                ? "bg-white/5"
-                                : "bg-white/5 hover:bg-white/10 cursor-pointer"
+                              clickable
+                                ? "bg-white/5 hover:bg-white/10 cursor-pointer"
+                                : "bg-white/5"
                             }`}
                             onClick={() =>
                               handleLessonClick(
                                 lesson.id,
                                 lesson.isPreview,
-                                lesson.previewVideo,
+                                lesson.previewVideoUrl,
                                 lesson.title,
                               )
                             }>
@@ -179,12 +183,14 @@ export default function CurriculumTab({
                               <span className="text-gray-400 whitespace-nowrap">
                                 {formatDurationMinutes(lesson.duration)}
                               </span>
-                              {!locked && (
+                              {clickable && (
                                 <Button
                                   size="sm"
                                   variant="ghost"
                                   className="opacity-100 sm:opacity-0 group-hover:opacity-100 transition-opacity text-neon-blue hover:bg-neon-blue/20 text-xs h-7 px-2">
-                                  {isEnrolled ? "Start" : "Preview"}
+                                  {isEnrolled || lesson.isPreview
+                                    ? "Start"
+                                    : "Preview"}
                                 </Button>
                               )}
                             </div>

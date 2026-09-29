@@ -337,6 +337,10 @@ model Lesson {
    * searchable transcript panel in the lesson player. Optional; set from the
    * course editor (planned separately). */
   captionsUrl String?
+  /** An optional short trailer/overview clip for this lesson, separate from
+   * `isPreview` — shown to prospective students regardless of enrollment,
+   * without unlocking the full lesson. */
+  previewVideoUrl String?
   duration    Int
   sortOrder   Int
   isPreview   Boolean          @default(false)
