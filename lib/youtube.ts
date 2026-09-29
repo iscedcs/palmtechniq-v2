@@ -35,6 +35,7 @@ export const toYoutubeEmbedUrl = (url: string) => {
       modestbranding: "1",
       iv_load_policy: "3",
       showinfo: "0",
+      cc_load_policy: "0",
     });
 
     return `https://www.youtube-nocookie.com/embed/${videoId}?${params.toString()}`;

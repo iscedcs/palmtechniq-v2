@@ -9,15 +9,26 @@ import { useUploadStore } from "@/stores/upload-store";
 interface LessonUploadFileProps {
   onUploadSuccess: (url: string) => void;
   onDuration?: (minutes: number) => void;
+  /** When set (a real, already-persisted lesson with no captions yet), the
+   * uploaded video's audio is also sent off in the background to generate
+   * WebVTT captions automatically. Never blocks or fails the video upload
+   * itself — see lib/ai/transcribe-lesson.ts for the guardrails. */
+  lessonId?: string;
+  hasCaptions?: boolean;
+  onCaptionsReady?: (url: string) => void;
 }
 
 export default function LessonUploadFile({
   onUploadSuccess,
   onDuration,
+  lessonId,
+  hasCaptions,
+  onCaptionsReady,
 }: LessonUploadFileProps) {
   const [file, setFile] = useState<File | null>(null);
   const inputRef = useRef<HTMLInputElement>(null);
   const startUpload = useUploadStore((s) => s.startUpload);
+  const durationMinutesRef = useRef<number | undefined>(undefined);
 
   const handleFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     const selected = e.target.files?.[0] || null;
@@ -41,11 +52,44 @@ export default function LessonUploadFile({
         }
 
         const minutes = Math.ceil(video.duration / 60);
+        durationMinutesRef.current = minutes;
         if (onDuration) {
           onDuration(minutes);
         }
         URL.revokeObjectURL(url);
       };
+    }
+  };
+
+  const autoGenerateCaptions = async (videoFile: File) => {
+    if (!lessonId || hasCaptions || !onCaptionsReady) return;
+    if (lessonId.startsWith("temp-")) return;
+
+    try {
+      const formData = new FormData();
+      formData.append("file", videoFile);
+
+      const headers: HeadersInit = {};
+      if (durationMinutesRef.current) {
+        headers["x-lesson-duration-minutes"] = String(durationMinutesRef.current);
+      }
+
+      const res = await fetch(`/api/lessons/${lessonId}/transcribe`, {
+        method: "POST",
+        headers,
+        body: formData,
+      });
+      const data = await res.json();
+
+      if (data?.success && data.captionsUrl) {
+        onCaptionsReady(data.captionsUrl);
+        toast.success("Captions auto-generated for this lesson.");
+      }
+      // Skipped/failed cases are silent by design — auto-captions are a
+      // best-effort bonus, not something that should interrupt a tutor
+      // mid-upload. They can always add captions manually.
+    } catch (error) {
+      console.error("Auto-caption generation failed:", error);
     }
   };
 
@@ -55,14 +99,18 @@ export default function LessonUploadFile({
       return;
     }
 
+    const videoFile = file;
+
     // Start upload in background via global store
-    startUpload(file, {
-      name: file.name,
+    startUpload(videoFile, {
+      name: videoFile.name,
       onComplete: (embedUrl) => {
         onUploadSuccess(embedUrl);
         toast.success("Lesson video uploaded successfully!");
       },
     });
+
+    void autoGenerateCaptions(videoFile);
 
     // Clear the form immediately so user can upload more
     setFile(null);

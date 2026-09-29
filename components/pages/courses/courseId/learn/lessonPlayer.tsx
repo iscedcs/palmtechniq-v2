@@ -438,9 +438,16 @@ export default function VideoPlayer({
             iv_load_policy: 3,
             showinfo: 0,
             fs: 0,
+            // We render our own caption overlay from the lesson's VTT file;
+            // YouTube's own captions (auto-generated ones can default to
+            // "on" at the account level, ignoring this param in some
+            // browsers) would otherwise double up with it. Belt-and-braces
+            // unloadModule call below covers that case.
+            cc_load_policy: 0,
           },
           events: {
             onReady: (event: any) => {
+              event?.target?.unloadModule?.("captions");
               // Belt-and-braces: force the actual <iframe> the API created to
               // pin to the wrapper's edges, since "100%" above isn't honoured
               // consistently across browsers when the parent isn't a plain

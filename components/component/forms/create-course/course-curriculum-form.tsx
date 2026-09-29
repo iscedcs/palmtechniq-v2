@@ -447,6 +447,17 @@ export function CourseCurriculumForm({
                                                 </p>
                                               )}
                                               <LessonUploadFile
+                                                lessonId={lesson.id}
+                                                hasCaptions={Boolean(
+                                                  lesson.captionsUrl,
+                                                )}
+                                                onCaptionsReady={(url) =>
+                                                  updateLesson(
+                                                    module.id,
+                                                    lesson.id,
+                                                    { captionsUrl: url },
+                                                  )
+                                                }
                                                 onUploadSuccess={(url) => {
                                                   updateLesson(
                                                     module.id,
