@@ -113,19 +113,9 @@ export default function VideoPlayer({
         doc.msFullscreenElement
       );
       setIsFullscreen(fs);
-
-      // Resize the YouTube iframe to match the new container size
-      const player = youtubePlayerRef.current;
-      if (player?.getIframe) {
-        const iframe = player.getIframe() as HTMLIFrameElement;
-        if (fs) {
-          iframe.style.width = "100%";
-          iframe.style.height = "100%";
-        } else {
-          iframe.style.width = "";
-          iframe.style.height = "";
-        }
-      }
+      // No iframe resize needed here: it's pinned absolute/inset-0 to its
+      // wrapper permanently (see onReady above), and the wrapper itself
+      // already switches between aspect-video and h-full based on isFullscreen.
     };
     document.addEventListener("fullscreenchange", onFsChange);
     document.addEventListener("webkitfullscreenchange", onFsChange);
@@ -432,6 +422,12 @@ export default function VideoPlayer({
       youtubePlayerRef.current = new (window as any).YT.Player(
         youtubeContainerRef.current,
         {
+          // Without these, the IFrame API defaults to a fixed 640x390 iframe
+          // regardless of the container it's given — which is exactly the
+          // "video floating in a sea of black" bug. "100%" lets it track
+          // whatever size the absolutely-positioned wrapper below gives it.
+          width: "100%",
+          height: "100%",
           videoId: youtubeVideoId,
           playerVars: {
             autoplay: autoPlay ? 1 : 0,
@@ -445,6 +441,17 @@ export default function VideoPlayer({
           },
           events: {
             onReady: (event: any) => {
+              // Belt-and-braces: force the actual <iframe> the API created to
+              // pin to the wrapper's edges, since "100%" above isn't honoured
+              // consistently across browsers when the parent isn't a plain
+              // block box (ours is absolutely positioned on purpose for this).
+              const iframe = event?.target?.getIframe?.();
+              if (iframe) {
+                iframe.style.position = "absolute";
+                iframe.style.inset = "0";
+                iframe.style.width = "100%";
+                iframe.style.height = "100%";
+              }
               const total = event?.target?.getDuration?.() ?? 0;
               setDuration(total);
               onDurationChangeRef.current?.(Math.floor(total));
@@ -532,10 +539,15 @@ export default function VideoPlayer({
       <div className="relative flex-1 min-w-0">
         {isYoutube ? (
           <>
-            <div
-              ref={youtubeContainerRef}
-              className={`relative z-0 w-full ${isFullscreen ? "h-full" : "aspect-video"}`}
-            />
+            {/* YT.Player replaces the inner div with a bare <iframe> sized to
+                whatever width/height its constructor got (640x390 by default) —
+                it does NOT inherit this wrapper's classes. The wrapper carries
+                the real aspect ratio; the inner div is pinned edge-to-edge so
+                the iframe it becomes actually fills it, instead of sitting as a
+                small fixed-size video inside a much larger black box. */}
+            <div className={`relative z-0 w-full ${isFullscreen ? "h-full" : "aspect-video"}`}>
+              <div ref={youtubeContainerRef} className="absolute inset-0" />
+            </div>
             {/* Transparent overlay: click to play/pause, blocks right-click on the iframe */}
             <div
               className="absolute inset-0 z-10"
