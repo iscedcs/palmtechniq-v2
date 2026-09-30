@@ -111,8 +111,10 @@ export const protectedRoutes = [
   "/admin/mentorship",
   "/admin/settings",
   "/admin/promotions",
+  "/admin/promo-codes",
   "/settings",
   "/tutor/promotions",
+  "/tutor/promo-codes",
   "/documentation",
   "/change-password",
   "/superior",
@@ -139,6 +141,7 @@ export const adminRoutes = [
   "/admin/mentorship",
   "/admin/settings",
   "/admin/promotions",
+  "/admin/promo-codes",
   "/analytics",
   "/admin/analytics",
 ];
