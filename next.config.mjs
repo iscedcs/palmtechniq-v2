@@ -3,11 +3,6 @@ const nextConfig = {
   typescript: {
     ignoreBuildErrors: process.env.SKIP_TYPECHECK === "true",
   },
-  // @ffmpeg-installer/ffmpeg picks its platform binary with a dynamic
-  // require() at runtime, which Turbopack can't statically resolve when
-  // bundling the transcribe route — keep it (and fluent-ffmpeg, which
-  // requires it) as real Node requires instead of bundling them.
-  serverExternalPackages: ["@ffmpeg-installer/ffmpeg", "fluent-ffmpeg"],
   images: {
     unoptimized: true,
   },

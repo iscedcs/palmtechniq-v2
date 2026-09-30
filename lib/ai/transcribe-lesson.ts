@@ -1,51 +1,13 @@
 import "server-only";
 
-import ffmpegPath from "@ffmpeg-installer/ffmpeg";
-import ffmpeg from "fluent-ffmpeg";
 import { randomUUID } from "node:crypto";
-import { mkdtemp, readFile, rm, writeFile } from "node:fs/promises";
-import { tmpdir } from "node:os";
-import path from "node:path";
 import OpenAI from "openai";
 import { toFile } from "openai/uploads";
 import { S3Client, PutObjectCommand } from "@aws-sdk/client-s3";
 
-ffmpeg.setFfmpegPath(ffmpegPath.path);
-
-// Whisper's hard cap on an uploaded audio file.
-const WHISPER_MAX_BYTES = 25 * 1024 * 1024;
-// A safety cap independent of file size — bounds worst-case transcription
-// cost/time even for an oddly-compressed long recording.
-export const MAX_TRANSCRIBE_DURATION_SECONDS = 90 * 60;
-
-/** Extracts a compressed, mono, low-bitrate audio track from a video file —
- * small enough to fit Whisper's 25MB cap for lessons up to ~90 minutes,
- * where sending the original video would blow well past it. */
-async function extractAudio(videoBuffer: Buffer): Promise<Buffer> {
-  const dir = await mkdtemp(path.join(tmpdir(), "lesson-audio-"));
-  const inputPath = path.join(dir, "input");
-  const outputPath = path.join(dir, "audio.mp3");
-
-  try {
-    await writeFile(inputPath, videoBuffer);
-
-    await new Promise<void>((resolve, reject) => {
-      ffmpeg(inputPath)
-        .noVideo()
-        .audioChannels(1)
-        .audioBitrate("64k")
-        .audioCodec("libmp3lame")
-        .format("mp3")
-        .on("error", reject)
-        .on("end", () => resolve())
-        .save(outputPath);
-    });
-
-    return await readFile(outputPath);
-  } finally {
-    await rm(dir, { recursive: true, force: true }).catch(() => {});
-  }
-}
+// Whisper's hard cap on an uploaded audio file. The client extracts audio
+// before ever sending us bytes, so real lessons land well under this.
+export const WHISPER_MAX_BYTES = 25 * 1024 * 1024;
 
 async function uploadVttToSpaces(
   vtt: string,
@@ -87,27 +49,19 @@ export type TranscribeResult =
   | { success: false; skipped: true; reason: string }
   | { success: false; skipped: false; error: string };
 
-/** Transcribes a lesson's video into WebVTT captions via OpenAI Whisper and
- * uploads the result to storage. Never throws — every failure mode is a
- * soft skip, since this always runs alongside the real video upload and
- * must never be able to break it. */
-export async function transcribeLessonVideo({
+/** Transcribes an already-extracted lesson audio track into WebVTT captions
+ * via OpenAI Whisper and uploads the result to storage. Never throws —
+ * every failure mode is a soft skip, since this always runs alongside the
+ * real video upload and must never be able to break it. */
+export async function transcribeLessonAudio({
   lessonId,
-  videoBuffer,
+  audioBuffer,
 }: {
   lessonId: string;
-  videoBuffer: Buffer;
+  audioBuffer: Buffer;
 }): Promise<TranscribeResult> {
   if (!process.env.OPENAI_API_KEY) {
     return { success: false, skipped: true, reason: "Transcription is not configured" };
-  }
-
-  let audioBuffer: Buffer;
-  try {
-    audioBuffer = await extractAudio(videoBuffer);
-  } catch (error) {
-    console.error("[transcribeLessonVideo] audio extraction failed:", error);
-    return { success: false, skipped: false, error: "Could not read audio from this video" };
   }
 
   if (audioBuffer.byteLength > WHISPER_MAX_BYTES) {
@@ -136,7 +90,7 @@ export async function transcribeLessonVideo({
     const captionsUrl = await uploadVttToSpaces(vttText, lessonId);
     return { success: true, captionsUrl };
   } catch (error) {
-    console.error("[transcribeLessonVideo] transcription failed:", error);
+    console.error("[transcribeLessonAudio] transcription failed:", error);
     return { success: false, skipped: false, error: "Automatic transcription failed" };
   }
 }

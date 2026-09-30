@@ -448,6 +448,7 @@ export default function VideoPlayer({
           events: {
             onReady: (event: any) => {
               event?.target?.unloadModule?.("captions");
+              event?.target?.setOption?.("captions", "track", {});
               // Belt-and-braces: force the actual <iframe> the API created to
               // pin to the wrapper's edges, since "100%" above isn't honoured
               // consistently across browsers when the parent isn't a plain
@@ -467,6 +468,11 @@ export default function VideoPlayer({
               const YT = (window as any).YT;
               if (event?.data === YT?.PlayerState?.PLAYING) {
                 setYtPlaying(true);
+                // YouTube can (re)load its captions module right as playback
+                // starts, after onReady/onApiChange already ran — catch that
+                // case too, on every play, not just once.
+                event?.target?.unloadModule?.("captions");
+                event?.target?.setOption?.("captions", "track", {});
               } else if (
                 event?.data === YT?.PlayerState?.PAUSED ||
                 event?.data === YT?.PlayerState?.BUFFERING
@@ -478,6 +484,15 @@ export default function VideoPlayer({
                 markLessonCompleteRef.current();
                 goToNextLessonRef.current?.();
               }
+            },
+            // onReady's unloadModule call is too early in some browsers —
+            // YouTube (re)loads its captions module lazily once playback
+            // actually starts, which re-enables the native overlay right on
+            // top of ours. onApiChange fires whenever that module list
+            // changes, so it's the one reliable place to keep unloading it.
+            onApiChange: (event: any) => {
+              event?.target?.unloadModule?.("captions");
+              event?.target?.setOption?.("captions", "track", {});
             },
           },
         },
