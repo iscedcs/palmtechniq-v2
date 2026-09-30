@@ -3,6 +3,14 @@
 import { auth } from "@/auth";
 import { db } from "@/lib/db";
 import { normalizePromoCode } from "@/lib/payments/promo";
+import type { PromoCode } from "@prisma/client";
+
+// A single consistent return shape across every branch, so callers can
+// safely check `res?.error` / `res?.success` without TypeScript inferring a
+// union where one branch is missing the property entirely.
+type ActionResult<T extends Record<string, unknown> = Record<string, never>> =
+  | { error: string; success?: undefined }
+  | ({ success: true; error?: undefined } & T);
 
 type PromoCodeInput = {
   code: string;
@@ -66,7 +74,9 @@ function validateCommon(data: PromoCodeInput) {
   return { code, startsAt, endsAt };
 }
 
-export async function createPromoCode(data: PromoCodeInput) {
+export async function createPromoCode(
+  data: PromoCodeInput,
+): Promise<ActionResult<{ promoCode: PromoCode }>> {
   const session = await auth();
   if (!session?.user?.id) return { error: "Unauthorized" };
 
@@ -133,7 +143,7 @@ export async function createPromoCode(data: PromoCodeInput) {
 export async function updatePromoCode(
   id: string,
   data: Partial<PromoCodeInput> & { isActive?: boolean },
-) {
+): Promise<ActionResult<{ promoCode: PromoCode }>> {
   const session = await auth();
   if (!session?.user?.id) return { error: "Unauthorized" };
 
@@ -226,7 +236,7 @@ export async function updatePromoCode(
   }
 }
 
-export async function deletePromoCode(id: string) {
+export async function deletePromoCode(id: string): Promise<ActionResult> {
   const session = await auth();
   if (!session?.user?.id) return { error: "Unauthorized" };
 
@@ -257,36 +267,48 @@ export async function deletePromoCode(id: string) {
   }
 }
 
-export async function getTutorPromoCodes() {
-  const session = await auth();
-  if (!session?.user?.id) return { error: "Unauthorized" };
-
-  const promoCodes = await db.promoCode.findMany({
-    where: { creatorId: session.user.id },
+function tutorPromoCodesQuery(userId: string) {
+  return db.promoCode.findMany({
+    where: { creatorId: userId },
     include: {
       course: { select: { id: true, title: true } },
       _count: { select: { redemptions: true } },
     },
-    orderBy: { createdAt: "desc" },
+    orderBy: { createdAt: "desc" as const },
   });
+}
+
+export async function getTutorPromoCodes(): Promise<
+  ActionResult<{ promoCodes: Awaited<ReturnType<typeof tutorPromoCodesQuery>> }>
+> {
+  const session = await auth();
+  if (!session?.user?.id) return { error: "Unauthorized" };
+
+  const promoCodes = await tutorPromoCodesQuery(session.user.id);
 
   return { success: true, promoCodes };
 }
 
-export async function getAdminPromoCodes() {
-  const session = await auth();
-  if (!session?.user?.id || session.user.role !== "ADMIN") {
-    return { error: "Unauthorized" };
-  }
-
-  const promoCodes = await db.promoCode.findMany({
+function adminPromoCodesQuery() {
+  return db.promoCode.findMany({
     include: {
       course: { select: { id: true, title: true } },
       creator: { select: { id: true, name: true, email: true, role: true } },
       _count: { select: { redemptions: true } },
     },
-    orderBy: { createdAt: "desc" },
+    orderBy: { createdAt: "desc" as const },
   });
+}
+
+export async function getAdminPromoCodes(): Promise<
+  ActionResult<{ promoCodes: Awaited<ReturnType<typeof adminPromoCodesQuery>> }>
+> {
+  const session = await auth();
+  if (!session?.user?.id || session.user.role !== "ADMIN") {
+    return { error: "Unauthorized" };
+  }
+
+  const promoCodes = await adminPromoCodesQuery();
 
   return { success: true, promoCodes };
 }
