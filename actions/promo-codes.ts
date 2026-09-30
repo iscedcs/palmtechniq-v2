@@ -8,7 +8,8 @@ import type { PromoCode } from "@prisma/client";
 // A single consistent return shape across every branch, so callers can
 // safely check `res?.error` / `res?.success` without TypeScript inferring a
 // union where one branch is missing the property entirely.
-type ActionResult<T extends Record<string, unknown> = Record<string, never>> =
+// eslint-disable-next-line @typescript-eslint/ban-types
+type ActionResult<T extends Record<string, unknown> = {}> =
   | { error: string; success?: undefined }
   | ({ success: true; error?: undefined } & T);
 
@@ -23,55 +24,61 @@ type PromoCodeInput = {
   perUserLimit?: number | null;
 };
 
-function validateCommon(data: PromoCodeInput) {
+type ValidateCommonResult =
+  | { ok: false; error: string }
+  | { ok: true; code: string; startsAt: Date | null; endsAt: Date | null };
+
+function validateCommon(data: PromoCodeInput): ValidateCommonResult {
   const code = normalizePromoCode(data.code || "");
   if (!code || code.length < 3) {
-    return { error: "Code must be at least 3 characters" };
+    return { ok: false, error: "Code must be at least 3 characters" };
   }
   if (!/^[A-Z0-9_-]+$/.test(code)) {
-    return { error: "Code can only contain letters, numbers, - and _" };
+    return { ok: false, error: "Code can only contain letters, numbers, - and _" };
   }
 
   if (data.discountType === "PERCENTAGE") {
     if (!(data.discountValue > 0 && data.discountValue <= 100)) {
-      return { error: "Percentage discount must be between 1 and 100" };
+      return { ok: false, error: "Percentage discount must be between 1 and 100" };
     }
   } else if (data.discountType === "FIXED") {
     if (!(data.discountValue > 0)) {
-      return { error: "Fixed discount must be greater than 0" };
+      return { ok: false, error: "Fixed discount must be greater than 0" };
     }
   } else {
-    return { error: "Invalid discount type" };
+    return { ok: false, error: "Invalid discount type" };
   }
 
   let startsAt: Date | null = null;
   let endsAt: Date | null = null;
   if (data.startsAt) {
     startsAt = new Date(data.startsAt);
-    if (Number.isNaN(startsAt.getTime())) return { error: "Invalid start date" };
+    if (Number.isNaN(startsAt.getTime()))
+      return { ok: false, error: "Invalid start date" };
   }
   if (data.endsAt) {
     endsAt = new Date(data.endsAt);
-    if (Number.isNaN(endsAt.getTime())) return { error: "Invalid end date" };
+    if (Number.isNaN(endsAt.getTime()))
+      return { ok: false, error: "Invalid end date" };
   }
   if (startsAt && endsAt && endsAt <= startsAt) {
-    return { error: "End date must be after start date" };
+    return { ok: false, error: "End date must be after start date" };
   }
 
   if (
     data.maxRedemptions != null &&
     (!Number.isInteger(data.maxRedemptions) || data.maxRedemptions < 1)
   ) {
-    return { error: "Max redemptions must be a positive whole number" };
+    return { ok: false, error: "Max redemptions must be a positive whole number" };
   }
   if (
     data.perUserLimit != null &&
     (!Number.isInteger(data.perUserLimit) || data.perUserLimit < 1)
   ) {
-    return { error: "Per-user limit must be a positive whole number" };
+    return { ok: false, error: "Per-user limit must be a positive whole number" };
   }
 
-  return { code, startsAt, endsAt };
+  return { ok: true, code, startsAt, endsAt };
 }
 
 export async function createPromoCode(
@@ -84,7 +91,7 @@ export async function createPromoCode(
   if (role !== "TUTOR" && role !== "ADMIN") return { error: "Unauthorized" };
 
   const validated = validateCommon(data);
-  if ("error" in validated) return validated;
+  if (!validated.ok) return { error: validated.error };
   const { code, startsAt, endsAt } = validated;
 
   let promoType: "PLATFORM" | "INSTRUCTOR";
@@ -191,7 +198,7 @@ export async function updatePromoCode(
           : existing.perUserLimit,
     };
     const validated = validateCommon(merged);
-    if ("error" in validated) return validated;
+    if (!validated.ok) return { error: validated.error };
 
     updateData.code = validated.code;
     updateData.discountType = merged.discountType;
