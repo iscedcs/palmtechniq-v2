@@ -47,7 +47,7 @@ export async function extractLessonAudio(videoFile: File): Promise<File> {
     ]);
     const data = await ffmpeg.readFile(outputName);
     const bytes = data instanceof Uint8Array ? data : new TextEncoder().encode(String(data));
-    return new File([bytes], "lesson-audio.mp3", { type: "audio/mpeg" });
+    return new File([bytes as BlobPart], "lesson-audio.mp3", { type: "audio/mpeg" });
   } finally {
     await ffmpeg.deleteFile(inputName).catch(() => {});
     await ffmpeg.deleteFile(outputName).catch(() => {});
