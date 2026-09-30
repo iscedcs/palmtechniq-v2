@@ -58,6 +58,7 @@
       "@typescript-eslint/no-unsafe-function-type": "off", //temp
       "@typescript-eslint/no-wrapper-object-types": "off", //temp
       "@typescript-eslint/no-unnecessary-type-constraint": "off",
-      "@next/next/no-assign-module-variable": "off"
+      "@next/next/no-assign-module-variable": "off",
+      "@typescript-eslint/ban-types": "off"
       }
 }
