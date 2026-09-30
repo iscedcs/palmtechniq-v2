@@ -23,6 +23,7 @@ import {
   Package,
   Landmark,
   Award,
+  Ticket,
 } from "lucide-react";
 
 export const courseTypes = [
@@ -103,6 +104,7 @@ export const roleNavItems = {
     { icon: NotebookIcon, label: "Tasks", href: "/tutor/tasks" },
     { icon: MessageSquare, label: "Reviews", href: "/tutor/reviews" },
     { icon: Megaphone, label: "Promotions", href: "/tutor/promotions" },
+    { icon: Ticket, label: "Promo Codes", href: "/tutor/promo-codes" },
   ],
   ADMIN: [
     { icon: Home, label: "Dashboard", href: "/admin" },
@@ -114,6 +116,7 @@ export const roleNavItems = {
     { icon: Calendar, label: "Mentorship", href: "/admin/mentorship" },
     { icon: Wallet, label: "Finance", href: "/admin/finance" },
     { icon: Megaphone, label: "Promotions", href: "/admin/promotions" },
+    { icon: Ticket, label: "Promo Codes", href: "/admin/promo-codes" },
     { icon: Package, label: "Bundle Reviews", href: "/admin/bundles" },
     { icon: Landmark, label: "Program Revenue", href: "/admin/program-earnings" },
   ],
@@ -178,6 +181,7 @@ export const roleMenuItems = {
     { icon: Calendar, label: "Mentorship Ops", href: "/admin/mentorship" },
     { icon: Wallet, label: "Financial Reports", href: "/admin/finance" },
     { icon: Megaphone, label: "Promotions", href: "/admin/promotions" },
+    { icon: Ticket, label: "Promo Codes", href: "/admin/promo-codes" },
     { icon: Settings, label: "System Settings", href: "/admin/settings" },
     { icon: Package, label: "Bundle Reviews", href: "/admin/bundles" },
     { icon: Landmark, label: "Program Earnings", href: "/admin/program-earnings" },
