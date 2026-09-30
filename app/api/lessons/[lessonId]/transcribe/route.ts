@@ -1,16 +1,8 @@
 import { auth } from "@/auth";
 import { db } from "@/lib/db";
 import { rateLimiter, RateLimitError } from "@/lib/rate-limit";
-import {
-  MAX_TRANSCRIBE_DURATION_SECONDS,
-  transcribeLessonVideo,
-} from "@/lib/ai/transcribe-lesson";
+import { WHISPER_MAX_BYTES, transcribeLessonAudio } from "@/lib/ai/transcribe-lesson";
 import { NextResponse } from "next/server";
-
-// A sanity cap on the raw video we'll pull into memory to extract audio
-// from. Real lesson videos are comfortably under this; anything bigger just
-// skips auto-captioning rather than tying up the server.
-const MAX_VIDEO_BYTES = 500 * 1024 * 1024;
 
 export async function POST(
   request: Request,
@@ -58,13 +50,12 @@ export async function POST(
     throw error;
   }
 
-  const durationMinutes = Number(
-    (await request.headers.get("x-lesson-duration-minutes")) ?? NaN,
-  );
-  if (
-    Number.isFinite(durationMinutes) &&
-    durationMinutes * 60 > MAX_TRANSCRIBE_DURATION_SECONDS
-  ) {
+  const formData = await request.formData().catch(() => null);
+  const file = formData?.get("file") as File | null;
+  if (!file) {
+    return NextResponse.json({ success: false, error: "No file provided" }, { status: 400 });
+  }
+  if (file.size > WHISPER_MAX_BYTES) {
     return NextResponse.json({
       success: false,
       skipped: true,
@@ -72,21 +63,8 @@ export async function POST(
     });
   }
 
-  const formData = await request.formData().catch(() => null);
-  const file = formData?.get("file") as File | null;
-  if (!file) {
-    return NextResponse.json({ success: false, error: "No file provided" }, { status: 400 });
-  }
-  if (file.size > MAX_VIDEO_BYTES) {
-    return NextResponse.json({
-      success: false,
-      skipped: true,
-      reason: "Video is too large for automatic captions",
-    });
-  }
-
-  const videoBuffer = Buffer.from(await file.arrayBuffer());
-  const result = await transcribeLessonVideo({ lessonId, videoBuffer });
+  const audioBuffer = Buffer.from(await file.arrayBuffer());
+  const result = await transcribeLessonAudio({ lessonId, audioBuffer });
 
   if (result.success) {
     await db.lesson.update({

@@ -28,7 +28,6 @@ export default function LessonUploadFile({
   const [file, setFile] = useState<File | null>(null);
   const inputRef = useRef<HTMLInputElement>(null);
   const startUpload = useUploadStore((s) => s.startUpload);
-  const durationMinutesRef = useRef<number | undefined>(undefined);
 
   const handleFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     const selected = e.target.files?.[0] || null;
@@ -52,7 +51,6 @@ export default function LessonUploadFile({
         }
 
         const minutes = Math.ceil(video.duration / 60);
-        durationMinutesRef.current = minutes;
         if (onDuration) {
           onDuration(minutes);
         }
@@ -66,17 +64,20 @@ export default function LessonUploadFile({
     if (lessonId.startsWith("temp-")) return;
 
     try {
-      const formData = new FormData();
-      formData.append("file", videoFile);
+      // Extracted in the browser rather than sent server-side: the raw
+      // video is easily tens of MB, well past what a serverless function's
+      // request body can accept, while the audio-only track for a lesson
+      // this length is a fraction of that.
+      const { extractLessonAudio } = await import(
+        "@/lib/client/extract-lesson-audio"
+      );
+      const audioFile = await extractLessonAudio(videoFile);
 
-      const headers: HeadersInit = {};
-      if (durationMinutesRef.current) {
-        headers["x-lesson-duration-minutes"] = String(durationMinutesRef.current);
-      }
+      const formData = new FormData();
+      formData.append("file", audioFile);
 
       const res = await fetch(`/api/lessons/${lessonId}/transcribe`, {
         method: "POST",
-        headers,
         body: formData,
       });
       const data = await res.json();
