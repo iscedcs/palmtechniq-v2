@@ -8,8 +8,7 @@ import type { PromoCode } from "@prisma/client";
 // A single consistent return shape across every branch, so callers can
 // safely check `res?.error` / `res?.success` without TypeScript inferring a
 // union where one branch is missing the property entirely.
-// eslint-disable-next-line @typescript-eslint/ban-types
-type ActionResult<T extends Record<string, unknown> = {}> =
+type ActionResult<T extends Record<string, unknown> = Record<never, never>> =
   | { error: string; success?: undefined }
   | ({ success: true; error?: undefined } & T);
 
