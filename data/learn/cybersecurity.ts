@@ -185,7 +185,7 @@ export const CYBERSECURITY_GUIDES: Guide[] = [
       "/courses/ethical-hacking-starter",
       "/courses/ethical-hacking",
     ],
-    status: "published",
+    status: "draft",
   },
   {
     slug: "how-to-become-a-cybersecurity-analyst-without-a-degree",
@@ -560,7 +560,7 @@ export const CYBERSECURITY_GUIDES: Guide[] = [
       "/courses/ethical-hacking-starter",
       "/courses/ethical-hacking",
     ],
-    status: "published",
+    status: "draft",
   },
 ];
 
