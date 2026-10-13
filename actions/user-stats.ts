@@ -2,6 +2,7 @@
 
 import { auth } from "@/auth";
 import { db } from "@/lib/db";
+import { getTransactionSummaries } from "@/lib/payments/transaction-totals";
 import type { UserRole } from "@/types/user";
 
 type RoleStatIcon = "book-open" | "trophy" | "star" | "users" | "wallet";
@@ -87,16 +88,14 @@ const getTutorStats = async (userId: string): Promise<RoleStat[] | null> => {
 };
 
 const getAdminStats = async (): Promise<RoleStat[]> => {
-  const [totalUsers, activeCourses, revenueAggregate] = await Promise.all([
+  const [totalUsers, activeCourses, summaries] = await Promise.all([
     db.user.count(),
     db.course.count({ where: { status: "PUBLISHED" } }),
-    db.transaction.aggregate({
-      where: { status: "COMPLETED" },
-      _sum: { amount: true },
-    }),
+    getTransactionSummaries(),
   ]);
 
-  const revenue = revenueAggregate._sum.amount ?? 0;
+  // Live revenue only: see lib/payments/transaction-origin.ts.
+  const revenue = summaries.allTime.live.COMPLETED.gross;
 
   return [
     {
