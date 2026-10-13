@@ -1,6 +1,6 @@
 import type { DocPage, DocSection } from "./types";
 
-export const DOC_VERSION = "2026.09.25";
+export const DOC_VERSION = "2026.10.13";
 
 export const docSections: DocSection[] = [
   // ─── GETTING STARTED ─────────────────────────────────────
@@ -1093,7 +1093,7 @@ were never recorded and inventing them would bury the discrepancy.
         description:
           "Cohort-based programs with installment plans and lead instructors.",
         audience: "all",
-        lastUpdated: "2026-08-14",
+        lastUpdated: "2026-10-13",
         content: `
 # Professional Programs
 
@@ -1130,7 +1130,7 @@ and an open/closed state.
 
 ## For Admins
 
-Cohorts are staffed at **/admin/program-earnings**, where you assign the lead
+Cohorts are staffed at **/admin/finance/programs**, where you assign the lead
 instructor and later release their earnings. See **Revenue Sharing** for how
 the 25% share accrues and when it can be released.
 
@@ -1455,7 +1455,7 @@ In addition to emails, the platform has a real-time notification system:
         slug: "admin-dashboard",
         description: "Admin features for managing the platform.",
         audience: "all",
-        lastUpdated: "2026-04-17",
+        lastUpdated: "2026-10-13",
         content: `
 # Admin Dashboard
 
@@ -1487,10 +1487,10 @@ The main admin page shows:
 - Manage enrollment issues
 
 ### Finance (\`/admin/finance\`)
-- Revenue breakdown by course, tutor, and period
-- Transaction history and details
-- Withdrawal request management
-- Platform earnings tracking
+- **Overview**: live revenue, what is owed to tutors, and how much of the Paystack balance is safe to withdraw
+- **Payments** (\`/admin/finance/payments\`): every transaction, with legacy manual payments and test-mode payments kept out of revenue
+- **Payouts** (\`/admin/finance/payouts\`): withdrawal request approval and mentorship finance
+- **Programs** (\`/admin/finance/programs\`): cohorts, lead instructors and releasing program earnings
 
 ### Promotions (\`/admin/promotions\`)
 - Create platform-wide promo codes
@@ -1807,7 +1807,7 @@ you are not paid out of money that may still be refunded.
         slug: "admin-guide",
         description: "Complete guide for platform administrators.",
         audience: "non-developer",
-        lastUpdated: "2026-08-14",
+        lastUpdated: "2026-10-13",
         content: `
 # Admin Guide
 
@@ -1834,8 +1834,8 @@ Platform administration guide for managing PalmTechnIQ.
 4. Handle content disputes or quality issues
 
 ### Financial Management
-1. View revenue dashboard at \`/admin/finance\`
-2. Process withdrawal requests from tutors
+1. View the finance overview at \`/admin/finance\`
+2. Process withdrawal requests from tutors at \`/admin/finance/payouts\`
 3. Monitor transaction trends
 4. Track platform earnings vs payouts
 
@@ -1881,7 +1881,7 @@ already happening. Rejections carry a note back to the tutor.
 
 ## Program Revenue Share
 
-**/admin/program-earnings** — assign a lead instructor to a cohort and release
+**/admin/finance/programs** — assign a lead instructor to a cohort and release
 their accrued earnings.
 
 - Assigning an instructor **back-fills** accruals for installments already paid

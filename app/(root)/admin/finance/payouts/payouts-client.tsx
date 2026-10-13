@@ -132,7 +132,7 @@ export default function AdminFinanceClient({
   };
 
   return (
-    <div className="min-h-screen bg-gradient-to-br from-dark-900 via-dark-800 to-dark-900 pt-24">
+    <div>
       <div className="container mx-auto px-6 py-8 space-y-6">
         <Card className="glass-card border-white/10">
           <CardHeader>
