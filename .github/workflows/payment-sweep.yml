@@ -17,7 +17,10 @@ name: payment-sweep
 
 on:
   schedule:
-    - cron: "*/15 * * * *"
+    # Every 30 minutes, on the hour and half hour, so it shares a database
+    # wake-up with exam-sweep instead of causing its own. Each tick queries the
+    # database, and a database that is queried every few minutes never sleeps.
+    - cron: "0,30 * * * *"
   workflow_dispatch:
 
 # A slow run must never overlap with the next tick.

@@ -26,7 +26,6 @@ export function NotificationProvider({
 }) {
   const { isPolling, lastPollTime, refetch } = useNotificationPolling({
     enabled: true,
-    interval: 10_000, // Poll every 10 seconds
   });
 
   return (

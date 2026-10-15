@@ -1,6 +1,6 @@
 import type { DocPage, DocSection } from "./types";
 
-export const DOC_VERSION = "2026.10.13";
+export const DOC_VERSION = "2026.10.15";
 
 export const docSections: DocSection[] = [
   // ─── GETTING STARTED ─────────────────────────────────────
@@ -921,7 +921,7 @@ would let either override the other.
         description:
           "Proctored exams, question banks, auto-grading and live invigilation.",
         audience: "all",
-        lastUpdated: "2026-08-14",
+        lastUpdated: "2026-10-15",
         content: `
 # Exam Center
 
@@ -968,8 +968,10 @@ and marks no-shows. It is a **backstop**, not the primary mechanism: a
 candidate's own browser submits when the clock runs out.
 
 Every pass is idempotent, so a late run does the same work and a skipped run is
-picked up by the next. Driven by \`.github/workflows/exam-sweep.yml\` every 5
-minutes.
+picked up by the next. Driven by \`.github/workflows/exam-sweep.yml\` every 15
+minutes. It was every 5 until October 2026: each run queries the database, and
+a database queried that often never scales to zero, so it was billed for
+compute around the clock.
 
 > GitHub scheduled workflows are best-effort and often drift 5–15 minutes. That
 > is acceptable precisely because this is a backstop. Do not build anything
@@ -2912,7 +2914,7 @@ analytics write must not fail a purchase.
         description:
           "Scheduled sweeps that recover stranded payments and close expired exams.",
         audience: "developer",
-        lastUpdated: "2026-08-14",
+        lastUpdated: "2026-10-15",
         content: `
 # Background Jobs
 
@@ -2921,8 +2923,8 @@ cron. Actions is free for this workload and each run is a single \`curl\`.
 
 | Job | Schedule | Endpoint |
 |---|---|---|
-| Exam sweep | every 5 min | \`/api/cron/exam-sweep\` |
-| Payment sweep | every 15 min | \`/api/cron/payment-sweep\` |
+| Exam sweep | every 15 min | \`/api/cron/exam-sweep\` |
+| Payment sweep | every 30 min | \`/api/cron/payment-sweep\` |
 
 ## Authorisation
 
