@@ -13,6 +13,11 @@ import {
   TableRow,
 } from "@/components/ui/table";
 import { markStalePendingTransactions } from "@/actions/admin-transactions";
+import {
+  countByOrigin,
+  type TransactionOrigin,
+  type TransactionSummary,
+} from "@/lib/payments/transaction-origin";
 import { toast } from "sonner";
 import { useRouter, useSearchParams } from "next/navigation";
 import { 
@@ -33,21 +38,17 @@ type TransactionRow = {
   userName: string;
   userEmail: string;
   courseTitle: string;
-  isTestKey: boolean;
+  origin: TransactionOrigin;
 };
 
-type SummaryItem = {
-  status: string;
-  _count: { _all: number };
-  _sum: { amount: number | null };
-};
+const naira = (n: number) => `₦${n.toLocaleString("en-NG")}`;
 
 export default function TransactionsClient({
   summary,
   transactions,
   pagination,
 }: {
-  summary: SummaryItem[];
+  summary: TransactionSummary;
   transactions: TransactionRow[];
   pagination: {
     page: number;
@@ -95,10 +96,12 @@ export default function TransactionsClient({
     }
   };
 
-  const testKeyCount = transactions.filter((t) => t.isTestKey).length;
+  const testCount = countByOrigin(summary, "test");
+  const legacyCount = countByOrigin(summary, "legacy");
+  const live = summary.live;
 
   return (
-    <div className="min-h-screen bg-gradient-to-br from-dark-900 via-dark-800 to-dark-900 pt-24">
+    <div>
       <div className="container mx-auto px-6 py-8 space-y-6">
         <div className="flex justify-between items-center">
           <div>
@@ -120,14 +123,15 @@ export default function TransactionsClient({
           </Button>
         </div>
 
-        {testKeyCount > 0 && (
+        {testCount > 0 && (
           <div className="p-4 rounded-lg bg-orange-500/10 border border-orange-500/30 flex items-start gap-3">
             <AlertTriangle className="w-5 h-5 text-orange-400 shrink-0" />
             <div>
-              <h3 className="text-orange-400 font-medium">Test Transactions Detected</h3>
+              <h3 className="text-orange-400 font-medium">Test-mode transactions exist</h3>
               <p className="text-sm text-gray-300 mt-1">
-                There are {testKeyCount} transactions on this page that appear to use Paystack test keys. 
-                These should not be counted towards actual revenue.
+                {testCount} transaction{testCount === 1 ? "" : "s"} were made with
+                Paystack test keys. They are excluded from every revenue figure
+                and are marked TEST in the table below.
               </p>
             </div>
           </div>
@@ -135,26 +139,47 @@ export default function TransactionsClient({
 
         <Card className="glass-card border-white/10">
           <CardHeader>
-            <CardTitle className="text-white">Revenue Summary (All Time)</CardTitle>
+            <CardTitle className="text-white">Live Revenue (Paystack)</CardTitle>
+            <p className="text-sm text-gray-400">
+              Completed payments made through the platform. Legacy manual
+              payments and test-mode payments are not included.
+            </p>
           </CardHeader>
           <CardContent className="grid grid-cols-2 md:grid-cols-4 gap-4">
-            {["COMPLETED", "PENDING", "FAILED", "REFUNDED"].map((status) => {
-              const row = summary.find((item) => item.status === status);
-              return (
-                <div
-                  key={status}
-                  onClick={() => setFilter(status)}
-                  className="rounded-lg border border-white/10 p-4 cursor-pointer hover:bg-white/5 transition-colors">
-                  <p className="text-sm text-gray-400">{status}</p>
-                  <p className="text-xl text-white font-semibold mt-1">
-                    ₦{(row?._sum.amount || 0).toLocaleString()}
-                  </p>
-                  <p className="text-xs text-gray-500 mt-1">
-                    {row?._count._all || 0} transactions
-                  </p>
-                </div>
-              );
-            })}
+            {[
+              { label: "Collected (incl. VAT)", value: live.COMPLETED.gross },
+              { label: "VAT", value: live.COMPLETED.vat },
+              { label: "Tutors' share", value: live.COMPLETED.tutorShare },
+              { label: "Platform share", value: live.COMPLETED.platformShare },
+            ].map((item) => (
+              <div key={item.label} className="rounded-lg border border-white/10 p-4">
+                <p className="text-sm text-gray-400">{item.label}</p>
+                <p className="text-xl text-white font-semibold mt-1">{naira(item.value)}</p>
+                <p className="text-xs text-gray-500 mt-1">
+                  {live.COMPLETED.count} completed payment{live.COMPLETED.count === 1 ? "" : "s"}
+                </p>
+              </div>
+            ))}
+          </CardContent>
+        </Card>
+
+        <Card className="glass-card border-white/10">
+          <CardHeader>
+            <CardTitle className="text-white">Live Checkouts by Status</CardTitle>
+          </CardHeader>
+          <CardContent className="grid grid-cols-2 md:grid-cols-4 gap-4">
+            {(["COMPLETED", "PENDING", "FAILED", "REFUNDED"] as const).map((status) => (
+              <div
+                key={status}
+                onClick={() => setFilter(status)}
+                className="rounded-lg border border-white/10 p-4 cursor-pointer hover:bg-white/5 transition-colors">
+                <p className="text-sm text-gray-400">{status}</p>
+                <p className="text-xl text-white font-semibold mt-1">
+                  {live[status].count}
+                </p>
+                <p className="text-xs text-gray-500 mt-1">transactions</p>
+              </div>
+            ))}
             <div
               onClick={() => setFilter(null)}
               className="col-span-2 md:col-span-4 mt-2 text-sm text-neon-blue cursor-pointer hover:underline text-right">
@@ -162,6 +187,36 @@ export default function TransactionsClient({
             </div>
           </CardContent>
         </Card>
+
+        {legacyCount > 0 && (
+          <Card className="glass-card border-white/10">
+            <CardHeader>
+              <CardTitle className="text-white">Legacy Manual Payments</CardTitle>
+              <p className="text-sm text-gray-400">
+                Logged by hand before checkout ran through the platform. Kept for
+                the record and shown here separately from live revenue.
+              </p>
+            </CardHeader>
+            <CardContent className="grid grid-cols-2 md:grid-cols-4 gap-4">
+              <div className="rounded-lg border border-white/10 p-4">
+                <p className="text-sm text-gray-400">Completed</p>
+                <p className="text-xl text-white font-semibold mt-1">
+                  {naira(summary.legacy.COMPLETED.gross)}
+                </p>
+                <p className="text-xs text-gray-500 mt-1">
+                  {summary.legacy.COMPLETED.count} payments
+                </p>
+              </div>
+              <div className="rounded-lg border border-white/10 p-4">
+                <p className="text-sm text-gray-400">Failed</p>
+                <p className="text-xl text-white font-semibold mt-1">
+                  {summary.legacy.FAILED.count}
+                </p>
+                <p className="text-xs text-gray-500 mt-1">transactions</p>
+              </div>
+            </CardContent>
+          </Card>
+        )}
 
         <Card className="glass-card border-white/10">
           <CardContent className="p-0">
@@ -182,9 +237,14 @@ export default function TransactionsClient({
                     <TableRow key={row.id} className="border-white/10">
                       <TableCell className="text-gray-300 font-mono text-xs">
                         {row.transactionId}
-                        {row.isTestKey && (
+                        {row.origin === "test" && (
                           <Badge className="ml-2 bg-orange-500/20 text-orange-400 border-orange-500/30">
                             TEST
+                          </Badge>
+                        )}
+                        {row.origin === "legacy" && (
+                          <Badge className="ml-2 bg-gray-500/20 text-gray-300 border-gray-500/30">
+                            LEGACY
                           </Badge>
                         )}
                       </TableCell>

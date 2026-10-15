@@ -2,6 +2,8 @@
 
 import crypto, { randomUUID } from "crypto";
 import { creditWallet, debitWallet } from "@/lib/payments/wallet";
+import { canCoverPayout } from "@/lib/payments/money-position";
+import { getPaystackBalance } from "@/lib/payments/paystack-balance";
 import { auth } from "@/auth";
 import { db } from "@/lib/db";
 import { verifyTotpToken } from "@/lib/totp";
@@ -876,6 +878,16 @@ export async function approveWithdrawalRequest(
     return {
       error:
         "Tutor has no valid Paystack recipient code. They need to update their bank details first.",
+    };
+  }
+
+  // Check the balance first. Paystack would reject an unfunded transfer anyway,
+  // but this says how short the balance is and leaves the request untouched.
+  // If the balance cannot be read, carry on and let Paystack decide.
+  const balance = await getPaystackBalance();
+  if (balance.ok && !canCoverPayout(balance.naira, withdrawal.amount)) {
+    return {
+      error: `The Paystack balance is ₦${balance.naira.toLocaleString("en-NG")}, which is less than this ₦${withdrawal.amount.toLocaleString("en-NG")} payout. Add funds to the Paystack balance, then approve it again.`,
     };
   }
 

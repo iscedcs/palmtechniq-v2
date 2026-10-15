@@ -14,8 +14,13 @@ name: exam-sweep
 
 on:
   schedule:
-    # Every 5 minutes is the finest granularity GitHub accepts.
-    - cron: "*/5 * * * *"
+    # Every 15 minutes, on the quarter hours. Every tick queries the database,
+    # and the database only stops billing for compute after about 5 idle
+    # minutes. At every 5 minutes it never got to sleep, so it billed around
+    # the clock even with nobody on the site. This is a backstop, so a sweep
+    # that lands up to 15 minutes late is fine. Aligned with payment-sweep
+    # (on the hour and half hour) so the two share one wake-up.
+    - cron: "*/15 * * * *"
   workflow_dispatch:
 
 # A slow run must never overlap with the next tick.

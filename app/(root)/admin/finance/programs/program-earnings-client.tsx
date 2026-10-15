@@ -121,8 +121,8 @@ export default function ProgramEarningsClient({
   };
 
   return (
-    <div className="min-h-screen bg-background pt-20">
-      <div className="mx-auto max-w-6xl space-y-6">
+    <div>
+      <div className="container mx-auto space-y-6 px-6 py-8">
         <div className="flex items-center gap-3">
           <Link href="/admin">
             <Button variant="ghost" size="sm">

@@ -25,6 +25,18 @@ const nextConfig = {
         destination: "/verify-certificate?code=:id",
         permanent: true,
       },
+      // Admin finance now lives under one section. Temporary (307) so the
+      // pages can still be rearranged without browsers caching the old answer.
+      {
+        source: "/admin/transactions",
+        destination: "/admin/finance/payments",
+        permanent: false,
+      },
+      {
+        source: "/admin/program-earnings",
+        destination: "/admin/finance/programs",
+        permanent: false,
+      },
     ];
   },
   async headers() {

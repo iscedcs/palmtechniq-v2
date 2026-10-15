@@ -8,8 +8,11 @@ import {
 } from "@/lib/store/notifications-store";
 import { getUserPreferences } from "@/actions/user-preferences";
 import { defaultUserPreferences } from "@/lib/user-preferences";
+import { startPolling } from "@/lib/notifications/poll-scheduler";
 
-const POLL_INTERVAL = 10_000; // 10 seconds
+// Every poll is a function call plus two database queries per open tab, so
+// this is a direct hosting cost. See lib/notifications/poll-scheduler.ts.
+const POLL_INTERVAL = 30_000; // 30 seconds, while the tab is visible
 const INITIAL_DELAY = 2_000; // Wait 2s after mount before first poll
 
 interface UseNotificationPollingOptions {
@@ -33,6 +36,9 @@ export function useNotificationPolling(
   const syncOwner = useNotificationsStore((s) => s.syncOwner);
   const [isPolling, setIsPolling] = useState(false);
   const [lastPollTime, setLastPollTime] = useState<string | null>(null);
+  // `poll` reads this, not the state above. If it depended on the state, every
+  // finished poll would change `poll` and re-arm the timers; see poll-scheduler.
+  const lastPollTimeRef = useRef<string | null>(null);
   const [preferences, setPreferences] = useState(defaultUserPreferences);
   const preferencesRef = useRef(preferences);
   const seenIdsRef = useRef<Set<string>>(new Set());
@@ -54,6 +60,7 @@ export function useNotificationPolling(
     if (sessionStatus === "loading") return;
     syncOwner(userId);
     seenIdsRef.current = new Set();
+    lastPollTimeRef.current = null;
     setLastPollTime(null);
   }, [userId, sessionStatus, syncOwner]);
 
@@ -114,8 +121,9 @@ export function useNotificationPolling(
       setIsPolling(true);
 
       const params = new URLSearchParams();
-      if (lastPollTime) {
-        params.set("since", lastPollTime);
+      const since = lastPollTimeRef.current;
+      if (since) {
+        params.set("since", since);
       }
       params.set("limit", "50");
 
@@ -146,6 +154,7 @@ export function useNotificationPolling(
         });
       }
 
+      lastPollTimeRef.current = timestamp;
       setLastPollTime(timestamp);
     } catch (error) {
       // Silent fail - will retry on next interval
@@ -155,32 +164,26 @@ export function useNotificationPolling(
         setIsPolling(false);
       }
     }
-  }, [lastPollTime, addNotification, shouldShowNotification]);
+  }, [addNotification, shouldShowNotification]);
 
-  // Initial fetch + polling interval
+  // Initial fetch + polling interval. `poll` is stable, so this effect runs
+  // once per sign-in and the timers are never re-armed by a poll finishing.
   useEffect(() => {
     if (!enabled) return;
 
     mountedRef.current = true;
 
-    // Initial delay before first poll
-    const initialTimeout = setTimeout(() => {
-      if (mountedRef.current) {
-        poll();
-      }
-    }, INITIAL_DELAY);
-
-    // Set up polling interval
-    const intervalId = setInterval(() => {
-      if (mountedRef.current) {
-        poll();
-      }
-    }, interval);
+    const scheduler = startPolling({
+      poll: () => {
+        if (mountedRef.current) void poll();
+      },
+      interval,
+      initialDelay: INITIAL_DELAY,
+    });
 
     return () => {
       mountedRef.current = false;
-      clearTimeout(initialTimeout);
-      clearInterval(intervalId);
+      scheduler.stop();
     };
   }, [enabled, interval, poll]);
 

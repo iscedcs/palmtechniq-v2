@@ -21,7 +21,6 @@ import {
   Megaphone,
   ClipboardList,
   Package,
-  Landmark,
   Award,
   Ticket,
 } from "lucide-react";
@@ -118,7 +117,6 @@ export const roleNavItems = {
     { icon: Megaphone, label: "Promotions", href: "/admin/promotions" },
     { icon: Ticket, label: "Promo Codes", href: "/admin/promo-codes" },
     { icon: Package, label: "Bundle Reviews", href: "/admin/bundles" },
-    { icon: Landmark, label: "Program Revenue", href: "/admin/program-earnings" },
   ],
   TESTER: [
     { icon: Home, label: "Home", href: "/" },
@@ -184,7 +182,6 @@ export const roleMenuItems = {
     { icon: Ticket, label: "Promo Codes", href: "/admin/promo-codes" },
     { icon: Settings, label: "System Settings", href: "/admin/settings" },
     { icon: Package, label: "Bundle Reviews", href: "/admin/bundles" },
-    { icon: Landmark, label: "Program Earnings", href: "/admin/program-earnings" },
   ],
   TESTER: [{ icon: FileText, label: "Documentation", href: "/documentation" }],
   SUPERIOR: [

@@ -6,6 +6,7 @@ import { hashPassword } from "@/lib/password";
 import { generatePasswordResetToken } from "@/lib/token";
 import { Prisma, UserRole } from "@prisma/client";
 import { notifyCourseApproved } from "@/lib/tutor-notifications";
+import { getTransactionSummaries } from "@/lib/payments/transaction-totals";
 
 const formatCurrency = (amount: number) =>
   new Intl.NumberFormat("en-NG", {
@@ -42,8 +43,6 @@ export async function getAdminDashboardData() {
     activeCourses,
     draftCourses,
     suspendedUsers,
-    monthlyRevenueAgg,
-    totalRevenueAgg,
     totalEnrollments,
     completedEnrollments,
     users,
@@ -55,23 +54,15 @@ export async function getAdminDashboardData() {
     roleCounts,
     paidWithdrawalsAgg,
     pendingWithdrawalsAgg,
-    pendingRevenueAgg,
     courseRows,
     courseEnrollmentCounts,
     courseRevenueAgg,
+    transactionSummaries,
   ] = await Promise.all([
     db.user.count(),
     db.course.count({ where: { status: "PUBLISHED" } }),
     db.course.count({ where: { status: "DRAFT" } }),
     db.user.count({ where: { isActive: false } }),
-    db.transaction.aggregate({
-      where: { status: "COMPLETED", paymentDate: { gte: monthStart } },
-      _sum: { amount: true },
-    }),
-    db.transaction.aggregate({
-      where: { status: "COMPLETED" },
-      _sum: { amount: true },
-    }),
     db.enrollment.count(),
     db.enrollment.count({ where: { status: "COMPLETED" } }),
     db.user.findMany({
@@ -123,10 +114,6 @@ export async function getAdminDashboardData() {
       where: { status: { in: ["PENDING", "APPROVED"] } },
       _sum: { amount: true },
     }),
-    db.transaction.aggregate({
-      where: { status: "PENDING" },
-      _sum: { amount: true },
-    }),
     db.course.findMany({
       orderBy: { createdAt: "desc" },
       take: 50,
@@ -150,9 +137,13 @@ export async function getAdminDashboardData() {
       _sum: { totalAmount: true },
       where: { transaction: { status: "COMPLETED" } },
     }),
+    getTransactionSummaries(monthStart),
   ]);
 
-  const monthlyRevenue = monthlyRevenueAgg._sum.amount ?? 0;
+  // Live revenue only: legacy manual payments and test-mode payments are
+  // counted separately on the Transactions screen, never added in here.
+  const liveAllTime = transactionSummaries.allTime.live;
+  const monthlyRevenue = transactionSummaries.thisMonth.live.COMPLETED.gross;
   const completionRate =
     totalEnrollments === 0
       ? 0
@@ -325,8 +316,12 @@ export async function getAdminDashboardData() {
   }
   const analyticsStats = [
     {
-      label: "Total Revenue (All Time)",
-      value: formatCurrency(totalRevenueAgg._sum.amount ?? 0),
+      label: "Total Revenue (All Time, incl. VAT)",
+      value: formatCurrency(liveAllTime.COMPLETED.gross),
+    },
+    {
+      label: "Platform Share (All Time)",
+      value: formatCurrency(liveAllTime.COMPLETED.platformShare),
     },
     {
       label: "Monthly Revenue",
@@ -342,7 +337,7 @@ export async function getAdminDashboardData() {
     },
     {
       label: "Pending Revenue",
-      value: formatCurrency(pendingRevenueAgg._sum.amount ?? 0),
+      value: formatCurrency(liveAllTime.PENDING.gross),
     },
     {
       label: "Active Tutors",

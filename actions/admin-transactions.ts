@@ -1,6 +1,8 @@
 "use server";
 import { auth } from "@/auth";
 import { db } from "@/lib/db";
+import { classifyTransaction } from "@/lib/payments/transaction-origin";
+import { getTransactionSummaries } from "@/lib/payments/transaction-totals";
 
 export async function getTransactionAudit(params?: {
   page?: number;
@@ -20,12 +22,8 @@ export async function getTransactionAudit(params?: {
     where.status = statusFilter;
   }
 
-  const [summary, transactions, total] = await Promise.all([
-    db.transaction.groupBy({
-      by: ["status"],
-      _count: { _all: true },
-      _sum: { amount: true },
-    }),
+  const [{ allTime: summary }, transactions, total] = await Promise.all([
+    getTransactionSummaries(),
     db.transaction.findMany({
       where,
       orderBy: { createdAt: "desc" },
@@ -48,12 +46,6 @@ export async function getTransactionAudit(params?: {
   ]);
 
   const mapped = transactions.map((tx: any) => {
-    const meta = (tx.metadata as any) ?? {};
-    const ref = meta?.verify?.reference ?? tx.transactionId ?? "";
-    const isTestKey =
-      ref.startsWith("T_") ||
-      meta?.verify?.domain === "test" ||
-      String(ref).toLowerCase().includes("test");
     return {
       id: tx.id,
       transactionId: tx.transactionId,
@@ -65,7 +57,7 @@ export async function getTransactionAudit(params?: {
       userName: tx.user?.name ?? "—",
       userEmail: tx.user?.email ?? "—",
       courseTitle: tx.course?.title ?? "—",
-      isTestKey,
+      origin: classifyTransaction(tx),
     };
   });
 

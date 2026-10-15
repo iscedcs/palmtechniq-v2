@@ -447,7 +447,7 @@ export default function AdminDashboard() {
               asChild
               variant="outline"
               className="border-neon-purple/50 hover:bg-neon-purple/10 bg-transparent">
-              <Link href="/admin/transactions">
+              <Link href="/admin/finance/payments">
                 <FileText className="w-4 h-4 mr-2" />
                 Transactions
               </Link>
@@ -1322,7 +1322,7 @@ export default function AdminDashboard() {
                       <p className="text-sm text-gray-400">Payout Mode</p>
                       <p className="text-white font-medium">Manual approval</p>
                       <p className="text-xs text-gray-500 mt-1">
-                        Admins approve payouts from /admin/finance
+                        Admins approve payouts from /admin/finance/payouts
                       </p>
                     </div>
                     <div className="rounded-lg border border-white/10 p-4">

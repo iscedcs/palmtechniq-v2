@@ -1,5 +1,7 @@
 "use server";
 
+import { testPaymentsAllowed } from "@/lib/payments/test-mode";
+
 const BASE = "https://api.paystack.co";
 
 export type InitPayload = {
@@ -57,7 +59,7 @@ export async function paystackVerify(reference: string) {
   if (!res.ok || !json.status) {
     throw new Error(json.message || "Paystack verify failed");
   }
-  return json.data as {
+  const data = json.data as {
     status: "success" | "failed" | "abandoned";
     reference: string;
     amount: number;
@@ -65,9 +67,26 @@ export async function paystackVerify(reference: string) {
     paid_at: string;
     channel: string;
     customer: { email: string };
+    /** Paystack reports which key made the payment. */
+    domain?: "test" | "live";
+    gateway_response?: string;
     authorization?: any;
     metadata?: any;
   };
+
+  // Every caller treats anything but "success" as a failed payment, so
+  // downgrading it here keeps test money from enrolling, crediting or counting
+  // anywhere. See lib/payments/test-mode.ts.
+  if (data.domain === "test" && !testPaymentsAllowed()) {
+    console.warn(`[paystack] Rejected test-mode payment ${data.reference}`);
+    return {
+      ...data,
+      status: "failed" as const,
+      gateway_response: "Test-mode payment rejected",
+    };
+  }
+
+  return data;
 }
 
 export async function paystackTransfer({
