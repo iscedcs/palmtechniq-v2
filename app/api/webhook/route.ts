@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import crypto from "crypto";
 import { finalizePaystackByReference } from "@/lib/payments/finalizePaystack";
+import { verifyProgramPaymentLinkPayment } from "@/lib/payments/program-payment-link";
 
 /**
  * Verify Paystack's HMAC over the exact bytes it signed.
@@ -53,7 +54,14 @@ export async function POST(req: NextRequest) {
     const reference = evt.data?.reference as string | undefined;
     if (reference) {
       try {
-        await finalizePaystackByReference(reference);
+        // "ppl_" references belong to admin payment links, which settle
+        // through the program enrollment machinery rather than the
+        // course-world Transaction/finalize pipeline.
+        if (reference.startsWith("ppl_")) {
+          await verifyProgramPaymentLinkPayment(reference);
+        } else {
+          await finalizePaystackByReference(reference);
+        }
       } catch (e) {
         console.error("webhook finalize error", e);
       }

@@ -7,98 +7,99 @@ datasource db {
 }
 
 model User {
-  id                      String                   @id @default(cuid())
-  email                   String                   @unique
-  name                    String
-  username                String?                  @unique
-  avatar                  String?
-  role                    UserRole                 @default(USER)
-  isActive                Boolean                  @default(true)
-  createdAt               DateTime                 @default(now())
-  updatedAt               DateTime                 @updatedAt
-  bio                     String?
-  location                String?
-  website                 String?
-  socialLinks             Json?
-  preferences             Json?
-  timezone                String?
-  language                String                   @default("en")
-  emailVerified           DateTime?
-  phone                   String?
-  password                String?
-  isVerified              Boolean                  @default(false)
-  verificationToken       String                   @default("")
-  mustChangePassword      Boolean                  @default(false)
-  invitedBy               String?
-  bankName                String?                  @map("bank_name")
-  accountNumber           String?                  @map("account_number")
-  subaccountCode          String?                  @map("subaccount_code")
-  recipientCode           String?                  @map("recipient_code")
-  walletBalance           Float                    @default(0)
-  image                   String?
-  failedLoginAttempts     Int                      @default(0)
-  accountLockedUntil      DateTime?
-  lastLoginAt             DateTime?
-  lastLoginIp             String?
-  lastFailedLoginAt       DateTime?
-  lastFailedLoginIp       String?
-  accounts                Account[]
-  adminProfile            Admin?
-  advisorFollowUps        AdvisorFollowUp[]
-  advisorSessions         AdvisorSession[]
-  AIRecommendation        AIRecommendation[]
-  cartItems               CartItem[]
-  certificates            Certificate[]
-  issuedCertificates      Certificate[]            @relation("CertificateIssuer")
-  createdCourses          Course[]                 @relation("CourseCreator")
-  ownedCourses            Course[]                 @relation("CourseOwner")
-  discussionReplies       DiscussionReply[]
-  discussions             Discussion[]
-  enrollments             Enrollment[]
-  groupMemberships        GroupMember[]
-  createdGroupPurchases   GroupPurchase[]          @relation("GroupPurchaseCreator")
-  LearningPath            LearningPath[]
-  mentorshipPackageOrders MentorshipPackageOrder[] @relation("StudentPackageOrders")
-  mentoredPackageOrders   MentorshipPackageOrder[] @relation("TutorPackageOrders")
-  mentorshipPackages      MentorshipPackage[]      @relation("MentorPackages")
-  mentorSessions          MentorshipSession[]      @relation("StudentSessions")
-  tutoredSessions         MentorshipSession[]      @relation("TutorSessions")
-  notifications           Notification[]
-  paymentMethod           PaymentMethod[]
-  ProgressMilestone       ProgressMilestone[]
-  allowedPromoCodes       PromoCodeUser[]
-  createdPromoCodes       PromoCode[]              @relation("PromoCreator")
-  promoRedemptions        PromoRedemption[]
-  QuizAnswer              QuizAnswer[]
-  reports                 Report[]
-  reviewReactions         ReviewReaction[]
-  reviews                 Review[]
-  sessions                Session[]
-  studentProfile          Student?
-  submissions             Submission[]
-  taskSubmissions         TaskSubmission[]
-  transactionLineItems    TransactionLineItem[]
-  transactions            Transaction[]
-  tutorEarnings           TutorEarning[]           @relation("TutorEarningTutor")
-  releasedEarnings        TutorEarning[]           @relation("TutorEarningReleasedBy")
-  ledCohorts              ProgramCohort[]          @relation("CohortLeadInstructor")
-  walletEntries           WalletEntry[]            @relation("UserWalletEntries")
-  reviewedBundles         CourseBundle[]           @relation("BundleReviewer")
-  tutorProfile            Tutor?
-  analytics               UserAnalytics[]
-  platformEvents          PlatformEvent[]
-  UserSkill               UserSkill[]
-  wishlist                Wishlist[]
-  approvedWithdrawals     WithdrawalRequest[]      @relation("WithdrawalApprover")
-  withdrawalRequests      WithdrawalRequest[]
-  programEnrollments      ProgramEnrollment[]
-  promotions              CoursePromotion[]        @relation("PromotionCreator")
-  blogLikes               BlogLike[]               @relation("UserBlogLikes")
-  blogViews               BlogView[]               @relation("UserBlogViews")
-  blogBookmarks           BlogBookmark[]           @relation("UserBlogBookmarks")
-  blogComments            BlogComment[]            @relation("UserBlogComments")
-  bootcampEnrollments     BootcampEnrollment[]     @relation("UserBootcampEnrollments")
-  bootcampTeams           BootcampTeam[]           @relation("UserBootcampTeams")
+  id                         String                   @id @default(cuid())
+  email                      String                   @unique
+  name                       String
+  username                   String?                  @unique
+  avatar                     String?
+  role                       UserRole                 @default(USER)
+  isActive                   Boolean                  @default(true)
+  createdAt                  DateTime                 @default(now())
+  updatedAt                  DateTime                 @updatedAt
+  bio                        String?
+  location                   String?
+  website                    String?
+  socialLinks                Json?
+  preferences                Json?
+  timezone                   String?
+  language                   String                   @default("en")
+  emailVerified              DateTime?
+  phone                      String?
+  password                   String?
+  isVerified                 Boolean                  @default(false)
+  verificationToken          String                   @default("")
+  mustChangePassword         Boolean                  @default(false)
+  invitedBy                  String?
+  bankName                   String?                  @map("bank_name")
+  accountNumber              String?                  @map("account_number")
+  subaccountCode             String?                  @map("subaccount_code")
+  recipientCode              String?                  @map("recipient_code")
+  walletBalance              Float                    @default(0)
+  image                      String?
+  failedLoginAttempts        Int                      @default(0)
+  accountLockedUntil         DateTime?
+  lastLoginAt                DateTime?
+  lastLoginIp                String?
+  lastFailedLoginAt          DateTime?
+  lastFailedLoginIp          String?
+  accounts                   Account[]
+  adminProfile               Admin?
+  advisorFollowUps           AdvisorFollowUp[]
+  advisorSessions            AdvisorSession[]
+  AIRecommendation           AIRecommendation[]
+  cartItems                  CartItem[]
+  certificates               Certificate[]
+  issuedCertificates         Certificate[]            @relation("CertificateIssuer")
+  createdCourses             Course[]                 @relation("CourseCreator")
+  ownedCourses               Course[]                 @relation("CourseOwner")
+  discussionReplies          DiscussionReply[]
+  discussions                Discussion[]
+  enrollments                Enrollment[]
+  groupMemberships           GroupMember[]
+  createdGroupPurchases      GroupPurchase[]          @relation("GroupPurchaseCreator")
+  LearningPath               LearningPath[]
+  mentorshipPackageOrders    MentorshipPackageOrder[] @relation("StudentPackageOrders")
+  mentoredPackageOrders      MentorshipPackageOrder[] @relation("TutorPackageOrders")
+  mentorshipPackages         MentorshipPackage[]      @relation("MentorPackages")
+  mentorSessions             MentorshipSession[]      @relation("StudentSessions")
+  tutoredSessions            MentorshipSession[]      @relation("TutorSessions")
+  notifications              Notification[]
+  paymentMethod              PaymentMethod[]
+  ProgressMilestone          ProgressMilestone[]
+  allowedPromoCodes          PromoCodeUser[]
+  createdPromoCodes          PromoCode[]              @relation("PromoCreator")
+  promoRedemptions           PromoRedemption[]
+  QuizAnswer                 QuizAnswer[]
+  reports                    Report[]
+  reviewReactions            ReviewReaction[]
+  reviews                    Review[]
+  sessions                   Session[]
+  studentProfile             Student?
+  submissions                Submission[]
+  taskSubmissions            TaskSubmission[]
+  transactionLineItems       TransactionLineItem[]
+  transactions               Transaction[]
+  tutorEarnings              TutorEarning[]           @relation("TutorEarningTutor")
+  releasedEarnings           TutorEarning[]           @relation("TutorEarningReleasedBy")
+  ledCohorts                 ProgramCohort[]          @relation("CohortLeadInstructor")
+  walletEntries              WalletEntry[]            @relation("UserWalletEntries")
+  reviewedBundles            CourseBundle[]           @relation("BundleReviewer")
+  tutorProfile               Tutor?
+  analytics                  UserAnalytics[]
+  platformEvents             PlatformEvent[]
+  UserSkill                  UserSkill[]
+  wishlist                   Wishlist[]
+  approvedWithdrawals        WithdrawalRequest[]      @relation("WithdrawalApprover")
+  withdrawalRequests         WithdrawalRequest[]
+  programEnrollments         ProgramEnrollment[]
+  createdProgramPaymentLinks ProgramPaymentLink[]     @relation("ProgramPaymentLinkCreator")
+  promotions                 CoursePromotion[]        @relation("PromotionCreator")
+  blogLikes                  BlogLike[]               @relation("UserBlogLikes")
+  blogViews                  BlogView[]               @relation("UserBlogViews")
+  blogBookmarks              BlogBookmark[]           @relation("UserBlogBookmarks")
+  blogComments               BlogComment[]            @relation("UserBlogComments")
+  bootcampEnrollments        BootcampEnrollment[]     @relation("UserBootcampEnrollments")
+  bootcampTeams              BootcampTeam[]           @relation("UserBootcampTeams")
 
   // Exam Center
   questionBankSharesGranted QuestionBankShare[]   @relation("QuestionBankShareGrantor")
@@ -141,31 +142,31 @@ model Student {
 }
 
 model Tutor {
-  id             String    @id @default(cuid())
-  userId         String    @unique
+  id             String         @id @default(cuid())
+  userId         String         @unique
   title          String
   expertise      String[]
   experience     Int
   education      String[]
   certifications String[]
   hourlyRate     Float?
-  isVerified     Boolean   @default(false)
+  isVerified     Boolean        @default(false)
   verifiedAt     DateTime?
   course         String?
-  totalStudents  Int       @default(0)
-  totalCourses   Int       @default(0)
-  totalEarnings  Float     @default(0)
-  averageRating  Float     @default(0)
-  totalReviews   Int       @default(0)
-  responseTime   Int       @default(24)
-  completionRate Float     @default(0)
+  totalStudents  Int            @default(0)
+  totalCourses   Int            @default(0)
+  totalEarnings  Float          @default(0)
+  averageRating  Float          @default(0)
+  totalReviews   Int            @default(0)
+  responseTime   Int            @default(24)
+  completionRate Float          @default(0)
   availability   Json?
   timezone       String?
-  referralCode   String?   @unique @map("referral_code")
+  referralCode   String?        @unique @map("referral_code")
   Course         Course[]
   bundles        CourseBundle[]
   reviews        Review[]
-  user           User      @relation(fields: [userId], references: [id], onDelete: Cascade)
+  user           User           @relation(fields: [userId], references: [id], onDelete: Cascade)
 
   // Exam Center
   questionBanks      QuestionBank[]
@@ -328,31 +329,35 @@ model CourseModule {
 }
 
 model Lesson {
-  id          String           @id @default(cuid())
-  title       String
-  description String?
-  content     String?
-  videoUrl    String?
-  /** A WebVTT file URL — drives both the CC caption overlay and the
+  id              String           @id @default(cuid())
+  title           String
+  description     String?
+  content         String?
+  videoUrl        String?
+  /**
+   * A WebVTT file URL — drives both the CC caption overlay and the
    * searchable transcript panel in the lesson player. Optional; set from the
-   * course editor (planned separately). */
-  captionsUrl String?
-  /** An optional short trailer/overview clip for this lesson, separate from
+   * course editor (planned separately).
+   */
+  captionsUrl     String?
+  /**
+   * An optional short trailer/overview clip for this lesson, separate from
    * `isPreview` — shown to prospective students regardless of enrollment,
-   * without unlocking the full lesson. */
+   * without unlocking the full lesson.
+   */
   previewVideoUrl String?
-  duration    Int
-  sortOrder   Int
-  isPreview   Boolean          @default(false)
-  lessonType  LessonType       @default(VIDEO)
-  moduleId    String
-  createdAt   DateTime         @default(now())
-  updatedAt   DateTime         @updatedAt
-  isLocked    Boolean          @default(false)
-  progress    LessonProgress[]
-  module      CourseModule     @relation(fields: [moduleId], references: [id], onDelete: Cascade)
-  quiz        Quiz?
-  resources   Resource[]
+  duration        Int
+  sortOrder       Int
+  isPreview       Boolean          @default(false)
+  lessonType      LessonType       @default(VIDEO)
+  moduleId        String
+  createdAt       DateTime         @default(now())
+  updatedAt       DateTime         @updatedAt
+  isLocked        Boolean          @default(false)
+  progress        LessonProgress[]
+  module          CourseModule     @relation(fields: [moduleId], references: [id], onDelete: Cascade)
+  quiz            Quiz?
+  resources       Resource[]
 
   @@map("lessons")
 }
@@ -808,9 +813,9 @@ model Review {
   tutorId             String?
   programId           String?
   reviewType          String               @default("COURSE") // "COURSE" | "PROGRAM" | "DIRECT"
-  reviewerRole        String?              // e.g. "STUDENT", "PROGRAM_STUDENT", "ALUMNI"
+  reviewerRole        String? // e.g. "STUDENT", "PROGRAM_STUDENT", "ALUMNI"
   isVerifiedStudent   Boolean              @default(true)
-  verifiedContext     String?              // e.g. "Frontend Engineering Immersion · Cycle 42"
+  verifiedContext     String? // e.g. "Frontend Engineering Immersion · Cycle 42"
   communicationRating Int?
   clarityRating       Int?
   expertiseRating     Int?
@@ -993,12 +998,12 @@ model PromoRedemption {
 /// the wallet immediately at settlement; PROGRAM earnings are accrued PENDING
 /// and only credited when an admin releases them (see availableAt).
 model TutorEarning {
-  id                    String               @id @default(cuid())
-  tutorId               String
-  source                TutorEarningSource   @default(COURSE)
-  amount                Float
-  splitPercent          Float
-  status                TutorEarningStatus   @default(AVAILABLE)
+  id           String             @id @default(cuid())
+  tutorId      String
+  source       TutorEarningSource @default(COURSE)
+  amount       Float
+  splitPercent Float
+  status       TutorEarningStatus @default(AVAILABLE)
 
   // COURSE earnings only. Nullable so PROGRAM earnings, which have no
   // Transaction, can share this table.
@@ -1008,23 +1013,23 @@ model TutorEarning {
 
   // MENTORSHIP earnings only. Unique so a replayed settlement cannot credit
   // the same session twice.
-  mentorshipSessionId  String?              @unique
+  mentorshipSessionId String? @unique
 
   // PROGRAM earnings only.
   programEnrollmentId  String?
   /// Idempotency key: accrual fires from both payment and instructor
   /// assignment, and this is what makes the second one a no-op.
-  installmentPaymentId String?               @unique
+  installmentPaymentId String? @unique
   cohortId             String?
 
   /// Earliest moment this may be released: max(paidAt + refund window,
   /// cohort start). Null for COURSE earnings, which are available at once.
-  availableAt           DateTime?
-  releasedAt            DateTime?
-  releasedById          String?
+  availableAt  DateTime?
+  releasedAt   DateTime?
+  releasedById String?
 
-  createdAt             DateTime             @default(now())
-  updatedAt             DateTime             @updatedAt
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
 
   course              Course?              @relation(fields: [courseId], references: [id])
   transaction         Transaction?         @relation(fields: [transactionId], references: [id], onDelete: Cascade)
@@ -1485,10 +1490,11 @@ model ProfessionalProgram {
   createdAt      DateTime        @default(now())
   updatedAt      DateTime        @updatedAt
 
-  cohorts      ProgramCohort[]
-  enrollments  ProgramEnrollment[]
-  certificates Certificate[]
-  reviews      Review[]
+  cohorts          ProgramCohort[]
+  enrollments      ProgramEnrollment[]
+  certificates     Certificate[]
+  reviews          Review[]
+  paymentLinkItems ProgramPaymentLinkItem[]
 
   @@map("professional_programs")
 }
@@ -1511,12 +1517,13 @@ model ProgramCohort {
   updatedAt     DateTime  @updatedAt
 
   leadInstructorId String?
-  leadInstructor   User?    @relation("CohortLeadInstructor", fields: [leadInstructorId], references: [id], onDelete: SetNull)
+  leadInstructor   User?                    @relation("CohortLeadInstructor", fields: [leadInstructorId], references: [id], onDelete: SetNull)
   tutorEarnings    TutorEarning[]
-  program      ProfessionalProgram @relation(fields: [programId], references: [id], onDelete: Cascade)
-  enrollments  ProgramEnrollment[]
-  certificates Certificate[]
-  exams        Exam[]
+  program          ProfessionalProgram      @relation(fields: [programId], references: [id], onDelete: Cascade)
+  enrollments      ProgramEnrollment[]
+  certificates     Certificate[]
+  exams            Exam[]
+  paymentLinkItems ProgramPaymentLinkItem[]
 
   @@unique([programId, cycleNumber])
   @@map("program_cohorts")
@@ -1540,13 +1547,20 @@ model ProgramEnrollment {
   cohortId  String
   userId    String? // Linked after account provisioning
 
+  /// Set for admin-negotiated payment-link enrollments: instructor-share
+  /// basis (whole naira) instead of program.fullPrice. Null for regular
+  /// enrollments, which accrue 25% of the program's list fullPrice.
+  paymentLinkId    String?
+  paymentLink      ProgramPaymentLink? @relation(fields: [paymentLinkId], references: [id], onDelete: SetNull)
+  negotiatedAmount Int?
+
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
 
-  program      ProfessionalProgram  @relation(fields: [programId], references: [id], onDelete: Cascade)
-  cohort       ProgramCohort        @relation(fields: [cohortId], references: [id], onDelete: Cascade)
-  user         User?                @relation(fields: [userId], references: [id], onDelete: SetNull)
-  installments InstallmentPayment[]
+  program       ProfessionalProgram  @relation(fields: [programId], references: [id], onDelete: Cascade)
+  cohort        ProgramCohort        @relation(fields: [cohortId], references: [id], onDelete: Cascade)
+  user          User?                @relation(fields: [userId], references: [id], onDelete: SetNull)
+  installments  InstallmentPayment[]
   tutorEarnings TutorEarning[]
 
   @@map("program_enrollments")
@@ -1567,9 +1581,68 @@ model InstallmentPayment {
   updatedAt DateTime @updatedAt
 
   tutorEarning TutorEarning?
-  enrollment ProgramEnrollment @relation(fields: [enrollmentId], references: [id], onDelete: Cascade)
+  enrollment   ProgramEnrollment @relation(fields: [enrollmentId], references: [id], onDelete: Cascade)
 
   @@map("installment_payments")
+}
+
+enum ProgramPaymentLinkStatus {
+  ACTIVE
+  PAID
+  CANCELLED
+  EXPIRED
+}
+
+/// An admin-issued payment link for a negotiated multi-program deal (e.g.
+/// "₦150,000 for two crash courses"). The client pays one Paystack charge on
+/// /pay/<token>; settlement creates one ProgramEnrollment per item and runs
+/// the standard program accrual, with negotiatedAmount as the share basis.
+/// Quotes are never edited in place — cancel + recreate keeps the audit trail.
+model ProgramPaymentLink {
+  id           String                   @id @default(cuid())
+  token        String                   @unique
+  createdById  String
+  studentName  String
+  email        String
+  phone        String?
+  note         String?
+  /// Final negotiated charge in whole naira (one payment).
+  amount       Int
+  currency     String                   @default("NGN")
+  learningMode LearningMode             @default(VIRTUAL)
+  status       ProgramPaymentLinkStatus @default(ACTIVE)
+  /// Set when checkout begins; doubles as the retry guard and webhook key.
+  paystackRef  String?                  @unique
+  /// Stored Paystack authorization URL so repeat clicks reuse the same
+  /// checkout instead of creating duplicate enrollments.
+  authUrl      String?
+  expiresAt    DateTime?
+  paidAt       DateTime?
+  createdAt    DateTime                 @default(now())
+  updatedAt    DateTime                 @updatedAt
+
+  createdBy   User                     @relation("ProgramPaymentLinkCreator", fields: [createdById], references: [id])
+  items       ProgramPaymentLinkItem[]
+  enrollments ProgramEnrollment[]
+
+  @@index([status])
+  @@map("program_payment_links")
+}
+
+model ProgramPaymentLinkItem {
+  id        String              @id @default(cuid())
+  linkId    String
+  programId String
+  cohortId  String
+  /// Negotiated share in whole naira; the parts sum exactly to link.amount.
+  amount    Int
+  link      ProgramPaymentLink  @relation(fields: [linkId], references: [id], onDelete: Cascade)
+  program   ProfessionalProgram @relation(fields: [programId], references: [id], onDelete: Cascade)
+  cohort    ProgramCohort       @relation(fields: [cohortId], references: [id], onDelete: Cascade)
+  createdAt DateTime            @default(now())
+
+  @@unique([linkId, programId])
+  @@map("program_payment_link_items")
 }
 
 enum ReviewReactionType {
@@ -1606,16 +1679,16 @@ enum TutorEarningStatus {
 /// attribution rates, because a bundle is a packaging format, not an
 /// acquisition channel.
 model CourseBundle {
-  id          String             @id @default(cuid())
+  id          String  @id @default(cuid())
   title       String
-  slug        String             @unique
+  slug        String  @unique
   description String?
   price       Float
-  currency    String             @default("NGN")
+  currency    String  @default("NGN")
 
   /// Tutor-controlled on/off switch. Independent of review state: a tutor can
   /// pause an approved bundle without losing approval.
-  isActive    Boolean            @default(true)
+  isActive Boolean @default(true)
 
   /// Platform review. Publicly purchasable only when APPROVED *and* isActive.
   reviewStatus BundleReviewStatus @default(DRAFT)
@@ -1665,11 +1738,11 @@ enum BundleReviewStatus {
 ///
 /// Invariant: walletBalance == sum(WalletEntry.amount) for a user.
 model WalletEntry {
-  id     String          @id @default(cuid())
-  userId String
+  id           String          @id @default(cuid())
+  userId       String
   /// Signed: positive credits the wallet, negative debits it.
-  amount Float
-  type   WalletEntryType
+  amount       Float
+  type         WalletEntryType
   /// Balance immediately after this entry, for auditing without replaying.
   balanceAfter Float?
   description  String?

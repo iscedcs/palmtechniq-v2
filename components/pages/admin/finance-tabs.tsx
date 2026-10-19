@@ -8,6 +8,7 @@ const TABS = [
   { href: "/admin/finance/payments", label: "Payments", exact: false },
   { href: "/admin/finance/payouts", label: "Payouts", exact: false },
   { href: "/admin/finance/programs", label: "Programs", exact: false },
+  { href: "/admin/finance/payment-links", label: "Payment Links", exact: false },
 ];
 
 export function FinanceTabs() {
