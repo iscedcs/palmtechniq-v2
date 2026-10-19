@@ -79,8 +79,11 @@ export async function accrueProgramEarning(installmentPaymentId: string) {
   });
   if (existing) return { ok: true, alreadyAccrued: true };
 
-  // Share is 25% of fullPrice, spread across installments in proportion to
-  // cash collected — never accruing against money not yet received.
+  // Share is 25% of the basis — the program's list fullPrice, or the
+  // negotiated amount for admin payment-link enrollments — spread across
+  // installments in proportion to cash collected, so nothing is accrued
+  // against money not yet received. The 25% rate itself never changes.
+  const basis = enrollment.negotiatedAmount ?? enrollment.program.fullPrice;
   const installments = enrollment.installments as {
     id: string;
     amount: number;
@@ -88,7 +91,7 @@ export async function accrueProgramEarning(installmentPaymentId: string) {
   }[];
 
   const shares = allocateShareAcrossInstallments({
-    fullPrice: enrollment.program.fullPrice,
+    fullPrice: basis,
     installmentAmounts: installments.map((i) => i.amount),
   });
   const index = installments.findIndex((i) => i.id === installmentPaymentId);

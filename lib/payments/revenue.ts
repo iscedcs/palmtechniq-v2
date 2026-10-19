@@ -184,6 +184,29 @@ export function allocateBundlePrices({
 }
 
 /**
+ * Split a negotiated total across programs in proportion to their list
+ * fullPrice, in WHOLE NAIRA, with the parts summing exactly to `total`.
+ * `allocateProportionally` reconciles to the kobo; we then round to naira and
+ * park the ≤₦1 drift on the heaviest program, so Int-stored shares always
+ * reconcile to the Paystack charge (total × 100 kobo).
+ */
+export function allocateAmountWholeNaira(total: number, weights: number[]) {
+  const exact = allocateProportionally(total, weights, {
+    remainderTo: "heaviest",
+  });
+  const rounded = exact.map((share) => Math.round(share));
+  const drift = Math.round(total) - rounded.reduce((acc, n) => acc + n, 0);
+  if (drift !== 0 && rounded.length > 0) {
+    const heaviest = weights.reduce(
+      (best, w, i) => (w > weights[best] ? i : best),
+      0,
+    );
+    rounded[heaviest] += drift;
+  }
+  return rounded;
+}
+
+/**
  * Lowest price a bundle may be listed at: the tutor may discount the summed
  * list price by at most `REVENUE.bundle.maxDiscount`, never below the absolute
  * floor. Re-checked on create, update and at checkout, because an individual

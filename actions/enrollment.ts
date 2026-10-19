@@ -1,7 +1,7 @@
 "use server";
 
 import { db } from "@/lib/db";
-import { randomUUID, randomBytes } from "crypto";
+import { randomUUID } from "crypto";
 import { paystackInitialize, paystackVerify } from "./paystack";
 import {
   enrollmentSchema,
@@ -10,31 +10,21 @@ import {
 import { getProgramBySlug } from "@/data/programs";
 import { computeInstallmentSchedule } from "@/lib/payments/revenue";
 import { accrueProgramEarning } from "@/actions/program-earnings";
-import {
-  sendEnrollmentConfirmation,
-  sendAdminEnrollmentNotification,
-} from "@/lib/mail";
-import { hashPassword } from "@/lib/password";
-import { generatePasswordResetToken } from "@/lib/token";
+import { provisionUserAccount } from "@/lib/program-enrollment/provision-user-account";
 import {
   parseCohortValue,
   formatCohortName,
   getAvailableCohorts,
 } from "@/lib/cohort";
+import {
+  sendEnrollmentConfirmation,
+  sendAdminEnrollmentNotification,
+} from "@/lib/mail";
 import { sendCRMLeadEvent, sendCRMPurchaseEvent } from "@/lib/meta-conversions";
 import { trackEvent, PLATFORM_EVENTS } from "@/lib/analytics/track";
 import { buildInstallmentReceipt, sendReceipt } from "@/lib/receipts";
 
 const SITE_URL = process.env.NEXT_PUBLIC_URL || "http://localhost:2026";
-
-/**
- * Generate a secure random temporary password.
- */
-function generateTempPassword(length = 12): string {
-  const chars = "ABCDEFGHJKLMNPQRSTUVWXYZabcdefghjkmnpqrstuvwxyz23456789!@#$%";
-  const bytes = randomBytes(length);
-  return Array.from(bytes, (byte) => chars[byte % chars.length]).join("");
-}
 
 function getSecondInstallmentDueDate(
   firstPaymentDate: Date,
@@ -58,70 +48,6 @@ function getSecondInstallmentDueDate(
   }
 
   return dueDate;
-}
-
-/**
- * Provision a user account after successful enrollment payment.
- * - If user already exists, links enrollment to existing user.
- * - If user doesn't exist, creates account with temp credentials.
- * Returns { isNew, userId, tempPassword?, resetToken? }
- */
-async function provisionUserAccount(enrollment: {
-  id: string;
-  email: string;
-  fullName: string;
-  phone: string;
-}) {
-  // Check if user already exists
-  const existingUser = await db.user.findUnique({
-    where: { email: enrollment.email },
-  });
-
-  if (existingUser) {
-    // Link enrollment to existing user
-    await db.programEnrollment.update({
-      where: { id: enrollment.id },
-      data: { userId: existingUser.id },
-    });
-    return { isNew: false, userId: existingUser.id };
-  }
-
-  // Create new user with temporary credentials
-  const tempPassword = generateTempPassword();
-  const hashedPassword = await hashPassword(tempPassword);
-
-  const newUser = await db.user.create({
-    data: {
-      email: enrollment.email,
-      name: enrollment.fullName,
-      phone: enrollment.phone,
-      password: hashedPassword,
-      role: "USER",
-      emailVerified: new Date(), // Auto-verified since they paid
-      isVerified: true,
-    },
-  });
-
-  // Create student profile
-  await db.student.create({
-    data: { userId: newUser.id },
-  });
-
-  // Link enrollment to new user
-  await db.programEnrollment.update({
-    where: { id: enrollment.id },
-    data: { userId: newUser.id },
-  });
-
-  // Generate a password reset token so they can set their own password
-  const resetToken = await generatePasswordResetToken(enrollment.email);
-
-  return {
-    isNew: true,
-    userId: newUser.id,
-    tempPassword,
-    resetLink: `${SITE_URL}/new-password?token=${resetToken.token}`,
-  };
 }
 
 /**

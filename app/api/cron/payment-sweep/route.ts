@@ -13,6 +13,10 @@ import {
  *
  * Driven by .github/workflows/payment-sweep.yml. Authorised by a shared secret
  * rather than a session, because there is no user behind it.
+ *
+ * Scope: course-world Transactions only. Admin payment links ("ppl_"
+ * references) create no Transaction row — they settle via the Paystack webhook
+ * or the /pay/[token]/verify return page.
  */
 
 export const dynamic = "force-dynamic";
