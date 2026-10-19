@@ -39,7 +39,12 @@ export function PaymentLinkVerification() {
     verifyProgramPaymentLink(reference)
       .then((result) => {
         if (result.ok) {
-          const total = (result as any).items?.reduce(
+          // Every success path — fresh settlement, early already-PAID, or a
+          // lost settlement race — carries the same payload, so this renders
+          // once and stops. No reloads: re-running would resolve to the same
+          // already-settled state.
+          const items = (result as any).items ?? [];
+          const total = items.reduce(
             (sum: number, item: { amount: number }) => sum + item.amount,
             0,
           );
@@ -49,23 +54,18 @@ export function PaymentLinkVerification() {
             currency: "NGN",
             value: total ?? 0,
           });
-          if ((result as any).items) {
-            setState({
-              status: "success",
-              studentName: (result as any).studentName ?? "",
-              items: (result as any).items,
-            });
-          } else {
-            // alreadyDone without payload (e.g. a webhook settled first) —
-            // reload the link state from the server.
-            window.location.reload();
-          }
+          setState({
+            status: "success",
+            studentName: (result as any).studentName ?? "",
+            items,
+          });
         } else {
+          const reason = (result as any).reason;
           setState({
             status: "error",
             message:
-              (result as any).reason === "amount_mismatch"
-                ? "We could not reconcile this payment. Please contact us."
+              reason === "amount_mismatch" || reason === "no_enrollments"
+                ? "We received the payment but could not attach it to the programs automatically. Please contact us so we can fix it right away."
                 : "Payment was not successful. If you were charged, please contact us.",
           });
         }
@@ -101,6 +101,26 @@ export function PaymentLinkVerification() {
         <p className="text-gray-400 mb-6">{state.message}</p>
         <Button asChild variant="outline">
           <Link href="/contact">Contact us</Link>
+        </Button>
+      </div>
+    );
+  }
+
+  if (state.items.length === 0) {
+    // Defensive: the server now always returns the program list on success,
+    // but never render a broken confirmation if that invariant is violated.
+    return (
+      <div className="rounded-xl border border-emerald-500/20 bg-emerald-500/10 p-8 text-center">
+        <CheckCircle className="w-14 h-14 text-emerald-400 mx-auto mb-4" />
+        <h2 className="text-2xl font-semibold text-white mb-2">
+          Payment confirmed
+        </h2>
+        <p className="text-gray-300 mb-6">
+          Thank you{state.studentName ? `, ${state.studentName}` : ""}. Your
+          enrollment details are being sent to your email.
+        </p>
+        <Button asChild className="bg-emerald-600 hover:bg-emerald-700 text-white">
+          <Link href="/login">Log in to your dashboard</Link>
         </Button>
       </div>
     );

@@ -405,8 +405,23 @@ export async function verifyProgramPaymentLinkPayment(reference: string) {
   });
 
   if (!link) return { ok: false as const, reason: "link_not_found" };
+
+  // Already settled (the Paystack webhook usually wins this race before the
+  // browser's return page calls in). Return the SAME payload as a fresh
+  // settlement: the caller renders the confirmation from it instead of
+  // retrying — an idempotent verify must be displayable, not just acknowledged.
+  // (verifyEnrollmentPayment sets the same precedent by returning the
+  // enrollment on its alreadyVerified path.)
   if (link.status === "PAID") {
-    return { ok: true as const, alreadyDone: true as const };
+    const enrollments = await db.programEnrollment.findMany({
+      where: { paymentLinkId: link.id },
+      include: { program: true, cohort: true },
+      orderBy: { createdAt: "asc" },
+    });
+    if (enrollments.length === 0) {
+      return { ok: false as const, reason: "no_enrollments" };
+    }
+    return settledResult(link.studentName, enrollments, true);
   }
 
   const verification = await paystackVerify(reference);
@@ -492,7 +507,18 @@ export async function verifyProgramPaymentLinkPayment(reference: string) {
   }
 
   if (settlement.alreadySettled) {
-    return { ok: true as const, alreadyDone: true as const };
+    // Another caller (webhook or a parallel return-page request) settled this
+    // while we were verifying. Same contract as the early PAID branch: hand
+    // back the display payload, never a bare acknowledgement.
+    const enrollments = await db.programEnrollment.findMany({
+      where: { paymentLinkId: link.id },
+      include: { program: true, cohort: true },
+      orderBy: { createdAt: "asc" },
+    });
+    if (enrollments.length === 0) {
+      return { ok: false as const, reason: "no_enrollments" };
+    }
+    return settledResult(link.studentName, enrollments, true);
   }
 
   // ── Accrue the lead instructor's 25% per program ──
@@ -620,10 +646,19 @@ export async function verifyProgramPaymentLinkPayment(reference: string) {
     );
   }
 
+  return settledResult(link.studentName, enrollments, false);
+}
+
+/** Success payload for every settlement path — idempotent or fresh. */
+function settledResult(
+  studentName: string,
+  enrollments: any[],
+  alreadyDone: boolean,
+) {
   return {
     ok: true as const,
-    alreadyDone: false as const,
-    studentName: link.studentName,
+    alreadyDone,
+    studentName,
     items: enrollments.map((enrollment: any) => ({
       programName: enrollment.program.name,
       cohortName: enrollment.cohort.displayName,
