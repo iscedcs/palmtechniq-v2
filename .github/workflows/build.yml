@@ -57,15 +57,22 @@ jobs:
         run: pnpm lint
 
       # Trivy is installed here, not by the action's own installer
-      # (aquasecurity/setup-trivy). That installer makes unauthenticated
-      # requests to github.com, treats any non-200 reply as a silent failure
-      # and never retries. On 2026-11-08 GitHub had an incident with timeouts
-      # for unauthenticated requests, and three runs in a row failed at three
-      # different points of it, each with only "exit code 1" in the log.
-      # `gh release download` goes through the API with the workflow's own
-      # token, so that incident does not touch it. It is retried, and the file
-      # is checked against the checksums published with the release before
-      # anything is unpacked.
+      # (aquasecurity/setup-trivy). That installer treats any non-200 reply as
+      # a silent failure and never retries: on 2026-11-08, during a GitHub
+      # incident with timeouts, three runs in a row failed at three different
+      # points of it, each with only "exit code 1" in the log.
+      #
+      # Plain, unauthenticated requests on purpose. On 2026-11-08 a download
+      # authenticated with the workflow token (gh release download) was
+      # rejected from a GitHub-hosted runner with a 403: the aquasecurity
+      # organisation has an IP allow list that does not include runner
+      # addresses. The unauthenticated downloads the old installer made had
+      # worked from runners. Do not "improve" this by adding a token.
+      #
+      # Each attempt downloads the archive and the checksums published with the
+      # release and verifies one against the other, so a truncated or altered
+      # download is retried and then fails the job; nothing is unpacked unless
+      # it verified.
       #
       # The version is pinned. trivy-action is referenced at @master, whose
       # default Trivy version moves whenever they release, so it could change
@@ -73,7 +80,6 @@ jobs:
       # own commit, so a failure is traceable.
       - name: Install Trivy
         env:
-          GH_TOKEN: ${{ github.token }}
           TRIVY_VERSION: 0.75.0
         run: |
           set -euo pipefail
@@ -81,23 +87,29 @@ jobs:
           mkdir -p "$dir" "$HOME/.local/bin"
           tarball="trivy_${TRIVY_VERSION}_Linux-64bit.tar.gz"
           checksums="trivy_${TRIVY_VERSION}_checksums.txt"
+          base="https://github.com/aquasecurity/trivy/releases/download/v${TRIVY_VERSION}"
+
+          fetch() {
+            curl --fail --silent --show-error --location \
+              --retry 3 --retry-all-errors --retry-delay 5 \
+              --connect-timeout 20 --max-time 300 \
+              --output "$dir/$1" "$base/$1"
+          }
 
           for attempt in 1 2 3 4 5; do
-            if gh release download "v${TRIVY_VERSION}" --repo aquasecurity/trivy \
-                 --pattern "$tarball" --pattern "$checksums" --dir "$dir" --clobber; then
+            # grep is anchored on the end of the line so the .deb and .rpm
+            # entries for the same release cannot match.
+            if fetch "$tarball" && fetch "$checksums" \
+               && (cd "$dir" && grep " ${tarball}\$" "$checksums" | sha256sum -c -); then
               break
             fi
             if [ "$attempt" -eq 5 ]; then
-              echo "::error::Could not download Trivy ${TRIVY_VERSION} after 5 attempts"
+              echo "::error::Could not download and verify Trivy ${TRIVY_VERSION} after 5 attempts"
               exit 1
             fi
-            echo "Download failed (attempt ${attempt}), retrying in $((attempt * 15))s"
+            echo "Download or verification failed (attempt ${attempt}), retrying in $((attempt * 15))s"
             sleep $((attempt * 15))
           done
-
-          # Anchored on the end of the line so the .deb and .rpm entries for the
-          # same release cannot match. Fails if the file is missing or altered.
-          (cd "$dir" && grep " ${tarball}\$" "$checksums" | sha256sum -c -)
 
           tar -xzf "$dir/$tarball" -C "$HOME/.local/bin" trivy
           echo "$HOME/.local/bin" >> "$GITHUB_PATH"
