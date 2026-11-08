@@ -1,5 +1,14 @@
 /** @type {import('next').NextConfig} */
 const nextConfig = {
+  turbopack: {
+    // Next 16.4 turned an unresolvable `new URL(x, import.meta.url)` into a
+    // build error. @ffmpeg/ffmpeg has one, on the branch taken only when the
+    // caller passes `classWorkerURL`. lib/client/extract-lesson-audio.ts never
+    // does, so it uses the other branch (a static URL, which bundles fine).
+    // Scoped to that one file so any new instance elsewhere still fails.
+    // If extract-lesson-audio ever passes classWorkerURL, remove this.
+    ignoreIssue: [{ path: "**/@ffmpeg/ffmpeg/dist/esm/classes.js" }],
+  },
   typescript: {
     ignoreBuildErrors: process.env.SKIP_TYPECHECK === "true",
   },
