@@ -62,9 +62,17 @@ jobs:
       #
       # The second pass reuses the vulnerability DB the first one cached, so it
       # costs seconds rather than another 100MB download.
+      #
+      # Trivy itself is pinned. The action is referenced at @master, whose
+      # default Trivy version moves whenever they release, so the Trivy this
+      # build runs can change with no commit here. On 2026-11-08 the install
+      # step began failing at the point the default became 0.76.2. 0.75.0 is
+      # the version the last build that completed its scan ran on. Bump it
+      # deliberately, in its own commit, so a failure is traceable.
       - name: Dependency Audit (report)
         uses: aquasecurity/trivy-action@master
         with:
+          version: v0.75.0
           scan-type: fs
           scanners: vuln
           severity: HIGH,CRITICAL
@@ -87,6 +95,7 @@ jobs:
       - name: Dependency Audit (block on critical)
         uses: aquasecurity/trivy-action@master
         with:
+          version: v0.75.0
           scan-type: fs
           scanners: vuln
           severity: CRITICAL
