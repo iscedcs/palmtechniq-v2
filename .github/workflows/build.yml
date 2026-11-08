@@ -56,23 +56,63 @@ jobs:
       - name: Lint
         run: pnpm lint
 
+      # Trivy is installed here, not by the action's own installer
+      # (aquasecurity/setup-trivy). That installer makes unauthenticated
+      # requests to github.com, treats any non-200 reply as a silent failure
+      # and never retries. On 2026-11-08 GitHub had an incident with timeouts
+      # for unauthenticated requests, and three runs in a row failed at three
+      # different points of it, each with only "exit code 1" in the log.
+      # `gh release download` goes through the API with the workflow's own
+      # token, so that incident does not touch it. It is retried, and the file
+      # is checked against the checksums published with the release before
+      # anything is unpacked.
+      #
+      # The version is pinned. trivy-action is referenced at @master, whose
+      # default Trivy version moves whenever they release, so it could change
+      # this build with no commit here. Bump TRIVY_VERSION deliberately, in its
+      # own commit, so a failure is traceable.
+      - name: Install Trivy
+        env:
+          GH_TOKEN: ${{ github.token }}
+          TRIVY_VERSION: 0.75.0
+        run: |
+          set -euo pipefail
+          dir="$RUNNER_TEMP/trivy-download"
+          mkdir -p "$dir" "$HOME/.local/bin"
+          tarball="trivy_${TRIVY_VERSION}_Linux-64bit.tar.gz"
+          checksums="trivy_${TRIVY_VERSION}_checksums.txt"
+
+          for attempt in 1 2 3 4 5; do
+            if gh release download "v${TRIVY_VERSION}" --repo aquasecurity/trivy \
+                 --pattern "$tarball" --pattern "$checksums" --dir "$dir" --clobber; then
+              break
+            fi
+            if [ "$attempt" -eq 5 ]; then
+              echo "::error::Could not download Trivy ${TRIVY_VERSION} after 5 attempts"
+              exit 1
+            fi
+            echo "Download failed (attempt ${attempt}), retrying in $((attempt * 15))s"
+            sleep $((attempt * 15))
+          done
+
+          # Anchored on the end of the line so the .deb and .rpm entries for the
+          # same release cannot match. Fails if the file is missing or altered.
+          (cd "$dir" && grep " ${tarball}\$" "$checksums" | sha256sum -c -)
+
+          tar -xzf "$dir/$tarball" -C "$HOME/.local/bin" trivy
+          echo "$HOME/.local/bin" >> "$GITHUB_PATH"
+          "$HOME/.local/bin/trivy" --version
+
       # Two passes, deliberately. A HIGH in a transitive dependency often has
       # no same-day fix available, and blocking a release on one turns a report
       # into a false emergency. So HIGH is recorded and CRITICAL blocks.
       #
       # The second pass reuses the vulnerability DB the first one cached, so it
       # costs seconds rather than another 100MB download.
-      #
-      # Trivy itself is pinned. The action is referenced at @master, whose
-      # default Trivy version moves whenever they release, so the Trivy this
-      # build runs can change with no commit here. On 2026-11-08 the install
-      # step began failing at the point the default became 0.76.2. 0.75.0 is
-      # the version the last build that completed its scan ran on. Bump it
-      # deliberately, in its own commit, so a failure is traceable.
       - name: Dependency Audit (report)
         uses: aquasecurity/trivy-action@master
         with:
-          version: v0.75.0
+          skip-setup-trivy: true
           scan-type: fs
           scanners: vuln
           severity: HIGH,CRITICAL
@@ -95,7 +135,7 @@ jobs:
       - name: Dependency Audit (block on critical)
         uses: aquasecurity/trivy-action@master
         with:
-          version: v0.75.0
+          skip-setup-trivy: true
           scan-type: fs
           scanners: vuln
           severity: CRITICAL
