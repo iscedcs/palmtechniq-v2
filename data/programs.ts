@@ -91,6 +91,22 @@ export const PROGRAMS: ProgramDefinition[] = [
   },
   {
     ...crashCourseBase,
+    slug: "fullstack-development-crash",
+    name: "Fullstack Development (Crash Course)",
+    careerOutcomes: [
+      "Junior Fullstack Developer",
+      "Web Application Developer",
+      "Freelance Web Developer",
+    ],
+    curriculum: [
+      "HTML/CSS/JS Essentials",
+      "Node.js & REST APIs",
+      "Database Fundamentals",
+      "Build & Deploy a Full Web App",
+    ],
+  },
+  {
+    ...crashCourseBase,
     slug: "data-analytics-crash",
     name: "Data Analytics (Crash Course)",
     careerOutcomes: [
@@ -123,6 +139,38 @@ export const PROGRAMS: ProgramDefinition[] = [
   },
   {
     ...crashCourseBase,
+    slug: "smart-home-automation-crash",
+    name: "Smart Home Automation (Crash Course)",
+    careerOutcomes: [
+      "Smart Home Technician",
+      "Home Automation Installer",
+      "IoT Support Specialist",
+    ],
+    curriculum: [
+      "IoT Fundamentals",
+      "Smart Devices & Hubs",
+      "Arduino / Raspberry Pi Basics",
+      "Home Automation Mini Project",
+    ],
+  },
+  {
+    ...crashCourseBase,
+    slug: "mobile-app-development-crash",
+    name: "Mobile App Development (Crash Course)",
+    careerOutcomes: [
+      "Junior Mobile Developer",
+      "React Native Developer",
+      "App Developer",
+    ],
+    curriculum: [
+      "React Native / Flutter Basics",
+      "Mobile UI Components",
+      "Connecting to APIs",
+      "Publishing Your App",
+    ],
+  },
+  {
+    ...crashCourseBase,
     slug: "ui-ux-design-crash",
     name: "UI/UX Design (Crash Course)",
     careerOutcomes: ["Junior UI Designer", "UX Researcher", "Visual Designer"],
@@ -131,6 +179,22 @@ export const PROGRAMS: ProgramDefinition[] = [
       "Figma Mastery",
       "User Research",
       "Prototyping",
+    ],
+  },
+  {
+    ...crashCourseBase,
+    slug: "graphic-design-crash",
+    name: "Graphic Design (Crash Course)",
+    careerOutcomes: [
+      "Junior Graphic Designer",
+      "Social Media Designer",
+      "Brand Assistant",
+    ],
+    curriculum: [
+      "Design Principles & Color Theory",
+      "Typography & Layout",
+      "Photoshop & Illustrator Essentials",
+      "Logo & Social Media Design",
     ],
   },
   {
@@ -163,6 +227,30 @@ export const PROGRAMS: ProgramDefinition[] = [
       "Roadmapping",
       "User Stories",
       "Product Metrics",
+    ],
+  },
+  {
+    ...crashCourseBase,
+    slug: "vibe-coding-crash",
+    name: "Vibe Coding (AI-Assisted Coding) (Crash Course)",
+    // The one crash course priced above the ₦90,000 standard, so it does not
+    // use the crashCourseBase instalment figures. The instalment total is the
+    // ~5% financing surcharge the other programs carry (₦126,000), rounded to
+    // the nearest ₦5,000 as the ₦90,000 crash courses are; split 70/30.
+    fullPrice: 120_000,
+    installTotal: 125_000,
+    firstInstall: 87_500,
+    secondInstall: 37_500,
+    careerOutcomes: [
+      "AI-Assisted Developer",
+      "Rapid Prototyper",
+      "Junior Software Developer",
+    ],
+    curriculum: [
+      "AI Coding Agents 101",
+      "Choosing the Right AI Model",
+      "Prompting & Agent Instruction Files",
+      "Build and Ship a Project with AI",
     ],
   },
 
@@ -328,6 +416,31 @@ export const PROGRAMS: ProgramDefinition[] = [
     ],
   },
   {
+    // Priced the same as UI/UX Design at every duration. It is not in the
+    // pricing framework document, so data/__tests__/programs.test.ts holds it
+    // to the UI/UX figures instead.
+    slug: "graphic-design-3m",
+    name: "Graphic Design",
+    duration: "THREE_MONTHS",
+    durationLabel: "3 Months",
+    fullPrice: 300_000,
+    installTotal: 320_000,
+    firstInstall: 224_000,
+    secondInstall: 96_000,
+    careerOutcomes: [
+      "Graphic Designer",
+      "Brand Identity Designer",
+      "Visual Designer",
+    ],
+    curriculum: [
+      "Design Principles & Typography",
+      "Photoshop & Illustrator",
+      "Logo & Brand Identity",
+      "Social Media & Print Design",
+      "Portfolio Project",
+    ],
+  },
+  {
     slug: "product-management-3m",
     name: "Product Management",
     duration: "THREE_MONTHS",
@@ -347,6 +460,28 @@ export const PROGRAMS: ProgramDefinition[] = [
       "A/B Testing",
       "Product Analytics",
       "Go-to-Market Strategy",
+    ],
+  },
+  {
+    slug: "vibe-coding-3m",
+    name: "Vibe Coding (AI-Assisted Coding)",
+    duration: "THREE_MONTHS",
+    durationLabel: "3 Months",
+    fullPrice: 350_000,
+    installTotal: 370_000,
+    firstInstall: 259_000,
+    secondInstall: 111_000,
+    careerOutcomes: [
+      "AI-Assisted Software Developer",
+      "Rapid Prototyping Specialist",
+      "AI Workflow Engineer",
+    ],
+    curriculum: [
+      "AI Coding Agents & Models",
+      "Context & Memory Management",
+      "Agent Instruction Files",
+      "Terminal Tooling & MCP",
+      "Capstone: Ship a Real Product",
     ],
   },
 
@@ -503,6 +638,28 @@ export const PROGRAMS: ProgramDefinition[] = [
       "Design Ops",
       "Accessibility Mastery",
       "Portfolio Project",
+    ],
+  },
+  {
+    slug: "graphic-design-6m",
+    name: "Graphic Design",
+    duration: "SIX_MONTHS",
+    durationLabel: "6 Months",
+    fullPrice: 800_000,
+    installTotal: 840_000,
+    firstInstall: 588_000,
+    secondInstall: 252_000,
+    careerOutcomes: [
+      "Senior Graphic Designer",
+      "Creative Lead",
+      "Art Director",
+    ],
+    curriculum: [
+      "Advanced Brand Systems",
+      "Motion Graphics Basics",
+      "Packaging & Print Production",
+      "Client Work & Freelancing",
+      "Portfolio & Capstone",
     ],
   },
   {
