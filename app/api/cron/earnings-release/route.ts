@@ -1,7 +1,10 @@
 import { timingSafeEqual } from "crypto";
 import { NextResponse } from "next/server";
 
-import { releaseDueEarnings } from "@/lib/payments/release-due-earnings";
+import {
+  releaseDueEarnings,
+  releaseDueGroupCashback,
+} from "@/lib/payments/release-due-earnings";
 
 /**
  * Releases course and mentorship earnings whose refund window has closed.
@@ -58,9 +61,19 @@ async function handle(req: Request) {
       `[earnings-release] released ${report.released} earning(s) totalling ₦${report.total.toLocaleString()} to ${report.tutorsCredited} tutor(s)${report.more ? ", more waiting" : ""}`,
     );
 
+    // Strictly after the earnings above. Group cashback is funded from the
+    // tutor's share of that group's sales, so on the tick where both come due
+    // the funding wallet is only topped up once releaseDueEarnings has run.
+    const cashback = await releaseDueGroupCashback();
+
+    console.log(
+      `[earnings-release] released cashback for ${cashback.released} group(s) totalling ₦${cashback.total.toLocaleString()}${cashback.blocked > 0 ? `, ${cashback.blocked} unfunded and needing attention` : ""}`,
+    );
+
     return NextResponse.json({
       ok: true,
       ...report,
+      cashback,
       tookMs: Date.now() - startedAt,
     });
   } catch (error) {

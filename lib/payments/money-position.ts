@@ -90,3 +90,24 @@ export function computeMoneyPosition(input: MoneyPositionInput): MoneyPosition {
 export function canCoverPayout(balance: number, amount: number): boolean {
   return toKobo(balance) >= toKobo(amount);
 }
+
+/**
+ * What a tutor may actually withdraw: their wallet balance minus money that is
+ * already promised to someone else.
+ *
+ * Group cashback is the case this exists for. The tutor funds it, but it is
+ * only paid to the group creator once the refund window on the group's sales
+ * closes, so for up to 30 days the money sits in the tutor's wallet while
+ * being owed to a student. Without this reserve the tutor could withdraw it
+ * first and the cashback would be permanently unfundable: the student would be
+ * owed a discount nobody could pay.
+ */
+export function computeWithdrawableBalance(
+  walletBalance: number,
+  reservedForCashback: number,
+): number {
+  return Math.max(
+    0,
+    fromKobo(toKobo(walletBalance) - toKobo(Math.max(0, reservedForCashback))),
+  );
+}

@@ -1447,6 +1447,15 @@ model GroupPurchase {
   cashbackPerMember Float               @default(0)
   cashbackEarned    Float               @default(0)
   cashbackReleased  Boolean             @default(false)
+
+  /// Earliest moment the cashback may be paid out: the end of the refund
+  /// window on the sales that fund it. The tutor funds the cashback out of
+  /// their share of the group's own sales, and that share is itself held until
+  /// the window closes, so paying the creator at completion would hand out
+  /// money the funder does not have yet. Set when the group completes, null
+  /// before that and on groups with no cashback.
+  cashbackAvailableAt DateTime?
+
   paidAt            DateTime?
   completedAt       DateTime?
   createdAt         DateTime            @default(now())
@@ -1458,6 +1467,8 @@ model GroupPurchase {
   tier              GroupTier           @relation(fields: [tierId], references: [id], onDelete: Cascade)
   transactions      Transaction[]
 
+  // Drives the release sweep: unreleased cashback whose date has passed.
+  @@index([cashbackReleased, cashbackAvailableAt])
   @@map("group_purchases")
 }
 

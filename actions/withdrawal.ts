@@ -2,7 +2,10 @@
 
 import crypto, { randomUUID } from "crypto";
 import { creditWallet, debitWallet } from "@/lib/payments/wallet";
-import { canCoverPayout } from "@/lib/payments/money-position";
+import {
+  canCoverPayout,
+  computeWithdrawableBalance,
+} from "@/lib/payments/money-position";
 import { getPaystackBalance } from "@/lib/payments/paystack-balance";
 import { auth } from "@/auth";
 import { db } from "@/lib/db";
@@ -730,7 +733,34 @@ export async function requestWithdrawal(amount: number, twoFactorCode?: string) 
   }
 
   if (!user.recipientCode) return { error: "No payout recipient configured" };
-  if (user.walletBalance < amount) return { error: "Insufficient balance" };
+
+  // Cashback this tutor owes on groups that have completed but whose refund
+  // window has not closed. It is sitting in their wallet and is owed to a
+  // student, so it is not theirs to take: withdrawing it first would leave the
+  // cashback permanently unfundable.
+  const reserved = await db.groupPurchase.aggregate({
+    where: {
+      status: "COMPLETED",
+      cashbackReleased: false,
+      cashbackTotal: { gt: 0 },
+      course: { tutor: { userId: session.user.id } },
+    },
+    _sum: { cashbackTotal: true },
+  });
+  const reservedForCashback = reserved._sum.cashbackTotal ?? 0;
+  const withdrawable = computeWithdrawableBalance(
+    user.walletBalance,
+    reservedForCashback,
+  );
+
+  if (withdrawable < amount) {
+    return {
+      error:
+        reservedForCashback > 0
+          ? `You can withdraw up to ₦${withdrawable.toLocaleString()}. ₦${reservedForCashback.toLocaleString()} is reserved for group cashback you have funded, and is released to the group creators once the refund window closes.`
+          : "Insufficient balance",
+    };
+  }
 
   // ================= 2FA SECURITY ENFORCEMENT =================
   const prefs = (user.preferences as Record<string, unknown>) || {};

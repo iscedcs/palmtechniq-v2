@@ -1,6 +1,10 @@
 import { describe, expect, it } from "vitest";
 
-import { canCoverPayout, computeMoneyPosition } from "../money-position";
+import {
+  canCoverPayout,
+  computeMoneyPosition,
+  computeWithdrawableBalance,
+} from "../money-position";
 
 const base = {
   paystackBalance: 500_000,
@@ -61,5 +65,28 @@ describe("canCoverPayout", () => {
 
   it("refuses a payout above the balance", () => {
     expect(canCoverPayout(4_999.99, 5_000)).toBe(false);
+  });
+});
+
+describe("computeWithdrawableBalance", () => {
+  it("reserves cashback the tutor has funded but not yet paid out", () => {
+    expect(computeWithdrawableBalance(50_000, 9_000)).toBe(41_000);
+  });
+
+  it("is the whole balance when nothing is reserved", () => {
+    expect(computeWithdrawableBalance(50_000, 0)).toBe(50_000);
+  });
+
+  it("never goes negative, so a shortfall cannot read as a credit", () => {
+    expect(computeWithdrawableBalance(5_000, 9_000)).toBe(0);
+  });
+
+  it("ignores a negative reserve rather than inflating the balance", () => {
+    expect(computeWithdrawableBalance(50_000, -9_000)).toBe(50_000);
+  });
+
+  it("is exact on amounts that lose precision in float naira", () => {
+    // 0.3 - 0.1 is 0.19999999999999998 in binary floating point.
+    expect(computeWithdrawableBalance(0.3, 0.1)).toBe(0.2);
   });
 });

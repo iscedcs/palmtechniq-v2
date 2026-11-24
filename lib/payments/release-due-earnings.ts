@@ -20,7 +20,7 @@
  */
 
 import { db } from "@/lib/db";
-import { creditWallet } from "@/lib/payments/wallet";
+import { creditWallet, debitWallet } from "@/lib/payments/wallet";
 import { notify } from "@/lib/notify";
 
 /** How many earnings one pass will release. Keeps a backlog from timing out. */
@@ -126,6 +126,158 @@ export async function releaseDueEarnings(
     released,
     total,
     tutorsCredited: byTutor.size,
+    more: due.length === BATCH_SIZE,
+  };
+}
+
+/**
+ * The cashback cannot be paid yet. Thrown to roll the claim back so the group
+ * stays unreleased and the next pass retries it, rather than marking it done
+ * with no money having moved.
+ */
+class CashbackBlockedError extends Error {}
+
+export type CashbackReleaseResult = {
+  released: number;
+  total: number;
+  /** Groups whose cashback came due but could not be funded. Needs a human. */
+  blocked: number;
+  more: boolean;
+};
+
+/**
+ * Pays out group-buying cashback whose refund window has closed.
+ *
+ * The tutor funds the cashback out of their share of the group's own sales,
+ * and that share is held until its window closes, so this cannot run at
+ * completion. `executeJoinGroup` records a `cashbackAvailableAt` instead and
+ * this settles it: debit the tutor, credit the group creator, two halves of
+ * one movement inside one transaction.
+ *
+ * MUST run after `releaseDueEarnings` in the same pass. The earnings that fund
+ * this are released by that function, and on the tick where both come due the
+ * wallet is only funded once it has run.
+ *
+ * Blocked rather than forced when the tutor's wallet cannot cover it. Driving
+ * the wallet negative would pay out cashback the tutor never earned, so the
+ * group is left for the next pass and counted in `blocked`.
+ */
+export async function releaseDueGroupCashback(
+  now: Date = new Date(),
+): Promise<CashbackReleaseResult> {
+  const due = await db.groupPurchase.findMany({
+    where: {
+      status: "COMPLETED",
+      cashbackReleased: false,
+      cashbackTotal: { gt: 0 },
+      cashbackAvailableAt: { lte: now },
+    },
+    orderBy: { cashbackAvailableAt: "asc" },
+    take: BATCH_SIZE,
+    select: {
+      id: true,
+      creatorId: true,
+      cashbackTotal: true,
+      courseId: true,
+      course: { select: { tutor: { select: { userId: true } } } },
+    },
+  });
+
+  if (due.length === 0) {
+    return { released: 0, total: 0, blocked: 0, more: false };
+  }
+
+  let released = 0;
+  let blocked = 0;
+  let total = 0;
+  const creditedCreators: { creatorId: string; amount: number }[] = [];
+
+  for (const group of due) {
+    try {
+      const paid = await db.$transaction(async (tx: any) => {
+        // Claim inside the transaction, so an overlapping pass finds nothing
+        // and a rollback below un-claims it for the next one.
+        const claimed = await tx.groupPurchase.updateMany({
+          where: { id: group.id, cashbackReleased: false },
+          data: { cashbackReleased: true },
+        });
+        if (claimed.count === 0) return false;
+
+        const funderId = group.course?.tutor?.userId;
+        if (!funderId) {
+          throw new CashbackBlockedError(
+            `course ${group.courseId} has no tutor to fund it`,
+          );
+        }
+
+        const funder = await tx.user.findUnique({
+          where: { id: funderId },
+          select: { walletBalance: true },
+        });
+        if (!funder || funder.walletBalance < group.cashbackTotal) {
+          throw new CashbackBlockedError(
+            `tutor ${funderId} has ₦${funder?.walletBalance ?? 0} but the cashback needs ₦${group.cashbackTotal}`,
+          );
+        }
+
+        await debitWallet(tx, {
+          userId: funderId,
+          amount: group.cashbackTotal,
+          type: "GROUP_CASHBACK_DEBIT",
+          groupPurchaseId: group.id,
+          description: "Funded group cashback",
+        });
+
+        await creditWallet(tx, {
+          userId: group.creatorId,
+          amount: group.cashbackTotal,
+          type: "GROUP_CASHBACK_CREDIT",
+          groupPurchaseId: group.id,
+          description: "Group purchase cashback",
+        });
+
+        return true;
+      });
+
+      if (!paid) continue;
+
+      released += 1;
+      total += group.cashbackTotal;
+      creditedCreators.push({
+        creatorId: group.creatorId,
+        amount: group.cashbackTotal,
+      });
+    } catch (error) {
+      if (error instanceof CashbackBlockedError) {
+        blocked += 1;
+        console.error(
+          `[release-cashback] group ${group.id} is due but unfunded: ${error.message}`,
+        );
+        continue;
+      }
+      console.error(
+        `[release-cashback] could not release group ${group.id}:`,
+        error,
+      );
+    }
+  }
+
+  // After the money has committed, never inside the transaction.
+  for (const { creatorId, amount } of creditedCreators) {
+    await notify.user(creatorId, {
+      type: "payment",
+      title: "Group cashback added",
+      message: `₦${amount.toLocaleString()} of group cashback has been added to your course credit and will be applied automatically at your next checkout.`,
+      actionUrl: "/courses",
+      actionLabel: "Browse courses",
+      metadata: { category: "group_cashback_released", amount },
+    });
+  }
+
+  return {
+    released,
+    total,
+    blocked,
     more: due.length === BATCH_SIZE,
   };
 }
