@@ -227,7 +227,12 @@ export default function TermsOfService() {
                         </li>
                         <li>
                           • Refunds are subject to our 30-day money-back
-                          guarantee
+                          guarantee, set out in full in our{" "}
+                          <a
+                            href="/refunds"
+                            className="text-neon-blue hover:underline">
+                            Refund Policy
+                          </a>
                         </li>
                       </ul>
                       <p className="text-gray-300">

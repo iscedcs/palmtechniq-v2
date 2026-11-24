@@ -49,6 +49,7 @@ const footerLinks = {
   support: [
     { name: "Help Center", href: "/help" },
     { name: "Contact Us", href: "/contact" },
+    { name: "Refund Policy", href: "/refunds" },
     { name: "Privacy Policy", href: "/privacy" },
     { name: "Terms of Service", href: "/terms" },
   ],
