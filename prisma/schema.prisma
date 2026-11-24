@@ -2065,7 +2065,14 @@ enum InstallmentStatus {
   PENDING
   PAID
   OVERDUE
+  /// Never paid, and no longer expected: the enrollment was refunded or
+  /// withdrawn before this installment came due.
   CANCELLED
+  /// Was paid, and the money has been given back. Distinct from CANCELLED so
+  /// cash that was genuinely collected and then returned is not confused with
+  /// cash that never arrived, and distinct from PAID so the distribution base
+  /// stops counting it as revenue.
+  REFUNDED
 }
 
 // ─── Course Promotion / Ad System ───────────────────────────────────────────
