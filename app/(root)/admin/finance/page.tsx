@@ -46,6 +46,7 @@ export default async function FinanceOverviewPage() {
     { label: "Tutor and mentor wallets", value: position.owed.tutorAndMentorWallets },
     { label: "Withdrawals awaiting approval", value: position.owed.openWithdrawals },
     { label: "Earnings accrued, not yet released", value: position.owed.heldEarnings },
+    { label: "Stakeholder shares approved, not yet paid", value: position.owed.approvedDistributions },
     { label: "VAT to remit", value: position.owed.vatToRemit },
   ];
 

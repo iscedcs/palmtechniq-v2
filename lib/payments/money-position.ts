@@ -26,6 +26,12 @@
  *                      ones overstated what the platform could safely move to
  *                      its own bank by the whole held course balance.
  *   VAT to remit       VAT collected and not yet remitted.
+ *   Approved payouts   Stakeholder distributions approved but not yet paid.
+ *                      Once a run is signed off the money is committed to
+ *                      named people. Leaving it out would let the same naira
+ *                      be distributed twice: the next run would compute its
+ *                      base from revenue, see the cash still sitting in the
+ *                      balance, and hand it out again.
  *
  * It is an estimate. It does not model Paystack's own fees or money that has
  * been charged but not yet settled into the balance.
@@ -40,6 +46,7 @@ export type MoneyPositionInput = {
   openWithdrawals: number;
   heldEarnings: number;
   vatToRemit: number;
+  approvedDistributions: number;
 };
 
 export type MoneyPosition = {
@@ -49,6 +56,7 @@ export type MoneyPosition = {
     openWithdrawals: number;
     heldEarnings: number;
     vatToRemit: number;
+    approvedDistributions: number;
   };
   totalOwed: number;
   /** Balance minus everything owed. null when the balance is unknown. */
@@ -65,7 +73,8 @@ export function computeMoneyPosition(input: MoneyPositionInput): MoneyPosition {
     toKobo(input.tutorAndMentorWallets) +
     toKobo(input.openWithdrawals) +
     toKobo(input.heldEarnings) +
-    toKobo(input.vatToRemit);
+    toKobo(input.vatToRemit) +
+    toKobo(input.approvedDistributions);
 
   const available =
     input.paystackBalance === null
@@ -79,6 +88,7 @@ export function computeMoneyPosition(input: MoneyPositionInput): MoneyPosition {
       openWithdrawals: input.openWithdrawals,
       heldEarnings: input.heldEarnings,
       vatToRemit: input.vatToRemit,
+      approvedDistributions: input.approvedDistributions,
     },
     totalOwed: fromKobo(owedKobo),
     available,

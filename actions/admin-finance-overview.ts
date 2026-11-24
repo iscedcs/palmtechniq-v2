@@ -47,6 +47,7 @@ export async function getFinanceOverview(): Promise<
     pendingWithdrawals,
     heldPending,
     vatPending,
+    approvedShares,
   ] = await Promise.all([
     getPaystackBalance(),
     getTransactionSummaries(monthStart),
@@ -74,6 +75,12 @@ export async function getFinanceOverview(): Promise<
       where: { status: "PENDING" },
       _sum: { amount: true },
     }) as Promise<Sum>,
+    // Approved but unpaid stakeholder shares. Committed money, so it is owed
+    // and must not read as available for anything else.
+    db.distributionShare.aggregate({
+      where: { status: "PENDING", distribution: { status: "APPROVED" } },
+      _sum: { amountKobo: true },
+    }) as Promise<{ _sum: { amountKobo: number | null } }>,
   ]);
 
   const position = computeMoneyPosition({
@@ -82,6 +89,7 @@ export async function getFinanceOverview(): Promise<
     openWithdrawals: pendingWithdrawals._sum.amount ?? 0,
     heldEarnings: heldPending._sum.amount ?? 0,
     vatToRemit: vatPending._sum.amount ?? 0,
+    approvedDistributions: (approvedShares._sum.amountKobo ?? 0) / 100,
   });
 
   return {

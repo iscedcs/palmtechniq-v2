@@ -12,6 +12,7 @@ const base = {
   openWithdrawals: 20_000,
   heldEarnings: 100_000,
   vatToRemit: 45_000,
+  approvedDistributions: 0,
 };
 
 describe("computeMoneyPosition", () => {
@@ -48,6 +49,7 @@ describe("computeMoneyPosition", () => {
       openWithdrawals: 0.2,
       heldEarnings: 0.3,
       vatToRemit: 0.4,
+      approvedDistributions: 0,
     });
     expect(p.totalOwed).toBe(1);
     expect(p.available).toBe(99);
