@@ -9,18 +9,22 @@
  *
  * What is owed, and what deliberately is not:
  *
- *   Wallets            Tutor and mentor wallet balances. Course and mentorship
- *                      earnings are credited here at settlement, so they are
- *                      already counted. Student cashback credit is NOT owed as
+ *   Wallets            Tutor and mentor wallet balances: earnings that have
+ *                      been released. Student cashback credit is NOT owed as
  *                      cash (it is spendable store credit), so it is excluded.
  *   Open withdrawals   Requests awaiting approval. They were already debited
  *                      from the wallet when requested, so they are owed on top
  *                      of the wallets. APPROVED ones are not counted: the
  *                      transfer has been started and Paystack has already
  *                      taken that money out of the balance.
- *   Program accruals   Program earnings accrued but not yet released. They
- *                      reach a wallet only on release, but the cash behind
- *                      them is already in the balance.
+ *   Held earnings      Every earning accrued and not yet released, whatever
+ *                      its source. Course and mentorship earnings are held for
+ *                      the refund window, and program earnings until the later
+ *                      of that and the cohort start. None of them has reached
+ *                      a wallet, but the cash behind all of them is already in
+ *                      the balance, and it is owed. Counting only the program
+ *                      ones overstated what the platform could safely move to
+ *                      its own bank by the whole held course balance.
  *   VAT to remit       VAT collected and not yet remitted.
  *
  * It is an estimate. It does not model Paystack's own fees or money that has
@@ -34,7 +38,7 @@ export type MoneyPositionInput = {
   paystackBalance: number | null;
   tutorAndMentorWallets: number;
   openWithdrawals: number;
-  accruedProgramEarnings: number;
+  heldEarnings: number;
   vatToRemit: number;
 };
 
@@ -43,7 +47,7 @@ export type MoneyPosition = {
   owed: {
     tutorAndMentorWallets: number;
     openWithdrawals: number;
-    accruedProgramEarnings: number;
+    heldEarnings: number;
     vatToRemit: number;
   };
   totalOwed: number;
@@ -60,7 +64,7 @@ export function computeMoneyPosition(input: MoneyPositionInput): MoneyPosition {
   const owedKobo =
     toKobo(input.tutorAndMentorWallets) +
     toKobo(input.openWithdrawals) +
-    toKobo(input.accruedProgramEarnings) +
+    toKobo(input.heldEarnings) +
     toKobo(input.vatToRemit);
 
   const available =
@@ -73,7 +77,7 @@ export function computeMoneyPosition(input: MoneyPositionInput): MoneyPosition {
     owed: {
       tutorAndMentorWallets: input.tutorAndMentorWallets,
       openWithdrawals: input.openWithdrawals,
-      accruedProgramEarnings: input.accruedProgramEarnings,
+      heldEarnings: input.heldEarnings,
       vatToRemit: input.vatToRemit,
     },
     totalOwed: fromKobo(owedKobo),

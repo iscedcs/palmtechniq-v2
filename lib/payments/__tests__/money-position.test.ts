@@ -6,7 +6,7 @@ const base = {
   paystackBalance: 500_000,
   tutorAndMentorWallets: 180_000,
   openWithdrawals: 20_000,
-  accruedProgramEarnings: 100_000,
+  heldEarnings: 100_000,
   vatToRemit: 45_000,
 };
 
@@ -42,7 +42,7 @@ describe("computeMoneyPosition", () => {
       paystackBalance: 100,
       tutorAndMentorWallets: 0.1,
       openWithdrawals: 0.2,
-      accruedProgramEarnings: 0.3,
+      heldEarnings: 0.3,
       vatToRemit: 0.4,
     });
     expect(p.totalOwed).toBe(1);

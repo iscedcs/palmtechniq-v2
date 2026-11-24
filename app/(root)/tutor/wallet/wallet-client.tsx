@@ -422,10 +422,13 @@ export default function WalletClient({
             </motion.div>
             {accruedPending > 0 && (
               <p className="mt-2 text-xs text-foreground py-3">
-                Program earnings are recorded when each installment is paid and
-                move into your available balance once the platform releases
-                them, 30 days after payment and no earlier than the cohort start
-                date. Accrued amounts are not yet withdrawable.
+                Earnings are recorded as soon as a payment succeeds and move
+                into your available balance 30 days later, once the student
+                refund window has closed. This protects you as well: a sale can
+                be refunded within those 30 days, and after the window closes
+                your earnings are yours to withdraw. Program earnings wait for
+                the later of that date and the cohort start, and are released by
+                the platform. Accrued amounts are not yet withdrawable.
               </p>
             )}
 

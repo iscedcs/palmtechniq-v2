@@ -4,6 +4,7 @@ import { db } from "@/lib/db";
 import { notify } from "@/lib/notify";
 import {
   computeCheckoutTotals,
+  computeEarningAvailableAt,
   computeMentorshipSplit,
   deriveSplitPercent,
   REVENUE,
@@ -91,9 +92,9 @@ export async function finalizePaystackByReference(reference: string) {
       // function reads `tx` BEFORE any of this runs, so it cannot stop two
       // callers that overlap — and three things call this for the same payment:
       // Paystack's webhook, /api/paystack/finalize on the return page, and the
-      // payment sweep. Nothing below is idempotent (creditWallet is a plain
-      // increment, TutorEarning has no uniqueness on course sales), so if both
-      // got through, the tutor would be credited twice.
+      // payment sweep. Nothing below is idempotent (TutorEarning has no
+      // uniqueness on course sales), so if both got through, the sale would
+      // accrue twice and the release sweep would later pay it out twice.
       //
       // A conditional update is the fix: Postgres makes the second caller wait
       // on the row lock, then re-checks the WHERE against the committed row, so
@@ -191,11 +192,13 @@ export async function finalizePaystackByReference(reference: string) {
           tx.tutorShareAmount ??
           computeMentorshipSplit(tx.amount || 0).tutorShareAmount;
         if (tutorId && tutorShare > 0) {
-          // Record the earning in the same transaction as the wallet credit.
-          // Without this the money is spendable but invisible to the ledger, and
-          // wallet balance can never be reconciled against TutorEarning.
+          // Accrued as PENDING and held until the refund window closes, NOT
+          // credited to the wallet here. Crediting at settlement made the
+          // money withdrawable inside its own 30-day guarantee, with no
+          // clawback if the student was then refunded. The release sweep
+          // credits the wallet once `availableAt` passes.
           const sessionId = metadata?.mentorshipSessionId as string | undefined;
-          const earning = await px.tutorEarning.create({
+          await px.tutorEarning.create({
             data: {
               tutorId,
               source: "MENTORSHIP",
@@ -204,19 +207,11 @@ export async function finalizePaystackByReference(reference: string) {
                 discountedPrice: tx.amount || 0,
                 tutorShareAmount: tutorShare,
               }),
-              status: "AVAILABLE",
+              status: "PENDING",
+              availableAt: computeEarningAvailableAt(new Date(v.paid_at)),
               transactionId: tx.id,
               mentorshipSessionId: sessionId ?? null,
             },
-          });
-
-          await creditWallet(px, {
-            userId: tutorId,
-            amount: tutorShare,
-            type: "MENTORSHIP_EARNING",
-            transactionId: tx.id,
-            tutorEarningId: earning.id,
-            description: "Mentorship session",
           });
         }
         return;
@@ -382,6 +377,13 @@ export async function finalizePaystackByReference(reference: string) {
         // One insert for every earning rather than one per line item. A bundle
         // multiplies these by the number of courses, which is what pushed this
         // transaction past its timeout.
+        // Accrued as PENDING and held until the refund window closes. The
+        // wallet is NOT credited here: the platform publishes a 30-day
+        // money-back guarantee, so crediting at settlement handed the tutor
+        // money that was still refundable, and a refund after they withdrew
+        // had no clawback. The release sweep credits the wallet once
+        // `availableAt` passes.
+        const availableAt = computeEarningAvailableAt(new Date(v.paid_at));
         await px.tutorEarning.createMany({
           data: lineItems.map((item: any) => ({
             tutorId: item.tutorId,
@@ -392,33 +394,10 @@ export async function finalizePaystackByReference(reference: string) {
             // Derived from the amounts that actually moved, not re-decided
             // from the scenario — the ledger cannot disagree with the money.
             splitPercent: deriveSplitPercent(item),
-            status: "AVAILABLE",
+            status: "PENDING",
+            availableAt,
           })),
         });
-
-        // Credit each tutor once for the whole transaction. Every course in a
-        // bundle belongs to the same tutor, so this collapses N updates to one
-        // while moving exactly the same total.
-        const creditByTutor = new Map<string, number>();
-        for (const item of lineItems) {
-          creditByTutor.set(
-            item.tutorId,
-            (creditByTutor.get(item.tutorId) ?? 0) + item.tutorShareAmount,
-          );
-        }
-
-        for (const [tutorId, amount] of creditByTutor) {
-          await creditWallet(px, {
-            userId: tutorId,
-            amount,
-            type: "COURSE_EARNING",
-            transactionId: tx.id,
-            description:
-              metadata.type === "bundle"
-                ? "Bundle purchase"
-                : "Course purchase",
-          });
-        }
       }
 
       if (!isGroupPurchase) {

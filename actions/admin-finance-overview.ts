@@ -45,7 +45,7 @@ export async function getFinanceOverview(): Promise<
     earnerWallets,
     studentWallets,
     pendingWithdrawals,
-    accruedProgram,
+    heldPending,
     vatPending,
   ] = await Promise.all([
     getPaystackBalance(),
@@ -63,8 +63,11 @@ export async function getFinanceOverview(): Promise<
       _sum: { amount: true },
       _count: { _all: true },
     }) as Promise<Sum & { _count: { _all: number } }>,
+    // Every held earning, not just program ones. Course and mentorship
+    // earnings are now held for the refund window too, and leaving them out
+    // would overstate what the platform can safely move to its own bank.
     db.tutorEarning.aggregate({
-      where: { source: "PROGRAM", status: "PENDING" },
+      where: { status: "PENDING" },
       _sum: { amount: true },
     }) as Promise<Sum>,
     db.vatLedger.aggregate({
@@ -77,7 +80,7 @@ export async function getFinanceOverview(): Promise<
     paystackBalance: balance.ok ? balance.naira : null,
     tutorAndMentorWallets: earnerWallets._sum.walletBalance ?? 0,
     openWithdrawals: pendingWithdrawals._sum.amount ?? 0,
-    accruedProgramEarnings: accruedProgram._sum.amount ?? 0,
+    heldEarnings: heldPending._sum.amount ?? 0,
     vatToRemit: vatPending._sum.amount ?? 0,
   });
 

@@ -180,8 +180,9 @@ export async function getWalletDashboardData() {
         preferences: true,
       },
     }),
-    // Only money that has actually reached the wallet. PENDING program
-    // accruals are not the tutor's yet and CANCELLED ones never will be.
+    // Only money that has actually reached the wallet. PENDING earnings are
+    // still inside their refund window, so they are not the tutor's yet, and
+    // CANCELLED ones never will be. Shown separately as "accrued".
     db.tutorEarning.aggregate({
       where: { tutorId: userId, status: { in: ["AVAILABLE", "PAID"] } },
       _sum: { amount: true },

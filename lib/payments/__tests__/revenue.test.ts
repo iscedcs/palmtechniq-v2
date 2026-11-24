@@ -7,6 +7,7 @@ import {
   allocateShareAcrossInstallments,
   computeBundlePriceFloor,
   computeCheckoutTotals,
+  computeEarningAvailableAt,
   computeGroupCashback,
   computeGroupCashbackEarned,
   computeInstallmentSchedule,
@@ -449,5 +450,41 @@ describe("exact arithmetic (integer kobo)", () => {
     });
     const summedVat = totals.lineItems.reduce((s, i) => s + i.vatAmount, 0);
     expect(Math.round(summedVat * 100)).toBe(Math.round(totals.vatAmount * 100));
+  });
+});
+
+describe("computeEarningAvailableAt", () => {
+  it("holds an earning for the full published refund window", () => {
+    const paidAt = new Date("2026-11-09T10:30:00.000Z");
+    const availableAt = computeEarningAvailableAt(paidAt);
+
+    const days =
+      (availableAt.getTime() - paidAt.getTime()) / (24 * 60 * 60 * 1000);
+    expect(days).toBe(REVENUE.refundWindowDays);
+    expect(REVENUE.refundWindowDays).toBe(30);
+  });
+
+  it("does not mutate the date it is given", () => {
+    const paidAt = new Date("2026-11-09T10:30:00.000Z");
+    const before = paidAt.toISOString();
+    computeEarningAvailableAt(paidAt);
+    expect(paidAt.toISOString()).toBe(before);
+  });
+
+  it("keeps the time of day, so a release is never brought forward", () => {
+    const paidAt = new Date("2026-11-09T23:59:00.000Z");
+    const availableAt = computeEarningAvailableAt(paidAt);
+    expect(availableAt.getTime()).toBeGreaterThan(paidAt.getTime());
+    expect(availableAt.getUTCHours()).toBe(paidAt.getUTCHours());
+    expect(availableAt.getUTCMinutes()).toBe(paidAt.getUTCMinutes());
+  });
+
+  it("crosses a month boundary correctly", () => {
+    // 9 Nov + 30 days is 9 Dec. Adding 30 to the day-of-month naively would
+    // give 39 November, so this pins the rollover.
+    const availableAt = computeEarningAvailableAt(
+      new Date("2026-11-09T00:00:00.000Z"),
+    );
+    expect(availableAt.toISOString().slice(0, 10)).toBe("2026-12-09");
   });
 });

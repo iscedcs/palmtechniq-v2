@@ -45,7 +45,7 @@ export default async function FinanceOverviewPage() {
   const owedRows = [
     { label: "Tutor and mentor wallets", value: position.owed.tutorAndMentorWallets },
     { label: "Withdrawals awaiting approval", value: position.owed.openWithdrawals },
-    { label: "Program earnings accrued, not yet released", value: position.owed.accruedProgramEarnings },
+    { label: "Earnings accrued, not yet released", value: position.owed.heldEarnings },
     { label: "VAT to remit", value: position.owed.vatToRemit },
   ];
 

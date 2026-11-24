@@ -1,0 +1,95 @@
+name: earnings-release
+
+# Moves course and mentorship earnings into tutors' wallets once the published
+# 30-day refund window has closed.
+#
+# Both are accrued as PENDING at settlement and deliberately NOT credited then:
+# money a student can still reclaim must not be withdrawable, and there is no
+# clawback once it has left. This is the only thing that releases them, so if it
+# stops running tutors stop being paid. It is not a backstop.
+#
+# Program earnings are NOT touched here. They are released by an admin per
+# cohort, because a cohort cancelled for low enrolment must never pay out, and
+# that is a judgement a timer cannot make.
+#
+# Every pass is idempotent: each release is a conditional status update, so an
+# overlapping run claims nothing and a repeated run credits nothing. A skipped
+# run is picked up by the next one, and a late run does the same work.
+
+on:
+  schedule:
+    # Once a day. The hold is 30 days, so releasing within a day of the window
+    # closing is punctual enough, and a daily tick costs one database wake-up
+    # instead of keeping it awake. 02:15 UTC is off the hour so it does not
+    # collide with the other sweeps.
+    - cron: "15 2 * * *"
+  workflow_dispatch:
+
+# A slow run must never overlap with the next tick.
+concurrency:
+  group: earnings-release
+  cancel-in-progress: false
+
+jobs:
+  release:
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    steps:
+      - name: Call the release endpoint
+        env:
+          # The site URL is not a secret — it is on every page we serve. It was
+          # one, which meant two things to configure instead of one and a
+          # failure mode where the secret was set and the URL silently was not.
+          # Overridable for staging; the default is the canonical origin.
+          #
+          # It must be the host the apex redirects TO, www included. curl drops
+          # the Authorization header when a redirect crosses hosts, so an apex
+          # URL turns into a 401 that looks like a wrong secret.
+          APP_URL: ${{ secrets.APP_URL || 'https://www.palmtechniq.com' }}
+          CRON_SECRET: ${{ secrets.CRON_SECRET }}
+        run: |
+          if [ -z "$CRON_SECRET" ]; then
+            echo "CRON_SECRET is not set in this repository's Actions secrets."
+            echo
+            echo "This is separate from the CRON_SECRET in the hosting"
+            echo "environment. That one lets the endpoint VERIFY the request;"
+            echo "this one lets the workflow SEND it. Both must hold the same"
+            echo "value. Set it under Settings > Secrets and variables >"
+            echo "Actions > Repository secrets — not Environments, and not the"
+            echo "Variables tab."
+            exit 1
+          fi
+
+          response=$(mktemp)
+          status=$(curl -sS \
+            --max-time 120 \
+            --retry 2 \
+            --retry-delay 5 \
+            --retry-connrefused \
+            -o "$response" \
+            -w "%{http_code}" \
+            -X POST \
+            -H "Authorization: Bearer $CRON_SECRET" \
+            "$APP_URL/api/cron/earnings-release")
+
+          echo "HTTP $status"
+          cat "$response"
+          echo
+
+          # A redirect is not followed on purpose. curl drops the Authorization
+          # header when it crosses to a different host, so following one would
+          # turn a config mistake into a silent 401. APP_URL must be the
+          # canonical host — the one the apex redirects TO, www included.
+          case "$status" in
+            30*)
+              echo "APP_URL points at a host that redirects. Set it to the"
+              echo "canonical origin so the Authorization header survives."
+              exit 1
+              ;;
+            401) echo "CRON_SECRET does not match the value in the hosting environment."; exit 1 ;;
+            503) echo "CRON_SECRET is not set in the hosting environment."; exit 1 ;;
+          esac
+
+          if [ "$status" != "200" ]; then
+            exit 1
+          fi
