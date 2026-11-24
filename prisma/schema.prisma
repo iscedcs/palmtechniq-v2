@@ -1813,6 +1813,10 @@ enum PayoutStatus {
 enum VatStatus {
   PENDING
   REMITTED
+  /// The sale was refunded before this VAT was remitted, so it was never
+  /// owed. Kept rather than deleted so the entry still explains itself, and
+  /// excluded from what the platform reports as outstanding VAT.
+  REVERSED
 }
 
 enum UserRole {

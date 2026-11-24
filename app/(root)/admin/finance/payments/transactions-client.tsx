@@ -13,6 +13,7 @@ import {
   TableRow,
 } from "@/components/ui/table";
 import { markStalePendingTransactions } from "@/actions/admin-transactions";
+import { RefundDialog } from "./refund-dialog";
 import {
   countByOrigin,
   type TransactionOrigin,
@@ -230,6 +231,7 @@ export default function TransactionsClient({
                     <TableHead className="text-gray-400">Amount</TableHead>
                     <TableHead className="text-gray-400">Status</TableHead>
                     <TableHead className="text-gray-400">Date</TableHead>
+                    <TableHead className="text-gray-400 text-right">Action</TableHead>
                   </TableRow>
                 </TableHeader>
                 <TableBody>
@@ -272,11 +274,21 @@ export default function TransactionsClient({
                       <TableCell className="text-gray-300 text-sm">
                         {new Date(row.createdAt).toLocaleDateString()}
                       </TableCell>
+                      <TableCell className="text-right">
+                        {row.status === "COMPLETED" ? (
+                          <RefundDialog
+                            transactionId={row.id}
+                            reference={row.transactionId}
+                            amount={row.amount}
+                            studentName={row.userName}
+                          />
+                        ) : null}
+                      </TableCell>
                     </TableRow>
                   ))}
                   {transactions.length === 0 && (
                     <TableRow className="border-white/10">
-                      <TableCell colSpan={6} className="text-center py-8 text-gray-400">
+                      <TableCell colSpan={7} className="text-center py-8 text-gray-400">
                         No transactions found
                       </TableCell>
                     </TableRow>

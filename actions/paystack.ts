@@ -244,3 +244,75 @@ export async function paystackCreateSubaccount({
     subaccount_code: string;
   };
 }
+
+/**
+ * Create a refund against a settled Paystack transaction.
+ *
+ * Returns `alreadyRefunded` instead of throwing when Paystack says the
+ * transaction has been refunded before. That is not a failure: it is the state
+ * we were trying to reach, and it is the normal case when the money was
+ * refunded by hand in the Paystack dashboard and the platform is only now
+ * catching up on its own records.
+ *
+ * Paystack processes a refund asynchronously. A successful call here means the
+ * refund has been accepted and the amount deducted from the Paystack balance,
+ * not that it has landed in the customer's account, which depends on their
+ * bank.
+ */
+export async function paystackCreateRefund({
+  reference,
+  amountKobo,
+  reason,
+}: {
+  /** The original transaction reference, not a refund id. */
+  reference: string;
+  /** Omit to refund the full original amount. */
+  amountKobo?: number;
+  reason?: string;
+}): Promise<
+  | { ok: true; alreadyRefunded: false; refund: Record<string, any> }
+  | { ok: true; alreadyRefunded: true; message: string }
+  | { ok: false; error: string }
+> {
+  if (!process.env.PAYSTACK_SECRET_KEY) {
+    return { ok: false, error: "PAYSTACK_SECRET_KEY is not set" };
+  }
+
+  let res: Response;
+  let json: any;
+  try {
+    res = await fetch(`${BASE}/refund`, {
+      method: "POST",
+      headers: {
+        Authorization: `Bearer ${process.env.PAYSTACK_SECRET_KEY}`,
+        "Content-Type": "application/json",
+      },
+      body: JSON.stringify({
+        transaction: reference,
+        ...(amountKobo !== undefined ? { amount: amountKobo } : {}),
+        ...(reason ? { merchant_note: reason } : {}),
+      }),
+    });
+    json = await res.json();
+  } catch (error) {
+    // Network failure. Nothing was refunded, so the caller must not record one.
+    return {
+      ok: false,
+      error:
+        error instanceof Error
+          ? `Could not reach Paystack: ${error.message}`
+          : "Could not reach Paystack",
+    };
+  }
+
+  if (res.ok && json?.status) {
+    return { ok: true, alreadyRefunded: false, refund: json.data };
+  }
+
+  const message = String(json?.message ?? "Paystack refund failed");
+  if (/already|duplicate|refunded/i.test(message)) {
+    return { ok: true, alreadyRefunded: true, message };
+  }
+
+  return { ok: false, error: message };
+}
