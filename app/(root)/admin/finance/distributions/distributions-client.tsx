@@ -1,6 +1,7 @@
 "use client";
 
 import { useState, useTransition } from "react";
+import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { toast } from "sonner";
 import { AlertTriangle, Calculator, CheckCircle2, Clock } from "lucide-react";
@@ -38,6 +39,7 @@ type Share = {
     name: string;
     role: string;
     bankName: string | null;
+    accountName: string | null;
     accountNumber: string | null;
   };
 };
@@ -297,14 +299,20 @@ export default function DistributionsClient({
                         <TableCell className="text-gray-400 text-xs">
                           {share.stakeholder.bankName ? (
                             <>
+                              <span className="text-gray-300">
+                                {share.stakeholder.accountName}
+                              </span>
+                              <br />
                               {share.stakeholder.bankName}
                               <br />
                               {share.stakeholder.accountNumber}
                             </>
                           ) : (
-                            <span className="text-orange-400">
+                            <Link
+                              href="/admin/finance/stakeholders"
+                              className="text-orange-400 underline">
                               No bank details
-                            </span>
+                            </Link>
                           )}
                         </TableCell>
                         <TableCell>

@@ -143,28 +143,39 @@ export async function computeDistributionRun(periodStartISO?: string) {
 
   const run = await db.$transaction(async (tx: any) => {
     if (existing) {
+      // Claim the draft first, conditional on it STILL being a draft.
+      //
+      // The status read above happened outside this transaction. Without this
+      // claim, an approval committing in that gap was silently undone: the
+      // delete below wiped the approved shares and replaced them with freshly
+      // computed ones, while the run itself stayed APPROVED with its approver
+      // and timestamp intact. The money owed changed under an approved run and
+      // nothing recorded that it had.
+      const claimed = await tx.distribution.updateMany({
+        where: { id: existing.id, status: "DRAFT" },
+        data: {
+          periodEnd: period.end,
+          baseKobo: base.totalKobo,
+          computedAt: new Date(),
+        },
+      });
+      if (claimed.count === 0) return null;
+
       // Replace the draft's rows wholesale rather than diffing them: a
       // stakeholder may have been added, retired or re-rated since.
       await tx.distributionShare.deleteMany({
         where: { distributionId: existing.id },
       });
-      return tx.distribution.update({
-        where: { id: existing.id },
-        data: {
-          periodEnd: period.end,
-          baseKobo: base.totalKobo,
-          computedAt: new Date(),
-          shares: {
-            create: shares.map((s) => ({
-              stakeholderId: s.stakeholderId,
-              sharePercent: s.sharePercent,
-              amountKobo: s.amountKobo,
-              priority: s.priority,
-            })),
-          },
-        },
-        select: { id: true },
+      await tx.distributionShare.createMany({
+        data: shares.map((s) => ({
+          distributionId: existing.id,
+          stakeholderId: s.stakeholderId,
+          sharePercent: s.sharePercent,
+          amountKobo: s.amountKobo,
+          priority: s.priority,
+        })),
       });
+      return { id: existing.id };
     }
 
     return tx.distribution.create({
@@ -184,6 +195,13 @@ export async function computeDistributionRun(periodStartISO?: string) {
       select: { id: true },
     });
   });
+
+  if (!run) {
+    return {
+      ok: false as const,
+      error: `${period.label} was approved by someone else a moment ago, so it can no longer be recomputed. Reload to see it.`,
+    };
+  }
 
   return {
     ok: true as const,
@@ -351,7 +369,13 @@ export async function listDistributions() {
         orderBy: { priority: "asc" },
         include: {
           stakeholder: {
-            select: { name: true, role: true, bankName: true, accountNumber: true },
+            select: {
+              name: true,
+              role: true,
+              bankName: true,
+              accountName: true,
+              accountNumber: true,
+            },
           },
         },
       },

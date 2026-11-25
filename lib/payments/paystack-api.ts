@@ -1,6 +1,30 @@
-"use server";
+import "server-only";
 
 import { testPaymentsAllowed } from "@/lib/payments/test-mode";
+
+/**
+ * Paystack's HTTP API, server-side only.
+ *
+ * THIS FILE MUST NEVER CARRY `"use server"`, AND MUST NEVER LIVE IN actions/.
+ *
+ * It used to be actions/paystack.ts with `"use server"` at the top, which
+ * makes every exported function a Server Action: a public POST endpoint, as
+ * Next's own guidance puts it, "reachable via a direct POST request, not just
+ * through your application's UI... even if a Server Action or utility function
+ * is not imported elsewhere in your code, it can still be called externally."
+ *
+ * None of these functions authorises its caller, because none of them was ever
+ * meant to face the network. Exposed as actions they were a money-out-the-door
+ * chain: paystackCreateTransferRecipient to register an attacker's own bank
+ * account, paystackTransfer to send the balance to it, paystackCreateRefund to
+ * refund any payment whose reference was known, each bypassing the admin
+ * workflow and every ledger reversal behind it.
+ *
+ * `import "server-only"` is what keeps that from coming back: importing this
+ * module from a client component is now a build error rather than a quiet
+ * expansion of the attack surface. Authorisation belongs in the callers, which
+ * are Server Actions in actions/ and do check it.
+ */
 
 const BASE = "https://api.paystack.co";
 

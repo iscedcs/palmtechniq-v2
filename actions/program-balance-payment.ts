@@ -4,7 +4,7 @@ import { db } from "@/lib/db";
 import { accrueProgramEarning } from "@/actions/program-earnings";
 import type { InstallmentPayment, ProgramEnrollment } from "@prisma/client";
 import { auth } from "@/auth";
-import { paystackInitialize, paystackVerify } from "./paystack";
+import { paystackInitialize, paystackVerify } from "@/lib/payments/paystack-api";
 import { randomUUID } from "crypto";
 import {
   sendBalancePaymentConfirmation,

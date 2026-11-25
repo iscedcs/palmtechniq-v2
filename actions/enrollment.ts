@@ -2,7 +2,7 @@
 
 import { db } from "@/lib/db";
 import { randomUUID } from "crypto";
-import { paystackInitialize, paystackVerify } from "./paystack";
+import { paystackInitialize, paystackVerify } from "@/lib/payments/paystack-api";
 import {
   enrollmentSchema,
   type EnrollmentFormData,

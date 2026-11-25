@@ -21,7 +21,7 @@ import {
   paystackListBanks,
   paystackResolveAccount,
   paystackTransfer,
-} from "@/actions/paystack";
+} from "@/lib/payments/paystack-api";
 import { enforceRateLimit } from "@/lib/rate-limit-guard";
 
 const WALLET_URL = `${SITE_URL}/tutor/wallet`;

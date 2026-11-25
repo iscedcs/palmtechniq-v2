@@ -186,6 +186,23 @@ export async function executeJoinGroup(params: {
           skipDuplicates: true,
         });
 
+        // skipDuplicates leaves an existing row as it is. The join check above
+        // only refuses ACTIVE and COMPLETED enrollments, so someone previously
+        // refunded joins with a DROPPED row still on file and would otherwise
+        // end up in a completed group with no access to the course.
+        await tx.enrollment.updateMany({
+          where: {
+            userId: { in: memberIds },
+            courseId: group.courseId,
+            status: "DROPPED",
+          },
+          data: {
+            status: "ACTIVE",
+            groupPurchaseId: group.id,
+            enrolledAt: new Date(),
+          },
+        });
+
         if (userIdsToUpgrade.length > 0) {
           await tx.user.updateMany({
             where: { id: { in: userIdsToUpgrade } },

@@ -1,6 +1,6 @@
 import { db } from "@/lib/db";
 import { randomUUID } from "crypto";
-import { paystackInitialize, paystackVerify } from "@/actions/paystack";
+import { paystackInitialize, paystackVerify } from "@/lib/payments/paystack-api";
 import { accrueProgramEarning } from "@/actions/program-earnings";
 import { provisionUserAccount } from "@/lib/program-enrollment/provision-user-account";
 import { allocateAmountWholeNaira } from "@/lib/payments/revenue";

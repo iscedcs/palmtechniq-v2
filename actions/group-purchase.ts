@@ -3,7 +3,7 @@
 import { executeJoinGroup } from "@/lib/group-purchase/join";
 import { auth } from "@/auth";
 import { db } from "@/lib/db";
-import { paystackInitialize } from "./paystack";
+import { paystackInitialize } from "@/lib/payments/paystack-api";
 import { randomUUID } from "crypto";
 import { redirect } from "next/navigation";
 import { cookies } from "next/headers";

@@ -1928,6 +1928,9 @@ enum MentorshipPaymentStatus {
   PENDING
   PAID
   FAILED
+  /// Paid, then returned. The session is cancelled with it unless it had
+  /// already been delivered and was refunded as an override.
+  REFUNDED
 }
 
 enum MentorshipPackageOrderStatus {
@@ -2906,6 +2909,14 @@ model Stakeholder {
   accountName   String?
   accountNumber String?
   notes         String?
+
+  /// Paystack's code for the bank, kept alongside the display name because a
+  /// transfer needs the code and a free-text bank name cannot be resolved.
+  bankCode String?
+
+  /// Paystack transfer recipient, created once the account is verified. Null
+  /// until then; transfers are made by hand while it is.
+  recipientCode String?
 
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt

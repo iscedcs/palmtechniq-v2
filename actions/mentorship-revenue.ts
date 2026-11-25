@@ -2,7 +2,7 @@
 
 import { randomUUID } from "crypto";
 import { auth } from "@/auth";
-import { paystackInitialize } from "@/actions/paystack";
+import { paystackInitialize } from "@/lib/payments/paystack-api";
 import { db } from "@/lib/db";
 import { notify } from "@/lib/notify";
 import {
@@ -197,6 +197,11 @@ export async function beginMentorshipCheckout(input: {
       transactionId: reference,
       tutorShareAmount,
       platformShareAmount,
+      // Set on the column, not only in metadata. The refund path reads
+      // Transaction.mentorshipSessionId to decide which policy applies, and
+      // while this was metadata-only every mentorship payment was assessed as
+      // a course: a delivered session was refundable in full with no override.
+      mentorshipSessionId: mentorshipSession.id,
       metadata: {
         productType: "MENTORSHIP",
         mentorshipKind: packageEntry ? "PACKAGE" : "ONE_OFF",
@@ -657,6 +662,11 @@ export async function proceedWithApprovedBookingPayment(sessionId: string) {
       transactionId: reference,
       tutorShareAmount,
       platformShareAmount,
+      // Set on the column, not only in metadata. The refund path reads
+      // Transaction.mentorshipSessionId to decide which policy applies, and
+      // while this was metadata-only every mentorship payment was assessed as
+      // a course: a delivered session was refundable in full with no override.
+      mentorshipSessionId: mentorshipSession.id,
       metadata: {
         productType: "MENTORSHIP",
         mentorshipKind: "REQUEST_APPROVED",
@@ -1033,6 +1043,11 @@ export async function beginOfferingCheckout(
         transactionId: reference,
         tutorShareAmount,
         platformShareAmount,
+        // Set on the column, not only in metadata. The refund path reads
+        // Transaction.mentorshipSessionId to decide which policy applies, and
+        // while this was metadata-only every mentorship payment was assessed as
+        // a course: a delivered session was refundable in full with no override.
+        mentorshipSessionId: booking.id,
         metadata: {
           productType: "MENTORSHIP",
           mentorshipKind: "OFFERING_INSTANT",

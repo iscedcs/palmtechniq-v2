@@ -9,6 +9,7 @@ const TABS = [
   { href: "/admin/finance/payouts", label: "Payouts", exact: false },
   { href: "/admin/finance/programs", label: "Programs", exact: false },
   { href: "/admin/finance/distributions", label: "Distributions", exact: false },
+  { href: "/admin/finance/stakeholders", label: "Stakeholders", exact: false },
   { href: "/admin/finance/payment-links", label: "Payment Links", exact: false },
 ];
 

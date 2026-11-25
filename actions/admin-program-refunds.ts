@@ -3,7 +3,7 @@
 import { auth } from "@/auth";
 import { db } from "@/lib/db";
 import { notify } from "@/lib/notify";
-import { paystackCreateRefund } from "@/actions/paystack";
+import { paystackCreateRefund } from "@/lib/payments/paystack-api";
 import { cancelProgramEarning } from "@/actions/program-earnings";
 import { assessRefund } from "@/lib/payments/refund";
 import { toKobo } from "@/lib/payments/revenue";
@@ -288,6 +288,23 @@ export async function refundProgramEnrollment({
     }
   }
 
+  // Nothing came back, so nothing about the enrollment changes.
+  //
+  // This return used to sit AFTER the block below, which meant a run where
+  // every refund failed still cancelled the student's remaining installments:
+  // they were told the refund had failed while their payment schedule was
+  // destroyed on a live enrollment, and the admin's natural retry then ran
+  // against a broken record. Cancelling what is still owed is only correct
+  // once money has actually gone back.
+  if (refundedAmount === 0) {
+    return {
+      ok: false,
+      error:
+        "Nothing was refunded, so the enrollment is unchanged. " +
+        outcomes.map((o) => `#${o.installmentNo}: ${o.detail}`).join(" "),
+    };
+  }
+
   // Installments never paid are not expected any more.
   const unpaid = enrollment.installments.filter(
     (i: InstallmentRow) => i.status === "PENDING" || i.status === "OVERDUE",
@@ -333,15 +350,6 @@ export async function refundProgramEnrollment({
       }
     });
     enrollmentCancelled = true;
-  }
-
-  if (refundedAmount === 0) {
-    return {
-      ok: false,
-      error:
-        "Nothing was refunded. " +
-        outcomes.map((o) => `#${o.installmentNo}: ${o.detail}`).join(" "),
-    };
   }
 
   await trackEvent(PLATFORM_EVENTS.PAYMENT_REFUNDED, {

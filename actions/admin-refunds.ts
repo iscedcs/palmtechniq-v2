@@ -4,7 +4,7 @@ import { auth } from "@/auth";
 import { db } from "@/lib/db";
 import { notify } from "@/lib/notify";
 import { creditWallet } from "@/lib/payments/wallet";
-import { paystackCreateRefund } from "@/actions/paystack";
+import { paystackCreateRefund } from "@/lib/payments/paystack-api";
 import { assessRefund, type RefundSubject } from "@/lib/payments/refund";
 import { toKobo } from "@/lib/payments/revenue";
 import { PLATFORM_EVENTS, trackEvent } from "@/lib/analytics/track";
@@ -39,6 +39,96 @@ import { PLATFORM_EVENTS, trackEvent } from "@/lib/analytics/track";
 
 /** Only the fields both call sites read off an earning. */
 type EarningSlice = { status: string; amount: number };
+
+/** Shape both the refund and the preview need in order to classify a payment. */
+type ClassifiableTx = {
+  mentorshipSessionId: string | null;
+  metadata: unknown;
+  mentorshipPackageOrder: {
+    sessionsTotal: number | null;
+    sessionsRemaining: number | null;
+  } | null;
+  mentorshipSession: { status: string } | null;
+};
+
+/**
+ * What was bought, so the right refund rule applies.
+ *
+ * Shared by `refundTransaction` and `previewRefund` deliberately. These were
+ * two copies of the same logic, and the copies are what let the bug below sit
+ * in both: the preview agreed with the refund, so nothing looked wrong.
+ *
+ * Mentorship is recognised three ways, in descending order of reliability,
+ * because checkout only ever wrote the last one:
+ *
+ *  1. `Transaction.mentorshipSessionId`, which the checkout now sets.
+ *  2. `metadata.mentorshipSessionId`, which is all that exists on every
+ *     payment taken before that fix, so it cannot be dropped.
+ *  3. `metadata.productType === "MENTORSHIP"`, the last resort: a mentorship
+ *     payment whose session cannot be found is still not a course, and
+ *     treating it as one is what allowed a delivered session to be refunded in
+ *     full with no override.
+ *
+ * `MentorshipPackageOrder` rows are never created by any current code path, so
+ * branch 1 of the package check is effectively dead. It is kept because the
+ * model exists and the data would be authoritative if it were ever populated;
+ * until then `metadata.packageSessions` is what records how many sessions were
+ * bought.
+ */
+async function classifyRefundSubject(tx: ClassifiableTx): Promise<{
+  subject: RefundSubject;
+  mentorshipSessionId: string | null;
+}> {
+  const metadata = (tx.metadata as Record<string, any>) || {};
+  const sessionId =
+    tx.mentorshipSessionId ??
+    (typeof metadata.mentorshipSessionId === "string"
+      ? metadata.mentorshipSessionId
+      : null);
+  const declaredMentorship = metadata.productType === "MENTORSHIP";
+
+  if (!tx.mentorshipPackageOrder && !sessionId && !declaredMentorship) {
+    return { subject: { kind: "COURSE" }, mentorshipSessionId: null };
+  }
+
+  if (tx.mentorshipPackageOrder) {
+    const total = tx.mentorshipPackageOrder.sessionsTotal ?? 1;
+    return {
+      subject: {
+        kind: "MENTORSHIP",
+        sessionsTotal: total,
+        // The model stores what is LEFT, so delivered is the difference.
+        sessionsDelivered:
+          total - (tx.mentorshipPackageOrder.sessionsRemaining ?? 0),
+      },
+      mentorshipSessionId: sessionId,
+    };
+  }
+
+  // The relation only resolves when the column is set, which it is not on any
+  // payment taken before the checkout fix, so the session is fetched by id.
+  let status = tx.mentorshipSession?.status ?? null;
+  if (status === null && sessionId) {
+    const found = await db.mentorshipSession.findUnique({
+      where: { id: sessionId },
+      select: { status: true },
+    });
+    status = found?.status ?? null;
+  }
+
+  const sessionsTotal = Math.max(1, Number(metadata.packageSessions) || 1);
+
+  return {
+    subject: {
+      kind: "MENTORSHIP",
+      sessionsTotal,
+      // One session row covers the whole package today, so a completed row
+      // counts as one session delivered out of however many were bought.
+      sessionsDelivered: status === "COMPLETED" ? 1 : 0,
+    },
+    mentorshipSessionId: sessionId,
+  };
+}
 
 export type RefundResult =
   | {
@@ -101,26 +191,7 @@ export async function refundTransaction({
   if (!tx) return { ok: false, error: "Payment not found" };
 
   // ── What was bought, so the right rule applies ──
-  let subject: RefundSubject;
-  if (tx.mentorshipPackageOrder) {
-    subject = {
-      kind: "MENTORSHIP",
-      sessionsTotal: tx.mentorshipPackageOrder.sessionsTotal ?? 1,
-      // The model stores what is LEFT, so delivered is the difference.
-      sessionsDelivered:
-        (tx.mentorshipPackageOrder.sessionsTotal ?? 1) -
-        (tx.mentorshipPackageOrder.sessionsRemaining ?? 0),
-    };
-  } else if (tx.mentorshipSessionId) {
-    const delivered = tx.mentorshipSession?.status === "COMPLETED";
-    subject = {
-      kind: "MENTORSHIP",
-      sessionsTotal: 1,
-      sessionsDelivered: delivered ? 1 : 0,
-    };
-  } else {
-    subject = { kind: "COURSE" };
-  }
+  const { subject, mentorshipSessionId } = await classifyRefundSubject(tx);
 
   const assessment = assessRefund({
     paidAt: tx.paymentDate,
@@ -195,6 +266,14 @@ export async function refundTransaction({
     ]),
   ];
 
+  // Settlement reads this from metadata when the column is unset, so both are
+  // checked here for the same reason.
+  const groupPurchaseId: string | null =
+    tx.groupPurchaseId ??
+    (typeof metadata.groupPurchaseId === "string"
+      ? metadata.groupPurchaseId
+      : null);
+
   const result = await db.$transaction(async (px: any) => {
     // Conditional on COMPLETED, so two admins clicking at once produce one
     // refund: the second finds nothing to claim and stops.
@@ -227,8 +306,21 @@ export async function refundTransaction({
     });
 
     // Access goes. Every gate in the app admits ACTIVE and COMPLETED only.
-    const enrollments =
-      courseIds.length > 0
+    //
+    // A group purchase is one payment by the creator that enrolls every
+    // member, since joining with an invite code costs nothing. Revoking by
+    // userId alone therefore took access from the payer and left the rest of
+    // the group studying a course nobody had paid for, so a group is revoked
+    // by its own id instead.
+    const enrollments = groupPurchaseId
+      ? await px.enrollment.updateMany({
+          where: {
+            groupPurchaseId,
+            status: { in: ["ACTIVE", "COMPLETED"] },
+          },
+          data: { status: "DROPPED" },
+        })
+      : courseIds.length > 0
         ? await px.enrollment.updateMany({
             where: {
               userId: tx.userId,
@@ -238,6 +330,41 @@ export async function refundTransaction({
             data: { status: "DROPPED" },
           })
         : { count: 0 };
+
+    // The group itself is cancelled, which also stops the cashback. The
+    // release sweep only looks at COMPLETED groups, so leaving the status
+    // alone meant the creator was still paid cashback funded out of a sale
+    // that had been refunded in full.
+    if (groupPurchaseId) {
+      await px.groupPurchase.updateMany({
+        where: { id: groupPurchaseId, status: { not: "CANCELLED" } },
+        data: { status: "CANCELLED" },
+      });
+    }
+
+    // A paid mentorship session stayed SCHEDULED with a live meeting link
+    // after its money was returned, so the student kept the booking they had
+    // been refunded for. Cancelling it is the mentorship equivalent of
+    // dropping an enrollment.
+    if (mentorshipSessionId) {
+      // The payment is refunded either way, including an override on a
+      // session that was delivered.
+      await px.mentorshipSession.updateMany({
+        where: { id: mentorshipSessionId },
+        data: { paymentStatus: "REFUNDED" },
+      });
+
+      // The booking itself is only withdrawn if it has not already happened.
+      // Rewriting a COMPLETED session to CANCELLED would deny a session that
+      // was in fact delivered, which is a record of teaching, not of money.
+      await px.mentorshipSession.updateMany({
+        where: {
+          id: mentorshipSessionId,
+          status: { notIn: ["CANCELLED", "COMPLETED"] },
+        },
+        data: { status: "CANCELLED", meetingUrl: null },
+      });
+    }
 
     // VAT on a refunded sale was never owed. Only an unremitted entry can be
     // reversed here; once remitted it is a matter for the next return.
@@ -329,6 +456,7 @@ export async function previewRefund(transactionId: string) {
       amount: true,
       status: true,
       paymentDate: true,
+      metadata: true,
       mentorshipSessionId: true,
       mentorshipPackageOrder: {
         select: { sessionsTotal: true, sessionsRemaining: true },
@@ -340,25 +468,9 @@ export async function previewRefund(transactionId: string) {
 
   if (!tx) return { ok: false as const, error: "Payment not found" };
 
-  let subject: RefundSubject;
-  if (tx.mentorshipPackageOrder) {
-    subject = {
-      kind: "MENTORSHIP",
-      sessionsTotal: tx.mentorshipPackageOrder.sessionsTotal ?? 1,
-      // The model stores what is LEFT, so delivered is the difference.
-      sessionsDelivered:
-        (tx.mentorshipPackageOrder.sessionsTotal ?? 1) -
-        (tx.mentorshipPackageOrder.sessionsRemaining ?? 0),
-    };
-  } else if (tx.mentorshipSessionId) {
-    subject = {
-      kind: "MENTORSHIP",
-      sessionsTotal: 1,
-      sessionsDelivered: tx.mentorshipSession?.status === "COMPLETED" ? 1 : 0,
-    };
-  } else {
-    subject = { kind: "COURSE" };
-  }
+  // Same classifier as the refund itself, so the preview cannot disagree with
+  // what the refund will actually do.
+  const { subject } = await classifyRefundSubject(tx);
 
   const assessment = assessRefund({
     paidAt: tx.paymentDate,

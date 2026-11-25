@@ -1,5 +1,5 @@
 import { creditWallet } from "@/lib/payments/wallet";
-import { paystackVerify } from "@/actions/paystack";
+import { paystackVerify } from "@/lib/payments/paystack-api";
 import { db } from "@/lib/db";
 import { notify } from "@/lib/notify";
 import {
@@ -334,6 +334,22 @@ export async function finalizePaystackByReference(reference: string) {
             enrolledAt: new Date(),
           })),
           skipDuplicates: true,
+        });
+
+        // Enrollment is unique on (userId, courseId), so skipDuplicates leaves
+        // a row that already exists in whatever state it is in. Once refunds
+        // started setting enrollments to DROPPED that became a hole: a student
+        // who was refunded and then bought the course again paid, hit the
+        // existing DROPPED row, and got nothing. Reactivating is the second
+        // half of create-if-missing, and it is scoped to DROPPED so an
+        // in-progress or COMPLETED enrollment is never reset.
+        await px.enrollment.updateMany({
+          where: {
+            userId: tx.userId,
+            courseId: { in: courseIds },
+            status: "DROPPED",
+          },
+          data: { status: "ACTIVE", enrolledAt: new Date() },
         });
 
         await px.cartItem.deleteMany({
