@@ -1,8 +1,10 @@
 import "server-only";
 
 import { db } from "@/lib/db";
-import { creditWallet, debitWallet } from "@/lib/payments/wallet";
-import { computeGroupCashbackEarned } from "@/lib/payments/revenue";
+import {
+  computeEarningAvailableAt,
+  computeGroupCashbackEarned,
+} from "@/lib/payments/revenue";
 import { notifyTutorOfGroupCompletion } from "@/lib/tutor-notifications";
 
 /**
@@ -32,9 +34,6 @@ export type JoinGroupResult =
 
 /** The group moved between our read and our write. Retryable. */
 class GroupChangedError extends Error {}
-
-/** The cashback cannot be released, so the group cannot complete. */
-class GroupCompletionError extends Error {}
 
 export async function executeJoinGroup(params: {
   userId: string;
@@ -108,59 +107,35 @@ export async function executeJoinGroup(params: {
           cashbackEarned: nextCashbackEarned,
           status: shouldComplete ? "COMPLETED" : group.status,
           completedAt: shouldComplete ? new Date() : null,
-          cashbackReleased: shouldComplete ? true : group.cashbackReleased,
+          // Deliberately NOT released here. See the note below.
+          cashbackReleased: group.cashbackReleased,
+          // Dated on completion, paid by the release sweep once the refund
+          // window on the group's own sales has closed.
+          cashbackAvailableAt:
+            shouldComplete && group.cashbackTotal > 0
+              ? computeEarningAvailableAt(new Date())
+              : group.cashbackAvailableAt,
         },
       });
       // Throwing rolls back the membership row inserted above.
       if (advanced.count === 0) throw new GroupChangedError();
 
-      if (shouldComplete && group.cashbackTotal > 0) {
-        // Cashback is funded by the tutor, so the credit and the debit are two
-        // halves of one movement. Resolve the funder FIRST: if we cannot, the
-        // credit must not happen either. Previously the credit ran
-        // unconditionally and the debit was skipped when the tutor could not be
-        // resolved, which created money out of nothing.
-        const course = await tx.course.findUnique({
-          where: { id: group.courseId },
-          select: { tutor: { select: { userId: true } } },
-        });
-        const funderId = course?.tutor?.userId;
-
-        if (!funderId) {
-          throw new GroupCompletionError(
-            `Group ${group.id}: cannot release cashback, course ${group.courseId} has no tutor to fund it`,
-          );
-        }
-
-        // The tutor must actually have the money. Without this the debit can
-        // drive a wallet negative, letting the platform pay out cashback the
-        // tutor never earned.
-        const funder = await tx.user.findUnique({
-          where: { id: funderId },
-          select: { walletBalance: true },
-        });
-        if (!funder || funder.walletBalance < group.cashbackTotal) {
-          throw new GroupCompletionError(
-            `Group ${group.id}: tutor ${funderId} has ${funder?.walletBalance ?? 0} but cashback needs ${group.cashbackTotal}`,
-          );
-        }
-
-        await debitWallet(tx, {
-          userId: funderId,
-          amount: group.cashbackTotal,
-          type: "GROUP_CASHBACK_DEBIT",
-          groupPurchaseId: group.id,
-          description: "Funded group cashback",
-        });
-
-        await creditWallet(tx, {
-          userId: group.creatorId,
-          amount: group.cashbackTotal,
-          type: "GROUP_CASHBACK_CREDIT",
-          groupPurchaseId: group.id,
-          description: "Group purchase cashback",
-        });
-      }
+      // NO WALLET MOVEMENT AT COMPLETION.
+      //
+      // The cashback is funded by the tutor out of their share of this group's
+      // own sales, and that share is now held until its refund window closes.
+      // Paying the creator the moment the group filled therefore asked the
+      // tutor for money they did not have yet: the debit found an empty wallet
+      // and refused, which failed the whole join and left a full group stuck
+      // at ACTIVE.
+      //
+      // So the obligation is recorded with a date instead and settled by
+      // `releaseDueGroupCashback`, on the same timetable as the earnings that
+      // fund it. Nobody, tutor or student, is paid inside the window in which
+      // the sale can still be reversed.
+      //
+      // Completion can no longer fail for funding reasons, which is the point:
+      // whether a student gets access must not depend on their tutor's wallet.
 
       return { shouldComplete };
     }));
@@ -169,16 +144,6 @@ export async function executeJoinGroup(params: {
       return {
         ok: false,
         error: "This group just changed. Please try joining again.",
-      };
-    }
-    if (error instanceof GroupCompletionError) {
-      // Rolled back, so this member is not in the group. Logged for whoever
-      // has to explain to the tutor why the group could not fill.
-      console.error("[group-purchase] cannot complete group:", error.message);
-      return {
-        ok: false,
-        error:
-          "This group can't be completed right now. Please try again shortly or contact support.",
       };
     }
     throw error;
@@ -219,6 +184,23 @@ export async function executeJoinGroup(params: {
             enrolledAt: new Date(),
           })),
           skipDuplicates: true,
+        });
+
+        // skipDuplicates leaves an existing row as it is. The join check above
+        // only refuses ACTIVE and COMPLETED enrollments, so someone previously
+        // refunded joins with a DROPPED row still on file and would otherwise
+        // end up in a completed group with no access to the course.
+        await tx.enrollment.updateMany({
+          where: {
+            userId: { in: memberIds },
+            courseId: group.courseId,
+            status: "DROPPED",
+          },
+          data: {
+            status: "ACTIVE",
+            groupPurchaseId: group.id,
+            enrolledAt: new Date(),
+          },
         });
 
         if (userIdsToUpgrade.length > 0) {

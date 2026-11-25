@@ -1,6 +1,6 @@
 import { afterEach, describe, expect, it, vi } from "vitest";
 
-import { paystackVerify } from "@/actions/paystack";
+import { paystackVerify } from "@/lib/payments/paystack-api";
 
 const verifyResponse = (domain: "test" | "live") => ({
   ok: true,

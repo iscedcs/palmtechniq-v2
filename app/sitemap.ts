@@ -81,6 +81,14 @@ export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
       priority: 0.5,
     },
     {
+      // Listed because buyers search for it by name before they buy, and a
+      // refund policy they cannot find is worth less than one they can.
+      url: `${baseUrl}/refunds`,
+      lastModified: new Date(),
+      changeFrequency: "monthly",
+      priority: 0.5,
+    },
+    {
       url: `${baseUrl}/mentorship`,
       lastModified: new Date(),
       changeFrequency: "weekly",

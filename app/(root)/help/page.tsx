@@ -27,7 +27,7 @@ export default function HelpPage() {
     {
       question: "Can I get a refund?",
       answer:
-        "Yes, we offer a 30-day money-back guarantee. If you're not satisfied with your purchase, contact our support team for a full refund.",
+        "Yes. We offer a 30-day money-back guarantee on courses. Programs and bootcamps are refundable before the cohort starts, and mentorship sessions before they are delivered. Email support@palmtechniq.com within 30 days of payment, or read our full Refund Policy at /refunds.",
     },
     {
       question: "How does the AI coach work?",

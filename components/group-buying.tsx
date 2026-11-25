@@ -32,6 +32,9 @@ type ActiveGroup = {
   memberLimit: number;
   cashbackTotal: number;
   cashbackEarned: number;
+  cashbackReleased: boolean;
+  /** Null until the group completes. Serialised as a string over the wire. */
+  cashbackAvailableAt?: string | Date | null;
   status: string;
   tier: GroupTier;
   members: GroupMember[];
@@ -140,6 +143,25 @@ export function GroupBuyingWidget({
                 </p>
               </div>
             </div>
+
+            {activeGroup.cashbackTotal > 0 &&
+            activeGroup.status === "COMPLETED" ? (
+              <p className="mt-3 text-xs text-gray-400">
+                {activeGroup.cashbackReleased
+                  ? "Cashback has been added to the group creator's course credit."
+                  : `Cashback is pending${
+                      activeGroup.cashbackAvailableAt
+                        ? ` until ${new Date(
+                            activeGroup.cashbackAvailableAt,
+                          ).toLocaleDateString("en-NG", {
+                            day: "numeric",
+                            month: "long",
+                            year: "numeric",
+                          })}`
+                        : ""
+                    }. It is added to the group creator's course credit once the 30-day refund window on this group's purchases has closed.`}
+              </p>
+            ) : null}
 
             <div>
               <h4 className="text-white font-semibold mb-3">Group Members</h4>

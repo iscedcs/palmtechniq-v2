@@ -7,7 +7,7 @@ import { revalidatePath } from "next/cache";
 import { auth } from "@/auth";
 import { db } from "@/lib/db";
 import { notify } from "@/lib/notify";
-import { paystackInitialize } from "@/actions/paystack";
+import { paystackInitialize } from "@/lib/payments/paystack-api";
 import {
   REVENUE,
   allocateBundlePrices,

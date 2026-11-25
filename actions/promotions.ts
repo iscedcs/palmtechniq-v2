@@ -4,7 +4,7 @@ import { auth } from "@/auth";
 import { db } from "@/lib/db";
 import { PromotionStatus, PromotionType } from "@prisma/client";
 import { randomUUID } from "crypto";
-import { paystackInitialize } from "./paystack";
+import { paystackInitialize } from "@/lib/payments/paystack-api";
 import { settlePromotionFee } from "@/lib/promotions/settle";
 
 // ─── Flash Sale Sync Helpers ─────────────────────────────────────────────────
@@ -660,7 +660,7 @@ export async function verifyPromotionPayment(reference: string) {
   }
 
   // Verify with Paystack
-  const { paystackVerify } = await import("./paystack");
+  const { paystackVerify } = await import("@/lib/payments/paystack-api");
   const result = await paystackVerify(reference);
 
   if (result.status === "success") {

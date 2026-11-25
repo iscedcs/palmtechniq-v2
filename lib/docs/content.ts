@@ -1,6 +1,6 @@
 import type { DocPage, DocSection } from "./types";
 
-export const DOC_VERSION = "2026.10.15";
+export const DOC_VERSION = "2026.11.24";
 
 export const docSections: DocSection[] = [
   // ─── GETTING STARTED ─────────────────────────────────────
@@ -998,7 +998,7 @@ pnpm verify:exam
         description:
           "How balances are held, recorded, reconciled and withdrawn.",
         audience: "all",
-        lastUpdated: "2026-08-14",
+        lastUpdated: "2026-11-24",
         content: `
 # Wallets & Payouts
 
@@ -1016,11 +1016,14 @@ The wallet page shows four figures:
 | **Available balance** | Money you can withdraw now |
 | **Total earnings** | Lifetime earnings that reached your wallet |
 | **Pending payouts** | Withdrawals requested but not yet paid |
-| **Accrued (awaiting release)** | Program earnings recorded but **not yet spendable** |
+| **Accrued (awaiting release)** | Earnings recorded but **not yet spendable** |
 
-Accrued is deliberately separate. A program share is owed to you from the
-moment a student pays, but it only becomes withdrawable after the refund window
-and the cohort start — see **Revenue Sharing**.
+Accrued is deliberately separate. A share is owed to you from the moment a
+student pays, but it only becomes withdrawable once the 30-day refund window
+has closed, because until then the sale can still be reversed and there is no
+clawback once money has left. Course and mentorship earnings release
+automatically on that date; program earnings wait for the later of it and the
+cohort start — see **Revenue Sharing**.
 
 ## For Students
 
@@ -1083,7 +1086,7 @@ opening balance rather than reconstructed, because the movements they came from
 were never recorded and inventing them would bury the discrepancy.
 
 ### Earning status
-- \`PENDING\` — accrued, not spendable (programs only)
+- \`PENDING\` — accrued, not spendable, held until \`availableAt\`
 - \`AVAILABLE\` — in the wallet
 - \`PAID\` — settled by a completed withdrawal, oldest first
 - \`CANCELLED\` — voided by a refund before release

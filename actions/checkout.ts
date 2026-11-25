@@ -6,7 +6,7 @@ import { db } from "@/lib/db";
 import { redirect } from "next/navigation";
 import { cookies } from "next/headers";
 import { randomUUID } from "crypto";
-import { paystackInitialize } from "./paystack";
+import { paystackInitialize } from "@/lib/payments/paystack-api";
 import {
   computeCheckoutTotals,
   DEFAULT_VAT_RATE,

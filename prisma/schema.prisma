@@ -1447,17 +1447,28 @@ model GroupPurchase {
   cashbackPerMember Float               @default(0)
   cashbackEarned    Float               @default(0)
   cashbackReleased  Boolean             @default(false)
-  paidAt            DateTime?
-  completedAt       DateTime?
-  createdAt         DateTime            @default(now())
-  updatedAt         DateTime            @updatedAt
-  enrollments       Enrollment[]
-  members           GroupMember[]
-  course            Course              @relation(fields: [courseId], references: [id], onDelete: Cascade)
-  creator           User                @relation("GroupPurchaseCreator", fields: [creatorId], references: [id], onDelete: Cascade)
-  tier              GroupTier           @relation(fields: [tierId], references: [id], onDelete: Cascade)
-  transactions      Transaction[]
 
+  /// Earliest moment the cashback may be paid out: the end of the refund
+  /// window on the sales that fund it. The tutor funds the cashback out of
+  /// their share of the group's own sales, and that share is itself held until
+  /// the window closes, so paying the creator at completion would hand out
+  /// money the funder does not have yet. Set when the group completes, null
+  /// before that and on groups with no cashback.
+  cashbackAvailableAt DateTime?
+
+  paidAt       DateTime?
+  completedAt  DateTime?
+  createdAt    DateTime      @default(now())
+  updatedAt    DateTime      @updatedAt
+  enrollments  Enrollment[]
+  members      GroupMember[]
+  course       Course        @relation(fields: [courseId], references: [id], onDelete: Cascade)
+  creator      User          @relation("GroupPurchaseCreator", fields: [creatorId], references: [id], onDelete: Cascade)
+  tier         GroupTier     @relation(fields: [tierId], references: [id], onDelete: Cascade)
+  transactions Transaction[]
+
+  // Drives the release sweep: unreleased cashback whose date has passed.
+  @@index([cashbackReleased, cashbackAvailableAt])
   @@map("group_purchases")
 }
 
@@ -1802,6 +1813,10 @@ enum PayoutStatus {
 enum VatStatus {
   PENDING
   REMITTED
+  /// The sale was refunded before this VAT was remitted, so it was never
+  /// owed. Kept rather than deleted so the entry still explains itself, and
+  /// excluded from what the platform reports as outstanding VAT.
+  REVERSED
 }
 
 enum UserRole {
@@ -1913,6 +1928,9 @@ enum MentorshipPaymentStatus {
   PENDING
   PAID
   FAILED
+  /// Paid, then returned. The session is cancelled with it unless it had
+  /// already been delivered and was refunded as an override.
+  REFUNDED
 }
 
 enum MentorshipPackageOrderStatus {
@@ -2050,7 +2068,14 @@ enum InstallmentStatus {
   PENDING
   PAID
   OVERDUE
+  /// Never paid, and no longer expected: the enrollment was refunded or
+  /// withdrawn before this installment came due.
   CANCELLED
+  /// Was paid, and the money has been given back. Distinct from CANCELLED so
+  /// cash that was genuinely collected and then returned is not confused with
+  /// cash that never arrived, and distinct from PAID so the distribution base
+  /// stops counting it as revenue.
+  REFUNDED
 }
 
 // ─── Course Promotion / Ad System ───────────────────────────────────────────
@@ -2843,4 +2868,131 @@ model ExamEvent {
   @@index([attemptId, createdAt])
   @@index([examId, severity])
   @@map("exam_events")
+}
+
+// ─────────────────────────────────────────────────────────────────────────────
+// Stakeholder distribution
+//
+// Splits the platform's retained revenue (what is left after tutor shares,
+// which are a cost of sale and not part of this) between the stakeholders.
+//
+// PER PERIOD, NOT PER SALE. Ten ledger rows on every transaction would
+// multiply row count by ten for amounts too small to ever transfer: a ₦90,000
+// course owes each 2% holder about ₦1,300. One run a month produces ten rows a
+// month instead.
+//
+// Money here is INTEGER KOBO. The older columns are Float, which is a known
+// defect in this schema; new money columns do not inherit it.
+// ─────────────────────────────────────────────────────────────────────────────
+
+model Stakeholder {
+  id   String @id @default(cuid())
+  name String
+  role String
+
+  /// Percentage of the distributable revenue, as a number (40 = 40%). The
+  /// active stakeholders must total exactly 100 before a run can be computed.
+  sharePercent Float
+
+  /// Order in which transfers are queued. Operational only: because the rates
+  /// are fixed and sum to 100% of one base, the order a share is paid in never
+  /// changes its amount.
+  priority Int
+
+  /// Retired rather than deleted, so past runs keep a name against their rows.
+  isActive Boolean @default(true)
+
+  /// Optional link to a platform account. Most stakeholders are not users.
+  userId String?
+
+  bankName      String?
+  accountName   String?
+  accountNumber String?
+  notes         String?
+
+  /// Paystack's code for the bank, kept alongside the display name because a
+  /// transfer needs the code and a free-text bank name cannot be resolved.
+  bankCode String?
+
+  /// Paystack transfer recipient, created once the account is verified. Null
+  /// until then; transfers are made by hand while it is.
+  recipientCode String?
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  shares DistributionShare[]
+
+  @@index([isActive, priority])
+  @@map("stakeholders")
+}
+
+enum DistributionStatus {
+  /// Computed, not agreed. Nothing may be paid.
+  DRAFT
+  /// Signed off by an admin. The money is now committed and counts as owed.
+  APPROVED
+  /// Every share has been transferred.
+  PAID
+}
+
+enum DistributionShareStatus {
+  PENDING
+  PAID
+}
+
+model Distribution {
+  id String @id @default(cuid())
+
+  /// First instant of the period covered. Unique, so one month cannot be
+  /// distributed twice.
+  periodStart DateTime @unique
+  /// Last instant of the period covered.
+  periodEnd   DateTime
+
+  /// Platform retained revenue for the period, in integer kobo. Snapshotted at
+  /// computation so a later sale in a reopened month cannot change an agreed
+  /// run.
+  baseKobo Int
+
+  status DistributionStatus @default(DRAFT)
+
+  computedAt   DateTime  @default(now())
+  approvedById String?
+  approvedAt   DateTime?
+  paidAt       DateTime?
+  notes        String?
+
+  shares DistributionShare[]
+
+  @@index([status])
+  @@map("distributions")
+}
+
+model DistributionShare {
+  id             String @id @default(cuid())
+  distributionId String
+  stakeholderId  String
+
+  /// The rate actually applied, snapshotted. Changing a stakeholder's
+  /// percentage never rewrites a run that has already been computed.
+  sharePercent Float
+
+  /// Integer kobo. The parts sum exactly to Distribution.baseKobo.
+  amountKobo Int
+
+  priority Int
+
+  status     DistributionShareStatus @default(PENDING)
+  paidAt     DateTime?
+  /// Bank transfer reference, recorded by hand after the transfer.
+  paymentRef String?
+
+  distribution Distribution @relation(fields: [distributionId], references: [id], onDelete: Cascade)
+  stakeholder  Stakeholder  @relation(fields: [stakeholderId], references: [id], onDelete: Restrict)
+
+  // One row per stakeholder per run.
+  @@unique([distributionId, stakeholderId])
+  @@index([status])
+  @@map("distribution_shares")
 }

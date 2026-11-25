@@ -328,24 +328,38 @@ export async function releaseProgramEarnings(cohortId: string) {
  * Only PENDING earnings can be cancelled. Once released the money is in a
  * wallet and reversing it is a clawback, which is deliberately not handled
  * here — see the implementation plan.
+ *
+ * `client` takes a Prisma transaction so a refund can void the accrual in the
+ * same transaction that marks the installment refunded. Passing nothing runs
+ * it on its own, which is fine for a standalone correction but not for a
+ * refund: there the two have to commit or fail together, or the money is
+ * returned while the tutor's share still goes on to release itself.
  */
-export async function cancelProgramEarning(installmentPaymentId: string) {
-  const result = await db.tutorEarning.updateMany({
+export async function cancelProgramEarning(
+  installmentPaymentId: string,
+  client: any = db,
+) {
+  const result = await client.tutorEarning.updateMany({
     where: { installmentPaymentId, status: "PENDING" },
     data: { status: "CANCELLED" },
   });
 
   if (result.count === 0) {
-    const released = await db.tutorEarning.findUnique({
+    const released = await client.tutorEarning.findUnique({
       where: { installmentPaymentId },
-      select: { status: true },
+      select: { status: true, amount: true },
     });
     if (released && released.status !== "PENDING") {
-      return { ok: false, reason: "already_released", status: released.status };
+      return {
+        ok: false as const,
+        reason: "already_released" as const,
+        status: released.status,
+        amount: released.amount as number,
+      };
     }
   }
 
-  return { ok: true, cancelled: result.count };
+  return { ok: true as const, cancelled: result.count as number };
 }
 
 /**

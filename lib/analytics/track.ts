@@ -42,6 +42,7 @@ export const PLATFORM_EVENTS = {
   CHECKOUT_COMPLETED: { event: "checkout_completed", category: "checkout" as const, action: "User completed purchase" },
   PAYMENT_FAILED: { event: "payment_failed", category: "checkout" as const, action: "Payment failed" },
   PROMO_CODE_APPLIED: { event: "promo_code_applied", category: "checkout" as const, action: "User applied a promo code" },
+  PAYMENT_REFUNDED: { event: "payment_refunded", category: "checkout" as const, action: "An admin refunded a payment" },
 
   // Enrollment events
   COURSE_ENROLLED: { event: "course_enrolled", category: "enrollment" as const, action: "User enrolled in a course" },

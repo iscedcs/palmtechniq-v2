@@ -476,6 +476,35 @@ export function deriveSplitPercent(item: {
 }
 
 // ─────────────────────────────────────────────────────────────────────────────
+// Earning release
+// ─────────────────────────────────────────────────────────────────────────────
+
+/**
+ * Earliest moment an earning may reach a tutor's wallet: the end of the
+ * published refund window.
+ *
+ * Every earning is held, not just program earnings. The platform publishes a
+ * 30-day money-back guarantee, so for the first 30 days a sale can still be
+ * reversed. Crediting a wallet at settlement made that money withdrawable
+ * inside its own refund window, and there is no clawback: a refund after the
+ * tutor had withdrawn was absorbed in full by the platform.
+ *
+ * Holding is what removes the exposure, rather than building a clawback to
+ * chase money that has already left. It is the same rule the published terms
+ * already describe to students.
+ *
+ * Programs add a second condition on top of this one (never before the cohort
+ * starts, so a cancelled cohort never pays out) and release on an explicit
+ * admin action per cohort. Course and mentorship earnings have no equivalent
+ * second gate, so they release automatically once this date passes.
+ */
+export function computeEarningAvailableAt(paidAt: Date) {
+  const availableAt = new Date(paidAt);
+  availableAt.setDate(availableAt.getDate() + REVENUE.refundWindowDays);
+  return availableAt;
+}
+
+// ─────────────────────────────────────────────────────────────────────────────
 // Mentorship
 // ─────────────────────────────────────────────────────────────────────────────
 

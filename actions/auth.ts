@@ -112,7 +112,8 @@ function resolvePostLoginRedirect(
 
   const allowedPrefixes = allowedPrefixesByRole[role] || [];
   const isAllowed = allowedPrefixes.some(
-    (prefix) => callbackPath === prefix || callbackPath.startsWith(`${prefix}/`),
+    (prefix) =>
+      callbackPath === prefix || callbackPath.startsWith(`${prefix}/`),
   );
 
   return isAllowed ? normalized : roleDefault;
@@ -367,7 +368,10 @@ export async function login(
         success: "Successfully Signed in!",
         redirectUrl: existingUser.mustChangePassword
           ? "/change-password"
-          : resolvePostLoginRedirect(existingUser.role as UserRole, callbackUrl),
+          : resolvePostLoginRedirect(
+              existingUser.role as UserRole,
+              callbackUrl,
+            ),
       };
     } catch (signInError) {
       // Login failed - increment failed attempts

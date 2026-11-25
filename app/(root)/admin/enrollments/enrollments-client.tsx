@@ -39,6 +39,7 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
+import { ProgramRefundDialog } from "./program-refund-dialog";
 
 type Installment = {
   id: string;
@@ -431,6 +432,15 @@ export default function AdminEnrollmentsClient({
                                     animate={{ opacity: 1, height: "auto" }}
                                     exit={{ opacity: 0, height: 0 }}
                                     className="px-6 py-5 space-y-4">
+                                    {enrollment.amountPaid > 0 &&
+                                      enrollment.status !== "CANCELLED" && (
+                                        <div className="flex justify-end">
+                                          <ProgramRefundDialog
+                                            enrollmentId={enrollment.id}
+                                            studentName={enrollment.fullName}
+                                          />
+                                        </div>
+                                      )}
                                     {/* Contact & Details */}
                                     <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
                                       <div className="flex items-center gap-2 text-sm">
